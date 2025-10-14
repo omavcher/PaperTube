@@ -1,10 +1,17 @@
 const { json } = require("express");
 const Note = require("../models/Note");
 const User = require("../models/User");
-
+const puppeteer = require("puppeteer");
+const path = require('path');
+const fs = require('fs');
+const pdf = require('html-pdf');
+const axios = require('axios');
+const { Dropbox } = require('dropbox');
 const { get } = require("mongoose");
 const {GoogleGenAI} = require("@google/genai");
 const { google } = require("googleapis");
+
+
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
@@ -44,8 +51,35 @@ const getImgLink = async (query, count = 1) => {
     }
 
     // Filter out social media domains
-    const blockedDomains = ["instagram.com", "facebook.com", "twitter.com", "pinterest.com"];
-    const imgLinks = data.items
+    const blockedDomains = [
+      "instagram.com",
+      "facebook.com",
+      "twitter.com",
+      "youtube.com",
+      "youtube.in",
+      "tiktok.com",
+      "snapchat.com",
+      "linkedin.com",
+      "flickr.com",
+      "vimeo.com",
+      "quora.com",
+      "medium.com",
+      "whatsapp.com",
+      "telegram.org",
+      "discord.com",
+      "weibo.com",
+      "vk.com",
+      "twitch.tv",
+      "netflix.com",
+      "hulu.com",
+      "primevideo.com",
+      "spotify.com",
+      "soundcloud.com",
+      "bandcamp.com",
+      "mixcloud.com",
+      "patreon.com",
+    ];
+        const imgLinks = data.items
       .filter(item => !blockedDomains.some(domain => item.displayLink.includes(domain)))
       .map(item => item.link);
 
@@ -132,35 +166,45 @@ async function generatePDFContent(note, images_json) {
   }
 
   // Prompt for Gemini AI
-const prompt = `
-You are an AI that generates **rich PDF-ready HTML content** from a timestamped video transcript.
+  const prompt = `
+  You are an AI that generates **rich PDF-ready HTML content** from a timestamped video transcript.
+  
+  **CRITICAL REQUIREMENTS:**
+  - Output ONLY pure HTML content without any <style> blocks, <html>, <head>, or <body> tags
+  - Use inline styles ONLY for styling
+  - Do NOT include CSS classes or external stylesheets
+  - Do NOT wrap content in any container elements like <div class="content-wrapper">
 
-Requirements:
-~ You can use these figures/images using their links as <img> tags -> ${images_json} ~
-
-1. Keep timestamps only for **main headings and key points**.
-   - Do not add timestamps for every line.
-   - Only add timestamp at the end of main headings (<h2>) or very important points.
-   - Use a text like "watch" for timestamp.
-   - If timestamp is 0s, do not include it.
-   - Make timestamps clickable links that start the YouTube video at that time.
-2. Organize content with headings (<h1>, <h2>, <h3>), subheadings, bullet points (<ul>/<li>), tables (<table>), and diagrams (<img>) where relevant.
-3. Include LaTeX/KaTeX inside <span> or <div> for mathematical formulas if needed.
-4. Make it visually attractive with:
-   - Colorful headings
-   - Highlights for key points
-   - Proper spacing and sections like a professional PDF guide
-   - Code blocks or examples with syntax highlighting
-5. Ensure the output is **pure HTML** (do not wrap in <html>/<body>, just the content)
-6. Keep examples, tables, and diagrams where helpful.
-
-Video URL: ${note.videoUrl}
-
-Transcript:
-${note.transcript}
-
-Generate the **HTML content only**. No Markdown.
-`;
+IMPORTANT: If you include any CSS styling, it must be inline using style attributes only. Do not generate <style> tags or CSS classes. The output should be ready-to-use HTML content that can be directly inserted into a PDF generator.
+  
+  **Content Structure & Styling:**
+  1. **Timestamps:** Only include for main headings (<h2>) and very important points
+     - Use format: <a href="URL&t=Xs" style="margin-left: 10px; color: #007BFF; text-decoration: none; font-weight: bold;">watch Xs</a>
+     - Skip if timestamp is 0s
+     - Place at end of heading or paragraph
+  
+  2. **Styling (INLINE ONLY):**
+     - Use style attributes for all styling
+     - Colors: #2C3E50 (dark blue), #27AE60 (green), #E67E22 (orange), #007BFF (blue)
+     - Font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+     - Layout: Use <div> with inline styles for sections
+  
+  3. **Images:** Use provided image links: ${images_json}
+     - Format: <img src="URL" style="max-width: 80%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  
+  4. **Organization:**
+     - Use proper heading hierarchy: <h1>, <h2>, <h3>
+     - Use <ul>/<li> for lists
+     - Use <table> with inline styling for data
+     - Use <section> or <div> with background colors for content blocks
+     - Highlight key points with background colors
+  
+  **Video Information:**
+  - URL: ${note.videoUrl}
+  - Transcript: ${note.transcript}
+  
+  **Generate ONLY the HTML content** - no explanations, no markdown, no style blocks.
+  `;
 
 
 
@@ -686,4 +730,202 @@ exports.getUserNotes = async (req, res) => {
     });
   }
 };
+
+
+
+exports.generatePDF = async (req, res) => {
+  try {
+    const { noteId } = req.query;
+
+    if (!noteId) {
+      return res.status(400).json({
+        success: false,
+        message: "Note ID is required"
+      });
+    }
+
+    const note = await Note.findById(noteId);
+
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found"
+      });
+    }
+
+    // ✅ Check if PDF already exists
+    if (note.pdf_data?.downloadUrl) {
+      console.log('🔗 PDF already exists, returning saved link');
+      return res.status(200).json({
+        success: true,
+        message: "PDF already generated",
+        data: {
+          pdfUrl: note.pdf_data.downloadUrl,
+          downloadUrl: note.pdf_data.downloadUrl,
+          noteTitle: note.title,
+          generatedAt: note.updatedAt,
+          fileSize: note.pdf_data.fileSize
+        }
+      });
+    }
+
+    console.log('✅ Note found, generating PDF...');
+
+    const completeHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="UTF-8">
+          <style>
+              body { font-family: Arial, sans-serif; color: #2C3E50; line-height: 1.6; margin: 0; padding: 20px; }
+              h1 { color: #27AE60; text-align: center; border-bottom: 2px solid #27AE60; padding-bottom: 10px; }
+              h2 { color: #007BFF; margin-top: 30px; }
+              h3 { color: #2C3E50; margin-top: 20px; }
+              .info-box { background-color: #D6EAF8; padding: 10px; border-radius: 5px; margin: 10px 0; }
+              .warning-box { background-color: #FFF3E0; padding: 10px; border-radius: 5px; margin: 10px 0; }
+          </style>
+      </head>
+      <body>
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <h1>${note.title}</h1>
+          <div style="font-size: 0.9em; color: #666;">
+            <strong>Generated on:</strong> ${new Date().toLocaleDateString()}
+          </div>
+        </div>
+        ${note.content}
+      </body>
+      </html>
+    `;
+
+    // Generate PDF
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    const page = await browser.newPage();
+    await page.setContent(completeHTML, { waitUntil: 'networkidle0' });
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
+      printBackground: true
+    });
+    await browser.close();
+
+    console.log('✅ PDF generated, size:', pdfBuffer.length, 'bytes');
+
+    // Upload to Dropbox
+    const dbx = new Dropbox({ accessToken: process.env.DROPBOX_ACCESS_TOKEN });
+    const dropboxPath = `/pdfs/${note.title.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+
+    const uploadResult = await dbx.filesUpload({
+      path: dropboxPath,
+      contents: pdfBuffer,
+      mode: { '.tag': 'add' },
+      autorename: true,
+      mute: false
+    });
+
+    console.log('☁️ PDF uploaded to Dropbox:', uploadResult.result.path_display);
+
+    // Generate shared link
+    const sharedLinkResult = await dbx.sharingCreateSharedLinkWithSettings({
+      path: uploadResult.result.path_lower
+    });
+
+    const downloadUrl = sharedLinkResult.result.url.replace('dl=0', 'dl=1'); // force download
+    console.log('🔗 Download URL:', downloadUrl);
+
+    // Save PDF info in DB
+    note.pdf_data = {
+      downloadUrl,
+      fileSize: pdfBuffer.length
+    };
+    await note.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "PDF generated and uploaded successfully",
+      data: {
+        pdfUrl: downloadUrl,
+        downloadUrl,
+        noteTitle: note.title,
+        generatedAt: new Date(),
+        fileSize: pdfBuffer.length
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error generating PDF:', error);
+    return res.status(500).json({
+      success: false,
+      message: "PDF generation failed",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+
+// // Optional: Delete PDF from Cloudinary
+// exports.deletePDF = async (req, res) => {
+//   try {
+//     const { publicId } = req.body;
+
+//     if (!publicId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Public ID is required"
+//       });
+//     }
+
+//     const result = await cloudinary.uploader.destroy(publicId, {
+//       resource_type: 'raw'
+//     });
+
+//     if (result.result === 'ok') {
+//       return res.status(200).json({
+//         success: true,
+//         message: "PDF deleted successfully from Cloudinary"
+//       });
+//     } else {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Failed to delete PDF from Cloudinary"
+//       });
+//     }
+
+//   } catch (error) {
+//     console.error('❌ Error deleting PDF:', error);
+//     return res.status(500).json({ 
+//       success: false,
+//       message: "Server error while deleting PDF",
+//       error: error.message 
+//     });
+//   }
+// };
+
+// // Get all user notes (existing function)
+// exports.getUserNotes = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+    
+//     const notes = await Note.find({ owner: userId })
+//       .select('title slug videoUrl createdAt updatedAt')
+//       .sort({ createdAt: -1 });
+    
+//     return res.status(200).json({
+//       success: true,
+//       data: notes,
+//       count: notes.length
+//     });
+    
+//   } catch (error) {
+//     return res.status(500).json({ 
+//       success: false,
+//       message: "Server error while fetching user notes" 
+//     });
+//   }
+// };
+
+
 

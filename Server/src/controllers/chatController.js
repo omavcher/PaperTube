@@ -92,8 +92,7 @@ ${note.videoUrl || "No video available"}
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 500,
+        maxOutputTokens: 700,
       },
     });
 
@@ -108,8 +107,8 @@ ${note.videoUrl || "No video available"}
     const cleanMessage = assistantMessage.replace(youtubeRegex, "").trim();
 
     // Save both user and assistant messages
-    aiChat.messages.push({ role: "user", content: message });
-    aiChat.messages.push({ role: "assistant", content: cleanMessage, videoLink: videoLink });
+    aiChat.messages.push({ role: "user", content: message});
+    aiChat.messages.push({ role: "assistant", content: cleanMessage , videoLink: videoLink });
     await aiChat.save();
 
     // ✅ Send clean message + video link separately

@@ -55,7 +55,6 @@ import {
   AlertCircle,
   X,
   Menu,
-  Home,
 } from "lucide-react";
 
 import api from "@/config/api";
@@ -303,21 +302,9 @@ const ResponsiveHeader: React.FC<{
   onMenuClick?: () => void;
   showChatMobile: boolean;
   onToggleChat: () => void;
-  onGoHome: () => void;
-}> = ({ title, onMenuClick, showChatMobile, onToggleChat, onGoHome }) => (
+}> = ({ title, onMenuClick, showChatMobile, onToggleChat }) => (
   <div className="flex items-center justify-between p-3 sm:p-4 border-b border-zinc-900 bg-zinc-950 lg:hidden sticky top-0 z-40">
     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-      {/* Home Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onGoHome}
-        className="h-8 w-8 sm:h-9 sm:w-9 text-zinc-400 hover:text-white hover:bg-zinc-800 flex-shrink-0"
-        title="Go back to home"
-      >
-        <Home className="h-4 w-4 sm:h-5 sm:w-5" />
-      </Button>
-
       {onMenuClick && (
         <Button
           variant="ghost"
@@ -340,42 +327,6 @@ const ResponsiveHeader: React.FC<{
       onClick={onToggleChat}
     >
       {showChatMobile ? "Close" : "Ask AI"}
-    </Button>
-  </div>
-);
-
-// Desktop Header Component
-const DesktopHeader: React.FC<{
-  title: string;
-  onGoHome: () => void;
-  onDownloadPDF: () => void;
-  showPDFLoader: boolean;
-}> = ({ title, onGoHome, onDownloadPDF, showPDFLoader }) => (
-  <div className="hidden lg:flex items-center justify-between p-4 border-b border-zinc-900 bg-zinc-950 sticky top-0 z-40">
-    <div className="flex items-center gap-3 flex-1 min-w-0">
-      {/* Home Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onGoHome}
-        className="h-9 w-9 text-zinc-400 hover:text-white hover:bg-zinc-800 flex-shrink-0"
-        title="Go back to home"
-      >
-        <Home className="h-5 w-5" />
-      </Button>
-      
-      <div className="flex-1 min-w-0">
-        <h1 className="text-xl font-bold truncate text-white">{title}</h1>
-      </div>
-    </div>
-    
-    <Button 
-      className="bg-red-600 hover:bg-red-700 text-white border-none h-9 px-4 text-sm"
-      onClick={onDownloadPDF}
-      disabled={showPDFLoader}
-    >
-      <Download className="mr-2 h-4 w-4" /> 
-      Download PDF
     </Button>
   </div>
 );
@@ -1027,18 +978,9 @@ export default function NotePage({ params }: { params: { slug: string } }) {
           onMenuClick={() => setShowChatMobile(!showChatMobile)}
           showChatMobile={showChatMobile}
           onToggleChat={() => setShowChatMobile(!showChatMobile)}
-          onGoHome={handleGoHome}
         />
 
-        {/* Desktop Header */}
-        <DesktopHeader 
-          title={data?.title || "Note"}
-          onGoHome={handleGoHome}
-          onDownloadPDF={downloadAsPDF}
-          showPDFLoader={showPDFLoader}
-        />
-
-        <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] lg:h-[calc(100vh-73px)] w-full overflow-hidden">
+        <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] lg:h-[calc(100vh-0px)] w-full overflow-hidden">
           {/* Left: PDF + Editor */}
           <div className={`flex-1 lg:flex-[0_0_40%] xl:flex-[0_0_40%] p-2 sm:p-3 lg:p-4 h-full overflow-hidden border-b lg:border-b-0 lg:border-r border-zinc-900 flex flex-col items-center ${
             isMobile && showChatMobile ? 'hidden lg:flex' : 'flex'
@@ -1216,8 +1158,8 @@ export default function NotePage({ params }: { params: { slug: string } }) {
                 height:'100%'
               }}
             >
-              {/* Chat Header - Mobile Only */}
-              <div className="p-3 sm:p-4 border-b border-zinc-900 flex justify-between items-center bg-zinc-950 flex-shrink-0 lg:hidden">
+              {/* Chat Header */}
+              <div className="p-3 sm:p-4 border-b border-zinc-900 flex justify-between items-center bg-zinc-950 flex-shrink-0">
                 <div className="flex-1 min-w-0">
                   <h1 className="text-lg sm:text-xl font-bold truncate text-white">{data?.title}</h1>
                 </div>

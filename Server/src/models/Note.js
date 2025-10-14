@@ -4,7 +4,7 @@ const noteSchema = new mongoose.Schema(
   {
     owner: {
       type: mongoose.Schema.Types.ObjectId, // use ObjectId for user reference
-      ref: "User", // ✅ must be a string, not variable
+      ref: "User", // reference to User model
       required: true,
     },
     title: { type: String, required: true },
@@ -20,6 +20,10 @@ const noteSchema = new mongoose.Schema(
       },
     ],
     content: { type: String, required: true }, // PDF/text content
+    pdf_data: {
+      downloadUrl: { type: String, default: null },
+      fileSize: { type: Number, default: null },
+    }
   },
   { timestamps: true } // automatically adds createdAt and updatedAt
 );

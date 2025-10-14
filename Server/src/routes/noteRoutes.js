@@ -12,6 +12,8 @@ router.put("/update/:id",authMiddleware, noteController.updateNote);
 
 router.get("/get-all-notes",authMiddleware, noteController.getUserNotes)
 
+router.get("/genrate/pdf" , noteController.generatePDF)
+
 
 
 module.exports = router;
