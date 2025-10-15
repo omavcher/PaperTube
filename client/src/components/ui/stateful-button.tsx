@@ -69,10 +69,7 @@ export const Button = ({ className, children, ...props }: ButtonProps) => {
     await animateSuccess();
   };
 
-  const {
-    onClick,
-    ...buttonProps
-  } = props;
+  const { ...buttonProps } = props;
 
   return (
     <motion.button

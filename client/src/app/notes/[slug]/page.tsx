@@ -1,7 +1,6 @@
 "use client";
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, use } from "react";
 import { Editor } from "@tinymce/tinymce-react";
-import TurndownService from "turndown";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,13 +16,6 @@ import {
   Bold,
   Italic,
   List as ListIcon,
-  Image as ImageIcon,
-  Code as CodeIcon,
-  Table as TableIcon,
-  Quote,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   Undo,
   Redo,
   Send,
@@ -425,7 +417,8 @@ interface NoteData {
 }
 
 /* ----------------- Main Component ----------------- */
-export default function NotePage({ params }: { params: { slug: string } }) {
+export default function NotePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const [data, setData] = useState<NoteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -485,9 +478,6 @@ export default function NotePage({ params }: { params: { slug: string } }) {
     execCommand: (command: string, ui?: boolean, value?: unknown) => void;
   } | null>(null);
 
-  // Initialize turndown service
-  const turndownService = new TurndownService();
-
   // Get auth token from localStorage
   const getAuthToken = () => {
     if (typeof window !== 'undefined') {
@@ -496,10 +486,9 @@ export default function NotePage({ params }: { params: { slug: string } }) {
     return null;
   };
 
-  // Check if user is authenticated
-  const isAuthenticated = useCallback(() => {
+  const isAuthenticated = () => {
     return !!getAuthToken();
-  }, []);
+  };
 
   // Initialize PDF download steps
   const initializePDFSteps = () => [
@@ -655,7 +644,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         alert(`Failed to generate PDF: ${errorMessage}`);
       }, 1500);
     }
-  }, [hasPermission, data?._id, isAuthenticated]);
+  }, [hasPermission, data?._id]);
 
   // Handle PDF download cancellation
   const handlePDFDownloadCancel = () => {
@@ -698,7 +687,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
       setNoteNotFound(false);
       const authToken = getAuthToken();
       
-      const res = await api.get(`/notes/slug/${params.slug}`, {
+      const res = await api.get(`/notes/slug/${slug}`, {
         headers: {
           'Auth': authToken
         }
@@ -767,7 +756,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
     } finally {
       setLoading(false);
     }
-  }, [params.slug]);
+  }, [slug]);
 
   useEffect(() => {
     loadNoteData();
@@ -780,7 +769,6 @@ export default function NotePage({ params }: { params: { slug: string } }) {
 
   const [aiTypingContent, setAiTypingContent] = useState<string>("");
   const [aiTypingDuration, setAiTypingDuration] = useState<number | null>(null);
-  const [aiTypingStart, setAiTypingStart] = useState<number>(0);
 
   const handleFeedback = useCallback(async (noteId: string, messageId: string, feedback: "good" | "bad") => {
     try {
@@ -817,7 +805,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
       ));
       alert("Failed to submit feedback. Please try again.");
     }
-  }, [hasPermission, isAuthenticated]);
+  }, [hasPermission]);
 
   const handleSendMessage = useCallback(
     async (e: React.FormEvent) => {
@@ -840,7 +828,6 @@ export default function NotePage({ params }: { params: { slug: string } }) {
       setInput("");
       setIsThinking(true);
       setAiTypingContent("");
-      setAiTypingStart(Date.now());
       setAiTypingDuration(null);
 
       // Define steps for the loader
@@ -878,7 +865,6 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         let shownText = "";
         let idx = 0;
         const typingStart = Date.now();
-        setAiTypingStart(typingStart);
 
         const charsPerFrame = isMobile ? 3 : 5;
 
@@ -949,7 +935,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         }
       }
     },
-    [input, isThinking, data, hasPermission, isMobile, isAuthenticated]
+    [input, isThinking, data, hasPermission, isMobile]
   );
 
   const handleSave = useCallback(async () => {
@@ -987,7 +973,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         alert("Failed to save changes due to an unexpected error.");
       }
     }
-  }, [data, markdownContent, hasPermission, isAuthenticated]);
+  }, [data, markdownContent, hasPermission]);
 
   // Group messages by date
   const groupedMessages = () => {

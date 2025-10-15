@@ -186,7 +186,7 @@ export default function HomeMain() {
     // Handle form submission here
   };
 
-  const handleLoginSuccess = (userData: UserData, token: string) => {
+  const handleLoginSuccess = () => {
     setIsAuthenticated(true);
     setShowLoginDialog(false);
     // After successful login, trigger the create action
@@ -248,7 +248,7 @@ export default function HomeMain() {
       <LoginDialog
         isOpen={showLoginDialog}
         onClose={() => setShowLoginDialog(false)}
-        onSuccess={handleLoginSuccess}
+        onSuccess={() => handleLoginSuccess()}
       />
       
       {/* MultiStep Loader */}
