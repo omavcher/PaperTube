@@ -61,3 +61,5 @@ export const TextGenerateEffect = ({
     </div>
   );
 };
+
+/// added
