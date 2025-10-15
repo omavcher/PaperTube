@@ -10,7 +10,7 @@ const { Dropbox } = require('dropbox');
 const { get } = require("mongoose");
 const {GoogleGenAI} = require("@google/genai");
 const { google } = require("googleapis");
-import html_to_pdf from "html-pdf-node";
+const html_to_pdf = require("html-pdf-node");
 
 
 const ai = new GoogleGenAI({
