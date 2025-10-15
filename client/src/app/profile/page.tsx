@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState, useEffect, Suspense, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
   User, 
   Coins, 
@@ -110,6 +110,18 @@ interface TransactionData {
   tokens: number;
 }
 
+interface Transaction {
+  _id?: string;
+  paymentId?: string;
+  status: 'success' | 'failed';
+  amount: number;
+  tokens: number;
+  packageName?: string;
+  timestamp?: string;
+  createdAt?: string;
+  error?: string;
+}
+
 function ProfileContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'overview';
@@ -120,18 +132,8 @@ function ProfileContent() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);interface Transaction {
-    _id?: string;
-    paymentId?: string;
-    status: 'success' | 'failed';
-    amount: number;
-    tokens: number;
-    packageName?: string;
-    timestamp?: string;
-    createdAt?: string;
-    error?: string;
-  }
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Updated token packages with Indian Rupees pricing
@@ -142,8 +144,16 @@ function ProfileContent() {
     { id: "4", name: "Master", tokens: 3000, price: 129 },
   ];
 
+  // Get auth token
+  const getAuthToken = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem("authToken");
+    }
+    return null;
+  }, []);
+
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
+    const token = getAuthToken();
     const userData = localStorage.getItem("user");
     
     if (token && userData) {
@@ -154,7 +164,7 @@ function ProfileContent() {
     } else {
       window.location.href = "/";
     }
-  }, []);
+  }, [getAuthToken]);
 
   // Updated API call for token count
   const fetchTokenCount = async (authToken: string) => {
@@ -212,7 +222,7 @@ function ProfileContent() {
   // Save transaction to database
   const saveTransactionToDB = async (transactionData: TransactionData, status: 'success' | 'failed', error?: string) => {
     try {
-      const token = localStorage.getItem("authToken");
+      const token = getAuthToken();
       const packageData = tokenPackages.find(pkg => pkg.id === transactionData.packageId);
       
       const payload = {
@@ -247,7 +257,7 @@ function ProfileContent() {
     }
   };
 
-  // Handle token purchase - FIXED: Removed duplicate token addition
+  // Handle token purchase
   const handlePurchaseTokens = async (packageId: string) => {
     setIsProcessing(packageId);
     
@@ -288,11 +298,8 @@ function ProfileContent() {
             const saveResponse = await saveTransactionToDB(transactionData, 'success');
             
             if (saveResponse.success) {
-              // ✅ REMOVED: No need to call addTokensToUser separately
-              // The saveTransaction backend function already adds tokens when status is 'success'
-              
               // Update token count and transaction history
-              const token = localStorage.getItem("authToken");
+              const token = getAuthToken();
               if (token) {
                 await fetchTokenCount(token);
                 await fetchTransactionHistory(token);
@@ -344,7 +351,7 @@ function ProfileContent() {
           await saveTransactionToDB(transactionData, 'failed', response.error.description);
           
           // Refresh transaction history
-          const token = localStorage.getItem("authToken");
+          const token = getAuthToken();
           if (token) {
             await fetchTransactionHistory(token);
           }
@@ -375,7 +382,7 @@ function ProfileContent() {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      const token = localStorage.getItem("authToken");
+      const token = getAuthToken();
       
       if (!token) {
         toast.error("Authentication token not found");

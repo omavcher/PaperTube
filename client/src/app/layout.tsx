@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, Coins, Plus } from "lucide-react";
+import { LoaderThree } from "@/components/ui/loader";
 
 export default function RootLayout({
   children,
@@ -95,8 +96,8 @@ export default function RootLayout({
   if (!mounted)
     return (
       <html lang="en" className="scroll-smooth bg-black">
-        <body className="">
-          Loading...
+        <body>
+               <LoaderThree/>
         </body>
       </html>
     );

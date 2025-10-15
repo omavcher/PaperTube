@@ -35,6 +35,15 @@ interface Note {
   createdAt: string;
 }
 
+// Interface for API error response
+interface ApiError {
+  response?: {
+    status: number;
+    data?: unknown;
+  };
+  message?: string;
+}
+
 export default function NotesWorkspace() {
   const [viewMode, setViewMode] = useState("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,8 +70,8 @@ export default function NotesWorkspace() {
           return false;
         }
         return true;
-      } catch (error) {
-        console.error("Error checking authentication:", error);
+      } catch (err) {
+        console.error("Error checking authentication:", err);
         setIsAuthenticated(false);
         setLoading(false);
         return false;
@@ -129,8 +138,13 @@ export default function NotesWorkspace() {
     } catch (err: unknown) {
       console.error("Failed to fetch notes:", err);
       
+      // Type guard to check if it's an API error
+      const isApiError = (error: unknown): error is ApiError => {
+        return typeof error === 'object' && error !== null && 'response' in error;
+      };
+
       // If unauthorized, clear auth state
-      if (err instanceof Error && 'response' in err && (err as any).response?.status === 401) {
+      if (isApiError(err) && err.response?.status === 401) {
         setIsAuthenticated(false);
         localStorage.removeItem('authToken');
         setError("Session expired. Please login again.");
@@ -243,7 +257,7 @@ export default function NotesWorkspace() {
         month: 'short',
         day: 'numeric'
       });
-    } catch (error) {
+    } catch {
       return dateString;
     }
   }, []);
@@ -307,8 +321,6 @@ export default function NotesWorkspace() {
             )}
           </div>
         </div>
-
-       
       </header>
 
       {/* Search + Filters - Only show when user has notes */}

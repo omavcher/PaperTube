@@ -2,26 +2,14 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Editor } from "@tinymce/tinymce-react";
 import TurndownService from "turndown";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
-import { marked } from "marked";
-import { saveAs } from "file-saver";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
+
 import {
   Download,
   FileDown,
@@ -491,10 +479,11 @@ export default function NotePage({ params }: { params: { slug: string } }) {
   };
 
   // Check if user is authenticated
-  const isAuthenticated = () => {
+  const isAuthenticated = useCallback(() => {
     return !!getAuthToken();
-  };
+  }, []);
 
+  
   // Initialize PDF download steps
   const initializePDFSteps = () => [
     { text: "Connecting to server...", status: 'pending' as const },
@@ -622,8 +611,8 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         }
       }, 800);
 
-    } catch (error: any) {
-      console.error("Error generating PDF:", error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       
       // Mark current step as error
       if (currentStepIndex > 0) {
@@ -637,6 +626,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
       }, 1500);
     }
   }, [hasPermission, data?._id, isAuthenticated]);
+
 
   // Handle PDF download cancellation
   const handlePDFDownloadCancel = () => {
@@ -722,22 +712,33 @@ export default function NotePage({ params }: { params: { slug: string } }) {
           timestamp: new Date(Date.now() - 300000)
         }]);
       }
-    } catch (error: any) {
-      if (error.response?.status === 404 || 
-          (error.response?.data?.message && error.response.data.message.includes("Note not found"))) {
-        setNoteNotFound(true);
-        setHasPermission(false);
-      } else if (error.response?.status === 403 || 
-          (error.response?.data?.message && error.response.data.message.includes("Access denied"))) {
-        setAuthError("You don't have permission to access this note. Please login with the correct account.");
-        setHasPermission(false);
-        setShowLoginDialog(true);
-      } else if (error.response?.status === 401) {
-        setAuthError("Please login to access this note.");
-        setHasPermission(false);
-        setShowLoginDialog(true);
+    } catch (error: unknown) {
+      // Type guard to check if it's an Axios error
+      const isAxiosError = (err: unknown): err is { response?: { status: number; data?: { message: string } } } => {
+        return typeof err === 'object' && err !== null && 'response' in err;
+      };
+    
+      if (isAxiosError(error)) {
+        if (error.response?.status === 404 || 
+            (error.response?.data?.message && error.response.data.message.includes("Note not found"))) {
+          setNoteNotFound(true);
+          setHasPermission(false);
+        } else if (error.response?.status === 403 || 
+            (error.response?.data?.message && error.response.data.message.includes("Access denied"))) {
+          setAuthError("You don't have permission to access this note. Please login with the correct account.");
+          setHasPermission(false);
+          setShowLoginDialog(true);
+        } else if (error.response?.status === 401) {
+          setAuthError("Please login to access this note.");
+          setHasPermission(false);
+          setShowLoginDialog(true);
+        } else {
+          setError("Failed to load content. Please try again later.");
+          setHasPermission(false);
+        }
       } else {
-        setError("Failed to load content. Please try again later.");
+        // Handle non-Axios errors
+        setError("An unexpected error occurred. Please try again later.");
         setHasPermission(false);
       }
     } finally {
@@ -883,17 +884,35 @@ export default function NotePage({ params }: { params: { slug: string } }) {
 
         requestAnimationFrame(typeChar);
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         setIsThinking(false);
         setCurrentStep(0);
         setAiTypingContent("");
         setAiTypingDuration(null);
         
-        if (error.response?.status === 403 || error.response?.status === 401) {
-          setAuthError("Authentication failed. Please login again.");
-          setHasPermission(false);
-          setShowLoginDialog(true);
+        // Type guard for Axios-like error structure
+        const isAxiosError = (err: unknown): err is { response?: { status: number } } => {
+          return typeof err === 'object' && err !== null && 'response' in err;
+        };
+      
+        if (isAxiosError(error)) {
+          if (error.response?.status === 403 || error.response?.status === 401) {
+            setAuthError("Authentication failed. Please login again.");
+            setHasPermission(false);
+            setShowLoginDialog(true);
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: (Date.now() + 1).toString(),
+                role: "assistant" as const,
+                content: "Sorry, I encountered an error while processing your request. Please try again.",
+                timestamp: new Date()
+              },
+            ]);
+          }
         } else {
+          // Handle non-Axios errors
           setMessages((prev) => [
             ...prev,
             {
@@ -925,13 +944,23 @@ export default function NotePage({ params }: { params: { slug: string } }) {
       });
       setData(res.data);
       setIsDirty(false);
-    } catch (error: any) {
-      if (error.response?.status === 403 || error.response?.status === 401) {
-        setAuthError("Authentication failed. Please login again.");
-        setHasPermission(false);
-        setShowLoginDialog(true);
+    } catch (error: unknown) {
+      // Type guard for Axios-like error structure
+      const isAxiosError = (err: unknown): err is { response?: { status: number } } => {
+        return typeof err === 'object' && err !== null && 'response' in err;
+      };
+    
+      if (isAxiosError(error)) {
+        if (error.response?.status === 403 || error.response?.status === 401) {
+          setAuthError("Authentication failed. Please login again.");
+          setHasPermission(false);
+          setShowLoginDialog(true);
+        } else {
+          alert("Failed to save changes.");
+        }
       } else {
-        alert("Failed to save changes.");
+        // Handle non-Axios errors
+        alert("Failed to save changes due to an unexpected error.");
       }
     }
   }, [data, markdownContent, hasPermission , isAuthenticated]);

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { BackgroundBeams } from './ui/background-beams';
 import { Button } from './ui/stateful-button';
 import api from '@/config/api';
@@ -129,8 +129,11 @@ export default function HomeMain() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
-  // YouTube URL detection regex
-  const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+  // YouTube URL detection regex - wrapped in useMemo to prevent unnecessary re-renders
+  const youtubeRegex = useMemo(() => 
+    /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/, 
+    []
+  );
 
   // Check authentication on component mount
   useEffect(() => {
@@ -160,7 +163,7 @@ export default function HomeMain() {
         setLoading(false);
       }
     } else {
-      // Reset video info if it&apos;s not a YouTube URL
+      // Reset video info if it's not a YouTube URL
       setVideoInfo(null);
     }
   }, [description, youtubeRegex]);
@@ -214,7 +217,7 @@ export default function HomeMain() {
         }
       });
 
-      // If successful, redirect to the note&apos;s slug page
+      // If successful, redirect to the note's slug page
       if (response.data && response.data.newNote && response.data.newNote.slug) {
         router.push(`/notes/${response.data.newNote.slug}`);
       }
