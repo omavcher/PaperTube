@@ -2,8 +2,9 @@
 import { cn } from "@/lib/utils";
 import React from "react";
 import { motion, useAnimate } from "motion/react";
+import type { HTMLMotionProps } from "motion/react";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends HTMLMotionProps<"button"> {
   className?: string;
   children: React.ReactNode;
 }
