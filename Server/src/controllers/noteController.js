@@ -10,6 +10,7 @@ const { Dropbox } = require('dropbox');
 const { get } = require("mongoose");
 const {GoogleGenAI} = require("@google/genai");
 const { google } = require("googleapis");
+import html_to_pdf from "html-pdf-node";
 
 
 const ai = new GoogleGenAI({
@@ -732,138 +733,217 @@ exports.getUserNotes = async (req, res) => {
 };
 
 
-
-exports.generatePDF = async (req, res) => {
+export const generatePDF = async (req, res) => {
   try {
     const { noteId } = req.query;
-
-    if (!noteId) {
-      return res.status(400).json({
-        success: false,
-        message: "Note ID is required"
-      });
-    }
+    if (!noteId) return res.status(400).json({ success: false, message: "Note ID is required" });
 
     const note = await Note.findById(noteId);
+    if (!note) return res.status(404).json({ success: false, message: "Note not found" });
 
-    if (!note) {
-      return res.status(404).json({
-        success: false,
-        message: "Note not found"
-      });
-    }
-
-    // ✅ Check if PDF already exists
+    // ✅ Skip if already generated
     if (note.pdf_data?.downloadUrl) {
-      console.log('🔗 PDF already exists, returning saved link');
       return res.status(200).json({
         success: true,
         message: "PDF already generated",
-        data: {
-          pdfUrl: note.pdf_data.downloadUrl,
-          downloadUrl: note.pdf_data.downloadUrl,
-          noteTitle: note.title,
-          generatedAt: note.updatedAt,
-          fileSize: note.pdf_data.fileSize
-        }
+        data: note.pdf_data
       });
     }
 
-    console.log('✅ Note found, generating PDF...');
+    console.log("✅ Note found, generating PDF without Chrome...");
 
     const completeHTML = `
-      <!DOCTYPE html>
       <html>
       <head>
-          <meta charset="UTF-8">
-          <style>
-              body { font-family: Arial, sans-serif; color: #2C3E50; line-height: 1.6; margin: 0; padding: 20px; }
-              h1 { color: #27AE60; text-align: center; border-bottom: 2px solid #27AE60; padding-bottom: 10px; }
-              h2 { color: #007BFF; margin-top: 30px; }
-              h3 { color: #2C3E50; margin-top: 20px; }
-              .info-box { background-color: #D6EAF8; padding: 10px; border-radius: 5px; margin: 10px 0; }
-              .warning-box { background-color: #FFF3E0; padding: 10px; border-radius: 5px; margin: 10px 0; }
-          </style>
+        <style>
+          body { font-family: Arial; color: #333; padding: 20px; }
+          h1 { color: #27AE60; border-bottom: 2px solid #27AE60; }
+        </style>
       </head>
       <body>
-        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-          <h1>${note.title}</h1>
-          <div style="font-size: 0.9em; color: #666;">
-            <strong>Generated on:</strong> ${new Date().toLocaleDateString()}
-          </div>
-        </div>
+        <h1>${note.title}</h1>
         ${note.content}
       </body>
       </html>
     `;
 
-    // Generate PDF
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    const page = await browser.newPage();
-    await page.setContent(completeHTML, { waitUntil: 'networkidle0' });
+    // 👇 Generate PDF buffer directly (no Chrome)
+    const file = { content: completeHTML };
+    const pdfBuffer = await html_to_pdf.generatePdf(file, { format: "A4" });
 
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
-      printBackground: true
-    });
-    await browser.close();
+    console.log("✅ PDF generated, size:", pdfBuffer.length);
 
-    console.log('✅ PDF generated, size:', pdfBuffer.length, 'bytes');
-
-    // Upload to Dropbox
+    // ☁️ Upload to Dropbox
     const dbx = new Dropbox({ accessToken: process.env.DROPBOX_ACCESS_TOKEN });
-    const dropboxPath = `/pdfs/${note.title.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+    const dropboxPath = `/pdfs/${note.title.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
 
     const uploadResult = await dbx.filesUpload({
       path: dropboxPath,
       contents: pdfBuffer,
-      mode: { '.tag': 'add' },
+      mode: { ".tag": "add" },
       autorename: true,
-      mute: false
+      mute: false,
     });
 
-    console.log('☁️ PDF uploaded to Dropbox:', uploadResult.result.path_display);
-
-    // Generate shared link
     const sharedLinkResult = await dbx.sharingCreateSharedLinkWithSettings({
-      path: uploadResult.result.path_lower
+      path: uploadResult.result.path_lower,
     });
 
-    const downloadUrl = sharedLinkResult.result.url.replace('dl=0', 'dl=1'); // force download
-    console.log('🔗 Download URL:', downloadUrl);
+    const downloadUrl = sharedLinkResult.result.url.replace("dl=0", "dl=1");
 
-    // Save PDF info in DB
-    note.pdf_data = {
-      downloadUrl,
-      fileSize: pdfBuffer.length
-    };
+    note.pdf_data = { downloadUrl, fileSize: pdfBuffer.length };
     await note.save();
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      message: "PDF generated and uploaded successfully",
+      message: "PDF generated and uploaded successfully (no Chrome)",
       data: {
         pdfUrl: downloadUrl,
-        downloadUrl,
         noteTitle: note.title,
         generatedAt: new Date(),
-        fileSize: pdfBuffer.length
-      }
+        fileSize: pdfBuffer.length,
+      },
     });
-
   } catch (error) {
-    console.error('❌ Error generating PDF:', error);
-    return res.status(500).json({
-      success: false,
-      message: "PDF generation failed",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error("❌ Error generating PDF:", error);
+    res.status(500).json({ success: false, message: "PDF generation failed", error: error.message });
   }
 };
+
+
+
+
+// exports.generatePDF = async (req, res) => {
+//   try {
+//     const { noteId } = req.query;
+
+//     if (!noteId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Note ID is required"
+//       });
+//     }
+
+//     const note = await Note.findById(noteId);
+
+//     if (!note) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Note not found"
+//       });
+//     }
+
+//     // ✅ Check if PDF already exists
+//     if (note.pdf_data?.downloadUrl) {
+//       console.log('🔗 PDF already exists, returning saved link');
+//       return res.status(200).json({
+//         success: true,
+//         message: "PDF already generated",
+//         data: {
+//           pdfUrl: note.pdf_data.downloadUrl,
+//           downloadUrl: note.pdf_data.downloadUrl,
+//           noteTitle: note.title,
+//           generatedAt: note.updatedAt,
+//           fileSize: note.pdf_data.fileSize
+//         }
+//       });
+//     }
+
+//     console.log('✅ Note found, generating PDF...');
+
+//     const completeHTML = `
+//       <!DOCTYPE html>
+//       <html>
+//       <head>
+//           <meta charset="UTF-8">
+//           <style>
+//               body { font-family: Arial, sans-serif; color: #2C3E50; line-height: 1.6; margin: 0; padding: 20px; }
+//               h1 { color: #27AE60; text-align: center; border-bottom: 2px solid #27AE60; padding-bottom: 10px; }
+//               h2 { color: #007BFF; margin-top: 30px; }
+//               h3 { color: #2C3E50; margin-top: 20px; }
+//               .info-box { background-color: #D6EAF8; padding: 10px; border-radius: 5px; margin: 10px 0; }
+//               .warning-box { background-color: #FFF3E0; padding: 10px; border-radius: 5px; margin: 10px 0; }
+//           </style>
+//       </head>
+//       <body>
+//         <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+//           <h1>${note.title}</h1>
+//           <div style="font-size: 0.9em; color: #666;">
+//             <strong>Generated on:</strong> ${new Date().toLocaleDateString()}
+//           </div>
+//         </div>
+//         ${note.content}
+//       </body>
+//       </html>
+//     `;
+
+//     // Generate PDF
+//     const browser = await puppeteer.launch({
+//       headless: true,
+//       args: ['--no-sandbox', '--disable-setuid-sandbox']
+//     });
+//     const page = await browser.newPage();
+//     await page.setContent(completeHTML, { waitUntil: 'networkidle0' });
+
+//     const pdfBuffer = await page.pdf({
+//       format: 'A4',
+//       margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
+//       printBackground: true
+//     });
+//     await browser.close();
+
+//     console.log('✅ PDF generated, size:', pdfBuffer.length, 'bytes');
+
+//     // Upload to Dropbox
+//     const dbx = new Dropbox({ accessToken: process.env.DROPBOX_ACCESS_TOKEN });
+//     const dropboxPath = `/pdfs/${note.title.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+
+//     const uploadResult = await dbx.filesUpload({
+//       path: dropboxPath,
+//       contents: pdfBuffer,
+//       mode: { '.tag': 'add' },
+//       autorename: true,
+//       mute: false
+//     });
+
+//     console.log('☁️ PDF uploaded to Dropbox:', uploadResult.result.path_display);
+
+//     // Generate shared link
+//     const sharedLinkResult = await dbx.sharingCreateSharedLinkWithSettings({
+//       path: uploadResult.result.path_lower
+//     });
+
+//     const downloadUrl = sharedLinkResult.result.url.replace('dl=0', 'dl=1'); // force download
+//     console.log('🔗 Download URL:', downloadUrl);
+
+//     // Save PDF info in DB
+//     note.pdf_data = {
+//       downloadUrl,
+//       fileSize: pdfBuffer.length
+//     };
+//     await note.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "PDF generated and uploaded successfully",
+//       data: {
+//         pdfUrl: downloadUrl,
+//         downloadUrl,
+//         noteTitle: note.title,
+//         generatedAt: new Date(),
+//         fileSize: pdfBuffer.length
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error('❌ Error generating PDF:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "PDF generation failed",
+//       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+//     });
+//   }
+// };
 
 
 // // Optional: Delete PDF from Cloudinary
