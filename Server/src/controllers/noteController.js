@@ -733,7 +733,7 @@ exports.getUserNotes = async (req, res) => {
 };
 
 
-export const generatePDF = async (req, res) => {
+exports.generatePDF = async (req, res) => {
   try {
     const { noteId } = req.query;
     if (!noteId) return res.status(400).json({ success: false, message: "Note ID is required" });
