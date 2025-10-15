@@ -30,6 +30,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, Coins, Plus } from "lucide-react";
 import { LoaderThree } from "@/components/ui/loader";
 
+interface UserData {
+  name?: string;
+  email?: string;
+  picture?: string;
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -38,11 +44,6 @@ export default function RootLayout({
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  interface UserData {
-    name?: string;
-    email?: string;
-    picture?: string;
-  }
   const [user, setUser] = useState<UserData | null>(null);
   const [tokenCount, setTokenCount] = useState<number>(0);
   const pathname = usePathname();
