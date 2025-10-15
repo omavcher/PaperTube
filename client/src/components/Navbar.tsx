@@ -9,7 +9,8 @@ import {
 } from "motion/react";
 
 import React, { useRef, useState } from "react";
-
+import Link from "next/link";
+import Image from "next/image";
 
 interface NavbarProps {
   children: React.ReactNode;
@@ -125,7 +126,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
       )}
     >
       {items.map((item, idx) => (
-        <a
+        <Link
           onMouseEnter={() => setHovered(idx)}
           onClick={onItemClick}
           className="relative px-4 py-2 text-neutral-600 dark:text-neutral-300"
@@ -139,7 +140,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
             />
           )}
           <span className="relative z-20">{item.name}</span>
-        </a>
+        </Link>
       ))}
     </motion.div>
   );
@@ -195,7 +196,6 @@ export const MobileNavMenu = ({
   children,
   className,
   isOpen,
-  onClose,
 }: MobileNavMenuProps) => {
   return (
     <AnimatePresence>
@@ -232,18 +232,19 @@ export const MobileNavToggle = ({
 
 export const NavbarLogo = () => {
   return (
-    <a
+    <Link
       href="/"
       className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-black"
     >
-      <img
-        src="./papertube.png"
+      <Image
+        src="/papertube.png"
         alt="logo"
         width={55}
         height={50}
+        priority
       />
       <span className="font-medium text-xl text-black dark:text-white">PaperTube</span>
-    </a>
+    </Link>
   );
 };
 

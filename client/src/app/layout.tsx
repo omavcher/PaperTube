@@ -27,7 +27,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, User, Coins, Plus, Home, Settings, CreditCard } from "lucide-react";
+import { LogOut, User, Coins, Plus } from "lucide-react";
 
 export default function RootLayout({
   children,
@@ -37,7 +37,12 @@ export default function RootLayout({
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  interface UserData {
+    name?: string;
+    email?: string;
+    picture?: string;
+  }
+  const [user, setUser] = useState<UserData | null>(null);
   const [tokenCount, setTokenCount] = useState<number>(0);
   const pathname = usePathname();
 
@@ -334,7 +339,7 @@ function GoogleLoginBtn({
   onSuccess,
 }: {
   className?: string;
-  onSuccess: (userData: any, token: string) => void;
+  onSuccess: (userData: UserData, token: string) => void;
 }) {
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {

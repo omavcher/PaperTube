@@ -8,10 +8,6 @@ import {
   CreditCard, 
   Settings, 
   History, 
-  Shield,
-  Bell,
-  Globe,
-  Key,
   Trash2,
   Plus,
   Zap,
@@ -38,9 +34,54 @@ import api from "@/config/api";
 import Script from "next/script";
 
 // Declare Razorpay types
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  handler: (response: RazorpayResponse) => void;
+  prefill: {
+    name: string;
+    email: string;
+    contact: string;
+  };
+  theme: {
+    color: string;
+  };
+  modal: {
+    ondismiss: () => void;
+  };
+}
+
+interface RazorpayResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayError {
+  error: {
+    code: string;
+    description: string;
+    source: string;
+    step: string;
+    reason: string;
+    metadata: {
+      payment_id?: string;
+      order_id?: string;
+    };
+  };
+}
+
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay: {
+      new (options: RazorpayOptions): {
+        open: () => void;
+        on: (event: string, callback: (response: RazorpayError) => void) => void;
+      };
+    };
   }
 }
 
@@ -71,7 +112,6 @@ interface TransactionData {
 
 function ProfileContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const initialTab = searchParams.get('tab') || 'overview';
   
   const [user, setUser] = useState<UserData | null>(null);
@@ -80,8 +120,18 @@ function ProfileContent() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);interface Transaction {
+    _id?: string;
+    paymentId?: string;
+    status: 'success' | 'failed';
+    amount: number;
+    tokens: number;
+    packageName?: string;
+    timestamp?: string;
+    createdAt?: string;
+    error?: string;
+  }
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Updated token packages with Indian Rupees pricing
@@ -222,7 +272,7 @@ function ProfileContent() {
         currency: 'INR',
         name: 'AI Companion App',
         description: `Purchase ${packageData.tokens} tokens - ${packageData.name} Package`,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayResponse) {
           try {
             // Payment successful
             const transactionData: TransactionData = {
@@ -278,7 +328,7 @@ function ProfileContent() {
       const rzp = new window.Razorpay(options);
       
       // Handle payment failure
-      rzp.on('payment.failed', async function (response: any) {
+      rzp.on('payment.failed', async function (response: RazorpayError) {
         console.error("❌ Payment failed:", response.error);
         
         try {
@@ -354,9 +404,9 @@ function ProfileContent() {
       } else {
         throw new Error(response.data.message || "Failed to delete account");
       }
-    } catch (error: any) {
-      console.error("❌ Error deleting account:", error);
-      toast.error(error.response?.data?.message || "Failed to delete account. Please try again.");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete account. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);

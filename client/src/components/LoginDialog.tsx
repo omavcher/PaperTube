@@ -13,26 +13,53 @@ import { useGoogleLogin } from "@react-oauth/google";
 import axios from "axios";
 import api from "@/config/api";
 
+// Interface for Google user data
+interface UserData {
+  name: string;
+  email: string;
+  picture?: string;
+  sub?: string;
+  given_name?: string;
+  family_name?: string;
+  email_verified?: boolean;
+}
+
+// Interface for Google OAuth response
+interface GoogleAuthResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+  authuser: string;
+  prompt: string;
+}
+
+// Interface for backend auth response
+interface AuthResponse {
+  sessionToken: string;
+  user?: UserData;
+}
+
 interface LoginDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (userData: any, token: string) => void;
+  onSuccess: (userData: UserData, token: string) => void;
 }
 
 export function LoginDialog({ isOpen, onClose, onSuccess }: LoginDialogProps) {
   const login = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
+    onSuccess: async (tokenResponse: GoogleAuthResponse) => {
       try {
         const accessToken = tokenResponse.access_token;
 
         // Get user info from Google
-        const { data } = await axios.get(
+        const { data } = await axios.get<UserData>(
           "https://www.googleapis.com/oauth2/v3/userinfo",
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
 
         // Send user to backend to create/save session
-        const response = await api.post("/auth/google", {
+        const response = await api.post<AuthResponse>("/auth/google", {
           name: data.name,
           email: data.email,
           picture: data.picture,

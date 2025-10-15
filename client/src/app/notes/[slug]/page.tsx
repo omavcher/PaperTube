@@ -410,7 +410,14 @@ const NoteNotFound: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
 
 /* ----------------- Main Component ----------------- */
 export default function NotePage({ params }: { params: { slug: string } }) {
-  const [data, setData] = useState<any>(null);
+  interface NoteData {
+    _id: string;
+    title: string;
+    content: string;
+    thumbnail?: string;
+    // Add other properties as needed
+  }
+  const [data, setData] = useState<NoteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -466,7 +473,10 @@ export default function NotePage({ params }: { params: { slug: string } }) {
 
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isDirty, setIsDirty] = useState(false);
-  const tinyMceRef = useRef<any>(null);
+  const tinyMceRef = useRef<{ 
+    undoManager: { undo: () => void; redo: () => void };
+    execCommand: (command: string, ui?: boolean, value?: any) => void;
+  } | null>(null);
   const pdfPreviewRef = useRef<HTMLDivElement>(null);
 
   // Initialize turndown service
@@ -626,7 +636,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         alert(`Failed to generate PDF: ${error.message || "Please try again"}`);
       }, 1500);
     }
-  }, [hasPermission, data?._id]);
+  }, [hasPermission, data?._id, isAuthenticated]);
 
   // Handle PDF download cancellation
   const handlePDFDownloadCancel = () => {
@@ -636,7 +646,13 @@ export default function NotePage({ params }: { params: { slug: string } }) {
   };
 
   // Handle login success
-  const handleLoginSuccess = (userData: any, token: string) => {
+  interface UserData {
+    name?: string;
+    email?: string;
+    picture?: string;
+  }
+  
+  const handleLoginSuccess = (userData: UserData, token: string) => {
     localStorage.setItem("authToken", token);
     localStorage.setItem("user", JSON.stringify(userData));
     setShowLoginDialog(false);
@@ -739,7 +755,6 @@ export default function NotePage({ params }: { params: { slug: string } }) {
   }, [messages, isThinking]);
 
   const [aiTypingContent, setAiTypingContent] = useState<string>("");
-  const [aiTypingStart, setAiTypingStart] = useState<number | null>(null);
   const [aiTypingDuration, setAiTypingDuration] = useState<number | null>(null);
 
   const handleFeedback = useCallback(async (noteId: string, messageId: string, feedback: "good" | "bad") => {
@@ -919,7 +934,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         alert("Failed to save changes.");
       }
     }
-  }, [data, markdownContent, hasPermission]);
+  }, [data, markdownContent, hasPermission , isAuthenticated]);
 
   // Group messages by date
   const groupedMessages = () => {

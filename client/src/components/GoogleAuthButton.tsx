@@ -1,7 +1,7 @@
 // src/components/GoogleAuthButton.tsx
 "use client";
+import api from '@/config/api';
 import { useGoogleLogin } from '@react-oauth/google';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 interface GoogleAuthButtonProps {
@@ -9,13 +9,32 @@ interface GoogleAuthButtonProps {
   className?: string;
 }
 
+interface GoogleAuthResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+  authuser: string;
+  prompt: string;
+}
+
+interface AuthSuccessResponse {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    picture?: string;
+  };
+}
+
 export default function GoogleAuthButton({ type, className = '' }: GoogleAuthButtonProps) {
   const router = useRouter();
 
-  const handleGoogleSuccess = async (response: any) => {
+  const handleGoogleSuccess = async (response: GoogleAuthResponse) => {
     try {
       // Send the Google access token to your backend
-      const result = await axios.post('http://localhost:5000/api/auth/google', {
+      const result = await api.post<AuthSuccessResponse>('/auth/google', {
         accessToken: response.access_token,
         authType: type // 'login' or 'signup'
       });

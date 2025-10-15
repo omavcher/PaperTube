@@ -16,13 +16,24 @@ import {
   List,
   Calendar,
   FileText,
-  Plus,
   StickyNote,
   Edit,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 import api from "@/config/api";
+
+// Interface for Note data
+interface Note {
+  _id: string;
+  slug: string;
+  title: string;
+  content: string;
+  transcript?: string;
+  videoUrl?: string;
+  updatedAt: string;
+  createdAt: string;
+}
 
 export default function NotesWorkspace() {
   const [viewMode, setViewMode] = useState("grid");
@@ -34,7 +45,7 @@ export default function NotesWorkspace() {
   const [totalNotes, setTotalNotes] = useState(0);
   const router = useRouter();
 
-  const [notes, setNotes] = useState<any[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +72,7 @@ export default function NotesWorkspace() {
     checkAuth();
   }, []);
 
-  const fetchNotes = async (page = 1, append = false, search = '') => {
+  const fetchNotes = useCallback(async (page = 1, append = false, search = '') => {
     // Don't fetch if not authenticated
     if (!isAuthenticated) {
       setLoading(false);
@@ -115,11 +126,11 @@ export default function NotesWorkspace() {
       setHasMore(paginationData.hasNext);
       setTotalNotes(paginationData.totalNotes);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch notes:", err);
       
       // If unauthorized, clear auth state
-      if (err.response?.status === 401) {
+      if (err instanceof Error && 'response' in err && (err as any).response?.status === 401) {
         setIsAuthenticated(false);
         localStorage.removeItem('authToken');
         setError("Session expired. Please login again.");
@@ -129,11 +140,11 @@ export default function NotesWorkspace() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, sortBy]);
 
   useEffect(() => {
     fetchNotes(1, false, searchQuery);
-  }, [isAuthenticated, sortBy]);
+  }, [isAuthenticated, sortBy, fetchNotes, searchQuery]);
 
   // Debounced search
   useEffect(() => {
@@ -144,7 +155,7 @@ export default function NotesWorkspace() {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, isAuthenticated]);
+  }, [searchQuery, isAuthenticated, fetchNotes]);
 
   const handleLoadMore = () => {
     if (hasMore) {
@@ -203,12 +214,6 @@ export default function NotesWorkspace() {
     e.stopPropagation();
     // Navigate to edit page or open edit modal
     router.push(`/notes/edit/${noteId}`);
-  }, [router, isAuthenticated]);
-
-  const handleCreateNote = useCallback(() => {
-    if (!isAuthenticated) return;
-    // Navigate to create note page
-    router.push('/create-note');
   }, [router, isAuthenticated]);
 
   const highlightText = useCallback((text: string, highlight: string) => {
@@ -404,7 +409,7 @@ export default function NotesWorkspace() {
             No Notes Yet
           </h3>
           <p className="text-zinc-400 max-w-md mb-8 text-lg">
-            You haven't created any notes yet. Start by creating your first note to organize your thoughts and ideas!
+            You haven&apos;t created any notes yet. Start by creating your first note to organize your thoughts and ideas!
           </p>
         </div>
       )}

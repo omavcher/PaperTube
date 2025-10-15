@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BackgroundBeams } from './ui/background-beams';
 import { Button } from './ui/stateful-button';
 import api from '@/config/api';
@@ -17,6 +17,7 @@ import {
 import { FcGoogle } from "react-icons/fc";
 import { useGoogleLogin } from "@react-oauth/google";
 import axios from "axios";
+import Image from 'next/image';
 
 const loadingStates = [
   { text: "Analyzing your YouTube video" },
@@ -27,11 +28,23 @@ const loadingStates = [
   { text: "Almost ready..." },
 ];
 
+// Interfaces
+interface UserData {
+  name: string;
+  email: string;
+  picture?: string;
+}
+
+interface VideoInfo {
+  thumbnail?: string;
+  title: string;
+}
+
 // Login Dialog Component
 function LoginDialog({ isOpen, onClose, onSuccess }: { 
   isOpen: boolean; 
   onClose: () => void; 
-  onSuccess: (userData: any, token: string) => void;
+  onSuccess: (userData: UserData, token: string) => void;
 }) {
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
@@ -39,7 +52,7 @@ function LoginDialog({ isOpen, onClose, onSuccess }: {
         const accessToken = tokenResponse.access_token;
 
         // Get user info from Google
-        const { data } = await axios.get(
+        const { data } = await axios.get<UserData>(
           "https://www.googleapis.com/oauth2/v3/userinfo",
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
@@ -108,9 +121,9 @@ function LoginDialog({ isOpen, onClose, onSuccess }: {
 
 export default function HomeMain() {
   const [description, setDescription] = useState('');
-  const [videoInfo, setVideoInfo] = useState(null);
+  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [loaderLoading, setLoaderLoading] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -129,30 +142,30 @@ export default function HomeMain() {
     }
   }, []);
 
-  useEffect(() => {
-    const fetchVideoInfo = async () => {
-      if (youtubeRegex.test(description)) {
-        setLoading(true);
-        setError(null);
+  const fetchVideoInfo = useCallback(async () => {
+    if (youtubeRegex.test(description)) {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const response = await api.post<VideoInfo>('/notes/ytinfo', {
+          videoUrl: description
+        });
         
-        try {
-          const response = await api.post('/notes/ytinfo', {
-            videoUrl: description
-          });
-          
-          setVideoInfo(response.data);
-        } catch (err) {
-          setError('Failed to fetch video information');
-          console.error('Error fetching video info:', err);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        // Reset video info if it's not a YouTube URL
-        setVideoInfo(null);
+        setVideoInfo(response.data);
+      } catch (err) {
+        setError('Failed to fetch video information');
+        console.error('Error fetching video info:', err);
+      } finally {
+        setLoading(false);
       }
-    };
+    } else {
+      // Reset video info if it&apos;s not a YouTube URL
+      setVideoInfo(null);
+    }
+  }, [description, youtubeRegex]);
 
+  useEffect(() => {
     // Add a delay to avoid making API calls on every keystroke
     const delayDebounceFn = setTimeout(() => {
       if (description.trim()) {
@@ -163,14 +176,14 @@ export default function HomeMain() {
     }, 800); // 800ms delay
 
     return () => clearTimeout(delayDebounceFn);
-  }, [description]);
+  }, [description, fetchVideoInfo]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Handle form submission here
   };
 
-  const handleLoginSuccess = (userData: any, token: string) => {
+  const handleLoginSuccess = (userData: UserData, token: string) => {
     setIsAuthenticated(true);
     setShowLoginDialog(false);
     // After successful login, trigger the create action
@@ -201,7 +214,7 @@ export default function HomeMain() {
         }
       });
 
-      // If successful, redirect to the note's slug page
+      // If successful, redirect to the note&apos;s slug page
       if (response.data && response.data.newNote && response.data.newNote.slug) {
         router.push(`/notes/${response.data.newNote.slug}`);
       }
@@ -283,9 +296,11 @@ export default function HomeMain() {
                   <div className="mb-6 p-4 w-[70%] bg-white/5 rounded-lg border border-white/10">
                     <div className="flex items-start space-x-4">
                       {videoInfo.thumbnail && (
-                        <img 
+                        <Image 
                           src={videoInfo.thumbnail} 
                           alt="Video thumbnail" 
+                          width={96}
+                          height={64}
                           className="w-24 h-16 object-cover rounded-md"
                         />
                       )}
@@ -313,7 +328,7 @@ export default function HomeMain() {
               {!isAuthenticated && (
                 <div className="mt-4 text-center">
                   <p className="text-sm text-gray-400">
-                    You'll need to login to create PDFs
+                    You&apos;ll need to login to create PDFs
                   </p>
                 </div>
               )}

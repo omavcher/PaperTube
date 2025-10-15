@@ -1,24 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import {
-  Navbar,
-  NavBody,
-  NavItems,
-  NavbarLogo,
-  NavbarButton,
-  MobileNav,
-  MobileNavHeader,
-  MobileNavMenu,
-  MobileNavToggle,
-} from "@/components/Navbar";
-import { BackgroundBeams } from "@/components/ui/background-beams";
 import HomeMain from "@/components/HomeMain";
 import HomeWorkspace from "@/components/HomeWorkspace";
 import { HomeFeatureX } from "@/components/HomeFeatureX";
 import { HomeCompare } from "@/components/HomeCompare";
 
 export default function Home() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   // ✅ Check auth status on mount
