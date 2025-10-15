@@ -805,7 +805,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       ));
       alert("Failed to submit feedback. Please try again.");
     }
-  }, [hasPermission]);
+  }, [hasPermission, isAuthenticated]);
 
   const handleSendMessage = useCallback(
     async (e: React.FormEvent) => {
@@ -935,7 +935,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         }
       }
     },
-    [input, isThinking, data, hasPermission, isMobile]
+    [input, isThinking, data, hasPermission, isMobile, isAuthenticated]
   );
 
   const handleSave = useCallback(async () => {
@@ -973,7 +973,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         alert("Failed to save changes due to an unexpected error.");
       }
     }
-  }, [data, markdownContent, hasPermission]);
+  }, [data, markdownContent, hasPermission, isAuthenticated]);
 
   // Group messages by date
   const groupedMessages = () => {
@@ -1184,8 +1184,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                         statusbar: false,
                         paste_data_images: true,
                         images_upload_url: '/api/upload',
-                        automatic_uploads: true,
-                        readonly: !hasPermission
+                        automatic_uploads: true
                       }}
                       onEditorChange={(content) => {
                         if (hasPermission) {
