@@ -18,7 +18,6 @@ import { FcGoogle } from "react-icons/fc";
 import { useGoogleLogin } from "@react-oauth/google";
 import axios from "axios";
 import Image from 'next/image';
-import { UserData } from "@/types/user";
 
 const loadingStates = [
   { text: "Analyzing your YouTube video" },
@@ -30,6 +29,11 @@ const loadingStates = [
 ];
 
 // Interfaces
+interface UserData {
+  name: string;
+  email: string;
+  picture?: string;
+}
 
 interface VideoInfo {
   thumbnail?: string;

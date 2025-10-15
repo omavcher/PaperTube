@@ -37,6 +37,18 @@ import { LoaderThreeDemo } from "@/components/LoaderThreeDemo";
 import { LoginDialog } from "@/components/LoginDialog";
 import { useRouter } from "next/navigation";
 
+// Auth helpers moved to module scope to keep stable references across renders
+const getAuthToken = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem("authToken");
+  }
+  return null;
+};
+
+const isAuthenticated = () => {
+  return !!getAuthToken();
+};
+
 // PDF Download Loader Component
 const PDFDownloadLoader: React.FC<{
   isVisible: boolean;
@@ -478,18 +490,6 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     execCommand: (command: string, ui?: boolean, value?: unknown) => void;
   } | null>(null);
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem("authToken");
-    }
-    return null;
-  };
-
-  const isAuthenticated = () => {
-    return !!getAuthToken();
-  };
-
   // Initialize PDF download steps
   const initializePDFSteps = () => [
     { text: "Connecting to server...", status: 'pending' as const },
@@ -805,7 +805,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       ));
       alert("Failed to submit feedback. Please try again.");
     }
-  }, [hasPermission, isAuthenticated]);
+  }, [hasPermission]);
 
   const handleSendMessage = useCallback(
     async (e: React.FormEvent) => {
@@ -935,7 +935,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         }
       }
     },
-    [input, isThinking, data, hasPermission, isMobile, isAuthenticated]
+    [input, isThinking, data, hasPermission, isMobile]
   );
 
   const handleSave = useCallback(async () => {
@@ -973,7 +973,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         alert("Failed to save changes due to an unexpected error.");
       }
     }
-  }, [data, markdownContent, hasPermission, isAuthenticated]);
+  }, [data, markdownContent, hasPermission]);
 
   // Group messages by date
   const groupedMessages = () => {

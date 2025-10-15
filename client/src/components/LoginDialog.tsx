@@ -12,10 +12,27 @@ import { FcGoogle } from "react-icons/fc";
 import { useGoogleLogin } from "@react-oauth/google";
 import axios from "axios";
 import api from "@/config/api";
-import { UserData } from "@/types/user";
 
-// UserData comes from shared types
+// Interface for Google user data
+interface UserData {
+  name: string;
+  email: string;
+  picture?: string;
+  sub?: string;
+  given_name?: string;
+  family_name?: string;
+  email_verified?: boolean;
+}
 
+// Interface for Google OAuth response
+interface GoogleAuthResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+  authuser: string;
+  prompt: string;
+}
 
 // Interface for backend auth response
 interface AuthResponse {
@@ -31,7 +48,7 @@ interface LoginDialogProps {
 
 export function LoginDialog({ isOpen, onClose, onSuccess }: LoginDialogProps) {
   const login = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
+    onSuccess: async (tokenResponse: GoogleAuthResponse) => {
       try {
         const accessToken = tokenResponse.access_token;
 
