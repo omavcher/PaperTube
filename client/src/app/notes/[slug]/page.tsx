@@ -1,4 +1,4 @@
-"use client"; 
+"use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Editor } from "@tinymce/tinymce-react";
 import TurndownService from "turndown";
@@ -9,17 +9,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Image from "next/image";
 
 import {
   Download,
   FileDown,
   Bold,
   Italic,
-  Underline,
-  Strikethrough,
-  Heading2,
   List as ListIcon,
-  ListOrdered,
   Image as ImageIcon,
   Code as CodeIcon,
   Table as TableIcon,
@@ -27,10 +24,8 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  AlignJustify,
   Undo,
   Redo,
-  Link,
   Send,
   Save,
   Loader2,
@@ -214,7 +209,13 @@ const MultiStepLoader: React.FC<{
               
               {step.thumbnail && index === currentStep && (
                 <div className="ml-1 sm:ml-2 flex-shrink-0">
-                  <img src={step.thumbnail} alt="Video thumbnail" className="w-6 h-4 sm:w-8 sm:h-6 md:w-12 md:h-8 rounded object-cover" />
+                  <Image 
+                    src={step.thumbnail} 
+                    alt="Video thumbnail" 
+                    width={48} 
+                    height={32}
+                    className="w-6 h-4 sm:w-8 sm:h-6 md:w-12 md:h-8 rounded object-cover" 
+                  />
                   {step.title && (
                     <div className="text-xs mt-0.5 text-zinc-400 truncate max-w-[60px] sm:max-w-[80px] md:max-w-[100px]">{step.title}</div>
                   )}
@@ -346,7 +347,7 @@ const LockedChatSection: React.FC<{ onLoginClick: () => void }> = ({ onLoginClic
           
           <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Access Restricted</h2>
           <p className="text-zinc-400 text-sm sm:text-base mb-4 sm:mb-6">
-            You don't have permission to access this note. Please login with the correct account to view the full content and chat features.
+            You don&apos;t have permission to access this note. Please login with the correct account to view the full content and chat features.
           </p>
           
           <Button 
@@ -378,7 +379,7 @@ const NoteNotFound: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         
         <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Note Not Found</h2>
         <p className="text-zinc-400 text-sm sm:text-base mb-4 sm:mb-6">
-          The note you're looking for doesn't exist or may have been removed.
+          The note you&apos;re looking for doesn&apos;t exist or may have been removed.
         </p>
         
         <Button 
@@ -396,15 +397,35 @@ const NoteNotFound: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
   );
 };
 
+// Define API response types
+interface ApiMessage {
+  _id: string;
+  role: string;
+  content: string;
+  timestamp: string;
+  videoLink?: string;
+  feedback?: "good" | "bad" | null;
+}
+
+interface ApiMessagesResponse {
+  messages: ApiMessage[];
+}
+
+interface UserData {
+  name?: string;
+  email?: string;
+  picture?: string;
+}
+
+interface NoteData {
+  _id: string;
+  title: string;
+  content: string;
+  thumbnail?: string;
+}
+
 /* ----------------- Main Component ----------------- */
 export default function NotePage({ params }: { params: { slug: string } }) {
-  interface NoteData {
-    _id: string;
-    title: string;
-    content: string;
-    thumbnail?: string;
-    // Add other properties as needed
-  }
   const [data, setData] = useState<NoteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -420,7 +441,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
     content: string; 
     timestamp: Date;
     videoLink?: string;
-    feedback?: "good" | "bad" | null ; 
+    feedback?: "good" | "bad" | null; 
   }[]>([]);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -429,7 +450,6 @@ export default function NotePage({ params }: { params: { slug: string } }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
   const [showChatMobile, setShowChatMobile] = useState(false);
 
   // PDF Download Loader States
@@ -444,7 +464,6 @@ export default function NotePage({ params }: { params: { slug: string } }) {
     const checkDevice = () => {
       const width = window.innerWidth;
       setIsMobile(width < 768);
-      setIsTablet(width >= 768 && width < 1024);
       
       // Auto-show chat on larger screens, hide on mobile by default
       if (width >= 1024) {
@@ -463,12 +482,11 @@ export default function NotePage({ params }: { params: { slug: string } }) {
   const [isDirty, setIsDirty] = useState(false);
   const tinyMceRef = useRef<{ 
     undoManager: { undo: () => void; redo: () => void };
-    execCommand: (command: string, ui?: boolean, value?: any) => void;
+    execCommand: (command: string, ui?: boolean, value?: unknown) => void;
   } | null>(null);
-  const pdfPreviewRef = useRef<HTMLDivElement>(null);
 
   // Initialize turndown service
-  const turndownService = useRef(new TurndownService()).current;
+  const turndownService = new TurndownService();
 
   // Get auth token from localStorage
   const getAuthToken = () => {
@@ -483,7 +501,6 @@ export default function NotePage({ params }: { params: { slug: string } }) {
     return !!getAuthToken();
   }, []);
 
-  
   // Initialize PDF download steps
   const initializePDFSteps = () => [
     { text: "Connecting to server...", status: 'pending' as const },
@@ -520,7 +537,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
       setPdfDownloadStep(index);
     };
 
-    const waitForPDFReady = async (noteId: string, maxRetries = 8, delay = 1500): Promise<any> => {
+    const waitForPDFReady = async (noteId: string, maxRetries = 8, delay = 1500): Promise<unknown> => {
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
           const response = await api.get(`/notes/genrate/pdf?noteId=${noteId}`, {
@@ -580,9 +597,22 @@ export default function NotePage({ params }: { params: { slug: string } }) {
       // Step 5: Prepare download
       updateStep(currentStepIndex++, 'processing');
       
-      const pdfUrl = response.data.pdfUrl || response.data.downloadUrl;
-      const noteTitle = response.data.noteTitle || 'document';
-      const fileSize = response.data.fileSize;
+      const pdfResponse = response as { 
+        data?: { 
+          pdfUrl?: string; 
+          downloadUrl?: string;
+          noteTitle?: string;
+          fileSize?: number;
+        }; 
+        pdfUrl?: string;
+        downloadUrl?: string;
+        noteTitle?: string;
+        fileSize?: number;
+      };
+      
+      const pdfUrl = pdfResponse.data?.pdfUrl || pdfResponse.data?.downloadUrl || pdfResponse.pdfUrl || pdfResponse.downloadUrl;
+      const noteTitle = pdfResponse.data?.noteTitle || pdfResponse.noteTitle || 'document';
+      const fileSize = pdfResponse.data?.fileSize || pdfResponse.fileSize;
       
       if (!pdfUrl) {
         throw new Error("PDF URL not found in response");
@@ -622,11 +652,10 @@ export default function NotePage({ params }: { params: { slug: string } }) {
       // Show error message
       setTimeout(() => {
         setShowPDFLoader(false);
-        alert(`Failed to generate PDF: ${error.message || "Please try again"}`);
+        alert(`Failed to generate PDF: ${errorMessage}`);
       }, 1500);
     }
   }, [hasPermission, data?._id, isAuthenticated]);
-
 
   // Handle PDF download cancellation
   const handlePDFDownloadCancel = () => {
@@ -636,12 +665,6 @@ export default function NotePage({ params }: { params: { slug: string } }) {
   };
 
   // Handle login success
-  interface UserData {
-    name?: string;
-    email?: string;
-    picture?: string;
-  }
-  
   const handleLoginSuccess = (userData: UserData, token: string) => {
     localStorage.setItem("authToken", token);
     localStorage.setItem("user", JSON.stringify(userData));
@@ -725,7 +748,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
           setHasPermission(false);
         } else if (error.response?.status === 403 || 
             (error.response?.data?.message && error.response.data.message.includes("Access denied"))) {
-          setAuthError("You don't have permission to access this note. Please login with the correct account.");
+          setAuthError("You don&apos;t have permission to access this note. Please login with the correct account.");
           setHasPermission(false);
           setShowLoginDialog(true);
         } else if (error.response?.status === 401) {
@@ -757,6 +780,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
 
   const [aiTypingContent, setAiTypingContent] = useState<string>("");
   const [aiTypingDuration, setAiTypingDuration] = useState<number | null>(null);
+  const [aiTypingStart, setAiTypingStart] = useState<number>(0);
 
   const handleFeedback = useCallback(async (noteId: string, messageId: string, feedback: "good" | "bad") => {
     try {
@@ -793,7 +817,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
       ));
       alert("Failed to submit feedback. Please try again.");
     }
-  }, [hasPermission]);
+  }, [hasPermission, isAuthenticated]);
 
   const handleSendMessage = useCallback(
     async (e: React.FormEvent) => {
@@ -837,7 +861,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
 
         // Make API call to get AI response
         const response = await api.post(`/chat/message`, {
-          noteId: data._id,
+          noteId: data?._id,
           message: input,
         }, {
           headers: {
@@ -849,7 +873,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         setCurrentStep(0);
 
         // Typing effect for AI response
-        const fullText = response.data.assistantMessage || "Sorry, I couldn't process your request.";
+        const fullText = response.data.assistantMessage || "Sorry, I couldn&apos;t process your request.";
         const videoLink = response.data.videoLink || null;
         let shownText = "";
         let idx = 0;
@@ -925,7 +949,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         }
       }
     },
-    [input, isThinking, data, hasPermission, isMobile]
+    [input, isThinking, data, hasPermission, isMobile, isAuthenticated]
   );
 
   const handleSave = useCallback(async () => {
@@ -963,7 +987,7 @@ export default function NotePage({ params }: { params: { slug: string } }) {
         alert("Failed to save changes due to an unexpected error.");
       }
     }
-  }, [data, markdownContent, hasPermission , isAuthenticated]);
+  }, [data, markdownContent, hasPermission, isAuthenticated]);
 
   // Group messages by date
   const groupedMessages = () => {

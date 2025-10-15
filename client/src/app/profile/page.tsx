@@ -193,8 +193,8 @@ function ProfileContent() {
           setTokenCount(fallbackResponse.data.token || 0);
           setUsedTokenCount(fallbackResponse.data.usedToken || 0);
         }
-      } catch (fallbackError) {
-        console.error("❌ Error fetching token count from fallback:", fallbackError);
+      } catch {
+        console.error("❌ Error fetching token count from fallback:");
       }
     } finally {
       setIsLoading(false);
@@ -213,8 +213,8 @@ function ProfileContent() {
       if (response.data.success) {
         setTransactionHistory(response.data.transactions || []);
       }
-    } catch (error) {
-      console.error("❌ Error fetching transaction history:", error);
+    } catch {
+      console.error("❌ Error fetching transaction history:");
       setTransactionHistory([]);
     }
   };
@@ -251,9 +251,9 @@ function ProfileContent() {
       );
 
       return response.data;
-    } catch (error) {
-      console.error("❌ Error saving transaction:", error);
-      throw error;
+    } catch {
+      console.error("❌ Error saving transaction:");
+      throw new Error("Failed to save transaction");
     }
   };
 
@@ -309,8 +309,8 @@ function ProfileContent() {
             } else {
               throw new Error('Failed to save transaction');
             }
-          } catch (error) {
-            console.error("❌ Error processing payment success:", error);
+          } catch {
+            console.error("❌ Error processing payment success:");
             toast.error("Payment successful, but there was an issue saving the details. Please contact support.");
           } finally {
             setIsProcessing(null);
@@ -357,8 +357,8 @@ function ProfileContent() {
           }
 
           toast.error(`Payment failed: ${response.error.description}`);
-        } catch (error) {
-          console.error("❌ Error handling payment failure:", error);
+        } catch {
+          console.error("❌ Error handling payment failure:");
           toast.error("Payment failed. Please try again.");
         } finally {
           setIsProcessing(null);
@@ -367,8 +367,8 @@ function ProfileContent() {
 
       rzp.open();
       
-    } catch (error) {
-      console.error("❌ Error initializing payment:", error);
+    } catch {
+      console.error("❌ Error initializing payment:");
       toast.error("Error initializing payment. Please try again.");
       setIsProcessing(null);
     }
@@ -434,7 +434,7 @@ function ProfileContent() {
         hour: '2-digit',
         minute: '2-digit'
       });
-    } catch (error) {
+    } catch {
       return 'Recent';
     }
   };

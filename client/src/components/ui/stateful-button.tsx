@@ -71,11 +71,6 @@ export const Button = ({ className, children, ...props }: ButtonProps) => {
 
   const {
     onClick,
-    onDrag,
-    onDragStart,
-    onDragEnd,
-    onAnimationStart,
-    onAnimationEnd,
     ...buttonProps
   } = props;
 

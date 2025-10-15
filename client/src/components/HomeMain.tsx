@@ -228,7 +228,7 @@ export default function HomeMain() {
     }
   };
 
-  const handleClick = async () => {
+  const handleClick = () => {
     // Check if user is authenticated
     const token = localStorage.getItem("authToken");
     
