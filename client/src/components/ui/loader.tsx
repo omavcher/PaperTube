@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "motion/react";
-import { easeInOut, linear } from "motion";
+import { easeInOut } from "motion";
 import React from "react";
 
 export const LoaderOne = () => {
@@ -138,7 +138,7 @@ export const LoaderFour = ({ text = "Loading..." }: { text?: string }) => {
           repeat: Infinity,
           repeatType: "reverse",
           repeatDelay: 2,
-          ease: linear,
+          ease: [0, 0, 1, 1],
           times: [0, 0.2, 0.5, 0.8, 1],
         }}
         className="relative z-20 inline-block"
@@ -156,7 +156,7 @@ export const LoaderFour = ({ text = "Loading..." }: { text?: string }) => {
           duration: 0.5,
           repeat: Infinity,
           repeatType: "reverse",
-          ease: linear,
+          ease: [0, 0, 1, 1],
           times: [0, 0.2, 0.5, 0.8, 1],
         }}
       >
@@ -173,7 +173,7 @@ export const LoaderFour = ({ text = "Loading..." }: { text?: string }) => {
           duration: 0.8,
           repeat: Infinity,
           repeatType: "reverse",
-          ease: linear,
+          ease: [0, 0, 1, 1],
           times: [0, 0.3, 0.6, 0.8, 1],
         }}
       >
