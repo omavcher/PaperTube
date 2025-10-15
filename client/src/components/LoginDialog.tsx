@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FcGoogle } from "react-icons/fc";
-import { useGoogleLogin } from "@react-oauth/google";
+import { useGoogleLogin, TokenResponse } from "@react-oauth/google";
 import axios from "axios";
 import api from "@/config/api";
 
@@ -22,16 +22,6 @@ interface UserData {
   given_name?: string;
   family_name?: string;
   email_verified?: boolean;
-}
-
-// Interface for Google OAuth response
-interface GoogleAuthResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  scope: string;
-  authuser: string;
-  prompt: string;
 }
 
 // Interface for backend auth response
@@ -48,7 +38,9 @@ interface LoginDialogProps {
 
 export function LoginDialog({ isOpen, onClose, onSuccess }: LoginDialogProps) {
   const login = useGoogleLogin({
-    onSuccess: async (tokenResponse: GoogleAuthResponse) => {
+    onSuccess: async (
+      tokenResponse: Omit<TokenResponse, "error" | "error_description" | "error_uri">
+    ) => {
       try {
         const accessToken = tokenResponse.access_token;
 
