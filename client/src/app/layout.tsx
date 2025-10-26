@@ -29,6 +29,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, Coins, Plus } from "lucide-react";
 import { LoaderThree } from "@/components/ui/loader";
+import { LoaderX } from "@/components/LoaderX";
 
 interface UserData {
   name?: string;
@@ -98,7 +99,7 @@ export default function RootLayout({
     return (
       <html lang="en" className="scroll-smooth bg-black">
         <body>
-               <LoaderThree/>
+               <LoaderX/>
         </body>
       </html>
     );

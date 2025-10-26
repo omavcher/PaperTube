@@ -303,7 +303,7 @@ export default function NotesWorkspace() {
   }
 
   return (
-    <div className="min-h-screen w-full max-w-7xl mx-auto flex flex-col p-4 sm:p-6 lg:p-8 bg-black text-white">
+    <div className="min-h-auto w-full max-w-7xl mx-auto flex flex-col p-4 sm:p-6 lg:p-8 bg-black text-white">
       {/* Header */}
       <header className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 lg:mb-12">
         <div className="flex items-center gap-3">

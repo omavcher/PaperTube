@@ -21,12 +21,37 @@ const youtube = google.youtube({
   auth: process.env.GOOGLE_API_KEY, // Your API Key from Google Cloud
 });
 // Function to extract video ID from YouTube URL
+// Enhanced function to extract video ID from YouTube URL
 const extractVideoId = (url) => {
   try {
     const urlObj = new URL(url);
-    return urlObj.searchParams.get('v') || 
-           url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i)?.[1];
+    
+    // Handle standard URLs: youtube.com/watch?v=VIDEO_ID
+    if (urlObj.hostname.includes('youtube.com') && urlObj.searchParams.get('v')) {
+      return urlObj.searchParams.get('v');
+    }
+    
+    // Handle live URLs: youtube.com/live/VIDEO_ID
+    if (urlObj.hostname.includes('youtube.com') && urlObj.pathname.includes('/live/')) {
+      const pathParts = urlObj.pathname.split('/');
+      const liveIndex = pathParts.indexOf('live');
+      if (liveIndex !== -1 && pathParts.length > liveIndex + 1) {
+        return pathParts[liveIndex + 1];
+      }
+    }
+    
+    // Handle youtu.be URLs: youtu.be/VIDEO_ID
+    if (urlObj.hostname === 'youtu.be') {
+      return urlObj.pathname.slice(1); // Remove the leading slash
+    }
+    
+    // Fallback regex for other formats
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+    
   } catch (error) {
+    console.error("Error parsing URL:", error);
     return null;
   }
 };
@@ -401,13 +426,12 @@ exports.getNotes = async (req, res) => {
 
 async function ytinfo(videoUrl) {
   try {
-    // Extract videoId from URL
-    const url = new URL(videoUrl);
-    const videoId = url.searchParams.get("v");
+    // Extract videoId from URL using the enhanced function
+    const videoId = extractVideoId(videoUrl);
 
     if (!videoId) {
       console.error("❌ Invalid YouTube URL, no video ID found");
-      return;
+      return null;
     }
 
     // Call YouTube API
@@ -418,13 +442,14 @@ async function ytinfo(videoUrl) {
 
     if (!response.data.items.length) {
       console.error("❌ No video found for this URL");
-      return;
+      return null;
     }
 
     const video = response.data.items[0].snippet;
     return { title: video.title, thumbnail: video.thumbnails.high.url };
   } catch (err) {
     console.error("❌ Error fetching video info:", err.message);
+    return null;
   }
 }
 
@@ -561,13 +586,13 @@ exports.getYouTubeInfo = async (req, res) => {
     return res.status(400).json({ message: "Video URL is required" });
   }
   try {
-    // Extract videoId from URL
-    const url = new URL(videoUrl);
-    const videoId = url.searchParams.get("v");
+    // Extract videoId from URL using your existing extractVideoId function
+    const videoId = extractVideoId(videoUrl);
+
 
     if (!videoId) {
       console.error("❌ Invalid YouTube URL, no video ID found");
-      return;
+      return res.status(400).json({ message: "Invalid YouTube URL" });
     }
 
     // Call YouTube API
@@ -578,14 +603,18 @@ exports.getYouTubeInfo = async (req, res) => {
 
     if (!response.data.items.length) {
       console.error("❌ No video found for this URL");
-      return;
+      return res.status(404).json({ message: "No video found for this URL" });
     }
 
     const video = response.data.items[0].snippet;
 
-    res.status(200).json({ title: video.title, thumbnail: video.thumbnails.high.url });
+    res.status(200).json({ 
+      title: video.title, 
+      thumbnail: video.thumbnails.high.url 
+    });
   } catch (err) {
     console.error("❌ Error fetching video info:", err.message);
+    res.status(500).json({ message: "Error fetching video info", error: err.message });
   }
 }
 

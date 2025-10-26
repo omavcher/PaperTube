@@ -33,9 +33,10 @@ import {
 } from "lucide-react";
 
 import api from "@/config/api";
-import { LoaderThreeDemo } from "@/components/LoaderThreeDemo";
+import { LoaderThreeDemo, LoaderX } from "@/components/LoaderX";
 import { LoginDialog } from "@/components/LoginDialog";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
+ 
 
 // Auth helpers moved to module scope to keep stable references across renders
 const getAuthToken = () => {
@@ -49,6 +50,147 @@ const isAuthenticated = () => {
   return !!getAuthToken();
 };
 
+// Custom CSS for iPhone-like animations
+const iphoneStyles = `
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounceFeedback {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.4s ease-out;
+}
+
+.animate-slide-in-from-right {
+  animation: slideInFromRight 0.4s ease-out;
+}
+
+.animate-bounce-feedback {
+  animation: bounceFeedback 0.2s ease-in-out;
+}
+
+.ease-ios {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-effect {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.iphone-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.smooth-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bounce-feedback:active {
+  transform: scale(0.95);
+}
+
+.message-enter {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+}
+
+.message-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step-complete {
+  transform: scale(1.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Optimize for large screens */
+@media (min-width: 1536px) {
+  .xl-optimized-layout {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  .xl-optimized-panel {
+    flex: 0 0 45% !important;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .mobile-compact {
+    padding: 0.5rem !important;
+  }
+  
+  .mobile-tight {
+    gap: 0.5rem !important;
+  }
+  
+  .mobile-text-sm {
+    font-size: 0.8125rem !important;
+  }
+}
+`;
+
 // PDF Download Loader Component
 const PDFDownloadLoader: React.FC<{
   isVisible: boolean;
@@ -56,98 +198,109 @@ const PDFDownloadLoader: React.FC<{
   steps: { text: string; status: 'pending' | 'processing' | 'completed' | 'error' }[];
   onCancel: () => void;
 }> = ({ isVisible, currentStep, steps, onCancel }) => {
-  if (!isVisible) return null;
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    if (isVisible) {
+      setIsMounted(true);
+    } else {
+      const timer = setTimeout(() => setIsMounted(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible]);
+
+  if (!isMounted && !isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/10 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-4 sm:p-6 md:p-8 max-w-md w-full mx-auto">
+    <div className={`
+      fixed inset-0 bg-black/60 backdrop-blur-md z-[1000] flex items-center justify-center p-4
+      transition-all duration-500 ease-ios
+      ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
+    `}>
+      <div className={`
+        bg-zinc-900/90 glass-effect border border-zinc-700/50 rounded-3xl p-6 max-w-md w-full mx-auto
+        transition-all duration-500 ease-ios
+        ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
+      `}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <h3 className="text-base sm:text-lg font-semibold text-white">Preparing PDF Download</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Preparing PDF</h3>
           <Button
             variant="ghost"
             size="icon"
             onClick={onCancel}
-            className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-white hover:bg-zinc-800"
+            className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-700/50 text-zinc-400 hover:text-white smooth-transition bounce-feedback"
           >
-            <X className="h-3 w-3 sm:h-4 sm:w-4" />
+            <X className="h-3 w-3" />
           </Button>
         </div>
 
         {/* Progress Steps */}
-        <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+        <div className="space-y-3 mb-4">
           {steps.map((step, index) => (
             <div
               key={index}
-              className={`flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 rounded-lg transition-all duration-300 ${
-                index === currentStep
-                  ? "bg-zinc-800 border border-zinc-700"
+              className={`
+                flex items-center space-x-3 p-3 rounded-2xl border transition-all duration-500 ease-ios
+                ${index === currentStep
+                  ? "bg-blue-500/10 border-blue-500/30 scale-105"
                   : index < currentStep
-                  ? "bg-green-900/20 border border-green-800/30"
-                  : "bg-zinc-800/50 border border-zinc-700/50"
-              }`}
+                  ? "bg-green-500/10 border-green-500/30 step-complete"
+                  : "bg-zinc-800/50 border-zinc-700/50 opacity-60"
+                }
+              `}
             >
               {/* Status Icon */}
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 transition-all duration-500 ease-ios">
                 {step.status === 'completed' ? (
-                  <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-green-500 flex items-center justify-center">
-                    <Check className="h-2 w-2 sm:h-3 sm:w-3 text-white" />
+                  <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center scale-100 animate-scale-in">
+                    <Check className="h-2.5 w-2.5 text-white" />
                   </div>
                 ) : step.status === 'error' ? (
-                  <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-red-500 flex items-center justify-center">
-                    <X className="h-2 w-2 sm:h-3 sm:w-3 text-white" />
+                  <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center scale-100 animate-scale-in">
+                    <X className="h-2.5 w-2.5 text-white" />
                   </div>
                 ) : step.status === 'processing' ? (
-                  <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-blue-500 flex items-center justify-center">
-                    <Loader2 className="h-2 w-2 sm:h-3 sm:w-3 text-white animate-spin" />
+                  <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center scale-110 animate-pulse">
+                    <Loader2 className="h-2.5 w-2.5 text-white animate-spin" />
                   </div>
                 ) : (
-                  <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-zinc-600 flex items-center justify-center">
-                    <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-zinc-400" />
+                  <div className="h-5 w-5 rounded-full bg-zinc-600 flex items-center justify-center transition-all duration-300">
+                    <div className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
                   </div>
                 )}
               </div>
 
               {/* Step Text */}
               <div className="flex-1 min-w-0">
-                <p className={`text-xs sm:text-sm font-medium transition-colors ${
-                  index === currentStep
+                <p className={`
+                  text-sm font-medium transition-all duration-300 mobile-text-sm
+                  ${index === currentStep
                     ? "text-white"
                     : index < currentStep
                     ? "text-green-400"
                     : "text-zinc-400"
-                }`}>
+                  }
+                `}>
                   {step.text}
                 </p>
                 {index === currentStep && step.status === 'processing' && (
-                  <p className="text-xs text-zinc-400 mt-0.5">Processing...</p>
-                )}
-                {step.status === 'error' && (
-                  <p className="text-xs text-red-400 mt-0.5">Failed - retrying</p>
+                  <p className="text-xs text-zinc-400 mt-1 animate-pulse">Processing...</p>
                 )}
               </div>
-
-              {/* Animated dots for current step */}
-              {index === currentStep && step.status === 'processing' && (
-                <div className="flex space-x-0.5 sm:space-x-1">
-                  <div className="h-1 w-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="h-1 w-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="h-1 w-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              )}
             </div>
           ))}
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-4 sm:mb-6">
-          <div className="flex justify-between text-xs text-zinc-400 mb-1 sm:mb-2">
+        {/* Enhanced Progress Bar */}
+        <div className="mb-4">
+          <div className="flex justify-between text-sm text-zinc-400 mb-2">
             <span>Progress</span>
             <span>{Math.round((currentStep / steps.length) * 100)}%</span>
           </div>
-          <div className="h-1.5 sm:h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-500 ease-out"
+              className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-1000 ease-out rounded-full"
               style={{ width: `${(currentStep / steps.length) * 100}%` }}
             />
           </div>
@@ -157,7 +310,7 @@ const PDFDownloadLoader: React.FC<{
         <Button
           onClick={onCancel}
           variant="outline"
-          className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white text-sm h-9 sm:h-10"
+          className="w-full h-9 rounded-xl border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700 hover:text-white smooth-transition bounce-feedback text-sm"
         >
           Cancel Download
         </Button>
@@ -177,52 +330,50 @@ const MultiStepLoader: React.FC<{
   currentStep: number 
 }> = ({ steps, currentStep }) => {
   return (
-    <div className="flex justify-start mb-2 sm:mb-3 md:mb-4">
-      <Avatar className="mr-2 h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex-shrink-0">
+    <div className="flex justify-start mb-3 animate-fade-in-up">
+      <Avatar className="mr-2 h-6 w-6 flex-shrink-0 scale-100 animate-scale-in">
         <AvatarImage src="/ai-avatar.png" />
         <AvatarFallback className="bg-red-600 text-white text-xs">AI</AvatarFallback>
       </Avatar>
-      <div className="max-w-[90%] sm:max-w-[85%] md:max-w-[75%] rounded-2xl px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm leading-relaxed bg-zinc-900 border border-zinc-800 text-zinc-200">
-        <div className="space-y-1 sm:space-y-1.5 md:space-y-2">
+      <div className="max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed bg-zinc-900/80 glass-effect border border-zinc-800 text-zinc-200 animate-slide-in-right">
+        <div className="space-y-1.5">
           {steps.map((step, index) => (
             <div 
               key={index} 
-              className={`flex items-center transition-all duration-500 ${
-                index < currentStep 
-                  ? "text-green-400" 
+              className={`
+                flex items-center transition-all duration-500 ease-ios
+                ${index < currentStep 
+                  ? "text-green-400 transform -translate-x-0.5" 
                   : index === currentStep 
-                    ? "text-white animate-pulse" 
-                    : "text-zinc-500"
-              }`}
+                    ? "text-white animate-pulse scale-105" 
+                    : "text-zinc-500 opacity-70"
+                }
+              `}
             >
-              <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1.5 sm:mr-2 flex items-center justify-center flex-shrink-0">
+              <div className="w-4 h-4 mr-2 flex items-center justify-center flex-shrink-0 transition-all duration-300">
                 {index < currentStep ? (
-                  <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                  <div className="scale-100 animate-scale-in">
+                    <Check className="w-3 h-3" />
+                  </div>
                 ) : index === currentStep ? (
-                  <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <div className="animate-spin">
+                    <Loader2 className="w-3 h-3" />
+                  </div>
                 ) : (
-                  <div className="w-1.5 h-1.5 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 rounded-full bg-current"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-current transition-all duration-300" />
                 )}
               </div>
-              <span className="text-xs sm:text-sm break-words flex-1">{step.text}</span>
+              <span className="text-xs break-words flex-1 mobile-text-sm">{step.text}</span>
               
               {step.thumbnail && index === currentStep && (
-                <div className="ml-1 sm:ml-2 flex-shrink-0">
+                <div className="ml-2 flex-shrink-0 scale-100 animate-scale-in">
                   <Image 
                     src={step.thumbnail} 
                     alt="Video thumbnail" 
-                    width={48} 
-                    height={32}
-                    className="w-6 h-4 sm:w-8 sm:h-6 md:w-12 md:h-8 rounded object-cover" 
+                    width={40} 
+                    height={26}
+                    className="w-10 h-6 rounded-lg object-cover border border-zinc-700" 
                   />
-                  {step.title && (
-                    <div className="text-xs mt-0.5 text-zinc-400 truncate max-w-[60px] sm:max-w-[80px] md:max-w-[100px]">{step.title}</div>
-                  )}
                 </div>
               )}
             </div>
@@ -236,20 +387,20 @@ const MultiStepLoader: React.FC<{
 // Enhanced PDF Preview Component
 const PDFPreview: React.FC<{ content: string }> = ({ content }) => {
   return (
-    <div className="w-full h-full max-h-full border border-zinc-800 shadow-2xl overflow-hidden rounded-sm bg-white mx-auto">
+    <div className="w-full h-full max-h-full border border-zinc-800 shadow-2xl overflow-hidden rounded-lg bg-white mx-auto animate-scale-in">
       <div 
-        className="p-4 sm:p-6 md:p-8 lg:p-12 bg-white text-black h-full overflow-auto scrollbar-hide"
+        className="p-3 sm:p-4 md:p-6 bg-white text-black h-full overflow-auto iphone-scroll"
         style={{ 
           fontFamily: "'Times New Roman', Times, serif",
-          fontSize: 'clamp(9px, 1.5vw, 12px)',
-          lineHeight: '1.5',
+          fontSize: 'clamp(8px, 1.2vw, 11px)',
+          lineHeight: '1.4',
           color: '#000000',
           height: '100%'
         }}
       >
         <div 
           dangerouslySetInnerHTML={{ __html: content }} 
-          className="pdf-content"
+          className="pdf-content smooth-transition"
           style={{
             maxWidth: '210mm',
             margin: '0 auto'
@@ -295,45 +446,56 @@ const ResponsiveHeader: React.FC<{
   onMenuClick?: () => void;
   showChatMobile: boolean;
   onToggleChat: () => void;
-}> = ({ title, onMenuClick, showChatMobile, onToggleChat }) => (
-  <div className="flex items-center justify-between p-3 sm:p-4 border-b border-zinc-900 bg-zinc-950 lg:hidden sticky top-0 z-40">
-    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-      {onMenuClick && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMenuClick}
-          className="h-8 w-8 sm:h-9 sm:w-9 text-zinc-400 hover:text-white hover:bg-zinc-800 flex-shrink-0"
-        >
-          <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
-        </Button>
-      )}
-      <div className="flex-1 min-w-0">
-        <h1 className="text-base sm:text-lg font-bold truncate text-white">{title}</h1>
+}> = ({ title, onMenuClick, showChatMobile, onToggleChat }) => {
+  const router = useRouter(); // Add useRouter hook
+
+  const handleHomeClick = () => {
+    router.push('/'); // Use router.push instead of redirect for client-side navigation
+  };
+
+  return (
+    <div className="flex items-center justify-between p-3 border-b border-zinc-900 bg-zinc-950/80 glass-effect lg:hidden sticky top-0 z-40 animate-fade-in-up safe-area-inset-top">
+      <div className="flex items-center gap-2 flex-1 min-w-0 mobile-tight">
+        {onMenuClick && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleHomeClick}
+            className="h-8 w-8 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/50 flex-shrink-0 smooth-transition bounce-feedback"
+          >
+            {/* Home icon */}
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          </Button>
+        )}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-bold truncate text-white animate-fade-in-up mobile-text-sm">{title}</h1>
+        </div>
       </div>
+      
+      <Button 
+        size="sm"
+        variant={showChatMobile ? "secondary" : "default"}
+        className="bg-red-600 hover:bg-red-700 text-white h-8 px-3 rounded-xl text-xs flex-shrink-0 ml-2 smooth-transition bounce-feedback"
+        onClick={onToggleChat}
+      >
+        {showChatMobile ? "Close" : "Ask AI"}
+      </Button>
     </div>
-    
-    <Button 
-      size="sm"
-      variant={showChatMobile ? "secondary" : "default"}
-      className="bg-red-600 hover:bg-red-700 text-white h-8 px-2 sm:px-3 text-xs flex-shrink-0 ml-2"
-      onClick={onToggleChat}
-    >
-      {showChatMobile ? "Close" : "Ask AI"}
-    </Button>
-  </div>
-);
+  );
+};
 
 // Locked Chat Section Component
 const LockedChatSection: React.FC<{ onLoginClick: () => void }> = ({ onLoginClick }) => {
   return (
-    <div className="fixed lg:static top-0 right-0 h-[100dvh] sm:h-[90vh] w-full lg:w-auto bg-zinc-950 flex flex-col border-l border-zinc-900 z-50">
+    <div className="fixed lg:static top-0 right-0 h-[100dvh] w-full lg:w-auto bg-zinc-950/80 glass-effect flex flex-col border-l border-zinc-900 z-50 animate-slide-in-from-right safe-area-inset-bottom">
       {/* Chat Header */}
-      <div className="p-3 sm:p-4 border-b border-zinc-900 flex justify-between items-center bg-zinc-950">
+      <div className="p-3 border-b border-zinc-900 flex justify-between items-center bg-zinc-950/80 glass-effect safe-area-inset-top">
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold truncate text-white">Note Preview</h1>
+          <h1 className="text-lg font-bold truncate text-white animate-fade-in-up">Note Preview</h1>
           <div className="flex items-center gap-2 mt-1">
-            <Badge variant="secondary" className="bg-zinc-800 text-zinc-200 text-xs">
+            <Badge variant="secondary" className="bg-zinc-800/50 text-zinc-200 text-xs animate-scale-in">
               Locked
             </Badge>
           </div>
@@ -341,27 +503,27 @@ const LockedChatSection: React.FC<{ onLoginClick: () => void }> = ({ onLoginClic
       </div>
 
       {/* Locked Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 text-center">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 md:p-8 max-w-md w-full">
-          <div className="flex justify-center mb-3 sm:mb-4">
-            <div className="bg-red-600/20 p-3 sm:p-4 rounded-full">
-              <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
+      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
+        <div className="bg-zinc-900/80 glass-effect border border-zinc-800 rounded-2xl p-6 max-w-md w-full animate-scale-in">
+          <div className="flex justify-center mb-3 animate-bounce">
+            <div className="bg-red-600/20 p-3 rounded-full">
+              <Lock className="h-6 w-6 text-red-500" />
             </div>
           </div>
           
-          <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Access Restricted</h2>
-          <p className="text-zinc-400 text-sm sm:text-base mb-4 sm:mb-6">
-            You don&apos;t have permission to access this note. Please login with the correct account to view the full content and chat features.
+          <h2 className="text-lg font-bold text-white mb-2 animate-fade-in-up">Access Restricted</h2>
+          <p className="text-zinc-400 text-sm mb-4 animate-fade-in-up mobile-text-sm">
+            You don&apos;t have permission to access this note. Please login with the correct account.
           </p>
           
           <Button 
             onClick={onLoginClick}
-            className="bg-red-600 hover:bg-red-700 text-white w-full h-10 sm:h-11 text-sm sm:text-base"
+            className="bg-red-600 hover:bg-red-700 text-white w-full h-9 rounded-xl text-sm smooth-transition bounce-feedback animate-fade-in-up"
           >
             Login to Access
           </Button>
           
-          <p className="text-xs text-zinc-500 mt-3 sm:mt-4">
+          <p className="text-xs text-zinc-500 mt-3 animate-fade-in-up">
             This note belongs to another user. You need proper authorization to interact with it.
           </p>
         </div>
@@ -374,26 +536,26 @@ const LockedChatSection: React.FC<{ onLoginClick: () => void }> = ({ onLoginClic
 const NoteNotFound: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 safe-area-inset-bottom">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 md:p-8 max-w-md w-full text-center">
-        <div className="flex justify-center mb-3 sm:mb-4">
-          <div className="bg-red-600/20 p-3 sm:p-4 rounded-full">
-            <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
+      <div className="bg-zinc-900/80 glass-effect border border-zinc-800 rounded-2xl p-6 max-w-md w-full text-center animate-scale-in">
+        <div className="flex justify-center mb-3 animate-bounce">
+          <div className="bg-red-600/20 p-3 rounded-full">
+            <AlertCircle className="h-6 w-6 text-red-500" />
           </div>
         </div>
         
-        <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Note Not Found</h2>
-        <p className="text-zinc-400 text-sm sm:text-base mb-4 sm:mb-6">
+        <h2 className="text-lg font-bold text-white mb-2 animate-fade-in-up">Note Not Found</h2>
+        <p className="text-zinc-400 text-sm mb-4 animate-fade-in-up">
           The note you&apos;re looking for doesn&apos;t exist or may have been removed.
         </p>
         
         <Button 
           onClick={onGoHome}
-          className="bg-red-600 hover:bg-red-700 text-white w-full h-10 sm:h-11 text-sm sm:text-base"
+          className="bg-red-600 hover:bg-red-700 text-white w-full h-9 rounded-xl text-sm smooth-transition bounce-feedback animate-fade-in-up"
         >
           Go Back Home
         </Button>
         
-        <p className="text-xs text-zinc-500 mt-3 sm:mt-4">
+        <p className="text-xs text-zinc-500 mt-3 animate-fade-in-up">
           Check the URL or contact the note owner if you believe this is an error.
         </p>
       </div>
@@ -463,6 +625,17 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const [pdfDownloadSteps, setPdfDownloadSteps] = useState<
     { text: string; status: 'pending' | 'processing' | 'completed' | 'error' }[]
   >([]);
+
+  // Add custom styles to document head
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = iphoneStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   // Device detection with improved responsive breakpoints
   useEffect(() => {
@@ -866,7 +1039,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         let idx = 0;
         const typingStart = Date.now();
 
-        const charsPerFrame = isMobile ? 3 : 5;
+        const charsPerFrame = isMobile ? 2 : 4;
 
         function typeChar() {
           shownText += fullText.slice(idx, idx + charsPerFrame);
@@ -998,7 +1171,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   }
 
   if (loading)
-    return <LoaderThreeDemo />;
+    return <LoaderX/>;
 
   if (error && !authError)
     return <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 text-center safe-area-inset-bottom">{error || "No data found."}</div>;
@@ -1020,7 +1193,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       />
       
       {authError && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg z-500 max-w-xs sm:max-w-md text-center text-sm">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-xl shadow-lg z-500 max-w-xs text-center text-xs animate-fade-in-up">
           {authError}
         </div>
       )}
@@ -1034,41 +1207,41 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           onToggleChat={() => setShowChatMobile(!showChatMobile)}
         />
 
-        <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] lg:h-[calc(100vh-0px)] w-full overflow-hidden">
+        <div className="flex flex-col lg:flex-row h-[calc(100vh-57px)] lg:h-screen w-full overflow-hidden xl-optimized-layout">
           {/* Left: PDF + Editor */}
-          <div className={`flex-1 lg:flex-[0_0_40%] xl:flex-[0_0_40%] p-2 sm:p-3 lg:p-4 h-full overflow-hidden border-b lg:border-b-0 lg:border-r border-zinc-900 flex flex-col items-center ${
+          <div className={`flex-1 lg:flex-[0_0_45%] xl-optimized-panel p-3 h-full overflow-hidden border-b lg:border-b-0 lg:border-r border-zinc-900 flex flex-col items-center ${
             isMobile && showChatMobile ? 'hidden lg:flex' : 'flex'
           }`}>
-            <Tabs defaultValue="preview" className="w-full h-full max-h-full flex flex-col">
-              <TabsList className="mb-2 sm:mb-3 grid w-full grid-cols-2 bg-zinc-900/50 h-8 sm:h-9 flex-shrink-0">
-                <TabsTrigger value="preview" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 sm:gap-2">
-                  <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden xs:inline">Preview</span>
+            <Tabs defaultValue="preview" className="w-full h-full max-h-full flex flex-col animate-fade-in">
+              <TabsList className="mb-2 grid w-full grid-cols-2 bg-zinc-900/50 h-8 rounded-lg flex-shrink-0">
+                <TabsTrigger value="preview" className="text-xs px-3 py-1 flex items-center gap-1 rounded-lg smooth-transition mobile-text-sm">
+                  <Eye className="h-3 w-3" />
+                  <span>Preview</span>
                 </TabsTrigger>
-                <TabsTrigger value="editor" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 sm:gap-2">
-                  <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden xs:inline">Edit</span>
+                <TabsTrigger value="editor" className="text-xs px-3 py-1 flex items-center gap-1 rounded-lg smooth-transition mobile-text-sm">
+                  <Edit className="h-3 w-3" />
+                  <span>Edit</span>
                 </TabsTrigger>
               </TabsList>
 
               {/* PDF Preview */}
               <TabsContent value="preview" className="mt-0 flex-1 flex flex-col min-h-0">
-                <div className="flex-1 flex items-center justify-center min-h-0 h-full">
+                <div className="lg:w-[80%] lg:ml-20 flex-1 flex items-center justify-center min-h-0 h-full">
                   <PDFPreview content={markdownContent} />
                 </div>
               </TabsContent>
 
               {/* Editor */}
               <TabsContent value="editor" className="mt-0 flex-1 flex flex-col min-h-0 h-full">
-                <div className="w-full h-full border border-zinc-800 shadow-lg overflow-hidden flex flex-col rounded-md bg-white flex-1">
+                <div className="h-full border border-zinc-800 shadow-lg overflow-hidden flex flex-col rounded-lg bg-white flex-1 animate-scale-in">
                   {/* Enhanced Toolbar */}
-                  <div className="p-1.5 sm:p-2 flex flex-wrap gap-1 bg-zinc-950 border-b border-zinc-800 rounded-t-md flex-shrink-0">
+                  <div className="p-1.5 flex flex-wrap gap-1 bg-zinc-950/80 glass-effect border-b border-zinc-800 rounded-t-lg flex-shrink-0 mobile-tight">
                     {/* File Operations */}
                     <div className="flex gap-1 border-r border-zinc-700 pr-2 mr-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-zinc-800"
+                        className="h-7 w-7 rounded-md hover:bg-zinc-800/50 smooth-transition bounce-feedback"
                         onClick={() => tinyMceRef.current?.undoManager.undo()}
                         disabled={!hasPermission}
                       >
@@ -1077,7 +1250,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-zinc-800"
+                        className="h-7 w-7 rounded-md hover:bg-zinc-800/50 smooth-transition bounce-feedback"
                         onClick={() => tinyMceRef.current?.undoManager.redo()}
                         disabled={!hasPermission}
                       >
@@ -1090,7 +1263,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-zinc-800"
+                        className="h-7 w-7 rounded-md hover:bg-zinc-800/50 smooth-transition bounce-feedback"
                         onClick={() => tinyMceRef.current?.execCommand('Bold')}
                         disabled={!hasPermission}
                       >
@@ -1099,7 +1272,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-zinc-800"
+                        className="h-7 w-7 rounded-md hover:bg-zinc-800/50 smooth-transition bounce-feedback"
                         onClick={() => tinyMceRef.current?.execCommand('Italic')}
                         disabled={!hasPermission}
                       >
@@ -1112,7 +1285,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs hover:bg-zinc-800"
+                        className="h-7 px-2 text-xs rounded-md hover:bg-zinc-800/50 smooth-transition bounce-feedback"
                         onClick={() => tinyMceRef.current?.execCommand('FormatBlock', false, 'h1')}
                         disabled={!hasPermission}
                       >
@@ -1121,7 +1294,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs hover:bg-zinc-800"
+                        className="h-7 px-2 text-xs rounded-md hover:bg-zinc-800/50 smooth-transition bounce-feedback"
                         onClick={() => tinyMceRef.current?.execCommand('FormatBlock', false, 'h2')}
                         disabled={!hasPermission}
                       >
@@ -1130,7 +1303,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-zinc-800"
+                        className="h-7 w-7 rounded-md hover:bg-zinc-800/50 smooth-transition bounce-feedback"
                         onClick={() => tinyMceRef.current?.execCommand('InsertUnorderedList')}
                         disabled={!hasPermission}
                       >
@@ -1141,7 +1314,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                     {/* Save Button */}
                     {isDirty && (
                       <Button 
-                        className="bg-green-600 hover:bg-green-700 text-white ml-auto h-7 sm:h-8 px-2 sm:px-3 text-xs" 
+                        className="bg-green-600 hover:bg-green-700 text-white ml-auto h-7 px-3 rounded-md text-xs smooth-transition bounce-feedback" 
                         onClick={handleSave}
                         disabled={!hasPermission}
                       >
@@ -1170,15 +1343,15 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                         content_style: `
                           body { 
                             font-family: 'Times New Roman', serif;
-                            font-size: 12px;
-                            line-height: 1.6;
+                            font-size: 11px;
+                            line-height: 1.4;
                             color: #000;
-                            margin: 15px;
+                            margin: 12px;
                           }
-                          h1 { font-size: 18px; margin: 24px 0 12px 0; }
-                          h2 { font-size: 16px; margin: 20px 0 10px 0; }
-                          h3 { font-size: 14px; margin: 16px 0 8px 0; }
-                          p { margin: 8px 0; }
+                          h1 { font-size: 16px; margin: 20px 0 10px 0; }
+                          h2 { font-size: 14px; margin: 16px 0 8px 0; }
+                          h3 { font-size: 12px; margin: 12px 0 6px 0; }
+                          p { margin: 6px 0; }
                         `,
                         branding: false,
                         statusbar: false,
@@ -1188,7 +1361,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       }}
                       onEditorChange={(content) => {
                         if (hasPermission) {
-                          setMarkdownContent(content); // Save HTML directly
+                          setMarkdownContent(content);
                           setIsDirty(true);
                         }
                       }}
@@ -1203,35 +1376,32 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           {/* Right: Chat or Locked Section */}
           {hasPermission ? (
             <div
-              className={`flex-1 lg:flex-[0_0_60%] xl:flex-[0_0_60%] fixed lg:static top-0 right-0 h-[100dvh] sm:h-[95vh] w-full lg:w-auto bg-zinc-950 flex flex-col border-l border-zinc-900 transition-transform duration-300 z-50 ${
+              className={`flex-1 lg:flex-[0_0_55%] xl-optimized-panel fixed lg:static top-0 right-0 h-[100dvh] w-full lg:w-auto bg-zinc-950/80 glass-effect flex flex-col border-l border-zinc-900 transition-all duration-500 ease-ios z-50 ${
                 isMobile ? (showChatMobile ? "translate-x-0" : "translate-x-full") : "translate-x-0"
               } ${isMobile && !showChatMobile ? 'hidden lg:flex' : 'flex'}`}
-
-              style={{
-                height:'100%'
-              }}
             >
               {/* Chat Header */}
-              <div className="p-3 sm:p-4 border-b border-zinc-900 flex justify-between items-center bg-zinc-950 flex-shrink-0">
+              <div className="p-3 border-b border-zinc-900 flex justify-between items-center bg-zinc-950/80 glass-effect flex-shrink-0 animate-fade-in-up safe-area-inset-top">
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-lg sm:text-xl font-bold truncate text-white">{data?.title}</h1>
+                  <h1 className="text-base font-bold truncate text-white mobile-text-sm">{data?.title}</h1>
                 </div>
                 
-                <div className="flex items-center gap-2 ml-4">
+                <div className="flex items-center gap-2 ml-3 mobile-tight">
                   <Button 
-                    className="bg-red-600 hover:bg-red-700 text-white border-none h-8 sm:h-9 px-2 sm:px-3 text-xs"
+                    className="bg-red-600 hover:bg-red-700 text-white border-none h-8 px-3 rounded-xl text-xs smooth-transition bounce-feedback"
                     onClick={downloadAsPDF}
                     disabled={showPDFLoader}
                   >
-                    <Download className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> 
+                    <Download className="mr-1 h-3 w-3" /> 
                     <span className="hidden sm:inline">Download PDF</span>
+                    <span className="sm:hidden">PDF</span>
                   </Button>
                   
                   {isMobile && (
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className="h-8 sm:h-9 px-2 sm:px-3 text-xs"
+                      className="h-8 px-3 rounded-xl text-xs smooth-transition bounce-feedback"
                       onClick={() => setShowChatMobile(false)}
                     >
                       Close
@@ -1242,29 +1412,42 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
               {/* Messages container with fixed height and scroll */}
               <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-                <ScrollArea className="flex-1 h-full">
-                  <div className="p-2 sm:p-3 md:p-4 space-y-3 sm:space-y-4 md:space-y-6">
+                <ScrollArea className="flex-1 h-full iphone-scroll">
+                  <div className="p-3 space-y-4 mobile-compact">
                     {groupedMessages().map((group, groupIndex) => (
-                      <div key={groupIndex}>
+                      <div key={groupIndex} className="animate-fade-in-up lg:w-full">
                         {/* Date separator */}
-                        <div className="flex justify-center my-2 sm:my-3 md:my-4">
-                          <div className="text-xs text-zinc-500 bg-zinc-900 px-2 sm:px-3 py-1 rounded-full">
+                        <div className="flex justify-center my-3">
+                          <div className="text-xs text-zinc-500 bg-zinc-900/50 glass-effect px-3 py-1 rounded-full animate-scale-in mobile-text-sm">
                             {group.date}
                           </div>
                         </div>
                         
                         {/* Messages for this date */}
-                        {group.messages.map((m) => (
-                          <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} mb-2 sm:mb-3 md:mb-4`}>
+                        {group.messages.map((m, messageIndex) => (
+                          <div 
+                            key={m.id} 
+                            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} mb-3 message-enter-active`}
+                            style={{ 
+                              animationDelay: `${messageIndex * 80}ms`,
+                              transitionDelay: `${messageIndex * 40}ms`
+                            }}
+                          >
                             {m.role === "assistant" && (
-                              <Avatar className="mr-2 h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex-shrink-0">
+                              <Avatar className="mr-2 h-6 w-6 flex-shrink-0 animate-scale-in">
                                 <AvatarImage src="/ai-avatar.png" />
                                 <AvatarFallback className="bg-red-600 text-white text-xs">AI</AvatarFallback>
                               </Avatar>
                             )}
-                            <div className="flex flex-col max-w-[90%] sm:max-w-[85%] md:max-w-[75%]">
+                            <div className="flex flex-col max-w-[80%]">
                               <div
-                                className={`rounded-2xl px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm leading-relaxed break-words ${m.role === "user" ? "bg-red-600 text-white" : "bg-zinc-900 border border-zinc-800 text-zinc-200"}`}
+                                className={`
+                                  rounded-xl px-3 py-2 text-sm leading-relaxed break-words smooth-transition mobile-text-sm
+                                  ${m.role === "user" 
+                                    ? "bg-red-600 text-white animate-slide-in-right" 
+                                    : "bg-zinc-900/80 glass-effect border border-zinc-800 text-zinc-200 animate-slide-in-right"
+                                  }
+                                `}
                               >
                                 <div className="prose prose-invert prose-sm max-w-none">
                                   <ReactMarkdown>
@@ -1274,16 +1457,16 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                                 
                                 {/* YouTube Video Link */}
                                 {m.role === "assistant" && m.videoLink && (
-                                  <div className="mt-2 p-2 sm:p-3 bg-zinc-800 rounded-lg border border-zinc-700">
+                                  <div className="mt-2 p-2 bg-zinc-800/50 rounded-lg border border-zinc-700 animate-fade-in-up">
                                     <a 
                                       href={m.videoLink} 
                                       target="_blank" 
                                       rel="noopener noreferrer"
-                                      className="flex items-center gap-2 sm:gap-3 text-red-400 hover:text-red-300 transition-colors group"
+                                      className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-all duration-300 group mobile-tight"
                                     >
                                       <div className="flex-shrink-0">
                                         <svg 
-                                          className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" 
+                                          className="w-4 h-4 group-hover:scale-110 transition-transform" 
                                           viewBox="0 0 24 24" 
                                           fill="currentColor"
                                         >
@@ -1291,13 +1474,13 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                                         </svg>
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-xs sm:text-sm font-medium">Watch video for more</p>
-                                        <p className="text-xs text-zinc-400 truncate">
+                                        <p className="text-xs font-medium mobile-text-sm">Watch video for more</p>
+                                        <p className="text-xs text-zinc-400 truncate mobile-text-sm">
                                           {m.videoLink.includes('youtube.com') || m.videoLink.includes('youtu.be') ? 'YouTube Video' : 'External Video'}
                                         </p>
                                       </div>
                                       <div className="flex-shrink-0">
-                                        <svg className="w-3 h-3 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-3 h-3 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                         </svg>
                                       </div>
@@ -1307,11 +1490,11 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                                 
                                 {/* Feedback Buttons */}
                                 {m.role === "assistant" && (
-                                  <div className="flex justify-end gap-1 sm:gap-2 mt-1.5 sm:mt-2 flex-wrap">
+                                  <div className="flex justify-end gap-1 mt-2 flex-wrap animate-fade-in-up mobile-tight">
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="text-zinc-400 hover:text-white hover:bg-zinc-800 h-6 sm:h-7 px-1.5 sm:px-2 text-xs"
+                                      className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 h-6 px-2 text-xs rounded-md smooth-transition bounce-feedback"
                                       onClick={async () => {
                                         await navigator.clipboard.writeText(m.content);
                                         setCopiedMessageId(m.id);
@@ -1319,11 +1502,11 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                                       }}
                                     >
                                       {copiedMessageId === m.id ? (
-                                        <span className="flex items-center text-green-500 animate-in fade-in duration-300">
-                                          <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" /> Copied
+                                        <span className="flex items-center text-green-500 animate-scale-in text-xs">
+                                          <Check className="h-2.5 w-2.5 mr-0.5" /> Copied
                                         </span>
                                       ) : (
-                                        <> <FileDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" /> Copy </> 
+                                        <> <FileDown className="h-2.5 w-2.5 mr-0.5" /> Copy </> 
                                       )}
                                     </Button>
                                     
@@ -1331,38 +1514,38 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className={`w-6 h-6 sm:w-7 sm:h-7 transition-all duration-200 ${
+                                      className={`w-6 h-6 rounded-md transition-all duration-300 ease-ios ${
                                         m.feedback === "good" 
-                                          ? "text-green-500 bg-green-500/20 hover:bg-green-500/30" 
-                                          : "text-zinc-400 hover:text-green-500 hover:bg-zinc-800"
+                                          ? "text-green-500 bg-green-500/20 hover:bg-green-500/30 animate-bounce-feedback" 
+                                          : "text-zinc-400 hover:text-green-500 hover:bg-zinc-800/50 bounce-feedback"
                                       }`}
                                       onClick={() => data?._id && handleFeedback(data._id, m.id, "good")}
                                     >
-                                      <ThumbsUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                      <ThumbsUp className="h-2.5 w-2.5" />
                                     </Button>
                                     
                                     {/* Dislike Button */}
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className={`w-6 h-6 sm:w-7 sm:h-7 transition-all duration-200 ${
+                                      className={`w-6 h-6 rounded-md transition-all duration-300 ease-ios ${
                                         m.feedback === "bad" 
-                                          ? "text-red-500 bg-red-500/20 hover:bg-red-500/30" 
-                                          : "text-zinc-400 hover:text-red-500 hover:bg-zinc-800"
+                                          ? "text-red-500 bg-red-500/20 hover:bg-red-500/30 animate-bounce-feedback" 
+                                          : "text-zinc-400 hover:text-red-500 hover:bg-zinc-800/50 bounce-feedback"
                                       }`}
                                       onClick={() => data?._id && handleFeedback(data._id, m.id, "bad")}
                                     >
-                                      <ThumbsDown className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                      <ThumbsDown className="h-2.5 w-2.5" />
                                     </Button>
                                   </div>
                                 )}
                               </div>
-                              <div className={`text-xs text-zinc-500 mt-0.5 sm:mt-1 ${m.role === "user" ? "text-right" : "text-left"}`}>
+                              <div className={`text-xs text-zinc-500 mt-1 ${m.role === "user" ? "text-right" : "text-left"} animate-fade-in-up mobile-text-sm`}>
                                 {formatTime(m.timestamp)}
                               </div>
                             </div>
                             {m.role === "user" && (
-                              <Avatar className="ml-2 h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex-shrink-0">
+                              <Avatar className="ml-2 h-6 w-6 flex-shrink-0 animate-scale-in">
                                 <AvatarImage src="/user-avatar.png" />
                                 <AvatarFallback className="bg-zinc-700 text-white text-xs">U</AvatarFallback>
                               </Avatar>
@@ -1388,23 +1571,23 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                     
                     {/* AI Typing Indicator */}
                     {aiTypingContent && (
-                      <div className="flex justify-start mb-2 sm:mb-3 md:mb-4">
-                        <Avatar className="mr-2 h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex-shrink-0">
+                      <div className="flex justify-start mb-3 animate-fade-in-up">
+                        <Avatar className="mr-2 h-6 w-6 flex-shrink-0">
                           <AvatarImage src="/ai-avatar.png" />
                           <AvatarFallback className="bg-red-600 text-white text-xs">AI</AvatarFallback>
                         </Avatar>
-                        <div className="flex flex-col max-w-[90%] sm:max-w-[85%] md:max-w-[75%]">
-                          <div className="rounded-2xl px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm leading-relaxed bg-zinc-900 border border-zinc-800 text-zinc-200 break-words">
+                        <div className="flex flex-col max-w-[80%]">
+                          <div className="rounded-xl px-3 py-2 text-sm leading-relaxed bg-zinc-900/80 glass-effect border border-zinc-800 text-zinc-200 break-words animate-slide-in-right">
                             <div className="prose prose-invert prose-sm max-w-none">
                               <ReactMarkdown>
                                 {aiTypingContent}
                               </ReactMarkdown>
                             </div>
                             {aiTypingDuration && (
-                              <span className="ml-1 sm:ml-2 text-xs text-green-400">Generated in {aiTypingDuration} sec</span>
+                              <span className="ml-1 text-xs text-green-400 animate-fade-in-up mobile-text-sm">Generated in {aiTypingDuration} sec</span>
                             )}
                           </div>
-                          <div className="text-xs text-zinc-500 mt-0.5 sm:mt-1 text-left">
+                          <div className="text-xs text-zinc-500 mt-1 text-left animate-fade-in-up mobile-text-sm">
                             {formatTime(new Date())}
                           </div>
                         </div>
@@ -1417,27 +1600,27 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
               </div>
 
               {/* Input Area */}
-              <div className="border-t border-zinc-900 p-2 sm:p-3 md:p-4 bg-zinc-950 flex-shrink-0 safe-area-inset-bottom">
-                <form onSubmit={handleSendMessage} className="flex flex-col gap-1.5 sm:gap-2">
-                  <div className="flex gap-1.5 sm:gap-2">
+              <div className="border-t border-zinc-900 p-3 bg-zinc-950/80 glass-effect flex-shrink-0 safe-area-inset-bottom animate-fade-in-up">
+                <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
+                  <div className="flex gap-2 mobile-tight">
                     <Input
                       placeholder="Ask something about this content..."
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      className="bg-zinc-900 border-zinc-800 focus-visible:ring-red-500 text-xs sm:text-sm h-9 sm:h-10 md:h-11 flex-1"
+                      className="bg-zinc-900/50 border-zinc-800 focus-visible:ring-red-500 text-sm h-9 rounded-lg flex-1 smooth-transition mobile-text-sm"
                       disabled={isThinking}
                     />
                     <Button 
                       type="submit" 
-                      className="bg-red-600 hover:bg-red-700 text-white h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 flex-shrink-0" 
+                      className="bg-red-600 hover:bg-red-700 text-white h-9 w-9 rounded-lg flex-shrink-0 smooth-transition bounce-feedback" 
                       disabled={isThinking || !input.trim()}
                     >
-                      {isThinking ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : <Send className="h-3 w-3 sm:h-4 sm:w-4" />}
+                      {isThinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                     </Button>
                   </div>
-                  <div className="flex justify-between items-center text-xs text-zinc-500">
+                  <div className="flex justify-between items-center text-xs text-zinc-500 mobile-text-sm">
                     <span>{input.length} characters</span>
-                    <span className="text-zinc-600 hidden xs:inline">Press Enter to send</span>
+                    <span className="text-zinc-600">Press Enter to send</span>
                   </div>
                 </form>
               </div>

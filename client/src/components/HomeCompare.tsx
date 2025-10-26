@@ -3,13 +3,17 @@ import { Compare } from "@/components/ui/compare";
 
 export function HomeCompare() {
   return (
-    <div className="p-4 mt-5 border rounded-3xl dark:bg-neutral-900 bg-neutral-100  border-neutral-200 dark:border-neutral-800 px-4">
+    <div className="w-full max-w-4xl mx-auto p-4 mt-5 border rounded-3xl dark:bg-neutral-900 bg-neutral-100 border-neutral-200 dark:border-neutral-800">
       <Compare
-        firstImage="/papertube.png"
-        secondImage="/papertube.png"
+        firstImage="/pdf_home_img/pdf_other.png"
+        secondImage="/pdf_home_img/pdf_us.png"
         firstImageClassName="object-cover object-left-top"
         secondImageClassname="object-cover object-left-top"
-        className="h-[250px] w-[200px] md:h-[500px] md:w-[500px]"
+        className="aspect-[3/4] w-full max-w-[280px] mx-auto 
+                   sm:max-w-[320px] 
+                   md:max-w-[400px] 
+                   lg:max-w-[450px] 
+                   xl:max-w-[500px]"
         slideMode="hover"
       />
     </div>

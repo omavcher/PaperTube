@@ -1,4 +1,3 @@
-"use client";
 import React from "react";
 import { cn } from "@/lib/utils";
 import createGlobe from "cobe";
@@ -6,50 +5,50 @@ import { useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { IconBrandYoutubeFilled } from "@tabler/icons-react";
 
-export function HomeFeatureX() {
+
+export default function FeaturesSectionDemo() {
   const features = [
     {
-      title: "Convert Any Lecture Instantly",
+      title: "Track issues effectively",
       description:
-        "Paste a YouTube link, and watch AI turn long, boring videos into crisp, colorful PDFs — organized by key topics and timestamps.",
+        "Track and manage your project issues with ease using our intuitive interface.",
       skeleton: <SkeletonOne />,
       className:
         "col-span-1 lg:col-span-4 border-b lg:border-r dark:border-neutral-800",
     },
     {
-      title: "Beautiful, Ready-to-Share PDFs",
+      title: "Capture pictures with AI",
       description:
-        "Each note comes with clickable timestamps, highlighted keywords, and smart formatting — perfect for revising or sharing with friends.",
+        "Capture stunning photos effortlessly using our advanced AI technology.",
       skeleton: <SkeletonTwo />,
       className: "border-b col-span-1 lg:col-span-2 dark:border-neutral-800",
     },
     {
-      title: "Powered by YouTube + AI",
+      title: "Watch our AI on YouTube",
       description:
-        "Just paste any YouTube lecture — AI automatically detects chapters, time markers, and generates topic summaries in seconds.",
+        "Whether its you or Tyler Durden, you can get to know about our product on YouTube",
       skeleton: <SkeletonThree />,
       className:
-        "col-span-1 lg:col-span-3 lg:border-r dark:border-neutral-800",
+        "col-span-1 lg:col-span-3 lg:border-r  dark:border-neutral-800",
     },
     {
-      title: "Study Smarter, Not Longer",
+      title: "Deploy in seconds",
       description:
-        "PaperTube organizes your learning notes beautifully, helping you save hours and focus only on what matters most.",
+        "With our blazing fast, state of the art, cutting edge, we are so back cloud servies (read AWS) - you can deploy your model in seconds.",
       skeleton: <SkeletonFour />,
       className: "col-span-1 lg:col-span-3 border-b lg:border-none",
     },
   ];
-  
   return (
-    <div className="relative z-20 max-w-7xl mx-auto">
+    <div className="relative z-20 py-10 lg:py-40 max-w-7xl mx-auto">
       <div className="px-8">
-        <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-semibold text-black dark:text-white">
-          Smarter Notes, Made Beautiful by AI
+        <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-black dark:text-white">
+          Packed with thousands of features
         </h4>
 
-        <p className="text-sm lg:text-base max-w-2xl my-4 mx-auto text-neutral-500 text-center font-normal dark:text-neutral-300">
-          PaperTube transforms your YouTube lectures into colorful, timestamped PDFs — 
-          clean, readable, and designed to help you learn faster.
+        <p className="text-sm lg:text-base  max-w-2xl  my-4 mx-auto text-neutral-500 text-center font-normal dark:text-neutral-300">
+          From Image generation to video generation, Everything AI has APIs for
+          literally everything. It can even create this website copy for you.
         </p>
       </div>
 
@@ -59,7 +58,7 @@ export function HomeFeatureX() {
             <FeatureCard key={feature.title} className={feature.className}>
               <FeatureTitle>{feature.title}</FeatureTitle>
               <FeatureDescription>{feature.description}</FeatureDescription>
-              <div className="h-full w-full">{feature.skeleton}</div>
+              <div className=" h-full w-full">{feature.skeleton}</div>
             </FeatureCard>
           ))}
         </div>
@@ -84,7 +83,7 @@ const FeatureCard = ({
 
 const FeatureTitle = ({ children }: { children?: React.ReactNode }) => {
   return (
-    <p className="max-w-5xl mx-auto text-left tracking-tight text-black dark:text-white text-xl md:text-2xl md:leading-snug">
+    <p className=" max-w-5xl mx-auto text-left tracking-tight text-black dark:text-white text-xl md:text-2xl md:leading-snug">
       {children}
     </p>
   );
@@ -94,7 +93,7 @@ const FeatureDescription = ({ children }: { children?: React.ReactNode }) => {
   return (
     <p
       className={cn(
-        "text-sm md:text-base max-w-4xl text-left mx-auto",
+        "text-sm md:text-base  max-w-4xl text-left mx-auto",
         "text-neutral-500 text-center font-normal dark:text-neutral-300",
         "text-left max-w-sm mx-0 md:text-sm my-2"
       )}
@@ -104,15 +103,15 @@ const FeatureDescription = ({ children }: { children?: React.ReactNode }) => {
   );
 };
 
-const SkeletonOne = () => {
+export const SkeletonOne = () => {
   return (
     <div className="relative flex py-8 px-2 gap-10 h-full">
-      <div className="w-full p-5 mx-auto bg-white dark:bg-neutral-900 shadow-2xl group h-full">
-        <div className="flex flex-1 w-full h-full flex-col space-y-2">
-          {/* You might want to update this image to show a YouTube-to-PDF conversion process */}
+      <div className="w-full  p-5  mx-auto bg-white dark:bg-neutral-900 shadow-2xl group h-full">
+        <div className="flex flex-1 w-full h-full flex-col space-y-2  ">
+          {/* TODO */}
           <img
             src="/linear.webp"
-            alt="PaperTube converting YouTube video to beautiful notes"
+            alt="header"
             width={800}
             height={800}
             className="h-full w-full aspect-square object-cover object-left-top rounded-sm"
@@ -126,20 +125,20 @@ const SkeletonOne = () => {
   );
 };
 
-const SkeletonThree = () => {
+export const SkeletonThree = () => {
   return (
     <a
       href="https://www.youtube.com/watch?v=RPa3_AD1_Vs"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="relative flex gap-10 h-full group/image"
+      target="__blank"
+      className="relative flex gap-10  h-full group/image"
     >
-      <div className="w-full mx-auto bg-transparent dark:bg-transparent group h-full">
-        <div className="flex flex-1 w-full h-full flex-col space-y-2 relative">
-          <IconBrandYoutubeFilled className="h-20 w-20 absolute z-10 inset-0 text-red-500 m-auto" />
+      <div className="w-full  mx-auto bg-transparent dark:bg-transparent group h-full">
+        <div className="flex flex-1 w-full h-full flex-col space-y-2  relative">
+          {/* TODO */}
+          <IconBrandYoutubeFilled className="h-20 w-20 absolute z-10 inset-0 text-red-500 m-auto " />
           <img
             src="https://assets.aceternity.com/fireship.jpg"
-            alt="YouTube tutorial thumbnail"
+            alt="header"
             width={800}
             height={800}
             className="h-full w-full aspect-square object-cover object-center rounded-sm blur-none group-hover/image:blur-md transition-all duration-200"
@@ -150,7 +149,7 @@ const SkeletonThree = () => {
   );
 };
 
-const SkeletonTwo = () => {
+export const SkeletonTwo = () => {
   const images = [
     "https://images.unsplash.com/photo-1517322048670-4fba75cbbb62?q=80&w=3000&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     "https://images.unsplash.com/photo-1573790387438-4da905039392?q=80&w=3425&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
@@ -171,9 +170,9 @@ const SkeletonTwo = () => {
       zIndex: 100,
     },
   };
-  
   return (
     <div className="relative flex flex-col items-start p-8 gap-10 h-full overflow-hidden">
+      {/* TODO */}
       <div className="flex flex-row -ml-20">
         {images.map((image, idx) => (
           <motion.div
@@ -188,7 +187,7 @@ const SkeletonTwo = () => {
           >
             <img
               src={image}
-              alt="Beautiful PDF notes examples"
+              alt="bali images"
               width="500"
               height="500"
               className="rounded-lg h-20 w-20 md:h-40 md:w-40 object-cover shrink-0"
@@ -210,7 +209,7 @@ const SkeletonTwo = () => {
           >
             <img
               src={image}
-              alt="Beautiful PDF notes examples"
+              alt="bali images"
               width="500"
               height="500"
               className="rounded-lg h-20 w-20 md:h-40 md:w-40 object-cover shrink-0"
@@ -219,30 +218,29 @@ const SkeletonTwo = () => {
         ))}
       </div>
 
-      <div className="absolute left-0 z-[100] inset-y-0 w-20 bg-gradient-to-r from-white dark:from-black to-transparent h-full pointer-events-none" />
-      <div className="absolute right-0 z-[100] inset-y-0 w-20 bg-gradient-to-l from-white dark:from-black to-transparent h-full pointer-events-none" />
+      <div className="absolute left-0 z-[100] inset-y-0 w-20 bg-gradient-to-r from-white dark:from-black to-transparent  h-full pointer-events-none" />
+      <div className="absolute right-0 z-[100] inset-y-0 w-20 bg-gradient-to-l from-white dark:from-black  to-transparent h-full pointer-events-none" />
     </div>
   );
 };
 
-const SkeletonFour = () => {
+export const SkeletonFour = () => {
   return (
-    <div className="h-60 md:h-60 flex flex-col items-center relative bg-transparent dark:bg-transparent mt-10">
+    <div className="h-60 md:h-60  flex flex-col items-center relative bg-transparent dark:bg-transparent mt-10">
       <Globe className="absolute -right-10 md:-right-10 -bottom-80 md:-bottom-72" />
     </div>
   );
 };
 
-const Globe = ({ className }: { className?: string }) => {
+export const Globe = ({ className }: { className?: string }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     let phi = 0;
-    let globe: any = null;
 
     if (!canvasRef.current) return;
 
-    globe = createGlobe(canvasRef.current, {
+    const globe = createGlobe(canvasRef.current, {
       devicePixelRatio: 2,
       width: 600 * 2,
       height: 600 * 2,
@@ -256,19 +254,20 @@ const Globe = ({ className }: { className?: string }) => {
       markerColor: [0.1, 0.8, 1],
       glowColor: [1, 1, 1],
       markers: [
+        // longitude latitude
         { location: [37.7595, -122.4367], size: 0.03 },
         { location: [40.7128, -74.006], size: 0.1 },
       ],
       onRender: (state) => {
+        // Called on every animation frame.
+        // `state` will be an empty object, return updated params.
         state.phi = phi;
         phi += 0.01;
       },
     });
 
     return () => {
-      if (globe) {
-        globe.destroy();
-      }
+      globe.destroy();
     };
   }, []);
 
@@ -280,5 +279,3 @@ const Globe = ({ className }: { className?: string }) => {
     />
   );
 };
-
-export { HomeFeatureX as FeaturesSectionDemo };
