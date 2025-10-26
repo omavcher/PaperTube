@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 
 import api from "@/config/api";
-import { LoaderThreeDemo, LoaderX } from "@/components/LoaderX";
+import { LoaderX } from "@/components/LoaderX";
 import { LoginDialog } from "@/components/LoginDialog";
 import { redirect, useRouter } from "next/navigation";
  
