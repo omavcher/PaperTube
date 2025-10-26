@@ -189,6 +189,17 @@ const iphoneStyles = `
     font-size: 0.8125rem !important;
   }
 }
+
+/* Fix for mobile keyboard not closing chat panel */
+.keyboard-open {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100dvh !important;
+  width: 100% !important;
+  z-index: 50;
+  transform: translateX(0) !important;
+}
 `;
 
 // PDF Download Loader Component
@@ -618,6 +629,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
   const [isMobile, setIsMobile] = useState(false);
   const [showChatMobile, setShowChatMobile] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false); // NEW: Track keyboard state
 
   // PDF Download Loader States
   const [showPDFLoader, setShowPDFLoader] = useState(false);
@@ -637,24 +649,66 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     };
   }, []);
 
-  // Device detection with improved responsive breakpoints
+  // Enhanced device detection with keyboard handling
   useEffect(() => {
     const checkDevice = () => {
       const width = window.innerWidth;
+      const height = window.innerHeight;
+      
+      // More accurate mobile detection
       setIsMobile(width < 768);
       
+      // Detect keyboard open by checking viewport height changes
+      const isKeyboardOpen = height < window.outerHeight * 0.8;
+      setKeyboardOpen(isKeyboardOpen);
+      
       // Auto-show chat on larger screens, hide on mobile by default
-      if (width >= 1024) {
-        setShowChatMobile(true);
-      } else {
-        setShowChatMobile(false);
+      // But don't change state when keyboard is open
+      if (!isKeyboardOpen) {
+        if (width >= 1024) {
+          setShowChatMobile(true);
+        } else {
+          setShowChatMobile(false);
+        }
       }
     };
     
     checkDevice();
+    
+    // Use both resize and orientationchange for better mobile support
     window.addEventListener("resize", checkDevice);
-    return () => window.removeEventListener("resize", checkDevice);
+    window.addEventListener("orientationchange", checkDevice);
+    
+    // Visual Viewport API for better mobile keyboard detection
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", checkDevice);
+    }
+    
+    return () => {
+      window.removeEventListener("resize", checkDevice);
+      window.removeEventListener("orientationchange", checkDevice);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", checkDevice);
+      }
+    };
   }, []);
+
+  // NEW: Handle input focus to prevent chat panel from closing
+  const handleInputFocus = () => {
+    if (isMobile) {
+      setKeyboardOpen(true);
+      // Ensure chat stays open when input is focused
+      setShowChatMobile(true);
+    }
+  };
+
+  // NEW: Handle input blur
+  const handleInputBlur = () => {
+    // Small delay to ensure the keyboard is fully closed
+    setTimeout(() => {
+      setKeyboardOpen(false);
+    }, 300);
+  };
 
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isDirty, setIsDirty] = useState(false);
@@ -1377,8 +1431,10 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           {hasPermission ? (
             <div
               className={`flex-1 lg:flex-[0_0_55%] xl-optimized-panel fixed lg:static top-0 right-0 h-[100dvh] w-full lg:w-auto bg-zinc-950/80 glass-effect flex flex-col border-l border-zinc-900 transition-all duration-500 ease-ios z-50 ${
+                // FIXED: Apply keyboard-open class when keyboard is detected
+                keyboardOpen ? 'keyboard-open' : 
                 isMobile ? (showChatMobile ? "translate-x-0" : "translate-x-full") : "translate-x-0"
-              } ${isMobile && !showChatMobile ? 'hidden lg:flex' : 'flex'}`}
+              } ${isMobile && !showChatMobile && !keyboardOpen ? 'hidden lg:flex' : 'flex'}`}
             >
               {/* Chat Header */}
               <div className="p-3 border-b border-zinc-900 flex justify-between items-center bg-zinc-950/80 glass-effect flex-shrink-0 animate-fade-in-up safe-area-inset-top">
@@ -1397,7 +1453,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                     <span className="sm:hidden">PDF</span>
                   </Button>
                   
-                  {isMobile && (
+                  {isMobile && !keyboardOpen && (
                     <Button 
                       size="sm" 
                       variant="outline" 
@@ -1607,6 +1663,8 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       placeholder="Ask something about this content..."
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
+                      onFocus={handleInputFocus} // NEW: Handle focus to keep chat open
+                      onBlur={handleInputBlur} // NEW: Handle blur to detect keyboard close
                       className="bg-zinc-900/50 border-zinc-800 focus-visible:ring-red-500 text-sm h-9 rounded-lg flex-1 smooth-transition mobile-text-sm"
                       disabled={isThinking}
                     />
