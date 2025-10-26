@@ -4,8 +4,8 @@ import HomeMain from "@/components/HomeMain";
 import HomeWorkspace from "@/components/HomeWorkspace";
 import { HomeFeatureX } from "@/components/HomeFeatureX";
 import { HomeCompare } from "@/components/HomeCompare";
-import Tastimoials from "@/components/tastimoials";
 import HomeLine from "@/components/HomeLine";
+import Testimonials from "@/components/Testimonials";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -37,7 +37,7 @@ export default function Home() {
                    Hear from our satisfied users who have transformed their workflow with our service.
                  </p>
                </header>
-       <Tastimoials/>
+       <Testimonials/>
        </div>
 
       <div>
