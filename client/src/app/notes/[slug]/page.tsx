@@ -192,13 +192,21 @@ const iphoneStyles = `
 
 /* Fix for mobile keyboard not closing chat panel */
 .keyboard-open {
-  position: fixed !important;
-  top: 0 !important;
-  right: 0 !important;
-  height: 100% !important;
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100dvh !important;
   width: 100% !important;
-  z-index: 50 !important;
+  z-index: 50;
   transform: translateX(0) !important;
+}
+
+/* Prevent body scroll when keyboard is open */
+body.keyboard-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
 }
 `;
 
@@ -629,7 +637,8 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
   const [isMobile, setIsMobile] = useState(false);
   const [showChatMobile, setShowChatMobile] = useState(false);
-  const [keyboardOpen, setKeyboardOpen] = useState(false); // NEW: Track keyboard state
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [manualChatState, setManualChatState] = useState(false); // NEW: Track manual state
 
   // PDF Download Loader States
   const [showPDFLoader, setShowPDFLoader] = useState(false);
@@ -649,64 +658,50 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     };
   }, []);
 
-  // Enhanced device detection with keyboard handling
+  // SIMPLIFIED device detection - only check initial screen size
   useEffect(() => {
     const checkDevice = () => {
       const width = window.innerWidth;
-      const height = window.innerHeight;
-      
-      // More accurate mobile detection
       setIsMobile(width < 768);
       
-      // Detect keyboard open by checking viewport height changes
-      const isKeyboardOpen = height < window.outerHeight * 0.8;
-      setKeyboardOpen(isKeyboardOpen);
-      
-      // Auto-show chat on larger screens, hide on mobile by default
-      // But don't change state when keyboard is open
-      if (!isKeyboardOpen) {
-        if (width >= 1024) {
-          setShowChatMobile(true);
-        } else {
-          setShowChatMobile(false);
-        }
+      // Only set initial state, don't auto-toggle based on resize
+      if (width >= 1024 && !manualChatState) {
+        setShowChatMobile(true);
       }
     };
     
     checkDevice();
-    
-    // Use both resize and orientationchange for better mobile support
     window.addEventListener("resize", checkDevice);
-    window.addEventListener("orientationchange", checkDevice);
-    
-    // Visual Viewport API for better mobile keyboard detection
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", checkDevice);
-    }
     
     return () => {
       window.removeEventListener("resize", checkDevice);
-      window.removeEventListener("orientationchange", checkDevice);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", checkDevice);
-      }
     };
-  }, []);
+  }, [manualChatState]);
 
-  // NEW: Handle input focus to prevent chat panel from closing
+  // NEW: Handle manual chat toggle
+  const handleToggleChat = () => {
+    const newState = !showChatMobile;
+    setShowChatMobile(newState);
+    setManualChatState(newState); // Remember this was manually toggled
+  };
+
+  // NEW: Enhanced input focus handler
   const handleInputFocus = () => {
     if (isMobile) {
       setKeyboardOpen(true);
-      setShowChatMobile(true); // Force chat to stay open
+      // Always show chat when input is focused on mobile
+      setShowChatMobile(true);
+      // Add class to body to prevent scrolling
+      document.body.classList.add('keyboard-open');
     }
   };
 
-  // NEW: Handle input blur
+  // NEW: Enhanced input blur handler
   const handleInputBlur = () => {
-    // Add a delay to ensure smoother transition
     setTimeout(() => {
       setKeyboardOpen(false);
-    }, 300);
+      document.body.classList.remove('keyboard-open');
+    }, 100);
   };
 
   const [markdownContent, setMarkdownContent] = useState<string>("");
@@ -1255,9 +1250,8 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         {/* Mobile Header */}
         <ResponsiveHeader 
           title={data?.title || "Note"} 
-          onMenuClick={() => setShowChatMobile(!showChatMobile)}
           showChatMobile={showChatMobile}
-          onToggleChat={() => setShowChatMobile(!showChatMobile)}
+          onToggleChat={handleToggleChat} // Use new handler
         />
 
         <div className="flex flex-col lg:flex-row h-[calc(100vh-57px)] lg:h-screen w-full overflow-hidden xl-optimized-layout">
@@ -1426,14 +1420,13 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
             </Tabs>
           </div>
 
-          {/* Right: Chat or Locked Section */}
+          {/* Right: Chat or Locked Section - SIMPLIFIED LOGIC */}
           {hasPermission ? (
             <div
               className={`flex-1 lg:flex-[0_0_55%] xl-optimized-panel fixed lg:static top-0 right-0 h-[100dvh] w-full lg:w-auto bg-zinc-950/80 glass-effect flex flex-col border-l border-zinc-900 transition-all duration-500 ease-ios z-50 ${
-                // FIXED: Apply keyboard-open class when keyboard is detected
-                keyboardOpen ? 'keyboard-open' : 
+                // SIMPLIFIED: Only check showChatMobile state
                 isMobile ? (showChatMobile ? "translate-x-0" : "translate-x-full") : "translate-x-0"
-              } ${isMobile && !showChatMobile && !keyboardOpen ? 'hidden lg:flex' : 'flex'}`}
+              } ${isMobile && !showChatMobile ? 'hidden lg:flex' : 'flex'}`}
             >
               {/* Chat Header */}
               <div className="p-3 border-b border-zinc-900 flex justify-between items-center bg-zinc-950/80 glass-effect flex-shrink-0 animate-fade-in-up safe-area-inset-top">
@@ -1452,12 +1445,12 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                     <span className="sm:hidden">PDF</span>
                   </Button>
                   
-                  {isMobile && !keyboardOpen && (
+                  {isMobile && (
                     <Button 
                       size="sm" 
                       variant="outline" 
                       className="h-8 px-3 rounded-xl text-xs smooth-transition bounce-feedback"
-                      onClick={() => setShowChatMobile(false)}
+                      onClick={handleToggleChat}
                     >
                       Close
                     </Button>
@@ -1662,8 +1655,8 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       placeholder="Ask something about this content..."
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      onFocus={handleInputFocus} // NEW: Handle focus to keep chat open
-                      onBlur={handleInputBlur} // NEW: Handle blur to detect keyboard close
+                      onFocus={handleInputFocus}
+                      onBlur={handleInputBlur}
                       className="bg-zinc-900/50 border-zinc-800 focus-visible:ring-red-500 text-sm h-9 rounded-lg flex-1 smooth-transition mobile-text-sm"
                       disabled={isThinking}
                     />
