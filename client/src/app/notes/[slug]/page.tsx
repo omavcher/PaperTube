@@ -192,12 +192,12 @@ const iphoneStyles = `
 
 /* Fix for mobile keyboard not closing chat panel */
 .keyboard-open {
-  position: fixed;
-  top: 0;
-  right: 0;
-  height: 100dvh !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  height: 100% !important;
   width: 100% !important;
-  z-index: 50;
+  z-index: 50 !important;
   transform: translateX(0) !important;
 }
 `;
@@ -697,14 +697,13 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const handleInputFocus = () => {
     if (isMobile) {
       setKeyboardOpen(true);
-      // Ensure chat stays open when input is focused
-      setShowChatMobile(true);
+      setShowChatMobile(true); // Force chat to stay open
     }
   };
 
   // NEW: Handle input blur
   const handleInputBlur = () => {
-    // Small delay to ensure the keyboard is fully closed
+    // Add a delay to ensure smoother transition
     setTimeout(() => {
       setKeyboardOpen(false);
     }, 300);
