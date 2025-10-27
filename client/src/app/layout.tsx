@@ -127,8 +127,8 @@ export default function RootLayout({
                     items={[
                       { name: "Home", link: "/" },
                       { name: "Features", link: "/features" },
-                      { name: "Docs/API", link: "/contact" },
-                      { name: "Community", link: "/community" },
+                      { name: "Pricing", link: "/pricing" },
+                      { name: "About", link: "/about" },
                     ]}
                   />
                   {isLoggedIn ? (
@@ -237,8 +237,8 @@ export default function RootLayout({
                     {[
                       { name: "Home", link: "/" },
                       { name: "Features", link: "/features" },
-                      { name: "Docs/API", link: "/contact" },
-                      { name: "Community", link: "/community" },
+                      { name: "Pricing", link: "/pricing" },
+                      { name: "About", link: "/about" },
                     ].map((item, idx) => (
                       <a
                         key={idx}

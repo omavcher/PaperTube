@@ -39,11 +39,11 @@ export const Timeline = ({ data }: { data: TimelineEntry[] }) => {
     >
       <div className="max-w-7xl mx-auto py-20 px-4 md:px-8 lg:px-10">
         <h2 className="text-lg md:text-4xl mb-4 text-white max-w-4xl">
-          Changelog from my journey
+          How PaperTube Works — 4 Simple Steps ✨
         </h2>
         <p className="text-neutral-300 text-sm md:text-base max-w-sm">
-          I&apos;ve been working on Aceternity for the past 2 years. Here&apos;s
-          a timeline of my journey.
+          Turning YouTube lectures into smart, colorful notes has never been easier. <br></br> <br></br>
+  Just follow these quick steps — from copying your lecture link to downloading a beautiful, ready-to-share PDF powered by AI.
         </p>
       </div>
 

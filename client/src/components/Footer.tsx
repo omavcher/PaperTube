@@ -48,23 +48,18 @@ export default function Footer() {
                 <h3 className="text-white font-semibold text-sm sm:text-base mb-3 sm:mb-4">Quick Links</h3>
                 <ul className="space-y-2 sm:space-y-3">
                   <li>
-                    <a href="#" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
-                      Convert Video
+                    <a href="/features" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
+                      Features
                     </a>
                   </li>
                   <li>
-                    <a href="#" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
-                      My Notes
+                    <a href="/about" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
+                      About Us
                     </a>
                   </li>
                   <li>
-                    <a href="#" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
+                    <a href="/pricing" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
                       Pricing
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
-                      How It Works
                     </a>
                   </li>
                 </ul>
@@ -72,28 +67,16 @@ export default function Footer() {
 
               {/* Support */}
               <div>
-                <h3 className="text-white font-semibold text-sm sm:text-base mb-3 sm:mb-4">Support</h3>
+                <h3 className="text-white font-semibold text-sm sm:text-base mb-3 sm:mb-4">Products</h3>
                 <ul className="space-y-2 sm:space-y-3">
+                 
                   <li>
-                    <a href="#" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
-                      Help Center
+                    <a href="https://www.heartecho.in" className="text-white font-bold text-decoration-none hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
+                     <img src="/heartechor.png" alt="HeartEcho" className="inline-block h-5 mr-1" />
+                      HeartEcho
                     </a>
                   </li>
-                  <li>
-                    <a href="#" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
-                      Contact Us
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
-                      Privacy Policy
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="text-gray-400 hover:text-red-500 transition-colors text-sm sm:text-base block py-1">
-                      Terms of Service
-                    </a>
-                  </li>
+                 
                 </ul>
               </div>
             </div>
