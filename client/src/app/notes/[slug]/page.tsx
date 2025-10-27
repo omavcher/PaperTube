@@ -475,7 +475,6 @@ const ResponsiveHeader: React.FC<{
   return (
     <div className="flex items-center justify-between p-3 border-b border-zinc-900 bg-zinc-950/80 glass-effect lg:hidden sticky top-0 z-40 animate-fade-in-up safe-area-inset-top">
       <div className="flex items-center gap-2 flex-1 min-w-0 mobile-tight">
-        {onMenuClick && (
           <Button
             variant="ghost"
             size="icon"
@@ -483,11 +482,10 @@ const ResponsiveHeader: React.FC<{
             className="h-8 w-8 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/50 flex-shrink-0 smooth-transition bounce-feedback"
           >
             {/* Home icon */}
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
           </Button>
-        )}
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold truncate text-white animate-fade-in-up mobile-text-sm">{title}</h1>
         </div>
@@ -611,6 +609,7 @@ interface NoteData {
 
 /* ----------------- Main Component ----------------- */
 export default function NotePage({ params }: { params: Promise<{ slug: string }> }) {
+  
   const { slug } = use(params);
   const [data, setData] = useState<NoteData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -620,6 +619,10 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const [hasPermission, setHasPermission] = useState(true);
   const [noteNotFound, setNoteNotFound] = useState(false);
   const router = useRouter();
+
+  const handleHomeClick = () => {
+    router.push('/'); // Use router.push instead of redirect for client-side navigation
+  };
 
   const [messages, setMessages] = useState<{ 
     id: string; 
@@ -1430,6 +1433,17 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
             >
               {/* Chat Header */}
               <div className="p-3 border-b border-zinc-900 flex justify-between items-center bg-zinc-950/80 glass-effect flex-shrink-0 animate-fade-in-up safe-area-inset-top">
+               <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleHomeClick}
+            className="h-8 w-8 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/50 flex-shrink-0 smooth-transition bounce-feedback"
+          >
+            {/* Home icon */}
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          </Button>
                 <div className="flex-1 min-w-0">
                   <h1 className="text-base font-bold truncate text-white mobile-text-sm">{data?.title}</h1>
                 </div>

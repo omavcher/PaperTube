@@ -223,12 +223,7 @@ export default function NotesWorkspace() {
     router.push(`/notes/${slug}`);
   }, [router, isAuthenticated]);
 
-  const handleEditNote = useCallback((e: React.MouseEvent, noteId: string) => {
-    if (!isAuthenticated) return;
-    e.stopPropagation();
-    // Navigate to edit page or open edit modal
-    router.push(`/notes/edit/${noteId}`);
-  }, [router, isAuthenticated]);
+
 
   const highlightText = useCallback((text: string, highlight: string) => {
     if (!highlight.trim() || !text) return text;
@@ -458,13 +453,7 @@ export default function NotesWorkspace() {
                       </span>
                     </div>
                     
-                    {/* Edit Button */}
-                    <button
-                      onClick={(e) => handleEditNote(e, note._id)}
-                      className="opacity-0 group-hover:opacity-100 p-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-all duration-200 hover:scale-110"
-                    >
-                      <Edit size={14} className="text-zinc-400" />
-                    </button>
+
                   </div>
 
                   <h3 className="font-semibold text-sm sm:text-base text-white line-clamp-2 group-hover:text-[#fb2d37] transition-colors duration-200 mb-3">

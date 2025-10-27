@@ -6,6 +6,8 @@ import { HomeFeatureX } from "@/components/HomeFeatureX";
 import { HomeCompare } from "@/components/HomeCompare";
 import HomeLine from "@/components/HomeLine";
 import Testimonials from "@/components/Testimonials";
+import HomeFeedback from "@/components/HomeFeedback";
+import Footer from "@/components/Footer";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -24,27 +26,33 @@ export default function Home() {
 
         {/* ✅ Show HomeWorkspace only if logged in */}
         {isAuthenticated && <HomeWorkspace />}
-        
-        <div className="my-20">
+      <div className="flex flex-col items-center w-full">
+  <header className="w-full max-w-7xl px-4 py-6 sm:py-8 lg:py-12 mb-4 sm:mb-6 lg:mb-8">
+    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-100 text-center px-2">
+      What Our Customers Are Saying
+    </h2>
+    <p className="mt-3 sm:mt-4 max-w-3xl mx-auto text-center text-gray-400 text-sm sm:text-base px-4">
+      Hear from our satisfied users who have transformed their workflow with our service.
+    </p>
+  </header>
+  <Testimonials />
+</div>
+        <div className="w-full my-20">
        <HomeFeatureX/>
 </div>
-       <div className=" flex flex-col items-center">
-               <header className="w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 mb-8">
-                 <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl text-center">
-                   What Our Customers Are Saying
-                 </h2>
-                 <p className="mt-4 max-w-3xl mx-auto text-center text-gray-600 dark:text-gray-400">
-                   Hear from our satisfied users who have transformed their workflow with our service.
-                 </p>
-               </header>
-       <Testimonials/>
-       </div>
+      
 
-      <div>
+      <div className="w-full">
         <HomeLine/>
       </div>
 
+      <div className="w-full">
+        <HomeFeedback/>
+      </div>
+
+
       </main>
+      <Footer/>
     </div>
   );
 }

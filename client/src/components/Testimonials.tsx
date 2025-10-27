@@ -5,8 +5,8 @@ import { InfiniteMovingCards } from "./ui/infinite-moving-cards";
 
 function Testimonials() {
   return (
-    <div className="h-auto rounded-md flex flex-col antialiased bg-white dark:bg-black dark:bg-grid-white/[0.05] items-center justify-center relative overflow-hidden py-8 md:py-12">
-      <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="w-full h-auto rounded-md flex flex-col antialiased bg-black bg-grid-white/[0.05] items-center justify-center relative overflow-hidden py-4 sm:py-6 md:py-8 lg:py-12">
+      <div className="w-full max-w-7xl px-2 sm:px-4 md:px-6 lg:px-8">
         <InfiniteMovingCards
           items={testimonials}
           direction="right"
