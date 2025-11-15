@@ -8,4 +8,6 @@ router.post("/google", authController.googleAuth);
 router.get("/getToken", authMiddleware, authController.getToken);
 router.delete("/delete-account", authMiddleware, authController.deleteAccount);
 
+router.get("/services", authMiddleware, authController.getUserServices);
+
 module.exports = router;

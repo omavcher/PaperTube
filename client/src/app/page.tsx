@@ -26,7 +26,10 @@ export default function Home() {
 
         {/* ✅ Show HomeWorkspace only if logged in */}
         {isAuthenticated && <HomeWorkspace />}
-      <div className="flex flex-col items-center w-full">
+
+
+
+      {/* <div className="flex flex-col items-center w-full">
   <header className="w-full max-w-7xl px-4 py-6 sm:py-8 lg:py-12 mb-4 sm:mb-6 lg:mb-8">
     <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-100 text-center px-2">
       What Our Customers Are Saying
@@ -36,7 +39,7 @@ export default function Home() {
     </p>
   </header>
   <Testimonials />
-</div>
+</div> */}
         <div className="w-full my-20">
        <HomeFeatureX/>
 </div>

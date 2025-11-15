@@ -40,6 +40,13 @@ interface VideoInfo {
   title: string;
 }
 
+interface ApiErrorResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  retryAfter?: string;
+}
+
 // Login Dialog Component
 function LoginDialog({ isOpen, onClose, onSuccess }: { 
   isOpen: boolean; 
@@ -119,6 +126,51 @@ function LoginDialog({ isOpen, onClose, onSuccess }: {
   );
 }
 
+// Server Busy Dialog Component
+function ServerBusyDialog({ 
+  isOpen, 
+  onClose, 
+  retryAfter 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void;
+  retryAfter?: string;
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md bg-neutral-900 border-neutral-700 text-white animate-in fade-in-0 zoom-in-95 duration-300">
+        <DialogHeader>
+          <DialogTitle className="text-center text-xl animate-in fade-in-0 slide-in-from-top-3 duration-500 text-yellow-500">
+            Servers Are Busy
+          </DialogTitle>
+          <DialogDescription className="text-center text-neutral-400 animate-in fade-in-0 slide-in-from-top-4 duration-500 delay-100">
+            We're experiencing high traffic right now
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="flex flex-col items-center justify-center p-4 space-y-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-500 delay-200">
+          <div className="text-sm text-neutral-300 text-center mb-4">
+            Our servers are currently processing many requests. Please try again in {retryAfter || 'a few minutes'}.
+          </div>
+          
+          <div className="flex items-center justify-center gap-2 text-yellow-500 mb-4">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce delay-150"></div>
+            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce delay-300"></div>
+          </div>
+          
+          <button
+            onClick={onClose}
+            className="px-6 py-3 text-base font-medium bg-yellow-500/20 text-yellow-300 rounded-xl border border-yellow-500/30 hover:bg-yellow-500/30 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer w-full justify-center transform-gpu"
+          >
+            Got it, I'll try later
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function HomeMain() {
   const [description, setDescription] = useState('');
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
@@ -126,6 +178,8 @@ export default function HomeMain() {
   const [error, setError] = useState<string | null>(null);
   const [loaderLoading, setLoaderLoading] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [showServerBusyDialog, setShowServerBusyDialog] = useState(false);
+  const [serverBusyRetryAfter, setServerBusyRetryAfter] = useState<string>('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const router = useRouter();
@@ -222,9 +276,19 @@ export default function HomeMain() {
       if (response.data && response.data.newNote && response.data.newNote.slug) {
         router.push(`/notes/${response.data.newNote.slug}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating note:', err);
-      setError('Failed to create note. Please try again.');
+      
+      // Handle SERVER_BUSY error specifically
+      if (err.response?.data?.code === 'SERVER_BUSY') {
+        const errorData: ApiErrorResponse = err.response.data;
+        setServerBusyRetryAfter(errorData.retryAfter || 'a few minutes');
+        setShowServerBusyDialog(true);
+        setError('Servers are busy. Please try again later.');
+      } else {
+        setError('Failed to create note. Please try again.');
+      }
+      
       setLoaderLoading(false);
     }
   };
@@ -250,6 +314,13 @@ export default function HomeMain() {
         isOpen={showLoginDialog}
         onClose={() => setShowLoginDialog(false)}
         onSuccess={() => handleLoginSuccess()}
+      />
+      
+      {/* Server Busy Dialog */}
+      <ServerBusyDialog
+        isOpen={showServerBusyDialog}
+        onClose={() => setShowServerBusyDialog(false)}
+        retryAfter={serverBusyRetryAfter}
       />
       
       {/* MultiStep Loader */}
@@ -300,8 +371,19 @@ export default function HomeMain() {
                 )}
                 
                 {error && (
-                  <div className="mb-4 p-4 bg-red-500/10 rounded-xl border border-red-500/20 animate-in fade-in-0 slide-in-from-top-4 duration-500">
-                    <p className="text-red-300">{error}</p>
+                  <div className={`mb-4 p-4 rounded-xl border animate-in fade-in-0 slide-in-from-top-4 duration-500 ${
+                    error.includes('Servers are busy') 
+                      ? 'bg-yellow-500/10 border-yellow-500/20' 
+                      : 'bg-red-500/10 border-red-500/20'
+                  }`}>
+                    <p className={error.includes('Servers are busy') ? 'text-yellow-300' : 'text-red-300'}>
+                      {error}
+                    </p>
+                    {error.includes('Servers are busy') && (
+                      <p className="text-yellow-400/80 text-sm mt-2">
+                        We're working on scaling our servers to handle the load. Thank you for your patience!
+                      </p>
+                    )}
                   </div>
                 )}
                 

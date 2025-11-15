@@ -125,10 +125,10 @@ export default function RootLayout({
                   <NavbarLogo />
                   <NavItems
                     items={[
-                      { name: "Home", link: "/" },
-                      { name: "Features", link: "/features" },
-                      { name: "Pricing", link: "/pricing" },
-                      { name: "About", link: "/about" },
+                      // { name: "Home", link: "/" },
+                      // { name: "Features", link: "/features" },
+                      // { name: "Pricing", link: "/pricing" },
+                      // { name: "About", link: "/about" },
                     ]}
                   />
                   {isLoggedIn ? (

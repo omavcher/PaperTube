@@ -86,7 +86,7 @@ ${note.videoUrl || "No video available"}
 
     // Initialize Google Generative AI
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY_FOR_CHAT);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     // Generate AI response
     const result = await model.generateContent({
