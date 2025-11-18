@@ -102,7 +102,7 @@ ${note.videoUrl || "No video available"}
     // ✅ Extract YouTube link (if any)
     const youtubeRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)(?:[^\s]*)?)/g;
     const videoLinks = assistantMessage.match(youtubeRegex);
-    const videoLink = videoLinks ? videoLinks[0] : note.videoUrl || null;
+    const videoLink = note.videoUrl || null;
 
     // Remove the link from the message if you want a clean text
     const cleanMessage = assistantMessage.replace(youtubeRegex, "").trim();
