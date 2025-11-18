@@ -665,7 +665,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   useEffect(() => {
     const checkDevice = () => {
       const width = window.innerWidth;
-      setIsMobile(width < 800);
+      setIsMobile(width < 900);
       
       // Only set initial state, don't auto-toggle based on resize
       if (width >= 1024 && !manualChatState) {
