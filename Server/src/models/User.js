@@ -39,6 +39,9 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    googleAccessToken: {
+      type: String,
+    },
     name: {
       type: String,
       required: true,

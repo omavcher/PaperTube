@@ -1,50 +1,138 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Note = require("../models/Note");
+const { OAuth2Client } = require('google-auth-library');
 
 exports.googleAuth = async (req, res) => {
   try {
-    const { email, name, picture, googleId } = req.body;
+    const { googleAccessToken, authType } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+    const accessToken = googleAccessToken;
+
+    if (!accessToken) {
+      return res.status(400).json({ message: "Access token is required" });
     }
 
-    // Check if user already exists
-    let user = await User.findOne({ email });
-
-    if (!user) {
-      user = await User.create({
-        googleId,
-        name,
-        email,
-        picture,
+    // Create OAuth2 client
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    
+    try {
+      // First, try to get user info using the access token
+      const ticket = await client.verifyIdToken({
+        idToken: accessToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
       });
-    } else {
-      // Update Google ID or picture if changed
-      user.googleId = googleId || user.googleId;
-      user.picture = picture || user.picture;
-      await user.save();
+      
+      // This works if it's an ID token
+      const payload = ticket.getPayload();
+      const { email, name, picture, sub } = payload;
+      
+      // Handle user creation/update
+      const user = await handleUserAuth(email, name, picture, sub, accessToken);
+      
+      return sendAuthResponse(res, user, accessToken);
+      
+    } catch (idTokenError) {
+      // If ID token verification fails, it's probably an access token
+      console.log("Not an ID token, trying as access token...");
+      
+      // Use access token to get user info
+      const userInfo = await getUserInfoFromAccessToken(accessToken);
+      
+      if (!userInfo || !userInfo.email) {
+        return res.status(400).json({ 
+          message: "Could not get user info from Google" 
+        });
+      }
+      
+      // Handle user creation/update
+      const user = await handleUserAuth(
+        userInfo.email, 
+        userInfo.name, 
+        userInfo.picture, 
+        userInfo.sub || userInfo.id,
+        accessToken
+      );
+      
+      return sendAuthResponse(res, user, accessToken);
     }
-
-    // Create JWT session token
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      process.env.SESSION_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: "User logged in successfully",
-      sessionToken: token,
-      user,
-    });
+    
   } catch (error) {
     console.error("❌ Google Auth Error:", error);
-    return res.status(500).json({ message: "Server Error" });
+    return res.status(500).json({ 
+      message: "Server Error",
+      error: error.message 
+    });
   }
 };
+
+// Helper function to get user info from access token
+async function getUserInfoFromAccessToken(accessToken) {
+  try {
+    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Google API error: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Error getting user info:", error);
+    return null;
+  }
+}
+
+// Helper function to handle user creation/update
+async function handleUserAuth(email, name, picture, googleId, accessToken) {
+  // Check if user already exists
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    user = await User.create({
+      googleId,
+      name,
+      email,
+      picture,
+      googleAccessToken: accessToken
+    });
+  } else {
+    // Update Google ID or picture if changed
+    user.googleId = googleId || user.googleId;
+    user.picture = picture || user.picture;
+    user.googleAccessToken = accessToken; // Update access token
+    await user.save();
+  }
+  
+  return user;
+}
+
+// Helper function to send response
+function sendAuthResponse(res, user, accessToken) {
+  // Create JWT session token
+  const token = jwt.sign(
+    { id: user._id, email: user.email },
+    process.env.SESSION_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: "User logged in successfully",
+    sessionToken: token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      picture: user.picture,
+      googleId: user.googleId
+    },
+    googleAccessToken: accessToken // Send back to frontend for Drive operations
+  });
+}
 
 
 exports.getToken = async (req, res) => {

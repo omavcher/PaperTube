@@ -46,6 +46,10 @@ const getAuthToken = () => {
   return null;
 };
 
+const googleAccessToken =()=>{
+    return localStorage.getItem("googleAccessToken");
+}
+
 const isAuthenticated = () => {
   return !!getAuthToken();
 };
@@ -755,7 +759,8 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         try {
           const response = await api.get(`/notes/genrate/pdf?noteId=${noteId}`, {
             headers: {
-              'Auth': getAuthToken()
+              'Auth': getAuthToken(),
+              'x-google-access-token':googleAccessToken()
             }
           });
 

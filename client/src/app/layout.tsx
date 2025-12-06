@@ -13,12 +13,11 @@ import {
   MobileNavHeader,
   MobileNavMenu,
   MobileNavToggle,
-  usePlanStatus,
 } from "@/components/Navbar";
 import { BackgroundBeams } from "@/components/ui/background-beams";
 import { cn } from "@/lib/utils";
 import { FcGoogle } from "react-icons/fc";
-import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
+import { GoogleOAuthProvider, useGoogleLogin, googleLogout } from "@react-oauth/google";
 import axios from "axios";
 import api from "@/config/api";
 import {
@@ -29,117 +28,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, User, Coins, Plus } from "lucide-react";
-type PlanStatusVariant = "desktop" | "mobile" | "dropdown";
-
-const PlanStatusDisplay = ({
-  variant,
-  fallbackTokens,
-  onNavigate,
-  onActionComplete,
-}: {
-  variant: PlanStatusVariant;
-  fallbackTokens: number;
-  onNavigate?: () => void;
-  onActionComplete?: () => void;
-}) => {
-  const planStatus = usePlanStatus();
-  const isPremium = !!planStatus?.membership?.isActive;
-  const expiresInDays = planStatus?.membership?.expiresInDays ?? null;
-  const planName = planStatus?.membership?.planName || "Premium";
-  const handleNavigate = () => {
-    onActionComplete?.();
-    onNavigate?.();
-  };
-
-  if (isPremium) {
-    const badgeContent = (
-      <div
-        className={cn(
-          "flex items-center gap-2 rounded-full border border-green-500/40 bg-gradient-to-r from-green-500/20 via-emerald-500/10 to-cyan-500/10 px-4 py-1.5 text-sm",
-          variant === "mobile" && "w-full rounded-lg py-3",
-          variant === "dropdown" && "w-full rounded-lg py-2 px-3 text-xs",
-        )}
-      >
-        <span className="text-green-300 text-xs uppercase tracking-wide">Premium</span>
-        <span className="font-semibold text-white">{planName}</span>
-        {expiresInDays !== null && (
-          <span className="text-xs text-neutral-300">
-            {expiresInDays === 0 ? "Renews today" : `${expiresInDays}d left`}
-          </span>
-        )}
-      </div>
-    );
-
-    if (variant === "dropdown") {
-      return badgeContent;
-    }
-
-    return badgeContent;
-  }
-
-  const tokenBalance = planStatus?.tokens?.balance ?? fallbackTokens;
-  const tokenPillClasses =
-    variant === "desktop"
-      ? "flex items-center gap-2 bg-neutral-800 rounded-full px-3 py-1 border border-neutral-600"
-      : variant === "mobile"
-        ? "flex items-center justify-between p-3 bg-neutral-800 rounded-lg w-full"
-        : "flex items-center justify-between text-sm";
-
-  const linkContent =
-    variant === "desktop" ? (
-      <>
-        <span className="flex items-center gap-1 text-sm font-medium">
-          ⚡<span>{tokenBalance}</span>
-        </span>
-        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 hover:bg-green-500 transition-colors">
-          <Plus className="h-3 w-3 text-white" />
-        </span>
-      </>
-    ) : variant === "mobile" ? (
-      <>
-        <div className="flex items-center gap-2">
-          <Coins className="h-5 w-5 text-yellow-400" />
-          <span className="text-sm font-medium">Tokens</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold">{tokenBalance}</span>
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 hover:bg-green-500 transition-colors">
-            <Plus className="h-4 w-4 text-white" />
-          </div>
-        </div>
-      </>
-    ) : (
-      <>
-        <span className="text-neutral-400">Tokens:</span>
-        <span className="flex items-center gap-1 font-medium">
-          <Coins className="h-3 w-3 text-yellow-400" />
-          {tokenBalance}
-        </span>
-      </>
-    );
-
-  const content = (
-    <Link
-      href="/profile?tab=tokens"
-      onClick={handleNavigate}
-      className={cn(
-        tokenPillClasses,
-        variant === "dropdown" && "text-sm hover:text-white transition-colors",
-      )}
-    >
-      {linkContent}
-    </Link>
-  );
-
-  return variant === "dropdown" ? (
-    <div className="px-2 py-1">{content}</div>
-  ) : (
-    content
-  );
-};
-
-import { LoaderThree } from "@/components/ui/loader";
+import { LogOut, User, Settings } from "lucide-react";
 import { LoaderX } from "@/components/LoaderX";
 import Link from "next/link";
 
@@ -158,7 +47,6 @@ export default function RootLayout({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
-  const [tokenCount, setTokenCount] = useState<number>(0);
   const pathname = usePathname();
 
   // Check if current route is a notes page
@@ -168,52 +56,40 @@ export default function RootLayout({
     setMounted(true);
     const token = localStorage.getItem("authToken");
     const userData = localStorage.getItem("user");
+    
     if (token && userData) {
       setIsLoggedIn(true);
-      setUser(JSON.parse(userData));
-      fetchTokenCount(token);
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
     }
   }, []);
 
-  const fetchTokenCount = async (authToken: string) => {
-    try {
-      const response = await api.get("/auth/getToken", {
-        headers: {
-          'Auth': authToken
-        }
-      });
-      
-      if (response.data.success) {
-        setTokenCount(response.data.token);
-      }
-    } catch (error) {
-      console.error("❌ Error fetching token count:", error);
-    }
-  };
-
   const handleLogout = () => {
+    // Clear all local storage
     localStorage.removeItem("authToken");
     localStorage.removeItem("user");
+    
+    // Clear Google OAuth session
+    googleLogout();
+    
     setIsLoggedIn(false);
     setUser(null);
-    setTokenCount(0);
-  };
-
-  const handleTokenClick = () => {
-    window.location.href = "/profile?tab=tokens";
+    
+    // Redirect to home page
+    window.location.href = "/";
   };
 
   if (!mounted)
     return (
       <html lang="en" className="scroll-smooth bg-black">
         <body>
-               <LoaderX/>
+          <LoaderX />
         </body>
       </html>
     );
 
   return (
-    <GoogleOAuthProvider clientId="282412601110-562uee31vll96ict5q9bg0elt7p4ilbb.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={`${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}`}>
       <html lang="en" className="scroll-smooth bg-black text-white">
         <head>
           <title>PaperTube</title>
@@ -241,12 +117,6 @@ export default function RootLayout({
                   />
                   {isLoggedIn ? (
                     <div className="flex items-center gap-4">
-                      <PlanStatusDisplay
-                        variant="desktop"
-                        fallbackTokens={tokenCount}
-                        onNavigate={handleTokenClick}
-                      />
-
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button className="flex items-center gap-2 p-1 rounded-full hover:bg-neutral-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-600">
@@ -260,7 +130,7 @@ export default function RootLayout({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="w-56 bg-neutral-900 border-neutral-700 text-white"
+                          className="w-64 bg-neutral-900 border-neutral-700 text-white"
                         >
                           <div className="flex items-center gap-2 p-2">
                             <Avatar className="h-8 w-8">
@@ -275,21 +145,26 @@ export default function RootLayout({
                             </div>
                           </div>
                           
-                          <PlanStatusDisplay
-                            variant="dropdown"
-                            fallbackTokens={tokenCount}
-                            onNavigate={handleTokenClick}
-                          />
-                          
                           <DropdownMenuSeparator className="bg-neutral-700" />
+                          
                           <DropdownMenuItem 
                             className="flex items-center gap-2 hover:bg-neutral-800 cursor-pointer focus:bg-neutral-800"
-                            onClick={handleTokenClick}
+                            onClick={() => window.location.href = "/profile"}
                           >
                             <User className="h-4 w-4" />
                             <span>Profile</span>
                           </DropdownMenuItem>
+                          
+                          <DropdownMenuItem 
+                            className="flex items-center gap-2 hover:bg-neutral-800 cursor-pointer focus:bg-neutral-800"
+                            onClick={() => window.location.href = "/profile?tab=settings"}
+                          >
+                            <Settings className="h-4 w-4" />
+                            <span>Settings</span>
+                          </DropdownMenuItem>
+                          
                           <DropdownMenuSeparator className="bg-neutral-700" />
+                          
                           <DropdownMenuItem
                             className="flex items-center gap-2 text-red-400 hover:bg-red-950 hover:text-red-300 cursor-pointer focus:bg-red-950 focus:text-red-300"
                             onClick={handleLogout}
@@ -308,7 +183,6 @@ export default function RootLayout({
                           setIsLoggedIn(true);
                           localStorage.setItem("authToken", token);
                           localStorage.setItem("user", JSON.stringify(userData));
-                          fetchTokenCount(token);
                         }}
                       />
                     </div>
@@ -357,13 +231,6 @@ export default function RootLayout({
                           </div>
                         </div>
 
-                        <PlanStatusDisplay
-                          variant="mobile"
-                          fallbackTokens={tokenCount}
-                          onNavigate={handleTokenClick}
-                          onActionComplete={() => setMenuOpen(false)}
-                        />
-
                         <Link
                           href="/profile"
                           className="flex items-center gap-2 px-4 py-2 text-neutral-300 hover:bg-neutral-800 rounded-md transition"
@@ -380,6 +247,7 @@ export default function RootLayout({
                         >
                           Dashboard
                         </NavbarButton>
+                        
                         <button
                           onClick={() => {
                             handleLogout();
@@ -400,7 +268,6 @@ export default function RootLayout({
                           localStorage.setItem("authToken", token);
                           localStorage.setItem("user", JSON.stringify(userData));
                           setMenuOpen(false);
-                          fetchTokenCount(token);
                         }}
                       />
                     )}
@@ -429,15 +296,19 @@ function GoogleLoginBtn({
       try {
         const accessToken = tokenResponse.access_token;
 
+        // Get user info from Google
         const { data } = await axios.get(
           "https://www.googleapis.com/oauth2/v3/userinfo",
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
 
+        // Send to backend
         const response = await api.post("/auth/google", {
           name: data.name,
           email: data.email,
           picture: data.picture,
+          googleAccessToken: accessToken,
+          authType: 'login'
         });
 
         const sessionToken = response.data.sessionToken;
@@ -447,12 +318,18 @@ function GoogleLoginBtn({
 
         onSuccess(data, sessionToken);
 
+        // Redirect to home page
         window.location.href = "/";
       } catch (err) {
         console.error("Google login error:", err);
+        alert("Login failed. Please try again.");
       }
     },
-    onError: (err) => console.error("Login Failed:", err),
+    onError: (err) => {
+      console.error("Login Failed:", err);
+      alert("Google authentication failed. Please try again.");
+    },
+    scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
   });
 
   return (

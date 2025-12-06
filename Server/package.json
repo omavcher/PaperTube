@@ -9,6 +9,7 @@
     "postinstall": "npx puppeteer browsers install chrome"
   },
   "dependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
     "@google/genai": "^1.16.0",
     "@google/generative-ai": "^0.24.1",
     "@huggingface/inference": "^4.7.1",
@@ -17,15 +18,19 @@
     "cors": "^2.8.5",
     "dotenv": "^10.0.0",
     "dropbox": "^10.34.0",
-    "express": "^4.17.1",
+    "express": "^4.22.1",
     "googleapis": "^159.0.0",
     "groq-sdk": "^0.37.0",
     "html-pdf": "^3.0.1",
     "html-pdf-node": "^1.0.8",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.1",
+    "multer": "^2.0.2",
     "node-cron": "^4.2.1",
+    "pdf-lib": "^1.17.1",
+    "pdfkit": "^0.17.2",
     "puppeteer": "^24.25.0",
+    "sharp": "^0.34.5",
     "youtube-captions-scraper": "^2.0.3",
     "ytdl-core": "^4.11.5"
   },

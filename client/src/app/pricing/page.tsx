@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import api from "@/config/api";
 import Script from "next/script";
+import Footer from "@/components/Footer";
 
 // Declare Razorpay types
 interface RazorpayOptions {
@@ -964,8 +965,15 @@ export default function PricingSection() {
 
       <section className="relative min-h-screen bg-black text-white py-20 px-4 overflow-hidden font-sans selection:bg-red-500/30">
         {/* Background Ambience - Subtle red glow to break the flat black */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[500px] bg-red-600/10 blur-[120px] rounded-full pointer-events-none" />
-
+       <div
+                className={cn(
+                  "absolute inset-0",
+                  "[background-size:40px_40px]",
+                  "[background-image:linear-gradient(to_right,#262626_1px,transparent_1px),linear-gradient(to_bottom,#262626_1px,transparent_1px)]",
+                )}
+              />
+              <div className="pointer-events-none absolute inset-0 bg-black [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
+      
         <div className="relative max-w-7xl mx-auto z-10">
           
           {/* Header Section */}
@@ -1221,6 +1229,7 @@ export default function PricingSection() {
           }
         `}</style>
       </section>
+      <Footer/>
     </>
   );
 }

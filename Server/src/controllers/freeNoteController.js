@@ -4,10 +4,6 @@ const GroqMultiModel = require('../utils/groqMultiModel');
 const crypto = require('crypto');
 
 const FREE_MODELS = ['sankshipta', 'bhashasetu'];
-const MODEL_TOKEN_COSTS = {
-  sankshipta: 25,
-  bhashasetu: 50
-};
 const MAX_FREE_VIDEO_LENGTH = 90 * 60; // 90 minutes in seconds
 
 // Initialize Groq client
@@ -617,8 +613,6 @@ async function fetchYouTubeInfo(url) {
 }
 
 exports.createNote = async (req, res) => {
-  let user;
-  let actualTokenCost;
   const startTime = Date.now();
 
   try {
@@ -656,26 +650,12 @@ exports.createNote = async (req, res) => {
       });
     }
 
-    // Get actual token cost for the model
-    actualTokenCost = MODEL_TOKEN_COSTS[model] || 25;
-
     // Find user by ID
-    user = await User.findById(userId);
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
         message: "User not found"
-      });
-    }
-
-    // Check if user has enough tokens
-    if (user.token < actualTokenCost) {
-      return res.status(403).json({
-        success: false,
-        code: "INSUFFICIENT_TOKENS",
-        message: `You need ${actualTokenCost} tokens to use this model`,
-        requiredTokens: actualTokenCost,
-        availableTokens: user.token
       });
     }
 
@@ -809,7 +789,6 @@ exports.createNote = async (req, res) => {
         language: settings?.language || 'English',
         detailLevel: settings?.detailLevel || 'Standard Notes',
         prompt: prompt || "",
-        cost: actualTokenCost,
         generatedAt: new Date(),
         processingTime: processingTime,
         type: 'free',
@@ -818,16 +797,17 @@ exports.createNote = async (req, res) => {
 
     await newNote.save();
 
-    // STEP 5: Update user tokens and history
-    user.token -= actualTokenCost;
-    user.usedToken += actualTokenCost;
+    // STEP 5: Update user history (no token updates needed)
+    user.notes.push({ noteId: newNote._id });
     
-    user.tokenUsageHistory.push({
-      name: `Note generation with ${model}`,
-      tokens: actualTokenCost
+    // Track note creation in user activity
+    user.noteCreationHistory.push({
+      noteId: newNote._id,
+      model: model,
+      createdAt: new Date(),
+      videoTitle: videoTitle
     });
     
-    user.notes.push({ noteId: newNote._id });
     await user.save();
 
     console.log('Complete note generation finished successfully:', newNote._id);
@@ -843,7 +823,6 @@ exports.createNote = async (req, res) => {
         videoUrl: newNote.videoUrl,
         videoId: newNote.videoId,
         generationDetails: newNote.generationDetails,
-        cost: actualTokenCost,
         createdAt: newNote.createdAt,
         content: newNote.content,
         transcript: newNote.transcript,
@@ -851,8 +830,6 @@ exports.createNote = async (req, res) => {
         visibility: newNote.visibility
       },
       message: "Note generated successfully with AI content!",
-      usedTokens: actualTokenCost,
-      remainingTokens: user.token,
       videoTitle: videoTitle,
       videoDuration: videoDuration ? formatDuration(videoDuration) : 'Unknown',
       generationSettings: {
@@ -864,18 +841,6 @@ exports.createNote = async (req, res) => {
 
   } catch (error) {
     console.error('Error creating free note:', error);
-    
-    // Refund tokens if processing fails
-    if (user && actualTokenCost) {
-      try {
-        user.token += actualTokenCost;
-        user.usedToken -= actualTokenCost;
-        await user.save();
-        console.log('Tokens refunded due to processing failure');
-      } catch (refundError) {
-        console.error('Error refunding tokens:', refundError);
-      }
-    }
     
     res.status(500).json({
       success: false,
@@ -1083,7 +1048,6 @@ exports.getNoteDetails = async (req, res) => {
         status: note.status,
         videoUrl: note.videoUrl,
         generationDetails: note.generationDetails,
-        cost: note.generationDetails?.cost || 25,
         createdAt: note.createdAt,
         content: note.content,
         transcript: note.transcript,

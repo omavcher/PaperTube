@@ -22,30 +22,31 @@ interface AuthSuccessResponse {
 export default function GoogleAuthButton({ type, className = '' }: GoogleAuthButtonProps) {
   const router = useRouter();
 
-  const handleGoogleSuccess = async (
-    response: Omit<TokenResponse, 'error' | 'error_description' | 'error_uri'>
-  ) => {
-    try {
-      // Send the Google access token to your backend
-      const result = await api.post<AuthSuccessResponse>('/auth/google', {
-        accessToken: response.access_token,
-        authType: type // 'login' or 'signup'
-      });
+  // In your GoogleAuthButton.tsx
+const handleGoogleSuccess = async (response) => {
+  try {
+    // Send the Google access token to your backend
+    const result = await api.post<AuthSuccessResponse>('/auth/google', {
+      accessToken: response.access_token,
+      authType: type // 'login' or 'signup'
+    });
 
-      // Store session/token in localStorage
-      if (result.data.token) {
-        localStorage.setItem('authToken', result.data.token);
-        localStorage.setItem('user', JSON.stringify(result.data.user));
-      }
-
-      // Redirect to dashboard or home page
-      router.push('/dashboard');
-
-    } catch (error) {
-      console.error('Google auth failed:', error);
-      alert('Authentication failed. Please try again.');
+    // Store tokens
+    if (result.data.token) {
+      localStorage.setItem('authToken', result.data.token);
+      localStorage.setItem('user', JSON.stringify(result.data.user));
     }
-  };
+    
+    // Store Google access token for Drive operations
+    localStorage.setItem('googleAccessToken', response.access_token);
+
+    // Redirect to dashboard or home page
+    router.push('/dashboard');
+  } catch (error) {
+    console.error('Google auth failed:', error);
+    alert('Authentication failed. Please try again.');
+  }
+};
 
   const googleLogin = useGoogleLogin({
     onSuccess: handleGoogleSuccess,
@@ -53,6 +54,8 @@ export default function GoogleAuthButton({ type, className = '' }: GoogleAuthBut
       console.error('Google OAuth failed');
       alert('Google authentication failed. Please try again.');
     },
+      scope: 'https://www.googleapis.com/auth/drive.file', // Add Drive permission
+
   });
 
   return (

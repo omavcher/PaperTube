@@ -10,12 +10,11 @@ import {
   IconSettings,
   IconLanguage, 
   IconListDetails,
-  IconCoin,
   IconCrown
 } from "@tabler/icons-react";
 import { useRouter } from 'next/navigation';
 import { Cover } from './ui/cover';
-import { ArrowUpIcon, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { ArrowUpIcon, CheckCircle2, AlertCircle, Clock, FileText, ShieldCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -51,7 +50,8 @@ import axios from "axios";
 import Image from 'next/image';
 import { FcGoogle } from "react-icons/fc";
 import SubscriptionDialog from "@/components/SubscriptionDialog";
-
+import AdDialog from './AdDialog';
+import { cn } from '@/lib/utils';
 // --- Constants ---
 
 const LOADING_STATES = [
@@ -68,7 +68,6 @@ const AI_MODELS = [
     name: "Sankshipta",
     fullName: "Sankshipta",
     accessTier: "Free",
-    tokenCost: 25,
     description: "Basic colorful notes without images",
     endpoint: "free"
   },
@@ -77,7 +76,6 @@ const AI_MODELS = [
     name: "Bhasha-Setu",
     fullName: "Bhasha-Setu",
     accessTier: "Free",
-    tokenCost: 50,
     description: "Advanced notes with images and enhanced styling",
     endpoint: "free"
   },
@@ -116,7 +114,6 @@ interface UserData {
   name: string;
   email: string;
   picture?: string;
-  tokens?: number;
 }
 
 interface VideoInfo {
@@ -141,13 +138,8 @@ interface MembershipData {
 interface PlanStatusData {
   user: UserData;
   membership: MembershipData;
-  tokens: {
-    balance: number;
-    used: number;
-  };
   usageSummary: {
     notesCreated: number;
-    tokenTransactions: number;
   };
   recentTransactions: any[];
 }
@@ -175,11 +167,10 @@ function LoginDialog({ isOpen, onClose, onSuccess }: {
         });
 
         const sessionToken = response.data.sessionToken;
-        const userWithTokens = { ...data, tokens: response.data.tokens || 50 };
 
         localStorage.setItem("authToken", sessionToken);
-        localStorage.setItem("user", JSON.stringify(userWithTokens));
-        onSuccess(userWithTokens, sessionToken);
+        localStorage.setItem("user", JSON.stringify(data));
+        onSuccess(data, sessionToken);
         onClose();
       } catch (err) {
         console.error("Google login error:", err);
@@ -194,7 +185,7 @@ function LoginDialog({ isOpen, onClose, onSuccess }: {
         <DialogHeader>
           <DialogTitle className="text-center text-xl">Access Your Workspace</DialogTitle>
           <DialogDescription className="text-center text-neutral-400">
-            Login to generate notes, manage tokens, and save history.
+            Login to generate notes and save history.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-4 space-y-4">
@@ -204,50 +195,6 @@ function LoginDialog({ isOpen, onClose, onSuccess }: {
           >
             <FcGoogle className="text-xl" />
             Continue with Google
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function TokenDialog({ 
-  isOpen, 
-  onClose, 
-  requiredTokens, 
-  availableTokens 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void;
-  requiredTokens: number;
-  availableTokens: number;
-}) {
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[90vw] sm:max-w-md bg-neutral-900 border-neutral-700 text-white rounded-xl">
-        <DialogHeader>
-          <DialogTitle className="text-center text-xl text-yellow-500">Low Token Balance</DialogTitle>
-          <DialogDescription className="text-center text-neutral-400">
-            You don't have enough tokens for this model.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="p-4 text-center">
-          <div className="mb-4 space-y-2">
-            <p className="text-sm text-neutral-300">
-              Required: <span className="text-yellow-400 font-semibold">{requiredTokens} tokens</span>
-            </p>
-            <p className="text-sm text-neutral-300">
-              Available: <span className="text-red-400 font-semibold">{availableTokens} tokens</span>
-            </p>
-            <p className="text-xs text-neutral-400 mt-2">
-              Upgrade your plan or wait for the daily refresh.
-            </p>
-          </div>
-          <button 
-            onClick={onClose} 
-            className="w-full py-3 bg-yellow-600 rounded-xl hover:bg-yellow-500 transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
-          >
-            Get More Tokens
           </button>
         </div>
       </DialogContent>
@@ -339,15 +286,13 @@ export default function HomeMain() {
   
   // User/Auth States
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userTokens, setUserTokens] = useState(0);
   const [hasPremiumAccess, setHasPremiumAccess] = useState(false);
   
   // Dialog States
   const [showLoginDialog, setShowLoginDialog] = useState(false);
-  const [showTokenDialog, setShowTokenDialog] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [showVideoTooLongDialog, setShowVideoTooLongDialog] = useState(false);
-  const [tokenDialogData, setTokenDialogData] = useState({ requiredTokens: 0, availableTokens: 0 });
+  const [showAdDialog, setShowAdDialog] = useState(false);
   const [videoTooLongData, setVideoTooLongData] = useState({ videoDuration: '', maxAllowedDuration: '' });
 
   const youtubeRegex = useMemo(() => 
@@ -364,7 +309,6 @@ export default function HomeMain() {
     if (token && userDataStr) {
       const user = JSON.parse(userDataStr);
       setIsAuthenticated(true);
-      setUserTokens(user.tokens || 100);
       
       // Check for premium subscription
       if (planStatusStr) {
@@ -418,7 +362,6 @@ export default function HomeMain() {
 
   const handleLoginSuccess = (user: UserData) => {
     setIsAuthenticated(true);
-    setUserTokens(user.tokens || 50);
     setShowLoginDialog(false);
     
     // Re-check premium status after login
@@ -451,7 +394,12 @@ export default function HomeMain() {
     setSelectedModel(model);
   };
 
-  const handleCreateNote = async () => {
+  const handleAdComplete = async () => {
+    // This function is called when the ad is completed
+    await createNote();
+  };
+
+  const createNote = async () => {
     const authToken = localStorage.getItem('authToken');
     if (!authToken) {
       setShowLoginDialog(true);
@@ -469,16 +417,6 @@ export default function HomeMain() {
       return;
     }
 
-    // Check if user has enough tokens for free models (only for non-premium users)
-    if (selectedModel.endpoint === "free" && !hasPremiumAccess && userTokens < selectedModel.tokenCost) {
-      setTokenDialogData({
-        requiredTokens: selectedModel.tokenCost,
-        availableTokens: userTokens
-      });
-      setShowTokenDialog(true);
-      return;
-    }
-
     // Only show paywall for premium models if user doesn't have premium access
     if (selectedModel.endpoint === "premium" && !hasPremiumAccess) {
       setShowPaywall(true);
@@ -490,8 +428,6 @@ export default function HomeMain() {
 
     try {
       // Determine endpoint based on model configuration
-      // Free models always use /free endpoint, even for premium users
-      // Premium models use /premium endpoint
       const endpoint = `/notes/${selectedModel.endpoint}`;
 
       const response = await api.post(endpoint, {
@@ -513,13 +449,7 @@ export default function HomeMain() {
       console.error('Error creating note:', err);
       
       // Handle specific error cases
-      if (err.response?.data?.code === "INSUFFICIENT_TOKENS") {
-        setTokenDialogData({
-          requiredTokens: err.response.data.requiredTokens,
-          availableTokens: err.response.data.availableTokens
-        });
-        setShowTokenDialog(true);
-      } else if (err.response?.data?.code === "VIDEO_TOO_LONG") {
+      if (err.response?.data?.code === "VIDEO_TOO_LONG") {
         setVideoTooLongData({
           videoDuration: err.response.data.videoDuration,
           maxAllowedDuration: err.response.data.maxAllowedDuration
@@ -535,6 +465,16 @@ export default function HomeMain() {
     }
   };
 
+  const handleCreateNote = async () => {
+    // For free models, show ad dialog if user is not premium
+    if (selectedModel.endpoint === "free" && !hasPremiumAccess) {
+      setShowAdDialog(true);
+    } else {
+      // For premium users or premium models, create note directly
+      await createNote();
+    }
+  };
+
   const handleUpgradeToPremium = () => {
     setShowVideoTooLongDialog(false);
     setShowPaywall(true);
@@ -544,34 +484,28 @@ export default function HomeMain() {
   const isFreeModel = selectedModel.endpoint === "free";
   const isPremiumModel = selectedModel.endpoint === "premium";
   
-  // Premium users don't need tokens for free models, non-premium users do
-  const hasEnoughTokens = isFreeModel 
-    ? (hasPremiumAccess ? true : userTokens >= selectedModel.tokenCost)
-    : true;
-
   // Video length restrictions only apply to free users using free models
   const isVideoTooLong = videoInfo?.tooLongForFree && !hasPremiumAccess && isFreeModel;
 
   // Can use selected model if:
-  // - For free models: always allowed for premium users, or if non-premium has enough tokens
+  // - For free models: always allowed (with ad for non-premium users)
   // - For premium models: only if user has premium access
   const canUseSelectedModel = 
-    (isFreeModel && (hasPremiumAccess || hasEnoughTokens)) ||
-    (isPremiumModel && hasPremiumAccess);
+    isFreeModel || (isPremiumModel && hasPremiumAccess);
 
   const getButtonText = () => {
     if (!videoUrl) return 'Enter URL';
     if (isVideoTooLong) return 'Video Too Long';
-    if (isFreeModel && !hasPremiumAccess && !hasEnoughTokens) return 'Insufficient Tokens';
     if (isPremiumModel && !hasPremiumAccess) return 'Upgrade for Premium';
+    if (isFreeModel && !hasPremiumAccess) return 'Watch Ad to Generate';
     return 'Generate';
   };
 
   const getModelBadgeText = (model: typeof AI_MODELS[0]) => {
     if (hasPremiumAccess) {
-      return model.endpoint === "free" ? `${model.tokenCost} tokens` : "Included";
+      return model.endpoint === "free" ? "Free with Ad" : "Included";
     }
-    return model.endpoint === "free" ? `${model.tokenCost} tokens` : "Premium";
+    return model.endpoint === "free" ? "Free with Ad" : "Premium";
   };
 
   const getModelBadgeVariant = (model: typeof AI_MODELS[0]) => {
@@ -583,19 +517,20 @@ export default function HomeMain() {
 
   return (
     <section className="w-full min-h-screen relative flex flex-col items-center justify-center overflow-x-hidden bg-black px-4 py-8 md:py-12">
+       <div
+                className={cn(
+                  "absolute inset-0",
+                  "[background-size:40px_40px]",
+                  "[background-image:linear-gradient(to_right,#262626_1px,transparent_1px),linear-gradient(to_bottom,#262626_1px,transparent_1px)]",
+                )}
+              />
+              <div className="pointer-events-none absolute inset-0 bg-black [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
       
       {/* --- Dialogs --- */}
       <LoginDialog 
         isOpen={showLoginDialog} 
         onClose={() => setShowLoginDialog(false)} 
         onSuccess={handleLoginSuccess} 
-      />
-      
-      <TokenDialog 
-        isOpen={showTokenDialog} 
-        onClose={() => setShowTokenDialog(false)}
-        requiredTokens={tokenDialogData.requiredTokens}
-        availableTokens={tokenDialogData.availableTokens}
       />
       
       <VideoTooLongDialog
@@ -610,6 +545,13 @@ export default function HomeMain() {
       <SubscriptionDialog 
         open={showPaywall} 
         onOpenChange={setShowPaywall} 
+      />
+
+      {/* Ad Dialog */}
+      <AdDialog
+        open={showAdDialog}
+        onOpenChange={setShowAdDialog}
+        onAdComplete={handleAdComplete}
       />
 
       {/* --- Loader --- */}
@@ -828,16 +770,6 @@ export default function HomeMain() {
                 {/* Bottom Row on Mobile: Cost & Action */}
                 <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3">
                   
-                  {/* Token Display - Only show for free models when user is not premium */}
-                  {isAuthenticated && isFreeModel && !hasPremiumAccess && (
-                    <div className="flex items-center gap-2 text-xs text-neutral-400">
-                      <IconCoin className="w-4 h-4 text-yellow-500" />
-                      <span className={hasEnoughTokens ? 'text-green-400' : 'text-red-400'}>
-                        {userTokens} / {selectedModel.tokenCost}
-                      </span>
-                    </div>
-                  )}
-                  
                   {hasPremiumAccess && (
                     <div className="flex items-center gap-2 text-xs text-yellow-400">
                       <IconCrown className="w-4 h-4" />
@@ -891,7 +823,8 @@ export default function HomeMain() {
 
         </div>
       </div>
-      <BackgroundBeams />
+
+
     </section>
   );
 }

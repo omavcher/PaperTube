@@ -69,9 +69,15 @@ const noteSchema = new mongoose.Schema(
     
     // --- Final PDF Details ---
     pdf_data: {
-      downloadUrl: { type: String, default: null },
+      fileId: { type: String, default: null },
+      fileName: { type: String, default: null },
+      viewLink: { type: String, default: null },
+      downloadLink: { type: String, default: null },
+      thumbnailLink: { type: String, default: null },
       fileSize: { type: Number, default: null },
+      uploadedAt: { type: Date, default: Date.now }
     },
+    
     
     // --- Analytics & Engagement ---
     views: { type: Number, default: 0 },
