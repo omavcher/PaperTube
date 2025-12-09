@@ -86,6 +86,11 @@ const noteSchema = new mongoose.Schema(
       count: { type: Number, default: 1 }
     }],
     lastViewedAt: { type: Date },
+    likes: { type: Number, default: 0 },
+    likedBy: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }],
     
     // --- Status Tracking ---
     status: {

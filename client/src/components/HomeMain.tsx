@@ -45,13 +45,14 @@ import {
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useGoogleLogin } from "@react-oauth/google";
+import { useGoogleLogin, googleLogout } from "@react-oauth/google";
 import axios from "axios";
 import Image from 'next/image';
 import { FcGoogle } from "react-icons/fc";
 import SubscriptionDialog from "@/components/SubscriptionDialog";
 import AdDialog from './AdDialog';
 import { cn } from '@/lib/utils';
+
 // --- Constants ---
 
 const LOADING_STATES = [
@@ -114,6 +115,18 @@ interface UserData {
   name: string;
   email: string;
   picture?: string;
+  googleAccessToken?: string;
+}
+
+interface BackendResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    token: string;
+    expiresIn: string;
+    googleAccessToken?: string;
+    user: UserData;
+  };
 }
 
 interface VideoInfo {
@@ -146,41 +159,189 @@ interface PlanStatusData {
 
 // --- Sub-Components ---
 
-function LoginDialog({ isOpen, onClose, onSuccess }: { 
+function LoginDialog({ 
+  isOpen, 
+  onClose, 
+  onSuccess 
+}: { 
   isOpen: boolean; 
   onClose: () => void; 
-  onSuccess: (userData: UserData, token: string) => void;
+  onSuccess: (googleAccessToken: string, userInfo: UserData, backendResponse?: BackendResponse) => void;
 }) {
+  const [authLoading, setAuthLoading] = useState(false);
+
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
+        setAuthLoading(true);
+        console.log("Google OAuth response:", tokenResponse);
         const accessToken = tokenResponse.access_token;
-        const { data } = await axios.get<UserData>(
+
+        // Get user info from Google using access token
+        const { data: userInfo } = await axios.get<UserData>(
           "https://www.googleapis.com/oauth2/v3/userinfo",
-          { headers: { Authorization: `Bearer ${accessToken}` } }
+          { 
+            headers: { 
+              Authorization: `Bearer ${accessToken}` 
+            } 
+          }
         );
+
+        console.log("User info from Google:", userInfo);
+
+        // Send to backend
+        try {
+          const response = await api.post<BackendResponse>("/auth/google", {
+            googleAccessToken: accessToken,
+            authType: 'access_token'
+          });
+
+          console.log("Backend response:", response.data);
+
+          if (response.data.success && response.data.data) {
+            // Call the success handler with backend data
+            onSuccess(accessToken, {
+              name: userInfo.name,
+              email: userInfo.email,
+              picture: userInfo.picture,
+              googleAccessToken: response.data.data.googleAccessToken || accessToken,
+              ...response.data.data.user
+            }, response.data);
+            
+            // Store tokens and user data
+            localStorage.setItem("authToken", response.data.data.token);
+            localStorage.setItem("user", JSON.stringify({
+              ...userInfo,
+              ...response.data.data.user,
+              googleAccessToken: response.data.data.googleAccessToken || accessToken
+            }));
+            localStorage.setItem("googleAccessToken", response.data.data.googleAccessToken || accessToken);
+            localStorage.setItem("expiresIn", response.data.data.expiresIn);
+          } else {
+            // If backend returns success: false but has data, still proceed
+            if (response.data.data) {
+              onSuccess(accessToken, {
+                name: userInfo.name,
+                email: userInfo.email,
+                picture: userInfo.picture,
+                googleAccessToken: response.data.data.googleAccessToken || accessToken,
+                ...response.data.data.user
+              }, response.data);
+              
+              localStorage.setItem("authToken", response.data.data.token);
+              localStorage.setItem("user", JSON.stringify({
+                ...userInfo,
+                ...response.data.data.user,
+                googleAccessToken: response.data.data.googleAccessToken || accessToken
+              }));
+              localStorage.setItem("googleAccessToken", response.data.data.googleAccessToken || accessToken);
+              localStorage.setItem("expiresIn", response.data.data.expiresIn);
+            } else {
+              throw new Error(response.data.message || "Login failed");
+            }
+          }
+        } catch (backendError: any) {
+          console.error("Backend API error:", backendError);
+          
+          // Check if it's a network error or server error
+          if (!backendError.response) {
+            // Network error - use direct login
+            console.log("Network error, using direct login");
+            onSuccess(accessToken, {
+              name: userInfo.name,
+              email: userInfo.email,
+              picture: userInfo.picture,
+              googleAccessToken: accessToken
+            });
+            
+            // Store minimal data
+            localStorage.setItem("authToken", `temp_${Date.now()}`);
+            localStorage.setItem("user", JSON.stringify({
+              ...userInfo,
+              googleAccessToken: accessToken
+            }));
+            localStorage.setItem("googleAccessToken", accessToken);
+          } else {
+            // Server responded with error
+            console.error("Backend error response:", backendError.response.data);
+            
+            // Try to parse error message
+            const errorMsg = backendError.response.data?.message || 
+                           backendError.response.data?.error || 
+                           "Backend authentication failed";
+            
+            // Still allow login with Google data for non-401 errors
+            if (backendError.response.status !== 401) {
+              onSuccess(accessToken, {
+                name: userInfo.name,
+                email: userInfo.email,
+                picture: userInfo.picture,
+                googleAccessToken: accessToken
+              });
+              
+              localStorage.setItem("authToken", `temp_${Date.now()}`);
+              localStorage.setItem("user", JSON.stringify({
+                ...userInfo,
+                googleAccessToken: accessToken
+              }));
+              localStorage.setItem("googleAccessToken", accessToken);
+            } else {
+              alert(`${errorMsg}. Please try again.`);
+              return;
+            }
+          }
+        }
         
-        const response = await api.post("/auth/google", {
-          name: data.name,
-          email: data.email,
-          picture: data.picture,
-        });
-
-        const sessionToken = response.data.sessionToken;
-
-        localStorage.setItem("authToken", sessionToken);
-        localStorage.setItem("user", JSON.stringify(data));
-        onSuccess(data, sessionToken);
+        // Close dialog
         onClose();
-      } catch (err) {
-        console.error("Google login error:", err);
+        
+        // Redirect to home page
+        window.location.href = "/";
+        
+      } catch (err: any) {
+        console.error("Google login error details:", err);
+        
+        // More detailed error logging
+        if (err.response) {
+          console.error("Response error:", err.response.data);
+          console.error("Response status:", err.response.status);
+        }
+        
+        // User-friendly error message
+        let errorMessage = "Login failed. Please try again.";
+        
+        if (err.message.includes("Network Error")) {
+          errorMessage = "Cannot connect to server. Please check your internet connection.";
+        } else if (err.message.includes("timeout")) {
+          errorMessage = "Request timeout. Please try again.";
+        } else if (err.response?.status === 401) {
+          errorMessage = "Authentication failed. Please check your credentials.";
+        } else if (err.response?.status === 500) {
+          errorMessage = "Server error. Please try again later.";
+        }
+        
+        alert(errorMessage);
+      } finally {
+        setAuthLoading(false);
       }
     },
-    onError: (err) => console.error("Login Failed:", err),
+    onError: (err) => {
+      console.error("Google OAuth error:", err);
+      alert("Google authentication failed. Please try again.");
+      setAuthLoading(false);
+    },
+    scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/drive.file',
+    flow: 'implicit',
   });
 
+  const handleClose = () => {
+    if (!authLoading) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="w-[90vw] sm:max-w-md bg-neutral-900 border-neutral-700 text-white rounded-xl">
         <DialogHeader>
           <DialogTitle className="text-center text-xl">Access Your Workspace</DialogTitle>
@@ -191,10 +352,20 @@ function LoginDialog({ isOpen, onClose, onSuccess }: {
         <div className="flex flex-col items-center justify-center p-4 space-y-4">
           <button
             onClick={() => login()}
-            className="flex items-center gap-3 px-6 py-3 text-base font-medium bg-white text-black rounded-xl shadow-lg hover:bg-gray-100 transition-all w-full justify-center active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/30"
+            disabled={authLoading}
+            className="flex items-center gap-3 px-6 py-3 text-base font-medium bg-white text-black rounded-xl shadow-lg hover:bg-gray-100 transition-all w-full justify-center active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FcGoogle className="text-xl" />
-            Continue with Google
+            {authLoading ? (
+              <>
+                <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-gray-600 animate-spin"></div>
+                Processing...
+              </>
+            ) : (
+              <>
+                <FcGoogle className="text-xl" />
+                Continue with Google
+              </>
+            )}
           </button>
         </div>
       </DialogContent>
@@ -360,9 +531,23 @@ export default function HomeMain() {
     return () => clearTimeout(delayDebounceFn);
   }, [videoUrl, fetchVideoInfo]);
 
-  const handleLoginSuccess = (user: UserData) => {
+  const handleLoginSuccess = async (googleAccessToken: string, userInfo: UserData, backendResponse?: BackendResponse) => {
     setIsAuthenticated(true);
     setShowLoginDialog(false);
+    
+    // Store data from the response if available
+    if (backendResponse?.data) {
+      const userData = {
+        ...userInfo,
+        ...backendResponse.data.user,
+        googleAccessToken: backendResponse.data.googleAccessToken || googleAccessToken
+      };
+      
+      localStorage.setItem("authToken", backendResponse.data.token);
+      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("googleAccessToken", backendResponse.data.googleAccessToken || googleAccessToken);
+      localStorage.setItem("expiresIn", backendResponse.data.expiresIn);
+    }
     
     // Re-check premium status after login
     const planStatusStr = localStorage.getItem("planStatus");

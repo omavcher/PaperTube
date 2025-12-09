@@ -42,6 +42,12 @@ const UserSchema = new mongoose.Schema(
     googleAccessToken: {
       type: String,
     },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+    },
     name: {
       type: String,
       required: true,
@@ -53,6 +59,14 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
     },
+    followerUsers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }],
+    followingUsers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }],
     mobile: {
       type: String,
       required: false,

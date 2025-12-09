@@ -10,7 +10,7 @@ router.delete("/delete-account", authMiddleware, authController.deleteAccount);
 router.put("/update-profile",authMiddleware, authController.updateProfile);
 router.get("/get-profile",authMiddleware, authController.getProfile);
 router.get("/plan-status", authMiddleware, authController.getPlanStatus);
-
 router.get("/services", authMiddleware, authController.getUserServices);
+
 
 module.exports = router;

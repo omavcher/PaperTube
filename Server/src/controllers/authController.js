@@ -2,22 +2,34 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Note = require("../models/Note");
 const { OAuth2Client } = require('google-auth-library');
+const axios = require('axios'); // Add axios for better HTTP requests
 
 exports.googleAuth = async (req, res) => {
   try {
+    console.log("🔵 Google Auth Request received");
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+    
     const { googleAccessToken, authType } = req.body;
 
     const accessToken = googleAccessToken;
 
     if (!accessToken) {
-      return res.status(400).json({ message: "Access token is required" });
+      console.log("❌ No access token provided");
+      return res.status(400).json({ 
+        success: false,
+        message: "Access token is required" 
+      });
     }
 
     // Create OAuth2 client
     const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
     
+    console.log(`🔄 Processing token (type: ${authType || 'unknown'})`);
+    
+    let email, name, picture, googleId;
+    
     try {
-      // First, try to get user info using the access token
+      // Try to verify as ID token first
       const ticket = await client.verifyIdToken({
         idToken: accessToken,
         audience: process.env.GOOGLE_CLIENT_ID,
@@ -25,43 +37,79 @@ exports.googleAuth = async (req, res) => {
       
       // This works if it's an ID token
       const payload = ticket.getPayload();
-      const { email, name, picture, sub } = payload;
+      email = payload.email;
+      name = payload.name;
+      picture = payload.picture;
+      googleId = payload.sub;
       
-      // Handle user creation/update
-      const user = await handleUserAuth(email, name, picture, sub, accessToken);
-      
-      return sendAuthResponse(res, user, accessToken);
+      console.log("✅ Verified as ID token for:", email);
       
     } catch (idTokenError) {
-      // If ID token verification fails, it's probably an access token
-      console.log("Not an ID token, trying as access token...");
+      console.log("⚠️ Not an ID token, trying as access token...");
       
-      // Use access token to get user info
+      // If ID token verification fails, it's probably an access token
       const userInfo = await getUserInfoFromAccessToken(accessToken);
       
       if (!userInfo || !userInfo.email) {
+        console.error("❌ Failed to get user info from access token");
         return res.status(400).json({ 
-          message: "Could not get user info from Google" 
+          success: false,
+          message: "Could not get user info from Google. Token might be invalid or expired." 
         });
       }
       
-      // Handle user creation/update
-      const user = await handleUserAuth(
-        userInfo.email, 
-        userInfo.name, 
-        userInfo.picture, 
-        userInfo.sub || userInfo.id,
-        accessToken
-      );
+      email = userInfo.email;
+      name = userInfo.name;
+      picture = userInfo.picture;
+      googleId = userInfo.sub || userInfo.id;
       
-      return sendAuthResponse(res, user, accessToken);
+      console.log("✅ Retrieved user info from access token for:", email);
     }
+    
+    // Validate required fields
+    if (!email) {
+      console.error("❌ No email found in token");
+      return res.status(400).json({
+        success: false,
+        message: "No email found in Google token"
+      });
+    }
+    
+    console.log("👤 User info:", { email, name, picture: !!picture, googleId });
+    
+    // Handle user creation/update
+    const user = await handleUserAuth({ email, name, picture, googleId, accessToken });
+    
+    console.log("✅ User processed:", user.email, user._id);
+    
+    // Send success response
+    return sendAuthResponse(res, user, accessToken);
     
   } catch (error) {
     console.error("❌ Google Auth Error:", error);
-    return res.status(500).json({ 
-      message: "Server Error",
-      error: error.message 
+    console.error("Error stack:", error.stack);
+    
+    // Provide better error messages
+    let errorMessage = "Authentication failed";
+    let statusCode = 500;
+    
+    if (error.message.includes('invalid_token') || 
+        error.message.includes('expired') ||
+        error.message.includes('Invalid token')) {
+      errorMessage = "Google token is invalid or expired. Please sign in again.";
+      statusCode = 401;
+    } else if (error.message.includes('Could not get user info')) {
+      errorMessage = "Could not retrieve user information from Google.";
+      statusCode = 400;
+    } else if (error.message.includes('Network Error')) {
+      errorMessage = "Cannot connect to Google servers. Please check your internet.";
+      statusCode = 503;
+    }
+    
+    return res.status(statusCode).json({ 
+      success: false,
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -69,71 +117,199 @@ exports.googleAuth = async (req, res) => {
 // Helper function to get user info from access token
 async function getUserInfoFromAccessToken(accessToken) {
   try {
-    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    console.log("🔄 Getting user info from Google API...");
+    
+    // Try with axios for better error handling
+    const response = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: {
         'Authorization': `Bearer ${accessToken}`
-      }
+      },
+      timeout: 10000 // 10 second timeout
     });
     
-    if (!response.ok) {
-      throw new Error(`Google API error: ${response.status}`);
-    }
+    console.log("✅ Got user info from Google API");
+    return response.data;
     
-    return await response.json();
   } catch (error) {
-    console.error("Error getting user info:", error);
-    return null;
+    console.error("❌ Error getting user info from Google API:", error.message);
+    
+    // Try alternative endpoint as fallback
+    try {
+      console.log("🔄 Trying alternative userinfo endpoint...");
+      const response = await axios.get('https://www.googleapis.com/oauth2/v1/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+        timeout: 10000
+      });
+      
+      console.log("✅ Got user info from alternative endpoint");
+      return response.data;
+      
+    } catch (fallbackError) {
+      console.error("❌ Both endpoints failed:", fallbackError.message);
+      
+      // Try to get token info as last resort
+      try {
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+        const tokenInfo = await client.getTokenInfo(accessToken);
+        
+        console.log("✅ Got token info:", tokenInfo);
+        
+        return {
+          email: tokenInfo.email,
+          sub: tokenInfo.sub,
+          name: tokenInfo.email.split('@')[0] // Default name from email
+        };
+        
+      } catch (tokenError) {
+        console.error("❌ Could not get any user info:", tokenError.message);
+        return null;
+      }
+    }
   }
 }
 
 // Helper function to handle user creation/update
-async function handleUserAuth(email, name, picture, googleId, accessToken) {
-  // Check if user already exists
-  let user = await User.findOne({ email });
-
-  if (!user) {
-    user = await User.create({
-      googleId,
-      name,
-      email,
-      picture,
-      googleAccessToken: accessToken
-    });
-  } else {
-    // Update Google ID or picture if changed
-    user.googleId = googleId || user.googleId;
-    user.picture = picture || user.picture;
-    user.googleAccessToken = accessToken; // Update access token
-    await user.save();
-  }
+async function handleUserAuth(userInfo) {
+  console.log("🔄 Processing user in database...");
   
-  return user;
+  try {
+    const { email, name, picture, googleId, accessToken } = userInfo;
+    
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      console.log("👤 Creating new user:", email);
+      
+      // Generate username from email
+      const username = generateUsername(email);
+      
+      user = await User.create({
+        googleId,
+        name,
+        email,
+        username,
+        picture,
+        googleAccessToken: accessToken,
+        isVerified: true
+      });
+      
+      console.log("✅ New user created:", user._id);
+    } else {
+      console.log("👤 Updating existing user:", user._id);
+      
+      // Build update object
+      const updateData = {};
+      
+      // Only update if not already set
+      if (googleId && !user.googleId) updateData.googleId = googleId;
+      if (picture) updateData.picture = picture;
+      
+      // Always update these fields
+      updateData.googleAccessToken = accessToken;
+      updateData.lastLogin = new Date();
+      
+      // Use findByIdAndUpdate to avoid validation issues with existing fields
+      if (Object.keys(updateData).length > 0) {
+        user = await User.findByIdAndUpdate(
+          user._id,
+          { $set: updateData },
+          { new: true, runValidators: false }
+        );
+      }
+      
+      console.log("✅ User updated");
+    }
+    
+    return user;
+    
+  } catch (dbError) {
+    console.error("❌ Database error:", dbError);
+    
+    // Handle specific validation errors
+    if (dbError.name === 'ValidationError') {
+      // If it's a username error, try to fix it
+      if (dbError.errors?.username) {
+        console.log("🔄 Attempting to fix username validation error...");
+        
+        try {
+          const { email, name, picture, googleId, accessToken } = userInfo;
+          
+          // Find user by email
+          const existingUser = await User.findOne({ email });
+          
+          if (existingUser && !existingUser.username) {
+            // Generate and set username
+            existingUser.username = generateUsername(email);
+            await existingUser.save({ validateBeforeSave: false });
+            console.log("✅ Fixed username for existing user");
+            return existingUser;
+          }
+        } catch (fixError) {
+          console.error("❌ Failed to fix username error:", fixError);
+        }
+      }
+    }
+    
+    throw new Error(`Database error: ${dbError.message}`);
+  }
+}
+
+// Helper function to generate username
+function generateUsername(email) {
+  // Extract base username from email
+  const baseUsername = email.split('@')[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '') // Remove special characters
+    .substring(0, 20); // Limit length
+  
+  // Add random suffix for uniqueness
+  const randomSuffix = Math.floor(Math.random() * 10000);
+  const username = `${baseUsername}${randomSuffix}`;
+  
+  console.log(`🔄 Generated username: ${username} for email: ${email}`);
+  return username;
 }
 
 // Helper function to send response
 function sendAuthResponse(res, user, accessToken) {
   // Create JWT session token
   const token = jwt.sign(
-    { id: user._id, email: user.email },
-    process.env.SESSION_SECRET,
-    { expiresIn: "7d" }
+    { 
+      id: user._id, 
+      email: user.email,
+      name: user.name 
+    },
+    process.env.JWT_SECRET || process.env.SESSION_SECRET, // Use JWT_SECRET as fallback
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
   );
 
-  return res.status(200).json({
+  console.log("✅ Auth successful, sending response for user:", user.email);
+  
+  const response = {
     success: true,
     message: "User logged in successfully",
-    sessionToken: token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      picture: user.picture,
-      googleId: user.googleId
-    },
-    googleAccessToken: accessToken // Send back to frontend for Drive operations
-  });
+    data: {
+      token: token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        picture: user.picture,
+        username: user.username,
+        googleId: user.googleId
+      },
+      googleAccessToken: accessToken, // Send back to frontend for Drive operations
+      expiresIn: 604800 // 7 days in seconds
+    }
+  };
+  
+  console.log("📤 Response being sent:", JSON.stringify(response, null, 2));
+  
+  return res.status(200).json(response);
 }
-
 
 exports.getToken = async (req, res) => {
   try {

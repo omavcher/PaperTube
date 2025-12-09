@@ -29,6 +29,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/payment", authPayment);
 app.use("/api/chart", chartRoutes);
 app.use("/api/pdf", pdfRoutes);
+app.use("/api/users", require("./routes/userRoutes"));
 
 // Start daily token reset scheduler
 tokenResetService.startDailyReset();

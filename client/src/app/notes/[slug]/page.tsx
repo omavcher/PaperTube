@@ -882,15 +882,13 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     setPdfDownloadSteps([]);
   };
 
-  // Handle login success
-  const handleLoginSuccess = (userData: UserData, token: string) => {
-    localStorage.setItem("authToken", token);
-    localStorage.setItem("user", JSON.stringify(userData));
+  const handleLoginSuccess = async (googleAccessToken: string, userInfo: any, backendResponse?: any) => {
     setShowLoginDialog(false);
     setAuthError(null);
     // Reload the note data after successful login
-    loadNoteData();
+    loadNoteData();    // Your success handler logic
   };
+
 
   // Handle login dialog close without login
   const handleLoginClose = () => {
