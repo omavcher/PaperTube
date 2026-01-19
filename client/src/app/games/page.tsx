@@ -162,7 +162,7 @@ export default function PureBlackGamesHub() {
                         game.color,
                         "group-hover:shadow-[0_0_30px_rgba(16,185,129,0.3)]"
                       )}>
-                        {React.cloneElement(game.icon as React.ReactElement, { size: 24 })}
+                        {React.cloneElement(game.icon as React.ReactElement, { size: 24 } as any)}
                       </div>
                     </div>
 
