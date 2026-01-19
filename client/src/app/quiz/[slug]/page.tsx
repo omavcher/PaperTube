@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+// @ts-ignore - Bypasses missing type definitions for canvas-confetti during Vercel build
 import confetti from "canvas-confetti";
 import api from "@/config/api";
 import { useParams, useRouter } from "next/navigation";
@@ -115,7 +116,6 @@ export default function QuizPlayer() {
       if (response.data.success) {
         const data = response.data.data;
 
-        // Ensure each question has proper formatting based on its type
         const formattedQuestions = data.questions.map((q: any, index: number) => {
           let options = q.options || [];
           if (q.quizType === 'truefalse' && options.length === 0) {
@@ -126,7 +126,6 @@ export default function QuizPlayer() {
             ...q,
             questionNumber: index + 1,
             options: options,
-            // Ensure multi answers are arrays for easy comparison
             correctAnswer: q.quizType === 'multi' && typeof q.correctAnswer === 'string' 
               ? q.correctAnswer.split(',').map((s: string) => s.trim()) 
               : q.correctAnswer
@@ -134,7 +133,7 @@ export default function QuizPlayer() {
         });
         
         setQuizData({ ...data, questions: formattedQuestions });
-        setTimeLeft(formattedQuestions.length * 45); // 45 seconds per question
+        setTimeLeft(formattedQuestions.length * 45); 
       } else {
         setError(response.data.message || "Failed to load quiz");
       }
@@ -148,8 +147,6 @@ export default function QuizPlayer() {
   const currentQuestion = quizData?.questions[currentQIndex];
   const progress = quizData ? ((currentQIndex) / quizData.questions.length) * 100 : 0;
 
-  // --- Answer Handling Logic ---
-
   const handleOptionClick = (optionText: string) => {
     if (isAnswered || !currentQuestion) return;
 
@@ -161,7 +158,6 @@ export default function QuizPlayer() {
       setSelectedAnswer(newSelection);
     } else {
       setSelectedAnswer(optionText);
-      // For MCQ and T/F, we can auto-submit or wait for button
       if (currentQuestion.quizType === "truefalse") submitAnswer(optionText);
     }
   };
@@ -210,8 +206,6 @@ export default function QuizPlayer() {
     }
   };
 
-  // --- Styling Helpers ---
-
   const getOptionStyle = (option: string) => {
     if (!currentQuestion) return "";
     const isSelected = Array.isArray(selectedAnswer) ? selectedAnswer.includes(option) : selectedAnswer === option;
@@ -247,17 +241,15 @@ export default function QuizPlayer() {
   );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center selection:bg-orange-500/30">
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center selection:bg-orange-500/30 font-sans">
       
-      {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-orange-950/10 blur-[120px]" />
       </div>
 
-      {/* Header */}
       <header className="w-full max-w-4xl p-4 md:p-6 flex items-center justify-between relative z-10">
-        <Button variant="ghost" onClick={() => router.back()} className="rounded-full hover:bg-white/5">
-          <IconArrowLeft className="w-5 h-5 mr-2" /> Exit
+        <Button variant="ghost" onClick={() => router.back()} className="rounded-full hover:bg-white/5 uppercase font-black text-[10px] tracking-widest">
+          <IconArrowLeft className="w-4 h-4 mr-2" /> Exit
         </Button>
 
         <div className="flex flex-col items-center">
@@ -269,15 +261,14 @@ export default function QuizPlayer() {
         </div>
 
         <div className="hidden md:block text-right">
-            <p className="text-xs font-bold text-neutral-500 uppercase">Accuracy</p>
-            <p className="text-sm font-black text-white">{Math.round((score / Math.max(1, stats.correct + stats.incorrect)) * 100)}%</p>
+            <p className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">Accuracy</p>
+            <p className="text-sm font-black text-white italic">{Math.round((score / Math.max(1, stats.correct + stats.incorrect)) * 100)}%</p>
         </div>
       </header>
 
-      {/* Progress Bar */}
       <div className="w-full max-w-2xl px-6 mb-8 relative z-10">
         <div className="h-1.5 w-full bg-neutral-900 rounded-full overflow-hidden">
-          <motion.div className="h-full bg-orange-600" animate={{ width: `${progress}%` }} />
+          <motion.div className="h-full bg-orange-600 shadow-[0_0_10px_rgba(234,88,12,0.5)]" animate={{ width: `${progress}%` }} />
         </div>
       </div>
 
@@ -291,17 +282,15 @@ export default function QuizPlayer() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-8"
             >
-              {/* Question Header */}
               <div className="space-y-4">
-                <Badge variant="outline" className="border-orange-500/30 text-orange-500 bg-orange-500/5 px-3 py-1 uppercase text-[10px] tracking-widest">
+                <Badge variant="outline" className="border-orange-500/30 text-orange-500 bg-orange-500/5 px-3 py-1 uppercase text-[10px] tracking-widest font-black">
                   Question {currentQIndex + 1} • {currentQuestion?.quizType}
                 </Badge>
-                <h2 className="text-xl md:text-3xl font-bold leading-tight">
+                <h2 className="text-2xl md:text-4xl font-black leading-tight tracking-tighter uppercase italic">
                   {currentQuestion?.question}
                 </h2>
               </div>
 
-              {/* Options Section */}
               <div className="grid gap-3">
                 {currentQuestion?.quizType === "fill" ? (
                   <div className="space-y-4">
@@ -310,12 +299,12 @@ export default function QuizPlayer() {
                       disabled={isAnswered}
                       value={fillInput}
                       onChange={(e) => setFillInput(e.target.value)}
-                      placeholder="Type your answer here..."
-                      className="h-16 text-xl bg-neutral-900/50 border-white/10 text-center focus:border-orange-500"
+                      placeholder="Input neural response..."
+                      className="h-16 text-xl bg-neutral-900/50 border-white/10 text-center focus:border-orange-500 uppercase font-bold"
                     />
                     {!isAnswered && (
-                        <Button onClick={() => submitAnswer()} disabled={!fillInput.trim()} className="w-full h-14 bg-orange-600 hover:bg-orange-500 text-lg font-bold">
-                            Submit Answer
+                        <Button onClick={() => submitAnswer()} disabled={!fillInput.trim()} className="w-full h-14 bg-orange-600 hover:bg-orange-500 text-lg font-black uppercase italic tracking-tighter">
+                          Transmit Answer
                         </Button>
                     )}
                   </div>
@@ -331,10 +320,10 @@ export default function QuizPlayer() {
                       )}
                     >
                       <div className="flex items-center gap-4">
-                        <span className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-xs font-bold text-neutral-500 group-hover:text-orange-500">
+                        <span className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-xs font-black text-neutral-500 group-hover:text-orange-500 transition-colors">
                           {String.fromCharCode(65 + i)}
                         </span>
-                        <span className="font-medium">{option}</span>
+                        <span className="font-bold uppercase tracking-tight">{option}</span>
                       </div>
                       {isAnswered && (
                         (Array.isArray(currentQuestion.correctAnswer) ? currentQuestion.correctAnswer.includes(option) : currentQuestion.correctAnswer === option) ? (
@@ -348,77 +337,67 @@ export default function QuizPlayer() {
                 )}
               </div>
 
-              {/* Multi-Select Submit Button */}
               {!isAnswered && currentQuestion?.quizType === "multi" && (
                 <Button 
                     onClick={() => submitAnswer()} 
                     disabled={!selectedAnswer || (selectedAnswer as string[]).length === 0}
-                    className="w-full h-14 bg-orange-600 hover:bg-orange-500 text-lg font-bold"
+                    className="w-full h-14 bg-orange-600 hover:bg-orange-500 text-lg font-black uppercase italic tracking-tighter"
                 >
                     Confirm Selection
                 </Button>
               )}
 
-              {/* MCQ Manual Submit (Optional, if you don't want auto-submit) */}
-              {!isAnswered && currentQuestion?.quizType === "mcq" && selectedAnswer && (
-                 <Button onClick={() => submitAnswer()} className="w-full h-14 bg-orange-600 hover:bg-orange-500 text-lg font-bold">
-                    Check Answer
-                 </Button>
-              )}
-
-              {/* Explanation & Next Navigation */}
               {isAnswered && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                   <div className="p-6 rounded-2xl bg-neutral-900/50 border border-white/5 flex gap-4">
                     <IconBulb className="w-6 h-6 text-orange-500 shrink-0" />
                     <div className="space-y-1">
-                        <p className="text-xs font-black uppercase tracking-widest text-orange-500">Mastery Note</p>
-                        <p className="text-neutral-300 leading-relaxed">{currentQuestion?.explanation}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">Mastery Analysis</p>
+                        <p className="text-neutral-300 leading-relaxed font-medium text-sm">{currentQuestion?.explanation}</p>
                     </div>
                   </div>
-                  <Button onClick={handleNext} className="w-full h-16 bg-white text-black hover:bg-neutral-200 text-lg font-black uppercase tracking-tighter italic">
-                    {currentQIndex < quizData.questions.length - 1 ? "Advance to Next Question" : "View Final Report"}
-                    <IconArrowRight className="ml-2" />
+                  <Button onClick={handleNext} className="w-full h-16 bg-white text-black hover:bg-neutral-200 text-lg font-black uppercase tracking-tighter italic shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                    {currentQIndex < quizData.questions.length - 1 ? "Next Protocol Step" : "Finalize Report"}
+                    <IconArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </motion.div>
               )}
             </motion.div>
           ) : (
-            /* Results Screen */
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center py-10 space-y-8">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center py-10 space-y-8">
                 <div className="relative inline-block">
                     <div className="absolute inset-0 bg-orange-600 blur-[80px] opacity-20" />
-                    <div className="w-24 h-24 bg-gradient-to-tr from-orange-600 to-amber-400 rounded-3xl flex items-center justify-center mx-auto relative z-10 rotate-3">
+                    <div className="w-24 h-24 bg-gradient-to-tr from-orange-600 to-amber-400 rounded-3xl flex items-center justify-center mx-auto relative z-10 rotate-3 shadow-2xl">
                         <IconTrophy className="w-12 h-12 text-white" />
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <h2 className="text-4xl font-black uppercase italic tracking-tighter">Quiz Protocol Complete</h2>
-                    <p className="text-neutral-500 font-medium">System analysis of your knowledge retention:</p>
+                    <h2 className="text-5xl font-black uppercase italic tracking-tighter">Evaluation Complete</h2>
+                    <p className="text-neutral-500 font-bold uppercase text-[10px] tracking-widest">Neural retention matrix updated:</p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
                     <div className="p-6 rounded-3xl bg-neutral-900/50 border border-white/5">
-                        <p className="text-[10px] font-bold text-neutral-500 uppercase mb-1">Score</p>
-                        <p className="text-2xl font-black">{score}/{quizData.questions.length}</p>
+                        <p className="text-[8px] font-black text-neutral-500 uppercase mb-1 tracking-widest">Score</p>
+                        <p className="text-2xl font-black italic">{score}/{quizData.questions.length}</p>
                     </div>
                     <div className="p-6 rounded-3xl bg-neutral-900/50 border border-white/5">
-                        <p className="text-[10px] font-bold text-neutral-500 uppercase mb-1">Accuracy</p>
-                        <p className="text-2xl font-black">{Math.round((score/quizData.questions.length)*100)}%</p>
+                        <p className="text-[8px] font-black text-neutral-500 uppercase mb-1 tracking-widest">Accuracy</p>
+                        <p className="text-2xl font-black italic">{Math.round((score/quizData.questions.length)*100)}%</p>
                     </div>
                     <div className="p-6 rounded-3xl bg-neutral-900/50 border border-white/5">
-                        <p className="text-[10px] font-bold text-neutral-500 uppercase mb-1">Time</p>
-                        <p className="text-2xl font-black">{Math.floor(timeSpent / 60)}m</p>
+                        <p className="text-[8px] font-black text-neutral-500 uppercase mb-1 tracking-widest">Time</p>
+                        <p className="text-2xl font-black italic">{Math.floor(timeSpent / 60)}m</p>
                     </div>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    <Button onClick={() => window.location.reload()} className="h-14 bg-orange-600 hover:bg-orange-500 font-bold text-lg">
-                        <IconReload className="mr-2" /> Retake Performance
+                    <Button onClick={() => window.location.reload()} className="h-14 bg-orange-600 hover:bg-orange-500 font-black uppercase italic tracking-tighter">
+                        <IconReload className="mr-2 w-5 h-5" /> Restart Evaluation
                     </Button>
-                    <Button variant="ghost" onClick={() => router.push('/')} className="h-14 hover:bg-white/5 font-bold">
-                        Return to Dashboard
+                    <Button variant="ghost" onClick={() => router.push('/')} className="h-14 hover:bg-white/5 font-black uppercase text-[10px] tracking-widest text-neutral-500">
+                        Exit to System Root
                     </Button>
                 </div>
             </motion.div>
@@ -426,9 +405,8 @@ export default function QuizPlayer() {
         </AnimatePresence>
       </main>
 
-      {/* Footer Info */}
-      <footer className="w-full p-6 text-center text-[10px] font-bold text-neutral-700 uppercase tracking-[0.3em]">
-        Neural Logic Engine v2.0 • {quizData.slug}
+      <footer className="w-full p-6 text-center text-[10px] font-black text-neutral-800 uppercase tracking-[0.4em]">
+        Neural Logic Engine v4.1 • {quizData.slug}
       </footer>
     </div>
   );
