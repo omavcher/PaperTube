@@ -63,8 +63,9 @@ export default function ToolsGlimpse() {
             >
               {/* Internal Accent */}
               <div className="absolute top-0 right-0 p-8 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
-                {React.cloneElement(tool.icon as React.ReactElement, { size: 100 })}
-              </div>
+{React.cloneElement(tool.icon as React.ReactElement<{ size?: number }>, { 
+  size: 100 
+})}              </div>
               
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between">

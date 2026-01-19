@@ -23,7 +23,7 @@ export default function GoogleAuthButton({ type, className = '' }: GoogleAuthBut
   const router = useRouter();
 
   // In your GoogleAuthButton.tsx
-const handleGoogleSuccess = async (response) => {
+const handleGoogleSuccess = async (response: { access_token: string; }) => {
   try {
     // Send the Google access token to your backend
     const result = await api.post<AuthSuccessResponse>('/auth/google', {

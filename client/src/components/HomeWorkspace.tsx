@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, JSX } from "react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -429,6 +429,7 @@ export default function NotesWorkspace() {
   }, [isAuthenticated, sortBy, contentType]);
 
   // Fetch personal notes
+ // Fetch personal notes
   const fetchPersonalNotes = useCallback(async (page = 1, append = false, search = '') => {
     if (!isAuthenticated) return;
 
@@ -460,8 +461,12 @@ export default function NotesWorkspace() {
         }
         
         setPersonalPagination(paginationData);
-        setCurrentPage(paginationData?.page || 1);
-        setHasMore(paginationData ? (paginationData.page < paginationData.totalPages) : false);
+
+        // Fix: Use a fallback for the optional 'page' property 
+        // and use that local variable for the 'hasMore' comparison
+        const currentPageNum = paginationData?.page ?? 1;
+        setCurrentPage(currentPageNum);
+        setHasMore(paginationData ? (currentPageNum < paginationData.totalPages) : false);
       }
     } catch (error) {
       console.error("Error fetching personal notes:", error);

@@ -1,12 +1,20 @@
-// components/HomeFeedback.tsx
 "use client";
-import { useScroll, useTransform } from "motion/react";
-import { motion } from "motion/react";
 import React, { useState } from "react";
-import { GoogleGeminiEffect } from "./ui/google-gemini-effect";
-import { FeedbackDialog } from "./FeedbackDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-interface FeedbackData {
+// 1. Define the data structure
+export interface FeedbackData {
   quote: string;
   name: string;
   profileName: string;
@@ -15,60 +23,86 @@ interface FeedbackData {
   time?: string;
 }
 
-function HomeFeedback() {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
+// 2. Define the Props (The Fix)
+interface FeedbackDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (feedback: FeedbackData) => void;
+}
+
+export function FeedbackDialog({ isOpen, onClose, onSuccess }: FeedbackDialogProps) {
+  const [formData, setFormData] = useState({
+    name: "",
+    username: "",
+    quote: "",
   });
 
-  const pathLengthFirst = useTransform(scrollYProgress, [0, 0.8], [0.2, 1.2]);
-  const pathLengthSecond = useTransform(scrollYProgress, [0, 0.8], [0.15, 1.2]);
-  const pathLengthThird = useTransform(scrollYProgress, [0, 0.8], [0.1, 1.2]);
-  const pathLengthFourth = useTransform(scrollYProgress, [0, 0.8], [0.05, 1.2]);
-  const pathLengthFifth = useTransform(scrollYProgress, [0, 0.8], [0, 1.2]);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Construct the feedback object
+    const feedback: FeedbackData = {
+      name: formData.name,
+      profileName: formData.username.startsWith("@") ? formData.username : `@${formData.username}`,
+      quote: formData.quote,
+      time: new Date().toLocaleDateString(),
+    };
 
-  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
-
-  const handleFeedbackSuccess = (feedback: FeedbackData) => {
-    console.log("Feedback submitted:", feedback);
-    // You can handle the feedback data here (send to API, etc.)
+    onSuccess(feedback);
+    onClose();
+    setFormData({ name: "", username: "", quote: "" }); // Reset
   };
 
   return (
-<div className="relative w-full min-h-[40vh] xs:min-h-[50vh] sm:min-h-[60vh] md:min-h-[75vh] lg:min-h-screen overflow-hidden">      <motion.div
-        initial={{ opacity: 0.0, y: 40 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{
-          delay: 0.3,
-          duration: 0.8,
-          ease: "easeInOut",
-        }}
-        className="relative flex flex-col gap-4 items-center justify-center text-center px-4 py-16 md:py-24"
-        ref={ref}
-      >
-        <GoogleGeminiEffect
-          pathLengths={[
-            pathLengthFirst,
-            pathLengthSecond,
-            pathLengthThird,
-            pathLengthFourth,
-            pathLengthFifth,
-          ]}
-          title="Loved turning videos into notes?"
-          description="We'd love to hear your thoughts! Share what you liked, what could be better, or just drop a hello 💬"
-          buttonText="Give Feedback"
-          onButtonClick={() => setIsFeedbackDialogOpen(true)}
-        />
-      </motion.div>
-
-      <FeedbackDialog
-        isOpen={isFeedbackDialogOpen}
-        onClose={() => setIsFeedbackDialogOpen(false)}
-        onSuccess={handleFeedbackSuccess}
-      />
-    </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px] bg-neutral-950 border-neutral-800 text-white">
+        <DialogHeader>
+          <DialogTitle>Share Feedback</DialogTitle>
+          <DialogDescription className="text-neutral-400">
+            Your feedback helps us improve the experience for everyone.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              placeholder="John Doe"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="bg-neutral-900 border-neutral-800"
+              required
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              placeholder="@johndoe"
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              className="bg-neutral-900 border-neutral-800"
+              required
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="quote">Your Thoughts</Label>
+            <Textarea
+              id="quote"
+              placeholder="What did you love about the video-to-notes conversion?"
+              value={formData.quote}
+              onChange={(e) => setFormData({ ...formData, quote: e.target.value })}
+              className="bg-neutral-900 border-neutral-800 min-h-[100px]"
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button type="submit" className="bg-white text-black hover:bg-neutral-200">
+              Submit Feedback
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
-
-export default HomeFeedback;
