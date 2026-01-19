@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { 
   Cpu, Zap, BarChart3, Activity, 
-  Clock, Database, pieChart, TrendingUp, 
+  Clock, Database, PieChart, TrendingUp, 
   Layers, HardDrive, RefreshCcw, 
   LayoutGrid, Share2, MousePointer2,
   FileText
