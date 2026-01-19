@@ -9,22 +9,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    // Sometimes WorkerErrors are triggered by heavy type checking on low-memory build machines
-    ignoreBuildErrors: true, 
-  },
-  // 1. Configure Turbopack aliases
-  experimental: {
-    turbo: {
-      resolveAlias: {
-        canvas: false,
-      },
-    },
-  },
-  // 2. Preserve Webpack fallback for standard builds
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
