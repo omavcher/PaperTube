@@ -76,16 +76,6 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    token: {
-      type: Number,
-      default: 100,
-      min: 0,
-    },
-    usedToken: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
     isNewUser: {
       type: Boolean,
       default: true
@@ -95,20 +85,10 @@ const UserSchema = new mongoose.Schema(
       default: Date.now
     },
     transactions: [TransactionSchema],
-    tokenUsageHistory: [TokenUsageSchema],
     joinedAt: {
       type: Date,
       default: Date.now,
-    },
-    tokenTransactions: [
-      {
-        name: { type: String },
-        type: { type: String },
-        tokensUsed: { type: Number },
-        date: { type: Date, default: Date.now },
-        status: { type: String, default: "success" },
-      },
-    ],    
+    },   
     notes: [
       {
         noteId: {
@@ -117,6 +97,12 @@ const UserSchema = new mongoose.Schema(
         },
       },
     ],
+    noteCreationHistory: [{
+      noteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Note' },
+      model: String,
+      createdAt: { type: Date, default: Date.now },
+      videoTitle: String
+    }],
     membership: {
       isActive: { type: Boolean, default: false },
       planId: { type: String },
@@ -127,6 +113,28 @@ const UserSchema = new mongoose.Schema(
       lastPaymentId: { type: String },
       autoRenew: { type: Boolean, default: false },
     },
+
+    
+    flashcardSets: [{
+    setId: { type: mongoose.Schema.Types.ObjectId, ref: 'FlashcardSet' },
+    addedAt: { type: Date, default: Date.now }
+  }],
+  
+  flashcardCreationHistory: [{
+    setId: { type: mongoose.Schema.Types.ObjectId, ref: 'FlashcardSet' },
+    model: String,
+    createdAt: { type: Date, default: Date.now },
+    videoTitle: String,
+    cardCount: Number
+  }],
+  
+  flashcardStats: {
+    totalCardsStudied: { type: Number, default: 0 },
+    totalStudyTime: { type: Number, default: 0 }, // minutes
+    streak: { type: Number, default: 0 },
+    lastStudyDate: { type: Date },
+    masteryRate: { type: Number, default: 0 } // percentage
+  }
   },
   { timestamps: true }
 );

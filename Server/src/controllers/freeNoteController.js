@@ -2,12 +2,24 @@ const User = require('../models/User');
 const Note = require('../models/Note');
 const GroqMultiModel = require('../utils/groqMultiModel');
 const crypto = require('crypto');
+const { getTranscript } = require('../youtube-transcript');
 
 const FREE_MODELS = ['sankshipta', 'bhashasetu'];
 const MAX_FREE_VIDEO_LENGTH = 90 * 60; // 90 minutes in seconds
 
 // Initialize Groq client
 const groqClient = new GroqMultiModel();
+
+// Map frontend detail levels to backend enum values
+const mapDetailLevel = (level) => {
+  const mapping = {
+    'Standard': 'Standard Notes',
+    'Brief': 'Brief Summary',
+    'Comprehensive': 'Comprehensive',
+    'Bullet Points': 'Bullet Points Only'
+  };
+  return mapping[level] || level;
+};
 
 const extractVideoId = (url) => {
   try {
@@ -233,90 +245,9 @@ ${transcript}
   }
 }
 
-async function getVideoParams(videoId) {
-  const body = {
-    context: {
-      client: {
-        hl: "en-GB",
-        gl: "IN",
-        clientName: "WEB",
-        clientVersion: "2.20250828.01.00",
-        originalUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        platform: "DESKTOP",
-        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36,gzip(gfe)",
-      },
-      user: { lockedSafetyMode: false },
-      request: { useSsl: true },
-    },
-    videoId,
-    captionsRequested: true,
-  };
 
-  try {
-    const response = await fetch("https://www.youtube.com/youtubei/v1/next?prettyPrint=false", {
-      headers: {
-        "content-type": "application/json",
-        "accept": "*/*",
-        "accept-language": "en-US,en;q=0.9",
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "same-origin",
-        "sec-fetch-site": "same-origin",
-        "x-youtube-client-name": "1",
-        "x-youtube-client-version": "2.20250828.01.00",
-        "Referer": `https://www.youtube.com/watch?v=${videoId}`,
-      },
-      body: JSON.stringify(body),
-      method: "POST",
-    });
 
-    const data = await response.json();
 
-    function findTranscriptEndpoint(res) {
-      try {
-        const engagementPanels = res?.engagementPanels || [];
-        for (const panel of engagementPanels) {
-          const renderer = panel?.engagementPanelSectionListRenderer?.content?.continuationItemRenderer;
-          if (renderer?.continuationEndpoint?.getTranscriptEndpoint) {
-            return renderer.continuationEndpoint.getTranscriptEndpoint;
-          }
-        }
-        return null;
-      } catch (error) {
-        console.error("Error finding transcript endpoint:", error);
-        return null;
-      }
-    }
-
-    const endpoint = findTranscriptEndpoint(data);
-
-    if (!endpoint) {
-      console.warn("Transcript endpoint not found in response.");
-    }
-
-    return endpoint?.params;
-  } catch (error) {
-    console.error("Error fetching video params:", error);
-    return null;
-  }
-}
-
-// Enhanced transcript fetching with retry mechanism
-const fetchTranscriptWithRetry = async (videoId, retries = 3) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const transcript = await fetchTranscript(videoId);
-      if (transcript && transcript.trim().length > 0) {
-        return transcript;
-      }
-    } catch (error) {
-      console.warn(`Attempt ${i + 1} failed:`, error.message);
-      if (i === retries - 1) throw error;
-      // Wait before retry (exponential backoff)
-      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-    }
-  }
-  throw new Error('All transcript fetch attempts failed');
-};
 
 // Function to fetch YouTube transcript
 const fetchTranscript = async (videoId) => {
@@ -705,7 +636,7 @@ exports.createNote = async (req, res) => {
     console.log('Fetching transcript...');
     let transcript;
     try {
-      transcript = await fetchTranscriptWithRetry(videoId);
+      transcript = await getTranscript(videoId);
       if (!transcript || transcript.trim().length === 0) {
         throw new Error('Transcript is empty or unavailable for this video');
       }
@@ -723,7 +654,17 @@ exports.createNote = async (req, res) => {
       if (figures && figures.length > 0) {
         console.log(`Generated ${figures.length} figures, fetching images...`);
         img_with_url = await generateImgObjects(figures);
-        console.log(`Found ${img_with_url.length} images`);
+        // Filter out entries with null or invalid img_url
+        img_with_url = img_with_url.filter(img => {
+          if (!img.img_url || !img.img_url.trim().length) return false;
+          try {
+            new URL(img.img_url);
+            return true;
+          } catch {
+            return false;
+          }
+        });
+        console.log(`Found ${img_with_url.length} valid images`);
       }
     }
 
@@ -787,7 +728,7 @@ exports.createNote = async (req, res) => {
       generationDetails: {
         model: model,
         language: settings?.language || 'English',
-        detailLevel: settings?.detailLevel || 'Standard Notes',
+        detailLevel: mapDetailLevel(settings?.detailLevel) || 'Standard Notes',
         prompt: prompt || "",
         generatedAt: new Date(),
         processingTime: processingTime,
@@ -798,9 +739,11 @@ exports.createNote = async (req, res) => {
     await newNote.save();
 
     // STEP 5: Update user history (no token updates needed)
+    if (!user.notes) user.notes = [];
     user.notes.push({ noteId: newNote._id });
     
     // Track note creation in user activity
+    if (!user.noteCreationHistory) user.noteCreationHistory = [];
     user.noteCreationHistory.push({
       noteId: newNote._id,
       model: model,
@@ -834,7 +777,7 @@ exports.createNote = async (req, res) => {
       videoDuration: videoDuration ? formatDuration(videoDuration) : 'Unknown',
       generationSettings: {
         language: settings?.language || 'English',
-        detailLevel: settings?.detailLevel || 'Standard Notes',
+        detailLevel: mapDetailLevel(settings?.detailLevel) || 'Standard Notes',
         userPrompt: prompt || "No additional instructions"
       }
     });

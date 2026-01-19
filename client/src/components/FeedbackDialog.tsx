@@ -1,48 +1,28 @@
-// components/FeedbackDialog.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Star, Send, User, MapPin, Loader2, Mail, CheckCircle } from "lucide-react";
+import { Star, Send, MapPin, Loader2, Mail, CheckCircle, Terminal, User, ShieldCheck } from "lucide-react";
 import { LoginDialog } from "./LoginDialog";
-
-interface FeedbackData {
-  quote: string;
-  name: string;
-  email: string;
-  profileName: string;
-  profilePicture?: string;
-  location?: string;
-  time?: string;
-  rating: number;
-}
+import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+import api from "@/config/api";
 
 interface FeedbackDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (feedback: FeedbackData) => void;
 }
 
-interface LocationData {
-  city: string;
-  region: string;
-  country: string;
-}
-
-// Your Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBcHKEijvUBqqfYbZsftydNYmaYNVoZDJVxDh2ZgqdbiDbbX2_EKzSgXUxsdjQ-jbu/exec';
-
-export function FeedbackDialog({ isOpen, onClose, onSuccess }: FeedbackDialogProps) {
+export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
@@ -56,356 +36,155 @@ export function FeedbackDialog({ isOpen, onClose, onSuccess }: FeedbackDialogPro
     location: "",
   });
 
-  // Use useMemo to prevent unnecessary recreations of user object
   const user = useMemo(() => {
     if (typeof window === "undefined") return null;
-    try {
-      const userData = localStorage.getItem("user");
-      return userData ? JSON.parse(userData) : null;
-    } catch {
-      return null;
-    }
+    const userData = localStorage.getItem("user");
+    return userData ? JSON.parse(userData) : null;
   }, []);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+  useEffect(() => {
+    if (isOpen && user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || "",
+        email: user.email || "",
+      }));
+    }
+  }, [isOpen, user]);
 
-  // Get user location using IP API
-  const getUserLocation = async (): Promise<string> => {
+  const handleGetLocation = async () => {
     try {
       setIsGettingLocation(true);
-      const response = await fetch('https://ipapi.co/json/');
-      const data: LocationData = await response.json();
-      
-      const locationParts = [];
-      if (data.city) locationParts.push(data.city);
-      if (data.region && data.region !== data.city) locationParts.push(data.region);
-      if (data.country) locationParts.push(data.country);
-      
-      return locationParts.join(', ');
-    } catch (error) {
-      console.error('Failed to get location:', error);
-      return '';
+      const res = await fetch('https://ipapi.co/json/');
+      const data = await res.json();
+      setFormData(prev => ({ ...prev, location: `${data.city}, ${data.country_name}` }));
+      toast.success("Coordinates acquired");
+    } catch {
+      toast.error("Location signal lost");
     } finally {
       setIsGettingLocation(false);
     }
   };
 
-  // Initialize form data with user info and location
-  useEffect(() => {
-    const initializeFormData = async () => {
-      if (user?.name || user?.email) {
-        const newFormData = {
-          quote: "",
-          name: user.name || "",
-          email: user.email || "",
-          location: "",
-        };
-
-        // Auto-fill location if user is logged in
-        if (token) {
-          const location = await getUserLocation();
-          newFormData.location = location;
-        }
-
-        setFormData(newFormData);
-      }
-    };
-
-    if (isOpen) {
-      initializeFormData();
-      setIsSuccess(false); // Reset success state when dialog opens
-    }
-  }, [user?.name, user?.email, token, isOpen]);
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleGetLocation = async () => {
-    const location = await getUserLocation();
-    if (location) {
-      setFormData(prev => ({
-        ...prev,
-        location
-      }));
-    }
-  };
-
-  // Save feedback to Google Sheets
-  const saveToGoogleSheets = async (feedback: Omit<FeedbackData, 'profileName'>): Promise<boolean> => {
-  try {
-    // Option A: Use a CORS proxy
-    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-    const response = await fetch(proxyUrl + GOOGLE_SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(feedback),
-    });
-
-    // Option B: Or use your own proxy route if you have a backend
-    // const response = await fetch('/api/feedback', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify(feedback),
-    // });
-
-    const result = await response.json();
-    return result.success;
-  } catch (error) {
-    console.error('Error saving to Google Sheets:', error);
-    return false;
-  }
-};
-
   const handleSubmit = async () => {
-    if (!token) {
-      setIsLoginDialogOpen(true);
-      return;
-    }
-
-    if (!formData.quote.trim()) {
-      alert("Please enter your feedback");
-      return;
-    }
-
-    if (!formData.email.trim()) {
-      alert("Please enter your email address");
-      return;
-    }
+    if (!user) return setIsLoginDialogOpen(true);
+    if (rating === 0) return toast.error("Please provide a rating");
+    if (!formData.quote.trim()) return toast.error("Feedback buffer empty");
 
     setIsSubmitting(true);
-
     try {
-      const feedbackData = {
-        quote: formData.quote,
-        name: formData.name || user?.name || "Anonymous",
-        email: formData.email,
-        location: formData.location,
-        rating: rating,
-        profilePicture: user?.picture,
-        time: "Just now"
-      };
-
-      // Save to Google Sheets
-      const savedToSheets = await saveToGoogleSheets(feedbackData);
-
-      if (!savedToSheets) {
-        throw new Error('Failed to save feedback to Google Sheets');
-      }
-
-      const completeFeedback: FeedbackData = {
-        ...feedbackData,
-        profileName: formData.email, // Using email as profileName
-      };
-
-      onSuccess?.(completeFeedback);
-      setIsSuccess(true);
+      await api.post("/general/feedback/submit", {
+        ...formData,
+        rating,
+        userId: user.id || user._id,
+        profilePicture: user.picture
+      });
       
-      // Reset form after success
+      setIsSuccess(true);
       setTimeout(() => {
-        setRating(0);
-        setFormData({
-          quote: "",
-          name: user?.name || "",
-          email: user?.email || "",
-          location: "",
-        });
         setIsSuccess(false);
         onClose();
-      }, 2000);
-
-    } catch (error) {
-      console.error("Feedback submission error:", error);
-      alert("Failed to submit feedback. Please try again.");
+        setFormData({ quote: "", name: "", email: "", location: "" });
+        setRating(0);
+      }, 3000);
+    } catch {
+      toast.error("Handshake failed");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleLoginSuccess = () => {
-    setIsLoginDialogOpen(false);
-    window.location.reload();
-  };
-
-  if (isSuccess) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-black dark:text-white">
-          <DialogHeader className="space-y-3">
-            <DialogTitle className="text-xl text-center font-semibold">
-              Thank You!
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center justify-center py-8 space-y-4">
-            <CheckCircle className="w-16 h-16 text-green-500" />
-            <p className="text-center text-neutral-600 dark:text-neutral-400">
-              Your feedback has been submitted successfully!
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-black dark:text-white max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-          <DialogHeader className="space-y-3">
-            <DialogTitle className="text-xl text-center font-semibold">
-              Share Your Feedback
-            </DialogTitle>
-          </DialogHeader>
+      <Dialog   open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-lg mt-0 md:mt-15 bg-[#0a0a0a] border-white/5 text-white p-0 overflow-hidden rounded-[2rem]">
+          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(220,38,38,0.05),transparent)] pointer-events-none" />
+          
+          <AnimatePresence mode="wait">
+            {!isSuccess ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-8 space-y-6 relative">
+                <DialogHeader>
+                  <div className="flex items-center gap-3 mb-2">
+                    <Terminal className="text-red-500" size={18} />
+                    <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter">Lab Feedback</DialogTitle>
+                  </div>
+                  <p className="text-neutral-500 text-sm">Transmitting your experience helps us optimize the core.</p>
+                </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            {/* Rating Section */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">How would you rate your experience?</Label>
-              <div className="flex justify-center space-x-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => setRating(star)}
-                    onMouseEnter={() => setHoverRating(star)}
-                    onMouseLeave={() => setHoverRating(0)}
-                    className="p-1 transition-transform hover:scale-110 active:scale-95"
+                <div className="space-y-6">
+                  {/* Rating Logic */}
+                  <div className="flex flex-col items-center py-4 bg-neutral-900/40 rounded-3xl border border-white/5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-neutral-600 mb-4">Satisfaction Level</Label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button key={star} onClick={() => setRating(star)} onMouseEnter={() => setHoverRating(star)} onMouseLeave={() => setHoverRating(0)} className="transition-transform active:scale-90">
+                          <Star className={cn("w-8 h-8 transition-all", (hoverRating || rating) >= star ? "fill-red-600 text-red-600 scale-110 drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]" : "text-neutral-800")} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-neutral-600">Transmission Data</Label>
+                      <Textarea 
+                        value={formData.quote} 
+                        onChange={(e) => setFormData({...formData, quote: e.target.value})}
+                        className="bg-neutral-900/50 border-white/5 min-h-[120px] rounded-2xl resize-none focus:border-red-600/40" 
+                        placeholder="What should we architect next?" 
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-neutral-600">Origin</Label>
+                        <div className="relative">
+                          <input 
+                            value={formData.location} 
+                            onChange={(e) => setFormData({...formData, location: e.target.value})}
+                            className="w-full bg-neutral-900/50 border border-white/5 h-12 rounded-xl px-4 text-sm" 
+                            placeholder="City, Country"
+                          />
+                          <button onClick={handleGetLocation} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-600 hover:text-red-500 transition-colors">
+                            {isGettingLocation ? <Loader2 className="animate-spin" size={14} /> : <MapPin size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-neutral-600">Auth Profile</Label>
+                        <div className="h-12 bg-neutral-900/50 border border-white/5 rounded-xl px-4 flex items-center gap-2 overflow-hidden">
+                          <User size={14} className="text-neutral-700" />
+                          <span className="text-xs font-bold text-neutral-400 truncate">{formData.email || "GUEST_USER"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={handleSubmit} 
+                    disabled={isSubmitting}
+                    className="w-full h-14 bg-red-600 hover:bg-red-700 text-white font-black uppercase italic rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.2)]"
                   >
-                    <Star
-                      className={`w-8 h-8 transition-colors ${
-                        star <= (hoverRating || rating)
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-neutral-300 dark:text-neutral-600"
-                      }`}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Feedback Textarea */}
-            <div className="space-y-3">
-              <Label htmlFor="feedback" className="text-sm font-medium">
-                Your Feedback
-              </Label>
-              <Textarea
-                id="feedback"
-                placeholder="Tell us what you loved, what could be better, or any suggestions you have..."
-                value={formData.quote}
-                onChange={(e) => handleInputChange("quote", e.target.value)}
-                className="min-h-[120px] resize-none bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 placeholder:text-neutral-500 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
-              />
-            </div>
-
-            {/* User Info Section */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium">
-                    Display Name
-                  </Label>
-                  <Input
-                    id="name"
-                    placeholder="Your name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium flex items-center gap-1">
-                    <Mail className="w-3 h-3" />
-                    Email Address
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700"
-                  />
-                </div>
-              </div>
-              
-              {/* Location with auto-detect button */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="location" className="text-sm font-medium">
-                    Location
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleGetLocation}
-                    disabled={isGettingLocation}
-                    className="h-8 text-xs"
-                  >
-                    {isGettingLocation ? (
-                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                    ) : (
-                      <MapPin className="w-3 h-3 mr-1" />
-                    )}
-                    Auto-detect
+                    {isSubmitting ? <Loader2 className="animate-spin" /> : <><Send className="mr-2" size={18} /> Broadcast Feedback</>}
                   </Button>
                 </div>
-                <Input
-                  id="location"
-                  placeholder="Your location will be auto-detected"
-                  value={formData.location}
-                  onChange={(e) => handleInputChange("location", e.target.value)}
-                  className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700"
-                />
-                <p className="text-xs text-neutral-500">
-                  Your approximate location helps us understand our user distribution
-                </p>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || !formData.quote.trim() || !formData.email.trim()}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Submitting...</span>
+              </motion.div>
+            ) : (
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="p-12 text-center space-y-6">
+                <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-[0_0_40px_rgba(16,185,129,0.3)]">
+                  <ShieldCheck size={40} className="text-black" />
                 </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <Send className="w-4 h-4" />
-                  <span>{token ? "Submit Feedback" : "Login to Submit"}</span>
+                <div>
+                  <h3 className="text-3xl font-black uppercase italic">Received</h3>
+                  <p className="text-neutral-500 text-sm mt-2">Your testimonial has been cached in the master registry.</p>
                 </div>
-              )}
-            </Button>
-
-            {/* Login Prompt */}
-            {!token && (
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-2 text-sm text-neutral-600 dark:text-neutral-400">
-                  <User className="w-4 h-4" />
-                  <span>Login required to submit feedback</span>
-                </div>
-              </div>
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </DialogContent>
       </Dialog>
 
-      <LoginDialog
-        isOpen={isLoginDialogOpen}
-        onClose={() => setIsLoginDialogOpen(false)}
-        onSuccess={handleLoginSuccess}
-      />
+      <LoginDialog isOpen={isLoginDialogOpen} onClose={() => setIsLoginDialogOpen(false)} />
     </>
   );
 }

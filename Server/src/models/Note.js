@@ -57,7 +57,6 @@ const noteSchema = new mongoose.Schema(
       detailLevel: {
         type: String,
         default: 'Standard Notes',
-        enum: ['Brief Summary', 'Standard Notes', 'Comprehensive', 'Bullet Points Only']
       },
       prompt: { type: String, default: "" },
       

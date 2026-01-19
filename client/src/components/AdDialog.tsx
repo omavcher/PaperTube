@@ -8,8 +8,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Play, CheckCircle2, AlertCircle, ShieldAlert, Terminal, Zap, Crown } from "lucide-react";
 import Script from 'next/script';
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export default function AdDialog({ open, onOpenChange, onAdComplete }) {
   const [countdown, setCountdown] = useState(30);
@@ -19,7 +21,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
   const adContainerRef = useRef(null);
   const adInitialized = useRef(false);
 
-  // Load Google AdSense script
+  // --- Logic Protocols (Preserved Exactly) ---
   const loadAdSense = () => {
     const script = document.createElement('script');
     script.async = true;
@@ -34,17 +36,13 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
     document.head.appendChild(script);
   };
 
-  // Initialize AdSense ad
   const initializeAd = () => {
     if (!window.adsbygoogle || !adContainerRef.current) {
-      console.error('AdSense not loaded or container not found');
       setAdError(true);
       setAdLoading(false);
       return;
     }
-
     try {
-      // Create the ad container
       const adContainer = adContainerRef.current;
       adContainer.innerHTML = `
         <ins class="adsbygoogle"
@@ -56,21 +54,14 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
           data-full-width-responsive="true">
         </ins>
       `;
-
-      // Push the ad
       (window.adsbygoogle = window.adsbygoogle || []).push({});
-      
-      // Listen for ad load events
       const adElement = adContainer.querySelector('ins');
       if (adElement) {
         adElement.addEventListener('load', () => {
-          console.log('Ad loaded successfully');
           setAdLoading(false);
           startCountdown();
         });
-        
         adElement.addEventListener('error', () => {
-          console.error('Ad failed to load');
           setAdError(true);
           setAdLoading(false);
         });
@@ -79,13 +70,11 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
         setAdLoading(false);
       }
     } catch (error) {
-      console.error('Error initializing ad:', error);
       setAdError(true);
       setAdLoading(false);
     }
   };
 
-  // Start countdown timer
   const startCountdown = () => {
     const timer = setInterval(() => {
       setCountdown(prev => {
@@ -97,206 +86,172 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   };
 
   useEffect(() => {
     if (open && !adInitialized.current) {
-      // Reset states
       setCountdown(30);
       setAdCompleted(false);
       setAdLoading(true);
       setAdError(false);
-      
-      // Load AdSense
       loadAdSense();
       adInitialized.current = true;
     } else if (!open) {
-      // Reset for next time
       adInitialized.current = false;
     }
   }, [open]);
 
   const handleComplete = () => {
-    // Record ad completion
     if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'ad_completed', {
-        event_category: 'engagement',
-        event_label: 'rewarded_ad'
-      });
+      window.gtag('event', 'ad_completed', { event_category: 'engagement', event_label: 'rewarded_ad' });
     }
-    
     onAdComplete();
     onOpenChange(false);
   };
 
   const handleSkipAd = () => {
-    // Record skip action
     if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'ad_skipped', {
-        event_category: 'engagement',
-        event_label: 'rewarded_ad'
-      });
+      window.gtag('event', 'ad_skipped', { event_category: 'engagement', event_label: 'rewarded_ad' });
     }
-    
-    // Still allow note generation but track this
     onAdComplete();
     onOpenChange(false);
   };
 
-  // Render fallback ad content
+  // --- Styled Components ---
+
   const renderFallbackAd = () => (
-    <div className="h-48 bg-gradient-to-br from-blue-900/30 to-purple-900/30 flex flex-col items-center justify-center rounded-lg border border-neutral-800">
-      <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Play className="w-8 h-8 text-white" />
+    <div className="h-64 bg-[#080808] flex flex-col items-center justify-center rounded-2xl border border-white/5 relative overflow-hidden group">
+      <div className="absolute inset-0 bg-red-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="w-16 h-16 bg-red-600/10 rounded-full flex items-center justify-center border border-red-600/20 mb-4 animate-pulse">
+        <Play className="w-8 h-8 text-red-500 fill-current" />
       </div>
-      <p className="text-lg font-semibold text-white">Support Our Service</p>
-      <p className="text-sm text-neutral-400 mt-1">By watching this ad</p>
-      <div className="mt-4 px-4 py-2 bg-blue-600/20 rounded-lg">
-        <p className="text-xs text-blue-300">Ad not loaded? Please enable ads or try again.</p>
+      <p className="text-sm font-black uppercase italic tracking-widest text-white">Signal Handshake Failed</p>
+      <p className="text-[10px] text-neutral-600 mt-2 uppercase font-bold">Manual override required to proceed</p>
+      <div className="mt-6 px-4 py-2 bg-black border border-white/5 rounded-lg">
+        <p className="text-[9px] font-mono text-red-500/70 uppercase">Error_Log::AD_BLOCKER_DETECTED_OR_TIMEOUT</p>
       </div>
     </div>
   );
 
   return (
     <>
-      {/* Google AdSense Script */}
-      <Script
-        id="adsense-init"
-        strategy="lazyOnload"
-        onError={() => setAdError(true)}
-      />
+      <Script id="adsense-init" strategy="lazyOnload" onError={() => setAdError(true)} />
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[90vw] sm:max-w-md bg-neutral-900 border-neutral-700 text-white rounded-xl">
-          <DialogHeader>
-            <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
-              <Play className="w-5 h-5 text-blue-500" />
-              Watch Ad to Generate Notes
+        <DialogContent className="w-[95vw] sm:max-w-md bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-8 shadow-2xl overflow-hidden">
+          {/* Background ID Watermark */}
+          <div className="absolute -top-10 -right-10 opacity-[0.03] pointer-events-none rotate-12">
+             <Terminal size={200} />
+          </div>
+
+          <DialogHeader className="space-y-4">
+            <div className="flex justify-center">
+               <div className="p-3 rounded-2xl bg-red-600/10 border border-red-600/20 text-red-500">
+                  <ShieldAlert size={24} />
+               </div>
+            </div>
+            <DialogTitle className="text-center text-2xl font-black uppercase italic tracking-tighter">
+              Protocol <span className="text-red-600">Handshake</span>
             </DialogTitle>
-            <DialogDescription className="text-center text-neutral-400">
-              Support our service by watching this ad. Notes will be generated after completion.
+            <DialogDescription className="text-center text-neutral-500 text-xs font-medium uppercase tracking-wide leading-relaxed">
+              To maintain free access to our neural models, please verify this operational signal.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="p-4 space-y-6">
-            {/* Ad Container */}
-            <div className="relative rounded-lg overflow-hidden border border-neutral-800">
+          <div className="mt-8 space-y-6 relative z-10">
+            {/* Ad Container Stage */}
+            <div className="relative rounded-[1.5rem] overflow-hidden border border-white/5 bg-black min-h-[200px] flex flex-col items-center justify-center">
               {adLoading ? (
-                <div className="h-48 flex items-center justify-center bg-black">
-                  <div className="text-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
-                    <p className="text-sm text-neutral-400">Loading ad content...</p>
+                <div className="text-center space-y-4">
+                  <div className="relative h-12 w-12 mx-auto">
+                    <div className="absolute inset-0 border-2 border-red-600/20 rounded-full" />
+                    <div className="absolute inset-0 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
                   </div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600 animate-pulse">Initializing Ad_Stream</p>
                 </div>
               ) : adError ? (
-                <div className="relative">
+                <div className="w-full">
                   {renderFallbackAd()}
-                  <div className="absolute top-4 right-4 bg-black/80 text-white px-3 py-1 rounded-full text-sm font-medium">
-                    30s
-                  </div>
                 </div>
               ) : (
-                <>
-                  <div 
-                    ref={adContainerRef}
-                    className="min-h-[200px] bg-black"
-                    id="ad-container"
-                  />
-                  
-                  {/* Countdown Overlay */}
+                <div className="w-full h-full">
+                  <div ref={adContainerRef} className="w-full" id="ad-container" />
                   {!adCompleted && (
-                    <div className="absolute top-4 right-4 bg-black/80 text-white px-3 py-1 rounded-full text-sm font-medium">
-                      {countdown}s
+                    <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-lg text-[10px] font-black italic shadow-lg shadow-red-900/20">
+                      T-{countdown}S
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
 
-            {/* Status Message */}
-            {adCompleted ? (
-              <div className="text-center space-y-3">
-                <div className="flex items-center justify-center gap-2 text-green-500">
-                  <CheckCircle2 className="w-6 h-6" />
-                  <span className="text-lg font-semibold">Ad Completed!</span>
-                </div>
-                <p className="text-neutral-400 text-sm">
-                  Thank you for supporting our service. Your note will now be generated.
-                </p>
-              </div>
-            ) : adError ? (
-              <div className="text-center space-y-3">
-                <div className="flex items-center justify-center gap-2 text-yellow-500">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="font-medium">Using Fallback Mode</span>
-                </div>
-                <p className="text-neutral-300 text-sm">
-                  Please wait {countdown} seconds to continue.
-                </p>
-              </div>
-            ) : (
-              <div className="text-center space-y-3">
-                <p className="text-neutral-300">
-                  Please watch the ad to continue. {countdown} seconds remaining.
-                </p>
-                <div className="flex items-center justify-center gap-2">
-                  <div className="h-2 bg-neutral-800 rounded-full flex-1 overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-1000"
-                      style={{ width: `${((30 - countdown) / 30) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Status Feedback */}
+            <div className="space-y-4">
+               {adCompleted ? (
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
+                    <div className="flex items-center justify-center gap-2 text-emerald-500 mb-1">
+                      <CheckCircle2 size={16} />
+                      <span className="text-xs font-black uppercase tracking-widest">Handshake Verified</span>
+                    </div>
+                    <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Identity stable. Neural assets unlocked.</p>
+                 </motion.div>
+               ) : (
+                 <div className="space-y-3">
+                    <div className="flex justify-between text-[9px] font-black uppercase tracking-[0.2em] text-neutral-600">
+                       <span>Verification Progress</span>
+                       <span className="text-red-500">{Math.round(((30 - countdown) / 30) * 100)}%</span>
+                    </div>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        className="h-full bg-red-600 shadow-[0_0_10px_red]"
+                        animate={{ width: `${((30 - countdown) / 30) * 100}%` }}
+                        transition={{ duration: 1, ease: "linear" }}
+                      />
+                    </div>
+                 </div>
+               )}
+            </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-3">
+            {/* Action Matrix */}
+            <div className="flex flex-col gap-3">
               <div className="flex gap-3">
                 {adError && (
                   <Button
                     onClick={handleSkipAd}
                     variant="outline"
-                    className="flex-1 py-3 border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+                    className="flex-1 h-14 border-white/10 bg-neutral-950 text-neutral-400 hover:text-white rounded-2xl text-[10px] font-black uppercase italic tracking-widest"
                   >
-                    Continue Anyway
+                    Bypass Signal
                   </Button>
                 )}
                 
                 <Button
                   onClick={handleComplete}
                   disabled={!adCompleted && !adError}
-                  className={`flex-1 py-3 text-base font-medium ${
+                  className={cn(
+                    "flex-1 h-14 rounded-2xl text-xs font-black uppercase italic tracking-[0.2em] transition-all active:scale-95 shadow-xl",
                     adCompleted || adError
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white' 
-                      : 'bg-neutral-800 text-neutral-400 cursor-not-allowed'
-                  }`}
+                      ? "bg-white text-black hover:bg-red-600 hover:text-white" 
+                      : "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-white/5"
+                  )}
                 >
-                  {adError ? 'Generate Notes' : adCompleted ? 'Generate Notes Now' : 'Please wait...'}
+                  {adError ? 'Execute Generation' : adCompleted ? 'Initialize Session' : 'Awaiting Peer...'}
                 </Button>
               </div>
               
-              <div className="text-center space-y-2">
-                <p className="text-xs text-neutral-500">
-                  Free users support our service by watching ads.
-                  <a 
-                    href="/pricing" 
-                    className="text-blue-400 hover:text-blue-300 ml-1 transition-colors"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onOpenChange(false);
-                      // You can redirect to pricing page here
-                    }}
-                  >
-                    Upgrade to Premium
-                  </a> to remove ads.
-                </p>
-                <p className="text-[10px] text-neutral-600">
-                  By continuing, you agree to our{' '}
-                  <a href="/terms" className="text-neutral-500 hover:text-neutral-400">Terms</a> and{' '}
-                  <a href="/privacy" className="text-neutral-500 hover:text-neutral-400">Privacy Policy</a>
+              <div className="pt-4 border-t border-white/5 text-center space-y-4">
+                <button 
+                  onClick={() => { onOpenChange(false); window.location.href='/pricing'; }}
+                  className="group flex items-center justify-center gap-2 mx-auto"
+                >
+                  <Crown className="w-3 h-3 text-yellow-500" />
+                  <span className="text-[10px] font-black uppercase italic text-neutral-500 group-hover:text-yellow-500 transition-colors">
+                    Remove ads via Premium Protocol
+                  </span>
+                </button>
+                <p className="text-[8px] font-bold text-neutral-800 uppercase tracking-widest">
+                  By accessing terminal you agree to <a href="/terms" className="hover:text-neutral-400">Terms_of_Sync</a>
                 </p>
               </div>
             </div>

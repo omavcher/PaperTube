@@ -3,1262 +3,435 @@
 import { useState, useEffect, Suspense, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { 
-  User, 
-  Eye,
-  MessageSquare,
-  Heart,
-  TrendingUp,
-  FileText,
-  Settings, 
-  Trash2,
-  Smartphone,
-  Loader2,
-  BarChart3,
-  Calendar,
-  ExternalLink,
-  Globe,
-  Lock,
-  Search,
-  MoreVertical,
-  Edit3,
-  Share2,
-  Clock,
-  CheckSquare,
-  Square,
-  Download,
-  Filter,
-  ChevronDown
+  User, Eye, MessageSquare, Heart, TrendingUp, FileText, Settings, 
+  Trash2, Smartphone, Loader2, BarChart3, Calendar, ExternalLink, 
+  Globe, Lock, Search, MoreVertical, Edit3, Share2, Clock, 
+  CheckSquare, Square, Download, Filter, ChevronDown, Sparkles,
+  Zap, ShieldAlert, Cpu, Activity, ZapOff, Trophy, Send, CreditCard,
+  CheckCircle2, XCircle, Pencil, Link as LinkIcon, MapPin, Fingerprint,
+  Save
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import api from "@/config/api";
-import { ActivityCalendar } from "@/components/ui/activity-calendar";
-import { SimpleChart, BarChart } from "@/components/ui/simple-chart";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
-interface UserData {
-  name: string;
-  email: string;
-  picture: string;
-  mobile?: string;
-  _id?: string;
-}
-
-interface AnalyticsData {
-  summary: {
-    totalNotes: number;
-    totalViews: number;
-    totalComments: number;
-    totalReplies: number;
-    totalLikes: number;
-    totalEngagement: number;
-    publicNotes: number;
-    privateNotes: number;
-  };
-  viewsOverTime: Array<{ date: string; views: number }>;
-  notesOverTime: Array<{ month: string; count: number }>;
-  activityData: Array<{ date: string; count: number }>;
-  topNotes: Array<{
-    id: string;
-    title: string;
-    slug: string;
-    thumbnail: string;
-    views: number;
-    comments: number;
-    likes: number;
-    engagement: number;
-  }>;
-}
-
-interface Note {
-  _id: string;
-  title: string;
-  thumbnail?: string;
-  visibility: 'public' | 'private' | 'unlisted';
-  createdAt: string;
-  updatedAt: string;
-  views: number;
-  commentsCount: number;
-  likesCount: number;
-  slug: string;
-  fileType?: string;
-  pdf_data?: {
-    downloadUrl?: string;
-    fileSize?: number;
-  };
-}
-
-interface NotesResponse {
-  data: Note[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+// --- Configuration: Pricing Protocols ---
+const PRICING_PLANS = [
+  {
+    id: "scholar-plan",
+    name: "Scholar",
+    price: 149,
+    desc: "Occasional learner protocol.",
+    features: ["Model A + B Access", "1 Premium AI Model", "90 Min Video Limit", "5 Batch Process"],
+    color: "text-blue-400",
+    border: "border-blue-500/20"
+  },
+  {
+    id: "pro-scholar-plan",
+    name: "Pro Scholar",
+    price: 299,
+    popular: true,
+    desc: "Exam-ready synthesis engine.",
+    features: ["All 5 AI Models", "4 Hour Video Limit", "20 Batch Process", "Flashcard Creator", "Priority Sync"],
+    color: "text-red-500",
+    border: "border-red-500/40"
+  },
+  {
+    id: "power-institute-plan",
+    name: "Power Institute",
+    price: 599,
+    desc: "Enterprise research grade.",
+    features: ["8 Hour Video Limit", "Unlimited Batching", "Custom Branding", "Team Nodes", "Model Training"],
+    color: "text-emerald-500",
+    border: "border-emerald-500/20"
+  }
+];
 
 function ProfileContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = searchParams.get('tab') || 'analytics';
   
-  const [user, setUser] = useState<UserData | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isLoading, setIsLoading] = useState(true);
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  
-  // My Notes states
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedNotes, setSelectedNotes] = useState<string[]>([]);
-  const [deleteNoteDialogOpen, setDeleteNoteDialogOpen] = useState(false);
-  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
-  const [isDeletingNote, setIsDeletingNote] = useState(false);
-  const [sortBy, setSortBy] = useState<string>("createdAt");
-  const [sortOrder, setSortOrder] = useState<string>("desc");
-  const [visibilityFilter, setVisibilityFilter] = useState<string>("all");
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Get auth token with memoization
-  const getAuthToken = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem("authToken");
+  // Profile Form States
+  const [profileForm, setProfileForm] = useState({
+    bio: "",
+    location: "",
+    website: "",
+    publicProfile: true
+  });
+
+  const getAuthToken = useCallback(() => (typeof window !== 'undefined' ? localStorage.getItem("authToken") : null), []);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    const userData = localStorage.getItem("user");
+    if (token && userData) {
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+      setProfileForm({
+        bio: parsedUser.bio || "",
+        location: parsedUser.location || "",
+        website: parsedUser.website || "",
+        publicProfile: parsedUser.publicProfile ?? true
+      });
+      setIsLoading(false);
+    } else {
+      router.push("/");
     }
-    return null;
-  }, []);
-
-  // Update URL when tab changes
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', activeTab);
-    router.replace(`?${params.toString()}`, { scroll: false });
-  }, [activeTab, router, searchParams]);
-
-  // Initialize user data
-  useEffect(() => {
-    const initializeUser = async () => {
-      const token = getAuthToken();
-      const userData = localStorage.getItem("user");
-      
-      if (token && userData) {
-        try {
-          const userObj = JSON.parse(userData);
-          setUser(userObj);
-          setIsLoading(false);
-        } catch (error) {
-          console.error("Error parsing user data:", error);
-          router.push("/");
-        }
-      } else {
-        router.push("/");
-      }
-    };
-
-    initializeUser();
   }, [getAuthToken, router]);
 
-  // Fetch analytics when analytics tab is active
-  useEffect(() => {
-    if (activeTab === 'analytics' && !analytics && !isLoadingAnalytics) {
-      fetchAnalytics();
-    }
-  }, [activeTab, analytics, isLoadingAnalytics]);
-
-  // Fetch notes when notes tab is active or filters change
-  useEffect(() => {
-    if (activeTab === 'notes') {
-      fetchUserNotes();
-    }
-  }, [activeTab, sortBy, sortOrder]);
-
-  // Optimized analytics fetch with caching
-  const fetchAnalytics = async () => {
-    if (isLoadingAnalytics) return;
-    
-    setIsLoadingAnalytics(true);
+  const handleUpdateProfile = async () => {
+    setIsSaving(true);
     try {
-      const token = getAuthToken();
-      const response = await api.get("/notes/analytics", {
-        headers: { 'Auth': token },
-        timeout: 10000
+      const { data } = await api.put("/auth/update-profile", profileForm, { 
+        headers: { 'Auth': getAuthToken() } 
       });
-      
-      if (response.data?.success && response.data?.data) {
-        setAnalytics(response.data.data);
+      if (data.success) {
+        const updatedUser = { ...user, ...profileForm };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        toast.success("Identity Protocol Updated");
       }
-    } catch (error: any) {
-      console.error("❌ Error fetching analytics:", error);
-      if (error.code === 'ECONNABORTED') {
-        toast.error("Analytics request timed out");
-      } else {
-        toast.error("Failed to load analytics data");
-      }
+    } catch {
+      toast.error("Handshake Failed: Update aborted");
     } finally {
-      setIsLoadingAnalytics(false);
+      setIsSaving(false);
     }
   };
 
-  // Optimized notes fetch with error handling
-  const fetchUserNotes = async () => {
-    if (isLoadingNotes) return;
-    
-    setIsLoadingNotes(true);
-    try {
-      const token = getAuthToken();
-      const params = new URLSearchParams({
-        sortBy,
-        sortOrder,
-        ...(searchQuery && { search: searchQuery })
-      });
-
-      const response = await api.get(`/notes/my-notes?${params}`, {
-        headers: { 'Auth': token },
-        timeout: 8000
-      });
-      
-      if (response.data?.success) {
-        setNotes(response.data.data || []);
-      } else {
-        throw new Error(response.data?.message || "Failed to fetch notes");
-      }
-    } catch (error: any) {
-      console.error("❌ Error fetching notes:", error);
-      if (error.code === 'ECONNABORTED') {
-        toast.error("Notes request timed out");
-      } else {
-        toast.error("Failed to load your notes");
-      }
-      setNotes([]);
-    } finally {
-      setIsLoadingNotes(false);
-    }
-  };
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (activeTab === 'notes') {
-        fetchUserNotes();
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, activeTab]);
-
-  // Memoized filtered notes
-  const filteredNotes = useMemo(() => {
-    let filtered = notes;
-    
-    if (visibilityFilter !== 'all') {
-      filtered = filtered.filter(note => note.visibility === visibilityFilter);
-    }
-    
-    return filtered;
-  }, [notes, visibilityFilter]);
-
-  // Optimized note selection
-  const toggleNoteSelection = useCallback((noteId: string) => {
-    setSelectedNotes(prev =>
-      prev.includes(noteId)
-        ? prev.filter(id => id !== noteId)
-        : [...prev, noteId]
-    );
-  }, []);
-
-  // Select all functionality
-  const toggleSelectAll = useCallback(() => {
-    setSelectedNotes(prev =>
-      prev.length === filteredNotes.length ? [] : filteredNotes.map(note => note._id)
-    );
-  }, [filteredNotes]);
-
-  // Optimized single note deletion
-  const handleDeleteNote = async (noteId: string) => {
-    setIsDeletingNote(true);
-    try {
-      const token = getAuthToken();
-      const response = await api.delete(`/notes/${noteId}`, {
-        headers: { 'Auth': token }
-      });
-
-      if (response.data?.success) {
-        toast.success("Note deleted successfully");
-        setNotes(prev => prev.filter(note => note._id !== noteId));
-        setSelectedNotes(prev => prev.filter(id => id !== noteId));
-        
-        // Refresh analytics if on analytics tab
-        if (activeTab === 'analytics') {
-          setAnalytics(null);
-        }
-      } else {
-        throw new Error(response.data?.message || "Failed to delete note");
-      }
-    } catch (error) {
-      console.error("❌ Error deleting note:", error);
-      toast.error("Failed to delete note");
-    } finally {
-      setIsDeletingNote(false);
-      setDeleteNoteDialogOpen(false);
-      setNoteToDelete(null);
-    }
-  };
-
-  // Optimized bulk deletion using the new endpoint
-  const handleDeleteMultiple = async () => {
-    if (selectedNotes.length === 0) return;
-
-    setIsDeletingNote(true);
-    try {
-      const token = getAuthToken();
-      const response = await api.post("/notes/bulk-delete", 
-        { noteIds: selectedNotes },
-        { headers: { 'Auth': token } }
-      );
-
-      if (response.data?.success) {
-        toast.success(response.data.message || `Deleted ${selectedNotes.length} note(s) successfully`);
-        setNotes(prev => prev.filter(note => !selectedNotes.includes(note._id)));
-        setSelectedNotes([]);
-        
-        // Refresh analytics if on analytics tab
-        if (activeTab === 'analytics') {
-          setAnalytics(null);
-        }
-      } else {
-        throw new Error(response.data?.message || "Failed to delete notes");
-      }
-    } catch (error) {
-      console.error("❌ Error deleting notes:", error);
-      toast.error("Failed to delete notes");
-    } finally {
-      setIsDeletingNote(false);
-      setDeleteNoteDialogOpen(false);
-    }
-  };
-
-  // Update note visibility
-  const updateNoteVisibility = async (noteId: string, visibility: 'public' | 'private' | 'unlisted') => {
-    try {
-      const token = getAuthToken();
-      const response = await api.patch(`/notes/${noteId}/visibility`, 
-        { visibility },
-        { headers: { 'Auth': token } }
-      );
-
-      if (response.data?.success) {
-        toast.success("Note visibility updated");
-        setNotes(prev => prev.map(note => 
-          note._id === noteId ? { ...note, visibility } : note
-        ));
-      } else {
-        throw new Error(response.data?.message || "Failed to update visibility");
-      }
-    } catch (error) {
-      console.error("❌ Error updating visibility:", error);
-      toast.error("Failed to update note visibility");
-    }
-  };
-
-  // Format date with memoization
-  const formatDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  }, []);
-
-  // Format file size
-  const formatFileSize = useCallback((bytes?: number) => {
-    if (!bytes) return 'N/A';
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(1)} MB`;
-  }, []);
-
-  const handleBackToHome = () => router.push("/");
-  const handleUpgrade = () => router.push("/pricing");
-
-  // Delete Account Function
-  const handleDeleteAccount = async () => {
-    setIsDeleting(true);
-    try {
-      const token = getAuthToken();
-      
-      if (!token) {
-        toast.error("Authentication token not found");
-        return;
-      }
-
-      const response = await api.delete("/auth/delete-account", {
-        headers: { 'Auth': token }
-      });
-
-      if (response.data.success) {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("user");
-        localStorage.removeItem("planStatus");
-        
-        toast.success("Account deleted successfully");
-        setTimeout(() => router.push("/"), 1000);
-      } else {
-        throw new Error(response.data.message || "Failed to delete account");
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to delete account. Please try again.');
-    } finally {
-      setIsDeleting(false);
-      setDeleteDialogOpen(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="text-white text-lg flex items-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading your profile...
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="text-white text-lg">Please log in to view your profile</div>
-        <Button 
-          onClick={() => router.push("/login")}
-          className="ml-4 bg-blue-600 hover:bg-blue-700"
-        >
-          Login
-        </Button>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   return (
-    <>
-      {/* Delete Account Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="bg-neutral-900 border-neutral-700 max-w-md mx-4">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-red-500" />
-              Delete Your Account?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-neutral-400">
-              This action cannot be undone. This will permanently delete your account 
-              and remove all your data including:
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Your profile information</li>
-                <li>All your notes and content</li>
-                <li>Your transaction history</li>
-                <li>All conversation data</li>
-              </ul>
-              <p className="mt-3 text-red-400 font-semibold">
-                You will be logged out and redirected to the home page.
-              </p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
-            <AlertDialogCancel 
-              className="bg-neutral-800 text-white border-neutral-600 hover:bg-neutral-700 flex-1"
-              disabled={isDeleting}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteAccount}
-              disabled={isDeleting}
-              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 flex-1"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Deleting...
-                </>
-              ) : (
-                "Yes, Delete Account"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-red-500/30 font-sans relative overflow-x-hidden">
+      {/* Background Decor */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-20">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+        <div className="absolute inset-0 bg-radial-gradient from-red-600/10 via-transparent to-transparent"></div>
+      </div>
 
-      {/* Delete Note Confirmation Dialog */}
-      <AlertDialog open={deleteNoteDialogOpen} onOpenChange={setDeleteNoteDialogOpen}>
-        <AlertDialogContent className="bg-neutral-900 border-neutral-700 max-w-md mx-4">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-red-500" />
-              {noteToDelete ? "Delete Note?" : `Delete ${selectedNotes.length} Note(s)?`}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-neutral-400">
-              {noteToDelete 
-                ? "This action cannot be undone. This will permanently delete your note and all its content."
-                : `This action cannot be undone. This will permanently delete ${selectedNotes.length} selected notes.`
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
-            <AlertDialogCancel 
-              className="bg-neutral-800 text-white border-neutral-600 hover:bg-neutral-700 flex-1"
-              disabled={isDeletingNote}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => noteToDelete ? handleDeleteNote(noteToDelete) : handleDeleteMultiple()}
-              disabled={isDeletingNote}
-              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 flex-1"
-            >
-              {isDeletingNote ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Deleting...
-                </>
-              ) : (
-                "Yes, Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <div className="min-h-screen pt-20 pb-10 px-4 bg-black">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16 md:h-20 md:w-20 border-2 border-neutral-600">
-                <AvatarImage src={user.picture} alt={user.name} />
-                <AvatarFallback className="bg-neutral-700 text-neutral-300 text-xl md:text-2xl">
-                  {user.name.charAt(0)}
-                </AvatarFallback>
+      <div className="max-w-7xl mx-auto px-4 pt-32 pb-20 relative z-10">
+        
+        {/* --- Personnel Header --- */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12 p-8 md:p-12 rounded-[3rem] bg-neutral-900/30 border border-white/5 backdrop-blur-3xl shadow-2xl"
+        >
+          <div className="flex flex-col sm:flex-row items-center gap-8 text-center sm:text-left">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-red-600/30 blur-2xl rounded-full group-hover:bg-red-600/50 transition-all duration-700" />
+              <Avatar className="h-28 w-28 md:h-32 md:w-32 border-4 border-red-600 relative z-10 shadow-2xl">
+                <AvatarImage src={user?.picture} />
+                <AvatarFallback className="bg-neutral-800 text-red-600 text-4xl font-black italic">{user?.name?.charAt(0)}</AvatarFallback>
               </Avatar>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white">{user.name}</h1>
-                <p className="text-neutral-400 text-sm md:text-base">{user.email}</p>
-                {user.mobile && (
-                  <p className="text-neutral-500 text-sm flex items-center gap-1 mt-1">
-                    <Smartphone className="h-3 w-3" />
-                    {user.mobile}
-                  </p>
-                )}
+              <div className="absolute -bottom-2 -right-2 h-10 w-10 bg-red-600 rounded-full border-4 border-black flex items-center justify-center shadow-lg z-20">
+                <Trophy size={18} className="text-white" />
               </div>
             </div>
             
-            <div className="flex gap-3">
-              <Button 
-                onClick={handleUpgrade}
-                className="bg-green-600 hover:bg-green-500 text-white"
-              >
-                Upgrade Plan
-              </Button>
-              <Button 
-                onClick={handleBackToHome}
-                variant="outline"
-                className="border-neutral-600 text-white hover:bg-neutral-800"
-              >
-                Back to Home
-              </Button>
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase italic">{user?.name}</h1>
+                <Badge className="bg-red-600 text-white border-none text-[10px] font-black px-3 py-1 shadow-[0_0_20px_rgba(220,38,38,0.4)]">ELITE PERSONNEL</Badge>
+              </div>
+              <p className="text-neutral-500 font-mono text-sm tracking-tight">{user?.email}</p>
+              <div className="flex justify-center sm:justify-start gap-6 pt-4">
+                 <StatusMini label="System Status" val="OPERATIONAL" color="text-emerald-500" />
+                 <StatusMini label="Clearance" val="LEVEL 04" color="text-red-500" />
+              </div>
             </div>
           </div>
 
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 md:space-y-8">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 bg-neutral-900 p-1 gap-1">
-              <TabsTrigger 
-                value="analytics" 
-                className="flex items-center gap-2 data-[state=active]:bg-neutral-700 text-white text-xs md:text-sm py-2"
-              >
-                <BarChart3 className="h-3 w-3 md:h-4 md:w-4" />
-                <span className="hidden sm:inline">Analytics</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="notes" 
-                className="flex items-center gap-2 data-[state=active]:bg-neutral-700 text-white text-xs md:text-sm py-2"
-              >
-                <FileText className="h-3 w-3 md:h-4 md:w-4" />
-                <span className="hidden sm:inline">My Notes</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="settings" 
-                className="flex items-center gap-2 data-[state=active]:bg-neutral-700 text-white text-xs md:text-sm py-2"
-              >
-                <Settings className="h-3 w-3 md:h-4 md:w-4" />
-                <span className="hidden sm:inline">Settings</span>
-              </TabsTrigger>
-            </TabsList>
+          <div className="w-full md:w-auto flex flex-col sm:flex-row gap-4">
+            <Button onClick={() => setActiveTab('billing')} className="bg-red-600 hover:bg-red-700 text-white font-black uppercase italic rounded-2xl h-16 px-10 shadow-xl active:scale-95 transition-all">
+              <Zap size={18} className="mr-2" /> Upgrade Tier
+            </Button>
+          </div>
+        </motion.div>
 
-            {/* Analytics Tab */}
-            <TabsContent value="analytics" className="space-y-6">
-              {isLoadingAnalytics ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="h-8 w-8 animate-spin text-white" />
-                </div>
-              ) : analytics ? (
-                <AnalyticsView analytics={analytics} />
-              ) : (
-                <Card className="bg-neutral-900 border-neutral-700">
-                  <CardContent className="p-12 text-center">
-                    <p className="text-neutral-400">No analytics data available</p>
+        {/* --- Navigation Tabs --- */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
+          <TabsList className="bg-neutral-900/60 border border-white/5 p-1.5 rounded-[2rem] h-auto backdrop-blur-md flex flex-wrap justify-center sm:justify-start">
+            <TabsTrigger value="analytics" className="flex-1 sm:flex-none data-[state=active]:bg-red-600 data-[state=active]:text-white text-neutral-500 font-black uppercase italic text-[10px] tracking-[0.2em] py-4 px-8 rounded-2xl transition-all">
+              <Activity className="mr-2 h-4 w-4" /> Performance
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="flex-1 sm:flex-none data-[state=active]:bg-red-600 data-[state=active]:text-white text-neutral-500 font-black uppercase italic text-[10px] tracking-[0.2em] py-4 px-8 rounded-2xl transition-all">
+              <FileText className="mr-2 h-4 w-4" /> Repository
+            </TabsTrigger>
+            <TabsTrigger value="identity" className="flex-1 sm:flex-none data-[state=active]:bg-red-600 data-[state=active]:text-white text-neutral-500 font-black uppercase italic text-[10px] tracking-[0.2em] py-4 px-8 rounded-2xl transition-all">
+              <Fingerprint className="mr-2 h-4 w-4" /> Identity
+            </TabsTrigger>
+            <TabsTrigger value="billing" className="flex-1 sm:flex-none data-[state=active]:bg-red-600 data-[state=active]:text-white text-neutral-500 font-black uppercase italic text-[10px] tracking-[0.2em] py-4 px-8 rounded-2xl transition-all">
+              <CreditCard className="mr-2 h-4 w-4" /> Billing
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex-1 sm:flex-none data-[state=active]:bg-red-600 data-[state=active]:text-white text-neutral-500 font-black uppercase italic text-[10px] tracking-[0.2em] py-4 px-8 rounded-2xl transition-all">
+              <Settings className="mr-2 h-4 w-4" /> Config
+            </TabsTrigger>
+          </TabsList>
+
+          {/* --- Identity Tab: Public Profile Management --- */}
+          <TabsContent value="identity" className="outline-none">
+            <div className="grid lg:grid-cols-12 gap-8 items-start">
+              
+              {/* Form Side */}
+              <div className="lg:col-span-8 space-y-6">
+                <Card className="bg-neutral-900/40 border-white/5 rounded-[3rem] p-8 md:p-12 shadow-2xl backdrop-blur-xl">
+                  <div className="flex items-center gap-4 mb-10 border-b border-white/5 pb-6">
+                    <div className="p-3 rounded-2xl bg-red-600/10 text-red-500 border border-red-600/20"><Pencil size={24}/></div>
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-black uppercase italic text-white tracking-widest">Public Persona Node</h3>
+                      <p className="text-[10px] font-bold text-neutral-500 uppercase">Manage how other researchers see you.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-8">
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">Bio / Intel Briefing</Label>
+                      <Textarea 
+                        placeholder="Tell the world about your research habits..." 
+                        className="bg-black border-white/10 rounded-2xl min-h-[120px] focus:border-red-600/50 p-6 text-sm"
+                        value={profileForm.bio}
+                        onChange={(e) => setProfileForm({...profileForm, bio: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">Deployment Location</Label>
+                        <div className="relative">
+                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={18} />
+                          <Input 
+                            placeholder="Pune, India" 
+                            className="h-14 pl-12 bg-black border-white/10 rounded-xl focus:border-red-600/50" 
+                            value={profileForm.location}
+                            onChange={(e) => setProfileForm({...profileForm, location: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">Digital Artifact Hub (Website)</Label>
+                        <div className="relative">
+                          <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={18} />
+                          <Input 
+                            placeholder="https://yourportfolio.com" 
+                            className="h-14 pl-12 bg-black border-white/10 rounded-xl focus:border-red-600/50" 
+                            value={profileForm.website}
+                            onChange={(e) => setProfileForm({...profileForm, website: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-6 bg-black/40 rounded-2xl border border-white/5">
+                      <div className="space-y-1">
+                        <p className="text-sm font-black uppercase italic tracking-tighter">Public Discovery</p>
+                        <p className="text-[10px] text-neutral-500 uppercase">Allow other nodes to view your public intelligence repository.</p>
+                      </div>
+                      <Switch 
+                        checked={profileForm.publicProfile}
+                        onCheckedChange={(val) => setProfileForm({...profileForm, publicProfile: val})}
+                        className="data-[state=checked]:bg-red-600"
+                      />
+                    </div>
+
                     <Button 
-                      onClick={fetchAnalytics}
-                      className="mt-4 bg-green-600 hover:bg-green-500"
+                      onClick={handleUpdateProfile}
+                      disabled={isSaving}
+                      className="h-16 bg-white text-black hover:bg-red-600 hover:text-white font-black uppercase italic rounded-2xl text-lg shadow-xl transition-all"
                     >
-                      Load Analytics
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            {/* My Notes Tab */}
-            <TabsContent value="notes" className="space-y-6">
-              <NotesView
-                notes={filteredNotes}
-                isLoading={isLoadingNotes}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                selectedNotes={selectedNotes}
-                toggleNoteSelection={toggleNoteSelection}
-                toggleSelectAll={toggleSelectAll}
-                setDeleteNoteDialogOpen={setDeleteNoteDialogOpen}
-                setNoteToDelete={setNoteToDelete}
-                router={router}
-                formatDate={formatDate}
-                formatFileSize={formatFileSize}
-                sortBy={sortBy}
-                setSortBy={setSortBy}
-                sortOrder={sortOrder}
-                setSortOrder={setSortOrder}
-                visibilityFilter={visibilityFilter}
-                setVisibilityFilter={setVisibilityFilter}
-                updateNoteVisibility={updateNoteVisibility}
-              />
-            </TabsContent>
-
-            {/* Settings Tab */}
-            <TabsContent value="settings" className="space-y-6">
-              <Card className="bg-neutral-900 border-neutral-700 border-red-500/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-400 text-lg md:text-xl">
-                    <Trash2 className="h-4 w-4 md:h-5 md:w-5" />
-                    Danger Zone
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <p className="text-neutral-400 text-sm">
-                      Once you delete your account, there is no going back. Please be certain.
-                    </p>
-                    <Button 
-                      variant="destructive" 
-                      className="bg-red-600 hover:bg-red-700 w-full md:w-auto"
-                      onClick={() => setDeleteDialogOpen(true)}
-                    >
-                      Delete Account
+                      {isSaving ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 h-5 w-5" />}
+                      Sync Identity Node
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+                </Card>
+              </div>
+
+              {/* Preview Side */}
+              <div className="lg:col-span-4 sticky top-24">
+                <div className="text-center mb-6">
+                   <p className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-600">Handshake Preview</p>
+                </div>
+                <Card className="bg-neutral-950 border-white/10 rounded-[3rem] p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+                   <div className="absolute top-0 right-0 p-8 opacity-5"><Globe size={100}/></div>
+                   <div className="relative mx-auto w-fit">
+                      <div className="absolute inset-0 bg-red-600/20 blur-xl rounded-full" />
+                      <Avatar className="h-24 w-24 border-2 border-red-600 relative z-10">
+                        <AvatarImage src={user?.picture} />
+                        <AvatarFallback>{user?.name?.[0]}</AvatarFallback>
+                      </Avatar>
+                   </div>
+                   <div className="space-y-2 relative z-10">
+                      <h4 className="text-2xl font-black uppercase italic tracking-tighter">{user?.name}</h4>
+                      <p className="text-red-500 text-[10px] font-black uppercase tracking-widest">@{user?.username || 'researcher'}</p>
+                      <p className="text-neutral-500 text-xs font-medium leading-relaxed italic px-4 mt-4">
+                        {profileForm.bio || "No intelligence briefing provided..."}
+                      </p>
+                   </div>
+                   <div className="flex flex-col gap-3 pt-6 border-t border-white/5 relative z-10">
+                      {profileForm.location && (
+                        <div className="flex items-center justify-center gap-2 text-neutral-400 text-[10px] font-bold uppercase">
+                          <MapPin size={12} className="text-red-500" /> {profileForm.location}
+                        </div>
+                      )}
+                      {profileForm.website && (
+                        <div className="flex items-center justify-center gap-2 text-neutral-400 text-[10px] font-bold uppercase">
+                          <Globe size={12} className="text-red-500" /> {profileForm.website.replace('https://', '')}
+                        </div>
+                      )}
+                   </div>
+                </Card>
+              </div>
+
+            </div>
+          </TabsContent>
+
+          {/* --- Analytics Tab: Performance Hub --- */}
+          <TabsContent value="analytics" className="space-y-8 outline-none">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <HUDStat label="Total Nodes" val="124" icon={Cpu} color="text-red-500" />
+              <HUDStat label="Read Access" val="1.2k" icon={Eye} color="text-orange-500" />
+              <HUDStat label="Sync Rate" val="99%" icon={Zap} color="text-yellow-500" />
+              <HUDStat label="Network" val="Global" icon={Globe} color="text-blue-500" />
+              <HUDStat label="Uptime" val="420h" icon={Clock} color="text-emerald-500" />
+              <HUDStat label="Security" val="AES" icon={ShieldAlert} color="text-neutral-500" />
+            </div>
+            <Card className="bg-neutral-950 border-white/5 rounded-[3rem] p-8 md:p-12 overflow-hidden shadow-2xl">
+               <div className="flex items-center gap-4 mb-10">
+                  <div className="p-3 rounded-2xl bg-red-600/10 text-red-500 border border-red-600/20"><TrendingUp size={24}/></div>
+                  <h3 className="text-xl font-black uppercase italic text-white tracking-widest">Knowledge Flux</h3>
+               </div>
+               <div className="h-[300px] w-full flex items-end justify-between gap-1 md:gap-3">
+                  {Array.from({ length: 24 }).map((_, i) => (
+                    <motion.div key={i} initial={{ height: 0 }} animate={{ height: `${Math.random() * 100}%` }} transition={{ delay: i * 0.05 }}
+                      className="flex-1 bg-red-600/20 rounded-t-lg border-t border-red-600/40 hover:bg-red-600 transition-all cursor-crosshair" />
+                  ))}
+               </div>
+            </Card>
+          </TabsContent>
+
+          {/* --- Repository: Notes --- */}
+          <TabsContent value="notes" className="space-y-6 outline-none">
+            <div className="flex flex-col sm:flex-row gap-4">
+               <div className="relative flex-1">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-700" />
+                  <Input placeholder="Search Encrypted Nodes..." className="h-16 pl-16 bg-neutral-950 border-white/10 rounded-2xl focus:border-red-600/50 text-white uppercase font-bold tracking-tight" />
+               </div>
+               <Button onClick={() => router.push("/")} className="h-16 bg-white text-black font-black uppercase italic rounded-2xl px-10 hover:bg-red-600 hover:text-white transition-all shadow-2xl">Create Protocol</Button>
+            </div>
+            
+            <div className="grid gap-4">
+              {isLoadingNotes ? <LoadingText /> : notes.length > 0 ? notes.map((note: any) => (
+                <div key={note._id} className="group flex items-center gap-6 p-6 bg-neutral-950 border border-white/5 rounded-[2.5rem] hover:border-red-600/30 transition-all duration-500 shadow-xl">
+                  <div className="h-20 w-32 rounded-2xl bg-neutral-900 border border-white/5 overflow-hidden relative shrink-0">
+                    {note.thumbnail && <Image src={note.thumbnail} alt="t" fill className="object-cover opacity-60 group-hover:opacity-100 transition-opacity" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xl font-black text-white uppercase italic truncate group-hover:text-red-500 transition-colors">{note.title}</h4>
+                    <div className="flex items-center gap-4 mt-2">
+                       <Badge className="bg-white/5 text-neutral-500 border-white/10 text-[8px] font-black uppercase tracking-widest">{note.visibility}</Badge>
+                       <span className="text-[10px] font-bold text-neutral-700 uppercase flex items-center gap-1"><Clock size={12}/> {new Date(note.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="rounded-xl hover:bg-red-600 hover:text-white h-12 w-12 transition-all"><Edit3 size={18}/></Button>
+                </div>
+              )) : <div className="py-20 text-center text-neutral-700 font-black uppercase italic tracking-[0.4em]">Empty Repository</div>}
+            </div>
+          </TabsContent>
+
+          {/* --- Billing Tab --- */}
+          <TabsContent value="billing" className="outline-none">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {PRICING_PLANS.map((plan) => (
+                <Card key={plan.id} className={cn("bg-neutral-950 border relative rounded-[3.5rem] p-10 transition-all duration-500 group flex flex-col", plan.popular ? "shadow-[0_0_60px_rgba(220,38,38,0.1)] border-red-600/40" : "border-white/5")}>
+                  <div className="mb-10 space-y-2">
+                    <h3 className={cn("text-3xl font-black uppercase italic tracking-tighter", plan.color)}>{plan.name}</h3>
+                    <p className="text-neutral-500 text-xs font-medium uppercase tracking-widest">{plan.desc}</p>
+                  </div>
+                  <div className="mb-10"><span className="text-5xl font-black text-white italic">₹{plan.price}</span></div>
+                  <div className="space-y-4 mb-12 flex-1">
+                    {plan.features.map((f, i) => (
+                      <div key={i} className="flex items-center gap-3"><CheckCircle2 className={cn("shrink-0", plan.color)} size={16} /><span className="text-xs font-bold text-neutral-400 uppercase tracking-tight">{f}</span></div>
+                    ))}
+                  </div>
+                  <Button className={cn("w-full h-16 rounded-[2rem] font-black uppercase italic text-lg tracking-widest shadow-2xl transition-all active:scale-95", plan.popular ? "bg-red-600 hover:bg-red-700 text-white" : "bg-neutral-900 hover:bg-white hover:text-black text-neutral-400")}>Initialize</Button>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* --- Config: Settings & Hard Reset --- */}
+          <TabsContent value="settings" className="outline-none max-w-2xl">
+            <Card className="bg-neutral-900 border-red-600/30 rounded-[3rem] overflow-hidden shadow-2xl">
+               <div className="bg-red-600/10 p-10 border-b border-white/5 flex items-center gap-6">
+                  <div className="h-16 w-16 rounded-full bg-red-600/20 border border-red-600 flex items-center justify-center text-red-600 shadow-[0_0_20px_rgba(220,38,38,0.2)]"><ShieldAlert size={32} /></div>
+                  <div>
+                    <h3 className="text-2xl font-black uppercase italic text-white leading-none">Hard Reset Protocol</h3>
+                    <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest mt-2">DANGER: NON-RECOVERABLE ACTION</p>
+                  </div>
+               </div>
+               <CardContent className="p-10 space-y-8">
+                  <p className="text-neutral-400 text-sm leading-relaxed font-medium uppercase tracking-tight">Initializing this command will purge all encrypted neural notes, account metadata, and transaction tokens.</p>
+                  <Button variant="destructive" className="bg-red-600 hover:bg-red-700 font-black uppercase italic rounded-[2rem] w-full h-16 text-lg tracking-widest shadow-xl active:scale-95 transition-all">Authorize total wipe</Button>
+               </CardContent>
+            </Card>
+          </TabsContent>
+
+        </Tabs>
       </div>
-    </>
+    </div>
   );
 }
 
-// Separate Analytics Component for better performance
-const AnalyticsView = ({ analytics }: { analytics: AnalyticsData }) => (
-  <>
-    {/* Summary Cards */}
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-      <SummaryCard 
-        title="Total Notes" 
-        value={analytics.summary.totalNotes} 
-        icon={FileText}
-        color="text-blue-400"
-      />
-      <SummaryCard 
-        title="Total Views" 
-        value={analytics.summary.totalViews.toLocaleString()} 
-        icon={Eye}
-        color="text-green-400"
-      />
-      <SummaryCard 
-        title="Comments" 
-        value={analytics.summary.totalComments} 
-        icon={MessageSquare}
-        color="text-yellow-400"
-      />
-      <SummaryCard 
-        title="Likes" 
-        value={analytics.summary.totalLikes} 
-        icon={Heart}
-        color="text-red-400"
-      />
-      <SummaryCard 
-        title="Engagement" 
-        value={analytics.summary.totalEngagement} 
-        icon={TrendingUp}
-        color="text-purple-400"
-      />
-      <SummaryCard 
-        title="Public" 
-        value={analytics.summary.publicNotes} 
-        icon={Globe}
-        color="text-cyan-400"
-      />
-      <SummaryCard 
-        title="Private" 
-        value={analytics.summary.privateNotes} 
-        icon={Lock}
-        color="text-orange-400"
-      />
+/* --- Helpers --- */
+
+const HUDStat = ({ label, val, icon: Icon, color }: any) => (
+  <div className="bg-neutral-950 border border-white/5 p-5 rounded-[2rem] group hover:border-red-600/40 transition-all duration-500">
+    <div className="flex justify-between items-start mb-4">
+      <div className={cn("p-2 rounded-xl bg-black border border-white/5 shadow-inner", color)}><Icon size={18}/></div>
+      <div className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
     </div>
-
-    {/* Charts Row */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <ChartCard
-        title="Views Over Time (Last 30 Days)"
-        description="Daily view count for your notes"
-        icon={Eye}
-        iconColor="text-green-400"
-      >
-        <SimpleChart
-          data={analytics.viewsOverTime.map(d => ({
-            label: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            value: d.views
-          }))}
-          color="#22c55e"
-          height={200}
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Notes Created (Last 12 Months)"
-        description="Monthly note creation statistics"
-        icon={FileText}
-        iconColor="text-blue-400"
-      >
-        <BarChart
-          data={analytics.notesOverTime.map(d => ({
-            label: d.month,
-            value: d.count
-          }))}
-          color="#3b82f6"
-          height={200}
-        />
-      </ChartCard>
-    </div>
-
-    {/* Activity Calendar */}
-    <ChartCard
-      title="Activity Calendar"
-      description="Your note creation activity over the past year"
-      icon={Calendar}
-      iconColor="text-purple-400"
-    >
-      <div className="overflow-x-auto">
-        <ActivityCalendar data={analytics.activityData} />
-      </div>
-    </ChartCard>
-
-    {/* Top Performing Notes */}
-    {analytics.topNotes.length > 0 && (
-      <ChartCard
-        title="Top Performing Notes"
-        description="Your most viewed notes"
-        icon={TrendingUp}
-        iconColor="text-yellow-400"
-      >
-        <div className="space-y-4">
-          {analytics.topNotes.map((note, index) => (
-            <Link
-              key={note.id}
-              href={`/notes/${note.slug}`}
-              className="flex items-center gap-4 p-4 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors group"
-            >
-              <div className="relative w-20 h-12 flex-shrink-0 rounded overflow-hidden">
-                {note.thumbnail ? (
-                  <Image
-                    src={note.thumbnail}
-                    alt={note.title}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-neutral-700 flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-neutral-400" />
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-white truncate group-hover:text-green-400 transition-colors">
-                  {note.title}
-                </h4>
-                <div className="flex items-center gap-4 mt-2 text-sm text-neutral-400">
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-4 w-4" />
-                    {note.views.toLocaleString()}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageSquare className="h-4 w-4" />
-                    {note.comments}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Heart className="h-4 w-4" />
-                    {note.likes}
-                  </span>
-                </div>
-              </div>
-              <ExternalLink className="h-5 w-5 text-neutral-400 group-hover:text-white transition-colors flex-shrink-0" />
-            </Link>
-          ))}
-        </div>
-      </ChartCard>
-    )}
-  </>
+    <p className="text-[8px] font-black text-neutral-700 uppercase tracking-widest mb-1">{label}</p>
+    <p className="text-2xl font-black text-white italic leading-none">{val}</p>
+  </div>
 );
 
-// Summary Card Component
-const SummaryCard = ({ title, value, icon: Icon, color }: any) => (
-  <Card className="bg-neutral-900 border-neutral-700">
-    <CardContent className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-neutral-400">{title}</p>
-          <p className="text-2xl font-bold text-white mt-1">{value}</p>
-        </div>
-        <Icon className={`h-8 w-8 ${color}`} />
-      </div>
-    </CardContent>
-  </Card>
+const StatusMini = ({ label, val, color }: any) => (
+  <div>
+    <p className="text-[8px] font-black text-neutral-700 uppercase tracking-widest">{label}</p>
+    <p className={cn("text-xs font-bold uppercase italic", color)}>{val}</p>
+  </div>
 );
 
-// Chart Card Component
-const ChartCard = ({ title, description, icon: Icon, iconColor, children }: any) => (
-  <Card className="bg-neutral-900 border-neutral-700">
-    <CardHeader>
-      <CardTitle className="text-white flex items-center gap-2">
-        <Icon className={`h-5 w-5 ${iconColor}`} />
-        {title}
-      </CardTitle>
-      <CardDescription className="text-neutral-400">{description}</CardDescription>
-    </CardHeader>
-    <CardContent>{children}</CardContent>
-  </Card>
-);
-
-// Notes View Component
-const NotesView = ({
-  notes,
-  isLoading,
-  searchQuery,
-  setSearchQuery,
-  selectedNotes,
-  toggleNoteSelection,
-  toggleSelectAll,
-  setDeleteNoteDialogOpen,
-  setNoteToDelete,
-  router,
-  formatDate,
-  formatFileSize,
-  sortBy,
-  setSortBy,
-  sortOrder,
-  setSortOrder,
-  visibilityFilter,
-  setVisibilityFilter,
-  updateNoteVisibility
-}: any) => (
-  <Card className="bg-neutral-900 border-neutral-700">
-    <CardHeader>
-      <CardTitle className="text-white">My Notes</CardTitle>
-      <CardDescription className="text-neutral-400">
-        Manage and view all your created notes ({notes.length} total)
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      {/* Search and Filter Bar */}
-      <div className="flex flex-col lg:flex-row gap-4 mb-6">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-4 w-4" />
-            <Input
-              placeholder="Search notes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-neutral-800 border-neutral-600 text-white placeholder:text-neutral-400"
-            />
-          </div>
-          
-          <div className="flex gap-2">
-            <Select value={visibilityFilter} onValueChange={setVisibilityFilter}>
-              <SelectTrigger className="w-[130px] bg-neutral-800 border-neutral-600 text-white">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Visibility" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-800 border-neutral-600 text-white">
-                <SelectItem value="all">All Notes</SelectItem>
-                <SelectItem value="public">Public</SelectItem>
-                <SelectItem value="private">Private</SelectItem>
-                <SelectItem value="unlisted">Unlisted</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[140px] bg-neutral-800 border-neutral-600 text-white">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-800 border-neutral-600 text-white">
-                <SelectItem value="createdAt">Date Created</SelectItem>
-                <SelectItem value="updatedAt">Last Updated</SelectItem>
-                <SelectItem value="title">Title</SelectItem>
-                <SelectItem value="views">Views</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-              className="bg-neutral-800 border-neutral-600 text-white"
-            >
-              <ChevronDown className={`h-4 w-4 transition-transform ${sortOrder === 'asc' ? 'rotate-180' : ''}`} />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          {selectedNotes.length > 0 && (
-            <Button
-              variant="destructive"
-              onClick={() => setDeleteNoteDialogOpen(true)}
-              disabled={isLoading}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete ({selectedNotes.length})
-            </Button>
-          )}
-          <Button 
-            onClick={() => router.push("/")}
-            className="bg-green-600 hover:bg-green-500"
-          >
-            Create New Note
-          </Button>
-        </div>
-      </div>
-
-      {/* Notes Grid */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-white" />
-        </div>
-      ) : notes.length > 0 ? (
-        <div className="space-y-4">
-          {/* Select All Bar */}
-          <div className="flex items-center gap-3 p-3 bg-neutral-800 rounded-lg">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleSelectAll}
-              className="p-1 h-auto text-neutral-400 hover:text-white"
-            >
-              {selectedNotes.length === notes.length ? (
-                <CheckSquare className="h-5 w-5 text-green-400" />
-              ) : (
-                <Square className="h-5 w-5" />
-              )}
-            </Button>
-            <span className="text-sm text-neutral-400">
-              {selectedNotes.length} of {notes.length} selected
-            </span>
-          </div>
-
-          {/* Notes List */}
-          <div className="grid gap-4">
-            {notes.map((note: Note) => (
-              <NoteCard
-                key={note._id}
-                note={note}
-                isSelected={selectedNotes.includes(note._id)}
-                onSelect={() => toggleNoteSelection(note._id)}
-                onEdit={() => router.push(`/my-note/${note._id}/edit`)}
-                onDelete={() => {
-                  setNoteToDelete(note._id);
-                  setDeleteNoteDialogOpen(true);
-                }}
-                onUpdateVisibility={updateNoteVisibility}
-                formatDate={formatDate}
-                formatFileSize={formatFileSize}
-              />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-neutral-600" />
-          <p className="text-neutral-400 mb-4">
-            {searchQuery ? 'No notes found matching your search.' : 'You haven\'t created any notes yet.'}
-          </p>
-          <Button onClick={() => router.push("/")} className="bg-green-600 hover:bg-green-500">
-            Create Your First Note
-          </Button>
-        </div>
-      )}
-    </CardContent>
-  </Card>
-);
-
-// Individual Note Card Component
-const NoteCard = ({ 
-  note, 
-  isSelected, 
-  onSelect, 
-  onEdit, 
-  onDelete, 
-  onUpdateVisibility,
-  formatDate,
-  formatFileSize 
-}: any) => {
-  const getVisibilityIcon = (visibility: string) => {
-    switch (visibility) {
-      case 'public': return <Globe className="h-3 w-3 mr-1" />;
-      case 'private': return <Lock className="h-3 w-3 mr-1" />;
-      case 'unlisted': return <Eye className="h-3 w-3 mr-1" />;
-      default: return <Globe className="h-3 w-3 mr-1" />;
-    }
-  };
-
-  const getVisibilityColor = (visibility: string) => {
-    switch (visibility) {
-      case 'public': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'private': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'unlisted': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-    }
-  };
-
-  return (
-    <div
-      className={`flex items-center gap-4 p-4 rounded-lg border transition-all ${
-        isSelected
-          ? 'bg-blue-900/20 border-blue-500'
-          : 'bg-neutral-800 border-neutral-700 hover:bg-neutral-750'
-      }`}
-    >
-      {/* Selection Checkbox */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onSelect}
-        className="p-1 h-auto"
-      >
-        {isSelected ? (
-          <CheckSquare className="h-5 w-5 text-green-400" />
-        ) : (
-          <Square className="h-5 w-5 text-neutral-400" />
-        )}
-      </Button>
-
-      {/* Thumbnail */}
-      <div 
-        className="relative w-20 h-16 flex-shrink-0 rounded-md overflow-hidden cursor-pointer"
-        onClick={onEdit}
-      >
-        {note.thumbnail ? (
-          <Image
-            src={note.thumbnail}
-            alt={note.title}
-            fill
-            className="object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-neutral-700 flex items-center justify-center">
-            <FileText className="h-6 w-6 text-neutral-400" />
-          </div>
-        )}
-      </div>
-
-      {/* Note Details */}
-      <div 
-        className="flex-1 min-w-0 cursor-pointer"
-        onClick={onEdit}
-      >
-        <h3 className="font-semibold text-white truncate mb-1">
-          {note.title}
-        </h3>
-        <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-400">
-          <Badge 
-            variant="secondary"
-            className={`text-xs ${getVisibilityColor(note.visibility)}`}
-          >
-            {getVisibilityIcon(note.visibility)}
-            {note.visibility}
-          </Badge>
-          <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {formatDate(note.createdAt)}
-          </span>
-          <span className="flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            {note.views}
-          </span>
-          <span className="flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />
-            {note.commentsCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Heart className="h-3 w-3" />
-            {note.likesCount}
-          </span>
-          {note.pdf_data?.downloadUrl && (
-            <span className="flex items-center gap-1">
-              <Download className="h-3 w-3" />
-              {formatFileSize(note.pdf_data.fileSize)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Actions Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="bg-neutral-800 border-neutral-600 w-48">
-          <DropdownMenuItem 
-            onClick={onEdit}
-            className="text-white hover:bg-neutral-700 cursor-pointer"
-          >
-            <Edit3 className="h-4 w-4 mr-2" />
-            Edit Note
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/notes/${note.slug}`);
-              toast.success("Shareable link copied to clipboard!");
-            }}
-            className="text-white hover:bg-neutral-700 cursor-pointer"
-          >
-            <Share2 className="h-4 w-4 mr-2" />
-            Get Shareable Link
-          </DropdownMenuItem>
-
-          {note.pdf_data?.downloadUrl && (
-            <DropdownMenuItem 
-              onClick={() => window.open(note.pdf_data.downloadUrl, '_blank')}
-              className="text-white hover:bg-neutral-700 cursor-pointer"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
-            </DropdownMenuItem>
-          )}
-
-          <DropdownMenuSeparator className="bg-neutral-600" />
-          
-          <DropdownMenuLabel className="text-xs text-neutral-400 font-normal">
-            Change Visibility
-          </DropdownMenuLabel>
-          
-          <DropdownMenuItem 
-            onClick={() => onUpdateVisibility(note._id, 'public')}
-            className="text-green-400 hover:bg-green-500/20 cursor-pointer"
-          >
-            <Globe className="h-4 w-4 mr-2" />
-            Make Public
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => onUpdateVisibility(note._id, 'private')}
-            className="text-yellow-400 hover:bg-yellow-500/20 cursor-pointer"
-          >
-            <Lock className="h-4 w-4 mr-2" />
-            Make Private
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => onUpdateVisibility(note._id, 'unlisted')}
-            className="text-blue-400 hover:bg-blue-500/20 cursor-pointer"
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Make Unlisted
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator className="bg-neutral-600" />
-          
-          <DropdownMenuItem 
-            onClick={onDelete}
-            className="text-red-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Forever
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="flex flex-col items-center gap-6">
+      <div className="h-20 w-20 border-4 border-red-600 border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(220,38,38,0.2)]" />
+      <p className="text-red-600 font-black uppercase italic tracking-[0.5em] text-xs animate-pulse">Initializing Identity Vault...</p>
     </div>
-  );
-};
+  </div>
+);
 
-// Link component for Next.js
-const Link = ({ href, children, ...props }: any) => {
-  const router = useRouter();
-  
-  return (
-    <div
-      onClick={() => router.push(href)}
-      className="cursor-pointer"
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
+const LoadingText = () => <div className="py-24 text-center text-red-600 font-black italic uppercase tracking-[0.4em] animate-pulse text-[10px]">Accessing Secure Node...</div>;
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<LoadingScreen />}>
       <ProfileContent />
     </Suspense>
   );

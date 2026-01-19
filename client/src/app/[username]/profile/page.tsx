@@ -1,1382 +1,361 @@
-// app/[username]/profile/page.tsx
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  User, CalendarDays, Eye, FileText, Users, ThumbsUp,
-  ExternalLink, Globe, Mail, Link, Youtube, FileDown,
-  Image as ImageIcon, Video, BookOpen, Award, Crown,
-  TrendingUp, Clock, Share2, MoreVertical, Edit, Download,
-  Play, Filter, Grid3x3, List, ChevronRight, ChevronLeft,
-  Bookmark, Heart, MessageSquare, BarChart, PieChart,
-  UserPlus, Check, Loader2, ArrowLeft, Settings, Bell,
-  CreditCard, Sparkles, Zap, Target, Trophy, Star,
-  ShieldCheck, X, Search, ChevronUp, ChevronDown, LogOut,
-  Flag, AlertTriangle, Shield, Lock, UserX, VolumeX,
-  HelpCircle, Menu, Phone, MessageCircle, MailCheck,
-  FileWarning, AlertCircle, UserCheck, UserMinus,
-  Ban, BellOff, EyeOff, Copy, QrCode, Send, Pencil
+  User, Eye, FileText, Users, ThumbsUp, Crown, Award, Clock, Share2, 
+  MoreVertical, ArrowLeft, Settings, Grid3x3, List, ChevronRight, 
+  Zap, Loader2, Activity, ShieldCheck, ShieldAlert, Home, Edit3,
+  UserPlus, UserMinus, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle,
-  DialogFooter
-} from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from "@/components/ui/sheet";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import api from "@/config/api";
 import { toast } from "sonner";
-import Image from "next/image";
-import { headers } from "next/headers";
-
-// Types
-interface UserProfile {
-  _id: string;
-  name: string;
-  email: string;
-  picture?: string;
-  username: string;
-  joinDate: string;
-  isPremium: boolean;
-  membershipPlan: string;
-  totalViews: number;
-  totalLikes: number;
-  followersCount: number;
-  followingCount: number;
-  bio?: string;
-  location?: string;
-  website?: string;
-  isFollowing?: boolean;
-}
-
-interface Note {
-  _id: string;
-  title: string;
-  slug: string;
-  thumbnail: string;
-  videoId: string;
-  pdfThumbnail?: string;
-  views: number;
-  createdAt: string;
-  isPremium: boolean;
-  status: string;
-}
-
-interface Stats {
-  totalNotes: number;
-  totalViews: number;
-  totalLikes: number;
-  commentsCount: number;
-  totalPremiumNotes: number;
-  followersCount: number;
-  followingCount: number;
-}
-
-interface ApiResponse {
-  success: boolean;
-  user: UserProfile;
-  notes: Note[];
-  stats: Stats;
-}
-
-interface LocalStorageUser {
-  id?: string;
-  _id?: string;
-  sub?: string;
-  name: string;
-  email: string;
-  picture?: string;
-  given_name?: string;
-  family_name?: string;
-  email_verified?: boolean;
-  googleId?: string;
-  googleAccessToken?: string;
-}
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
+  DropdownMenuTrigger, DropdownMenuLabel 
+} from "@/components/ui/dropdown-menu";
+import Footer from "@/components/Footer";
 
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
   const username = params.username as string;
-  
+
+  // --- States ---
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [errorState, setErrorState] = useState<{status: boolean; message: string}>({status: false, message: ""});
+  const [user, setUser] = useState<any | null>(null);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [stats, setStats] = useState<any | null>(null);
   const [followLoading, setFollowLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<LocalStorageUser | null>(null);
-  const [showShareDialog, setShowShareDialog] = useState(false);
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  const [showFollowersDialog, setShowFollowersDialog] = useState(false);
-  const [showFollowingDialog, setShowFollowingDialog] = useState(false);
-  const [followers, setFollowers] = useState<any[]>([]);
-  const [following, setFollowing] = useState<any[]>([]);
-  const [loadingFollowers, setLoadingFollowers] = useState(false);
-  const [loadingFollowing, setLoadingFollowing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showReportDialog, setShowReportDialog] = useState(false);
-  const [showBlockDialog, setShowBlockDialog] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);;
 
- const getAuthToken = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem("authToken");
-    }
-    return null;
-  }, []);
+  const getAuthToken = useCallback(() => typeof window !== 'undefined' ? localStorage.getItem("authToken") : null, []);
   
-  const isOwnProfile = React.useMemo(() => {
+  const isOwnProfile = useMemo(() => {
     if (!currentUser || !user) return false;
-    
-    // Check multiple possible ID fields from localStorage user
-    const currentUserId = currentUser.id || currentUser._id;
-    return currentUserId === user._id;
+    return (currentUser._id === user._id) || (currentUser.username === user.username);
   }, [currentUser, user]);
 
-  // Format time ago function
-  const getTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays}d ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
-    return `${Math.floor(diffDays / 365)}y ago`;
-  };
-
-  // Check mobile screen size
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    const userStr = localStorage.getItem('user');
+    if (userStr) setCurrentUser(JSON.parse(userStr));
   }, []);
 
-  // Load current user from localStorage - FIXED VERSION
-  useEffect(() => {
-    const loadCurrentUser = () => {
-      try {
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          const userData = JSON.parse(userStr) as LocalStorageUser;
-          setCurrentUser(userData);
-          console.log('Current user loaded successfully:', userData);
-        } else {
-          console.log('No user found in localStorage');
-        }
-      } catch (error) {
-        console.error('Error loading current user:', error);
-      }
-    };
-    
-    // Load immediately
-    loadCurrentUser();
-    
-    // Also listen for storage events in case user logs in/out in another tab
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'user') {
-        loadCurrentUser();
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  // Load user profile
   useEffect(() => {
     const loadProfile = async () => {
+      if (!username) return;
       try {
         setLoading(true);
-        const response = await api.get<ApiResponse>(`/users/${username}/profile`);
-        
-        if (response.data.success) {
-          const { user, notes, stats } = response.data;
-          
-          // Transform API data to match our interface
-          const userProfile: UserProfile = {
-            ...user,
-            totalViews: user.totalViews || 0,
-            totalLikes: user.totalLikes || 0,
-            followersCount: user.followersCount || 0,
-            followingCount: user.followingCount || 0
-          };
-          
-          setUser(userProfile);
-          setNotes(notes || []);
-          setStats(stats);
-        } else {
-          toast.error("User not found");
-          router.push('/');
+        const res = await api.get(`/users/${username}/profile`);
+        if (!res.data.success || !res.data.user) {
+          setErrorState({ status: true, message: res.data.message || "Personnel not found." });
+          return;
         }
-      } catch (error: any) {
-        console.error('Error loading profile:', error);
-        toast.error(error.response?.data?.message || "Failed to load profile");
-        router.push('/');
-      } finally {
-        setLoading(false);
-      }
+        setUser(res.data.user);
+        setNotes(res.data.notes || []);
+        setStats(res.data.stats);
+      } catch (err: any) {
+        setErrorState({ status: true, message: "Protocol Handshake Failed." });
+      } finally { setLoading(false); }
     };
-    
-    if (username) {
-      loadProfile();
-    }
-  }, [username, router]);
+    loadProfile();
+  }, [username]);
 
-  // Handle follow/unfollow
-  const handleFollow = async () => {
-    if (!user || !currentUser) {
-      toast.error("Please login to follow users");
+  const handleFollowToggle = async () => {
+    const token = getAuthToken();
+    
+    if (!token) {
+      toast.error("Authentication Required", {
+        description: "Please use the login button in the navigation bar to proceed.",
+        action: { label: "Login Now", onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+      });
       return;
     }
-    
-    // Don't allow following yourself
-    if (isOwnProfile) {
-      toast.info("You cannot follow yourself");
-      return;
-    }
-    
+
     try {
       setFollowLoading(true);
-      const token = getAuthToken();
-      const response = await api.post(
-      `/users/${user._id}/follow`,
-      {}, 
-      {
-        headers: { 
-          'Auth': token
-        },
-      }
-    );
+      const res = await api.post(`/users/${user._id}/follow`, {}, { headers: { 'Auth': token } });
       
-      if (response.data.success) {
-        setUser(prev => prev ? {
+      if (res.data.success) {
+        setUser((prev: any) => ({
           ...prev,
-          isFollowing: response.data.isFollowing,
-          followersCount: response.data.isFollowing 
-            ? prev.followersCount + 1 
-            : prev.followersCount - 1
-        } : null);
-        
-        toast.success(response.data.message);
+          isFollowing: res.data.isFollowing,
+          followersCount: res.data.isFollowing ? prev.followersCount + 1 : prev.followersCount - 1
+        }));
+        toast.success(res.data.isFollowing ? `Linked with ${user.name}` : `Unlinked from ${user.name}`);
       }
-    } catch (error: any) {
-      console.error('Follow error:', error);
-      if (error.response?.status === 401) {
-        toast.error("Please login to follow users");
-      } else {
-        toast.error(error.response?.data?.message || "Failed to update follow status");
-      }
+    } catch (err) {
+      toast.error("Operation failed. Try again later.");
     } finally {
       setFollowLoading(false);
     }
   };
 
-  // Handle edit profile
-  const handleEditProfile = () => {
-    if (isOwnProfile) {
-      router.push('/profile');
-    }
-  };
-
-  // Handle share profile
-  const handleShare = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    toast.success("Profile link copied to clipboard!");
-    setShowShareDialog(false);
-  };
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  // Handle note click
-  const handleNoteClick = (note: Note) => {
-    router.push(`/note/${username}/${note.slug}`);
-  };
-
-  // Load followers
-  const loadFollowers = async () => {
-    if (!user) return;
-    
-    try {
-      setLoadingFollowers(true);
-      const response = await api.get(`/users/${user._id}/followers`);
-      if (response.data.success) {
-        setFollowers(response.data.followers || []);
-      }
-    } catch (error) {
-      console.error('Error loading followers:', error);
-      toast.error("Failed to load followers");
-    } finally {
-      setLoadingFollowers(false);
-    }
-  };
-
-  // Load following
-  const loadFollowing = async () => {
-    if (!user) return;
-    
-    try {
-      setLoadingFollowing(true);
-      const response = await api.get(`/users/${user._id}/following`);
-      if (response.data.success) {
-        setFollowing(response.data.following || []);
-      }
-    } catch (error) {
-      console.error('Error loading following:', error);
-      toast.error("Failed to load following");
-    } finally {
-      setLoadingFollowing(false);
-    }
-  };
-
-  // Handle follower/following dialog open
-  const handleOpenFollowers = () => {
-    setShowFollowersDialog(true);
-    loadFollowers();
-  };
-
-  const handleOpenFollowing = () => {
-    setShowFollowingDialog(true);
-    loadFollowing();
-  };
-
-  // Filter notes by tab
-  const filteredNotes = notes.filter(note => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'premium') return note.isPremium;
-    if (activeTab === 'free') return !note.isPremium;
-    if (activeTab === 'popular') return note.views > 50;
-    return true;
-  });
-
-  // Stat cards
-  const statCards = [
-    {
-      label: "Notes",
-      value: stats?.totalNotes || 0,
-      icon: <FileText className="h-4 w-4 md:h-5 md:w-5" />,
-      color: "from-blue-500 to-cyan-500"
-    },
-    {
-      label: "Views",
-      value: stats?.totalViews?.toLocaleString() || 0,
-      icon: <Eye className="h-4 w-4 md:h-5 md:w-5" />,
-      color: "from-purple-500 to-pink-500"
-    },
-    {
-      label: "Likes",
-      value: stats?.totalLikes?.toLocaleString() || 0,
-      icon: <ThumbsUp className="h-4 w-4 md:h-5 md:w-5" />,
-      color: "from-red-500 to-orange-500"
-    },
-    {
-      label: "Followers",
-      value: stats?.followersCount || 0,
-      icon: <Users className="h-4 w-4 md:h-5 md:w-5" />,
-      color: "from-green-500 to-emerald-500"
-    }
-  ];
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="relative">
-            <div className="h-24 w-24 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse mx-auto"></div>
-            <Loader2 className="h-8 w-8 animate-spin text-white absolute inset-0 m-auto" />
-          </div>
-          <p className="text-zinc-400">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <User className="h-16 w-16 text-zinc-600 mx-auto" />
-          <h2 className="text-2xl font-bold text-white">User Not Found</h2>
-          <p className="text-zinc-400">The user you're looking for doesn't exist.</p>
-          <Button onClick={() => router.push('/')}>Go Home</Button>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingScreen />;
+  if (errorState.status) return <ErrorScreen message={errorState.message} router={router} />;
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-zinc-900 bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/60">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.back()}
-                className="text-zinc-400 hover:text-white hover:bg-zinc-900"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.picture} />
-                  <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-xs">
-                    {user.name[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h1 className="text-sm font-semibold">@{user.username}</h1>
-                  <p className="text-xs text-zinc-500 truncate max-w-[120px]">{user.name}</p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-red-500/30 font-sans relative overflow-x-hidden">
+      <div className="fixed inset-0 z-0 opacity-20 pointer-events-none">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+      </div>
+
+      <header className="sticky top-0 z-50 border-b border-white/5 bg-black/60 backdrop-blur-xl">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-xl hover:bg-white/5 text-neutral-500"><ArrowLeft size={20}/></Button>
+            <div className="flex items-center gap-3">
+               <Avatar className="h-9 w-9 border border-white/10 shadow-xl bg-neutral-900">
+                  <AvatarImage src={user?.picture} />
+                  <AvatarFallback className="bg-red-600 font-black text-[10px] italic">ID</AvatarFallback>
+               </Avatar>
+               <div className="hidden xs:block">
+                  <p className="text-[10px] font-black uppercase italic tracking-widest text-white truncate max-w-[120px]">@{user?.username}</p>
+                  <p className="text-[8px] font-bold text-neutral-600 uppercase tracking-[0.2em] leading-none mt-0.5">Active Protocol</p>
+               </div>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowShareDialog(true)}
-                className="text-zinc-400 hover:text-white hover:bg-zinc-900"
-              >
-                <Share2 className="h-5 w-5" />
-              </Button>
-              
-              {/* Mobile Menu Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="text-zinc-400 hover:text-white hover:bg-zinc-900 md:hidden"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              
-              {/* Desktop Dropdown */}
-              <div className="hidden md:block">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-zinc-400 hover:text-white hover:bg-zinc-900"
-                    >
-                      <MoreVertical className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent 
-                    align="end" 
-                    className="bg-zinc-900 border-zinc-800 w-56"
-                  >
-                    <DropdownMenuLabel className="text-zinc-400">
-                      Profile Actions
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-zinc-800" />
-                    
-                    <DropdownMenuItem 
-                      className="text-zinc-300 hover:bg-zinc-800 cursor-pointer"
-                      onClick={() => setShowShareDialog(true)}
-                    >
-                      <Share2 className="h-4 w-4 mr-2" />
-                      Share Profile
-                    </DropdownMenuItem>
-                    
-                    <DropdownMenuItem 
-                      className="text-zinc-300 hover:bg-zinc-800 cursor-pointer"
-                      onClick={() => {
-                        const url = window.location.href;
-                        navigator.clipboard.writeText(url);
-                        toast.success("Link copied!");
-                      }}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy Link
-                    </DropdownMenuItem>
-                    
-                    {!isOwnProfile && (
-                      <>
-                        <DropdownMenuSeparator className="bg-zinc-800" />
-                        <DropdownMenuItem 
-                          className="text-amber-400 hover:bg-amber-500/10 cursor-pointer"
-                          onClick={() => setShowReportDialog(true)}
-                        >
-                          <Flag className="h-4 w-4 mr-2" />
-                          Report User
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-red-400 hover:bg-red-500/10 cursor-pointer"
-                          onClick={() => setShowBlockDialog(true)}
-                        >
-                          <Ban className="h-4 w-4 mr-2" />
-                          Block User
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    
-                    {isOwnProfile && (
-                      <>
-                        <DropdownMenuSeparator className="bg-zinc-800" />
-                        <DropdownMenuItem 
-                          className="text-zinc-300 hover:bg-zinc-800 cursor-pointer"
-                          onClick={handleEditProfile}
-                        >
-                          <Settings className="h-4 w-4 mr-2" />
-                          Edit Profile
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-red-400 hover:bg-red-500/10 cursor-pointer"
-                          onClick={() => {
-                            localStorage.removeItem('user');
-                            router.push('/login');
-                            toast.success('Logged out successfully');
-                          }}
-                        >
-                          <LogOut className="h-4 w-4 mr-2" />
-                          Logout
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
+          </div>
+          <div className="flex items-center gap-2">
+             <Button variant="ghost" size="icon" onClick={() => {
+               navigator.clipboard.writeText(window.location.href);
+               toast.success("Identity link copied");
+             }} className="rounded-xl text-neutral-500 hover:text-red-500 transition-all"><Share2 size={18}/></Button>
+             
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" size="icon" className="rounded-xl text-neutral-500 hover:text-white"><MoreVertical size={18}/></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-neutral-950 border-white/10 text-white rounded-2xl w-48 shadow-2xl p-2 z-[60]">
+                   <DropdownMenuItem className="rounded-xl focus:bg-red-600 focus:text-white transition-colors cursor-pointer text-xs font-black uppercase italic">Report Entity</DropdownMenuItem>
+                </DropdownMenuContent>
+             </DropdownMenu>
           </div>
         </div>
       </header>
 
-      {/* Mobile Menu Sheet */}
-      <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
-        <SheetContent side="right" className="bg-zinc-950 border-l border-zinc-800 p-0">
-          <div className="p-6 border-b border-zinc-800">
-            <div className="flex items-center gap-3 mb-6">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={user.picture} />
-                <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600">
-                  {user.name[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-semibold">{user.name}</h3>
-                <p className="text-sm text-zinc-500">@{user.username}</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center">
-                <div className="text-lg font-bold">{stats?.totalNotes || 0}</div>
-                <div className="text-xs text-zinc-500">Posts</div>
-              </div>
-              <div 
-                className="text-center cursor-pointer"
-                onClick={() => {
-                  setShowMobileMenu(false);
-                  handleOpenFollowers();
-                }}
-              >
-                <div className="text-lg font-bold">{user.followersCount}</div>
-                <div className="text-xs text-zinc-500">Followers</div>
-              </div>
-              <div 
-                className="text-center cursor-pointer"
-                onClick={() => {
-                  setShowMobileMenu(false);
-                  handleOpenFollowing();
-                }}
-              >
-                <div className="text-lg font-bold">{user.followingCount}</div>
-                <div className="text-xs text-zinc-500">Following</div>
-              </div>
-            </div>
-          </div>
+      <main className="container mx-auto px-4 pt-12 pb-24 relative z-10">
+        <div className="grid lg:grid-cols-12 gap-10">
           
-          <div className="p-6">
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start border-zinc-800 text-zinc-300 hover:text-white"
-                onClick={() => {
-                  setShowMobileMenu(false);
-                  setShowShareDialog(true);
-                }}
-              >
-                <Share2 className="h-4 w-4 mr-2" />
-                Share Profile
-              </Button>
-              
-              {!isOwnProfile && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start border-zinc-800 text-amber-400 hover:text-amber-300"
-                    onClick={() => {
-                      setShowMobileMenu(false);
-                      setShowReportDialog(true);
-                    }}
-                  >
-                    <Flag className="h-4 w-4 mr-2" />
-                    Report User
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start border-zinc-800 text-red-400 hover:text-red-300"
-                    onClick={() => {
-                      setShowMobileMenu(false);
-                      setShowBlockDialog(true);
-                    }}
-                  >
-                    <Ban className="h-4 w-4 mr-2" />
-                    Block User
-                  </Button>
-                </>
-              )}
-              
-              {isOwnProfile && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start border-zinc-800 text-zinc-300 hover:text-white"
-                    onClick={() => {
-                      setShowMobileMenu(false);
-                      handleEditProfile();
-                    }}
-                  >
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start border-zinc-800 text-red-400 hover:text-red-300"
-                    onClick={() => {
-                      setShowMobileMenu(false);
-                      localStorage.removeItem('user');
-                      router.push('/login');
-                      toast.success('Logged out successfully');
-                    }}
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Profile Content */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Column - Profile Info */}
-          <div className="lg:w-1/3 space-y-6">
-            {/* Avatar Section */}
-            <div className="space-y-4">
-              <div className="relative mx-auto w-fit lg:mx-0">
-                <Avatar className="h-32 w-32 border-4 border-zinc-900">
-                  <AvatarImage src={user.picture} />
-                  <AvatarFallback className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600">
-                    {user.name[0]}
-                  </AvatarFallback>
-                </Avatar>
-                
-                {user.isPremium && (
-                  <div className="absolute -top-2 -right-2">
-                    <div className="bg-gradient-to-r from-amber-500 to-yellow-600 rounded-full p-1">
-                      <Crown className="h-5 w-5 text-white" />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="text-center lg:text-left">
-                <div className="flex items-center justify-center lg:justify-start gap-2">
-                  <h1 className="text-2xl font-bold">{user.name}</h1>
-                  {user.isPremium && (
-                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
-                      <Crown className="h-3 w-3 mr-1" />
-                      {user.membershipPlan || 'Premium'}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-zinc-400">@{user.username}</p>
-                
-                <div className="mt-3 text-sm text-zinc-300 space-y-1">
-                  <p className="text-zinc-500">{user.email}</p>
-                </div>
-              </div>
-
-              {/* Stats Row */}
-              <div className="grid grid-cols-4 gap-4 py-4">
-                <div className="text-center">
-                  <div className="text-xl font-bold">{stats?.totalNotes || 0}</div>
-                  <div className="text-xs text-zinc-500">Notes</div>
-                </div>
-                <div 
-                  className="text-center cursor-pointer hover:text-blue-400 transition-colors"
-                  onClick={handleOpenFollowers}
-                >
-                  <div className="text-xl font-bold">{user.followersCount}</div>
-                  <div className="text-xs text-zinc-500">Followers</div>
-                </div>
-                <div 
-                  className="text-center cursor-pointer hover:text-blue-400 transition-colors"
-                  onClick={handleOpenFollowing}
-                >
-                  <div className="text-xl font-bold">{user.followingCount}</div>
-                  <div className="text-xs text-zinc-500">Following</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold">{user.totalLikes}</div>
-                  <div className="text-xs text-zinc-500">Likes</div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="space-y-3">
-                {isOwnProfile ? (
-                  // Show Edit Profile button for own profile
-                  <Button
-                    variant="default"
-                    className="w-full rounded-lg h-11 bg-white text-black hover:bg-zinc-200"
-                    onClick={handleEditProfile}
-                  >
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                ) : currentUser ? (
-                  // Show Follow/Following button for other users when logged in
-                  <Button
-                    variant={user.isFollowing ? "outline" : "default"}
-                    className={cn(
-                      "w-full rounded-lg h-11",
-                      user.isFollowing 
-                        ? "border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-600"
-                        : "bg-white text-black hover:bg-zinc-200"
-                    )}
-                    onClick={handleFollow}
-                    disabled={followLoading}
-                  >
-                    {followLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : user.isFollowing ? (
-                      <>
-                        <Check className="h-4 w-4 mr-2" />
-                        Following
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Follow
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  // Show Follow button for non-logged in users
-                  <Button
-                    variant="default"
-                    className="w-full rounded-lg h-11 bg-white text-black hover:bg-zinc-200"
-                    onClick={() => router.push('/login')}
-                  >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Follow
-                  </Button>
-                )}
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1 rounded-lg h-11 border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-600"
-                    onClick={() => setShowShareDialog(true)}
-                  >
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Share
-                  </Button>
-                  
-                  {isOwnProfile && (
-                    <Button
-                      variant="outline"
-                      className="flex-1 rounded-lg h-11 border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-600"
-                      onClick={() => router.push('/')}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      New Note
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Additional Info */}
-              <div className="space-y-3 pt-4 border-t border-zinc-900">
-                <div className="flex items-center gap-3 text-sm text-zinc-400">
-                  <CalendarDays className="h-4 w-4" />
-                  Joined {formatDate(user.joinDate)}
-                </div>
-                {user.location && (
-                  <div className="flex items-center gap-3 text-sm text-zinc-400">
-                    <Globe className="h-4 w-4" />
-                    {user.location}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Content */}
-          <div className="lg:w-2/3">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-2 md:grid-cols-4">
-              {statCards.map((stat, index) => (
-                <Card key={index} className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-lg sm:text-xl font-bold">{stat.value}</div>
-                        <div className="text-xs text-zinc-500">{stat.label}</div>
-                      </div>
-                      <div className={`p-2 rounded-lg bg-gradient-to-br ${stat.color}`}>
-                        {stat.icon}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Content Tabs */}
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-900 gap-4">
-                {/* Responsive Tabs Navigation */}
-                <div className="w-full sm:w-auto overflow-x-auto">
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="bg-transparent p-0 h-12 w-full sm:w-auto flex flex-nowrap">
-                      <TabsTrigger 
-                        value="all" 
-                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:text-white rounded-none px-3 sm:px-4 text-sm sm:text-base whitespace-nowrap"
-                      >
-                        All Notes
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="premium" 
-                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-amber-500 data-[state=active]:text-amber-500 rounded-none px-3 sm:px-4 text-sm sm:text-base whitespace-nowrap"
-                      >
-                        <Crown className="h-3 w-3 mr-1 sm:mr-2" />
-                        Premium
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="free" 
-                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-green-500 data-[state=active]:text-green-500 rounded-none px-3 sm:px-4 text-sm sm:text-base whitespace-nowrap"
-                      >
-                        Free
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="popular" 
-                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-pink-500 data-[state=active]:text-pink-500 rounded-none px-3 sm:px-4 text-sm sm:text-base whitespace-nowrap"
-                      >
-                        <TrendingUp className="h-3 w-3 mr-1 sm:mr-2" />
-                        Popular
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                
-                {/* View Mode Toggle - Now on mobile too */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "text-zinc-400 h-8 w-8 p-0",
-                      viewMode === 'grid' ? "text-white" : ""
-                    )}
-                    onClick={() => setViewMode('grid')}
-                  >
-                    <Grid3x3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "text-zinc-400 h-8 w-8 p-0",
-                      viewMode === 'list' ? "text-white" : ""
-                    )}
-                    onClick={() => setViewMode('list')}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Notes Grid/List */}
-              {filteredNotes.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="h-16 w-16 text-zinc-700 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-zinc-300 mb-2">No Notes Yet</h3>
-                  <p className="text-zinc-500 max-w-md mx-auto">
-                    {isOwnProfile 
-                      ? "You haven't created any notes yet. Start by creating your first note!"
-                      : "This user hasn't created any notes yet."}
-                  </p>
-                  {isOwnProfile && (
-                    <Button className="mt-4" onClick={() => router.push('/create')}>
-                      Create Your First Note
-                    </Button>
-                  )}
-                </div>
-              ) : viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredNotes.map((note) => (
-                    <NoteCard 
-                      key={note._id} 
-                      note={note} 
-                      onClick={() => handleNoteClick(note)}
-                      getTimeAgo={getTimeAgo}
-                      isMobile={isMobile}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredNotes.map((note) => (
-                    <NoteListItem 
-                      key={note._id} 
-                      note={note} 
-                      onClick={() => handleNoteClick(note)}
-                      getTimeAgo={getTimeAgo}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Share Dialog */}
-      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white">Share Profile</DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              Share @{user.username}'s profile with others
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-4 bg-zinc-800/50 rounded-lg">
-              <p className="text-sm text-zinc-400 break-all">
-                {typeof window !== 'undefined' ? window.location.href : ''}
-              </p>
-            </div>
-            <Button 
-              onClick={handleShare} 
-              variant="default"
-              className="w-full bg-white text-black hover:bg-zinc-200"
+          {/* --- LEFT: PERSONNEL HUD --- */}
+          <div className="lg:col-span-4 space-y-8">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+              className="p-8 rounded-[3rem] bg-neutral-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl text-center lg:text-left relative overflow-hidden group"
             >
-              <Copy className="h-4 w-4 mr-2" />
-              Copy Profile Link
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+              <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none rotate-12 group-hover:rotate-0 transition-transform duration-1000">
+                 <ShieldCheck size={120} />
+              </div>
 
-      {/* Report Dialog */}
-      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white">Report @{user.username}</DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              Help us keep the community safe by reporting inappropriate behavior.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-white">Reason for reporting</Label>
-              <Textarea 
-                placeholder="Please describe why you're reporting this user..."
-                className="bg-zinc-800 border-zinc-700 text-white min-h-[100px]"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowReportDialog(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  toast.success("Report submitted. We'll review this user.");
-                  setShowReportDialog(false);
-                }}
-                className="flex-1"
-              >
-                Submit Report
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Block Dialog */}
-      <Dialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white">Block @{user.username}?</DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              You won't see their notes or be able to message them. They won't be notified.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="bg-zinc-800/50 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={user.picture} />
-                  <AvatarFallback>{user.name[0]}</AvatarFallback>
+              <div className="relative inline-block mb-6">
+                <div className="absolute inset-0 bg-red-600/30 blur-3xl rounded-full animate-pulse opacity-50" />
+                <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-red-600 relative z-10 shadow-[0_0_40px_rgba(220,38,38,0.2)] bg-black">
+                  <AvatarImage src={user?.picture} />
+                  <AvatarFallback className="text-red-600 text-5xl font-black italic uppercase">{user?.name?.[0]}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <h4 className="font-medium">{user.name}</h4>
-                  <p className="text-sm text-zinc-500">@{user.username}</p>
+                {user?.isPremium && (
+                  <div className="absolute -top-1 -right-1 z-20 bg-amber-500 rounded-full p-2.5 shadow-[0_0_15px_rgba(245,158,11,0.5)] border-2 border-black">
+                    <Crown size={16} className="text-black" />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4 relative z-10">
+                <div className="space-y-1">
+                   <h2 className="text-4xl font-black italic uppercase tracking-tighter text-white leading-none">{user?.name}</h2>
+                   <p className="text-red-500 text-[10px] font-black uppercase tracking-[0.4em] pt-2">@{user?.username}</p>
+                </div>
+                
+                <p className="text-neutral-500 text-xs font-medium uppercase tracking-tight border-t border-white/5 pt-4">
+                  {user?.bio || "Neural node active. Identity parameters verified by the void."}
+                </p>
+                
+                <div className="pt-6 space-y-4">
+                  {isOwnProfile ? (
+                    <Button 
+                      onClick={() => router.push('/profile')} 
+                      className="w-full h-14 bg-white text-black font-black uppercase italic rounded-2xl text-xs hover:bg-red-600 hover:text-white transition-all shadow-xl active:scale-95 group"
+                    >
+                       <Edit3 size={16} className="mr-2 group-hover:rotate-12 transition-transform" /> Edit Profile
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={handleFollowToggle} 
+                      disabled={followLoading}
+                      className={cn(
+                        "w-full h-14 font-black uppercase italic rounded-2xl text-xs transition-all shadow-xl active:scale-95 group",
+                        user?.isFollowing 
+                          ? "bg-neutral-800 text-white border border-white/10 hover:bg-red-600/10 hover:text-red-500 hover:border-red-500/50" 
+                          : "bg-red-600 hover:bg-red-700 text-white"
+                      )}
+                    >
+                       {followLoading ? (
+                         <Loader2 className="animate-spin" size={16} />
+                       ) : user?.isFollowing ? (
+                         <div className="flex items-center gap-2">
+                           <Check size={16} className="group-hover:hidden" />
+                           <UserMinus size={16} className="hidden group-hover:block" />
+                           <span className="group-hover:hidden uppercase">Following</span>
+                           <span className="hidden group-hover:block uppercase tracking-widest">Unfollow</span>
+                         </div>
+                       ) : (
+                         <div className="flex items-center gap-2">
+                           <UserPlus size={16} />
+                           <span className="uppercase">Follow Node</span>
+                         </div>
+                       )}
+                    </Button>
+                  )}
+                  
+                  <div className="grid grid-cols-3 gap-2">
+                     <StatusMini label="Nodes" val={stats?.totalNotes || 0} />
+                     <StatusMini label="Syncs" val={user?.followersCount || 0} />
+                     <StatusMini label="Trust" val="100%" />
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowBlockDialog(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  toast.success(`You've blocked @${user.username}`);
-                  setShowBlockDialog(false);
-                }}
-                className="flex-1"
-              >
-                Block User
-              </Button>
+            </motion.div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <InfoNode label="Origin" val={user?.joinDate ? new Date(user?.joinDate).toLocaleDateString() : 'N/A'} icon={<Clock size={12}/>} />
+               <InfoNode label="Access" val={user?.membershipPlan || "Standard"} icon={<Award size={12}/>} />
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* Followers Sheet */}
-      <Sheet open={showFollowersDialog} onOpenChange={setShowFollowersDialog}>
-        <SheetContent side="bottom" className="h-[80vh] bg-zinc-950 border-t border-zinc-800 rounded-t-2xl">
-          <SheetHeader className="mb-4">
-            <SheetTitle className="text-white">Followers</SheetTitle>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translatey-1/2 h-4 w-4 text-zinc-500" />
-              <Input
-                placeholder="Search followers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-zinc-900 border-zinc-800"
-              />
+          {/* --- RIGHT: CONTENT MATRIX --- */}
+          <div className="lg:col-span-8 space-y-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+               <HUDStat label="Intelligence Nodes" val={stats?.totalNotes || 0} icon={FileText} color="text-red-500" />
+               <HUDStat label="Global Views" val={stats?.totalViews || 0} icon={Eye} color="text-blue-500" />
+               <HUDStat label="Sync Rate" val={stats?.totalLikes || 0} icon={ThumbsUp} color="text-emerald-500" />
+               <HUDStat label="Network Scale" val={user?.followersCount || 0} icon={Users} color="text-purple-500" />
             </div>
-          </SheetHeader>
-          
-          {loadingFollowers ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          ) : followers.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-              <p className="text-zinc-400">No followers</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-[calc(80vh-140px)] pr-4">
-              <div className="space-y-2">
-                {followers.map((follower) => (
-                  <div 
-                    key={follower._id}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-900/50 transition-colors cursor-pointer"
-                    onClick={() => {
-                      setShowFollowersDialog(false);
-                      router.push(`/${follower.username}/profile`);
-                    }}
-                  >
-                    <Avatar className="h-10 w-10 border border-zinc-800">
-                      <AvatarImage src={follower.picture} />
-                      <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm">
-                        {follower.name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1">
-                        <p className="font-medium text-sm truncate">
-                          {follower.name}
-                        </p>
-                        {follower.isPremium && (
-                          <Crown className="h-3 w-3 text-amber-500 fill-amber-500 flex-shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-xs text-zinc-500 truncate">@{follower.username}</p>
-                    </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/5 pb-2">
+                  <TabsList className="bg-transparent p-0 h-auto gap-8">
+                     <TabTrigger value="all" label="All Nodes" />
+                     <TabTrigger value="premium" label="Elite Access" icon={<Crown size={12}/>} />
+                  </TabsList>
+                  
+                  <div className="flex items-center gap-2 bg-neutral-900/50 p-1 rounded-xl border border-white/5 self-end">
+                     <Button onClick={() => setViewMode('grid')} variant="ghost" size="icon" className={cn("h-9 w-10 rounded-lg", viewMode === 'grid' ? "bg-red-600 text-white" : "text-neutral-500")}><Grid3x3 size={16}/></Button>
+                     <Button onClick={() => setViewMode('list')} variant="ghost" size="icon" className={cn("h-9 w-10 rounded-lg", viewMode === 'list' ? "bg-red-600 text-white" : "text-neutral-500")}><List size={16}/></Button>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </SheetContent>
-      </Sheet>
+               </div>
 
-      {/* Following Sheet */}
-      <Sheet open={showFollowingDialog} onOpenChange={setShowFollowingDialog}>
-        <SheetContent side="bottom" className="h-[80vh] bg-zinc-950 border-t border-zinc-800 rounded-t-2xl">
-          <SheetHeader className="mb-4">
-            <SheetTitle className="text-white">Following</SheetTitle>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translatey-1/2 h-4 w-4 text-zinc-500" />
-              <Input
-                placeholder="Search following..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-zinc-900 border-zinc-800"
-              />
-            </div>
-          </SheetHeader>
-          
-          {loadingFollowing ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          ) : following.length === 0 ? (
-            <div className="text-center py-12">
-              <UserPlus className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-              <p className="text-zinc-400">Not following anyone</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-[calc(80vh-140px)] pr-4">
-              <div className="space-y-2">
-                {following.map((followingUser) => (
-                  <div 
-                    key={followingUser._id}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-900/50 transition-colors cursor-pointer"
-                    onClick={() => {
-                      setShowFollowingDialog(false);
-                      router.push(`/${followingUser.username}/profile`);
-                    }}
-                  >
-                    <Avatar className="h-10 w-10 border border-zinc-800">
-                      <AvatarImage src={followingUser.picture} />
-                      <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm">
-                        {followingUser.name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1">
-                        <p className="font-medium text-sm truncate">
-                          {followingUser.name}
-                        </p>
-                        {followingUser.isPremium && (
-                          <Crown className="h-3 w-3 text-amber-500 fill-amber-500 flex-shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-xs text-zinc-500 truncate">@{followingUser.username}</p>
+               <TabsContent value={activeTab} className="mt-0 outline-none">
+                  {notes.length === 0 ? (
+                    <div className="py-32 text-center bg-neutral-950/40 rounded-[3rem] border border-dashed border-white/5">
+                       <Activity size={48} className="mx-auto text-neutral-900 mb-4" />
+                       <p className="text-[10px] font-black uppercase italic tracking-[0.5em] text-neutral-700">Database Empty</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </SheetContent>
-      </Sheet>
+                  ) : (
+                    <div className={cn("grid gap-6", viewMode === 'grid' ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
+                        {notes.map((note, i) => (
+                          <NoteCard key={note._id} note={note} index={i} viewMode={viewMode} username={username} router={router} />
+                        ))}
+                    </div>
+                  )}
+               </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </main>
+      <Footer />
     </div>
   );
 }
 
-// Note Card Component - UPDATED FOR MOBILE
-function NoteCard({ note, onClick, getTimeAgo, isMobile = false }: {
-  note: Note;
-  onClick: () => void;
-  getTimeAgo: (dateString: string) => string;
-  isMobile?: boolean;
-}) {
-  return (
-    <div 
-      className={cn(
-        "group relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 transition-all cursor-pointer",
-        isMobile ? "min-h-[180px]" : ""
-      )}
-      onClick={onClick}
-    >
-      {/* Thumbnail */}
-      <div className="relative aspect-video overflow-hidden bg-zinc-900">
-        <img
-          src={note.thumbnail}
-          alt={note.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-        
-        {/* Premium Badge */}
-        {note.isPremium && (
-          <div className="absolute top-2 left-2">
-            <div className="bg-gradient-to-r from-amber-500 to-yellow-600 rounded-full p-1">
-              <Crown className="h-3 w-3 text-white" />
-            </div>
-          </div>
-        )}
+// --- SUB-COMPONENTS (HUD STYLE) ---
 
-        {/* Overlay Stats */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-3 text-white opacity-80">
-              <span className="flex items-center gap-1">
-                <Eye className="h-3 w-3" />
-                <span className="text-xs sm:text-sm">
-                  {note.views > 1000 ? `${(note.views / 1000).toFixed(1)}k` : note.views}
-                </span>
-              </span>
-            </div>
-            {note.status === 'completed' && (
-              <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-                Complete
-              </Badge>
-            )}
-            {note.status === 'processing' && (
-              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
-                Processing
-              </Badge>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-3 sm:p-4">
-        <h3 className="font-medium line-clamp-2 mb-2 text-sm group-hover:text-blue-400 transition-colors min-h-[40px]">
-          {note.title}
-        </h3>
-        
-        <div className="flex items-center justify-between text-xs text-zinc-500">
-          <span>{getTimeAgo(note.createdAt)}</span>
-          
-          {note.pdfThumbnail && (
-            <div className="flex items-center gap-1">
-              <FileText className="h-3 w-3" />
-              <span className="hidden xs:inline">PDF</span>
-            </div>
-          )}
-        </div>
-      </div>
+const HUDStat = ({ label, val, icon: Icon, color }: any) => (
+  <div className="bg-black border border-white/5 p-5 rounded-[2.5rem] relative overflow-hidden group hover:border-red-600/30 transition-all duration-500 shadow-2xl">
+    <div className="flex justify-between items-start mb-5 relative z-10">
+      <div className={cn("p-2.5 rounded-xl bg-neutral-900 border border-white/5 shadow-inner", color)}><Icon size={20}/></div>
+      <div className="h-2 w-2 rounded-full bg-red-600 animate-pulse shadow-[0_0_10px_red]" />
     </div>
-  );
-}
-
-// Note List Item Component
-function NoteListItem({ note, onClick, getTimeAgo }: {
-  note: Note;
-  onClick: () => void;
-  getTimeAgo: (dateString: string) => string;
-}) {
-  return (
-    <div 
-      className="flex items-center gap-3 p-3 rounded-lg border border-zinc-800 hover:border-zinc-700 bg-zinc-900/30 hover:bg-zinc-900/50 transition-all cursor-pointer group"
-      onClick={onClick}
-    >
-      <div className="relative flex-shrink-0">
-        <div className="w-16 h-12 rounded overflow-hidden">
-          <img
-            src={note.thumbnail}
-            alt={note.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        {note.isPremium && (
-          <div className="absolute -top-1 -right-1">
-            <Crown className="h-3 w-3 text-amber-500 fill-amber-500" />
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <h4 className="font-medium truncate text-sm group-hover:text-blue-400 transition-colors">
-          {note.title}
-        </h4>
-        <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1">
-          <span className="flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            {note.views > 1000 ? `${(note.views / 1000).toFixed(1)}k` : note.views}
-          </span>
-          <span>{getTimeAgo(note.createdAt)}</span>
-          {note.status === 'completed' && (
-            <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-              Complete
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-zinc-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
+    <div className="relative z-10">
+      <p className="text-[8px] font-black text-neutral-700 uppercase tracking-widest mb-1 leading-none">{label}</p>
+      <p className="text-2xl font-black text-white italic tracking-tighter leading-none">{val.toLocaleString() || 0}</p>
     </div>
-  );
-}
+  </div>
+);
+
+const NoteCard = ({ note, index, viewMode, username, router }: any) => (
+  <motion.div 
+    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
+    onClick={() => router.push(`/note/${username}/${note.slug}`)}
+    className={cn(
+      "group relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-neutral-950 transition-all duration-500 cursor-pointer hover:border-red-600/30",
+      viewMode === 'list' ? "flex flex-col sm:flex-row items-center p-4 gap-6 min-h-32" : "flex flex-col"
+    )}
+  >
+    <div className={cn("relative overflow-hidden shrink-0", viewMode === 'list' ? "h-24 w-full sm:w-44 rounded-2xl" : "aspect-video")}>
+       <img src={note.thumbnail} alt="v" className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
+       {note.isPremium && <div className="absolute top-3 left-3 bg-red-600 p-2 rounded-xl z-10 border border-white/20"><Crown size={12} className="text-white fill-white"/></div>}
+       <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 z-10">
+         <p className="text-[9px] font-black text-white italic uppercase tracking-widest flex items-center gap-1.5 leading-none"><Eye size={12} className="text-red-600"/> {note.views || 0}</p>
+       </div>
+    </div>
+    <div className="p-6 flex-1 min-w-0">
+       <h3 className="text-sm font-black italic uppercase tracking-tighter text-white truncate group-hover:text-red-500 transition-colors mb-2">{note.title}</h3>
+       <div className="flex items-center justify-between font-bold text-[9px] text-neutral-600 uppercase">
+          <span>{new Date(note.createdAt).toLocaleDateString()}</span>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg group-hover:text-red-500"><ChevronRight size={20}/></Button>
+       </div>
+    </div>
+  </motion.div>
+);
+
+const TabTrigger = ({ value, label, icon }: any) => (
+  <TabsTrigger value={value} className="bg-transparent data-[state=active]:text-red-500 text-neutral-600 font-black uppercase italic text-[11px] tracking-[0.2em] p-0 rounded-none border-none transition-all relative group h-10">
+     <div className="flex items-center gap-2">
+      {icon && <span className="text-neutral-500 group-data-[state=active]:text-red-500 transition-colors">{icon}</span>}
+      <span>{label}</span>
+     </div>
+     <motion.div layoutId="activeTab" className="absolute -bottom-1 left-0 right-0 h-[2px] bg-red-600 opacity-0 group-data-[state=active]:opacity-100 shadow-[0_0_10px_red]" />
+  </TabsTrigger>
+);
+
+const StatusMini = ({ label, val }: any) => (
+  <div className="flex-1 bg-black/40 border border-white/5 p-4 rounded-3xl text-center">
+     <p className="text-[8px] font-black text-neutral-700 uppercase tracking-widest mb-1.5 leading-none">{label}</p>
+     <p className="text-sm font-black italic text-white leading-none">{val}</p>
+  </div>
+);
+
+const InfoNode = ({ label, val, icon }: any) => (
+  <div className="p-6 rounded-[2.5rem] bg-neutral-900/30 border border-white/5 flex items-center gap-4 shadow-2xl">
+     <div className="text-red-600 p-3 bg-black rounded-2xl border border-white/5 shadow-inner">{icon}</div>
+     <div>
+        <p className="text-[9px] font-black text-neutral-700 uppercase tracking-widest leading-none mb-1">{label}</p>
+        <p className="text-[11px] font-bold text-neutral-400 leading-none">{val}</p>
+     </div>
+  </div>
+);
+
+const ErrorScreen = ({ message, router }: { message: string; router: any }) => (
+  <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 text-center">
+    <ShieldAlert size={64} className="text-red-600 animate-pulse mb-8" />
+    <h2 className="text-4xl font-black italic uppercase text-white mb-4 tracking-tighter">Access Denied</h2>
+    <p className="text-neutral-500 font-medium text-sm mb-12 uppercase tracking-tight italic">{message}</p>
+    <Button onClick={() => router.push('/')} className="h-16 px-10 bg-white text-black font-black uppercase italic rounded-2xl hover:bg-red-600 hover:text-white transition-all">
+      <Home size={18} className="mr-3" /> Return to Void
+    </Button>
+  </div>
+);
+
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-8">
+    <div className="h-24 w-24 border-4 border-red-600 border-t-transparent rounded-full animate-spin shadow-[0_0_30px_rgba(220,38,38,0.3)]" />
+    <p className="text-red-600 font-black uppercase italic tracking-[0.6em] animate-pulse text-xs">Accessing User Directory</p>
+  </div>
+);

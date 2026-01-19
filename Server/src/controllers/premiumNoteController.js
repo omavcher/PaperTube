@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Note = require('../models/Note');
 const { GoogleGenAI } = require("@google/genai");
 const crypto = require('crypto');
+const { getTranscript } = require('../youtube-transcript');
 
 const PREMIUM_MODELS = ['parikshasarthi', 'vyavastha', 'sarlakruti'];
 const PREMIUM_FEATURES = {
@@ -21,6 +22,17 @@ const PREMIUM_FEATURES = {
     features: ['compression', 'smart_summary', 'jargon_buster', 'simplified_explanations'],
     description: 'Smart compression and summary features'
   }
+};
+
+// Map frontend detail levels to backend enum values
+const mapDetailLevel = (level) => {
+  const mapping = {
+    'Standard': 'Standard Notes',
+    'Brief': 'Brief Summary',
+    'Comprehensive': 'Comprehensive',
+    'Bullet Points': 'Bullet Points Only'
+  };
+  return mapping[level] || level;
 };
 
 // API Key Manager Class
@@ -1009,7 +1021,7 @@ exports.createNote = async (req, res) => {
     console.log('Fetching transcript...');
     let transcript;
     try {
-      transcript = await fetchTranscriptWithRetry(videoId);
+      transcript = await getTranscript(videoId);
       if (!transcript || transcript.trim().length === 0) {
         throw new Error('Transcript is empty or unavailable for this video');
       }
@@ -1026,7 +1038,17 @@ exports.createNote = async (req, res) => {
     if (figures && figures.length > 0) {
       console.log(`Generated ${figures.length} figures, fetching images...`);
       img_with_url = await generateImgObjects(figures);
-      console.log(`Found ${img_with_url.length} images`);
+      // Filter out entries with null or invalid img_url
+      img_with_url = img_with_url.filter(img => {
+        if (!img.img_url || !img.img_url.trim().length) return false;
+        try {
+          new URL(img.img_url);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+      console.log(`Found ${img_with_url.length} valid images`);
     }
 
     // STEP 3: Generate premium PDF content using Google Gemini AI
@@ -1073,7 +1095,7 @@ exports.createNote = async (req, res) => {
       generationDetails: {
         model: model,
         language: settings?.language || 'English',
-        detailLevel: settings?.detailLevel || 'Standard Notes',
+        detailLevel: mapDetailLevel(settings?.detailLevel) || 'Standard Notes',
         prompt: prompt || "",
         cost: 0,
         generatedAt: new Date(),
@@ -1085,6 +1107,7 @@ exports.createNote = async (req, res) => {
     await newNote.save();
 
     // STEP 5: Add note to user's notes array
+    if (!user.notes) user.notes = [];
     user.notes.push({ noteId: newNote._id });
     await user.save();
 

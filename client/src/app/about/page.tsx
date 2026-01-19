@@ -1,39 +1,18 @@
 "use client";
 
 import React from "react";
-import { AnimatedTestimonials } from "@/components/ui/animated-testimonials";
 import Footer from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { 
-  Sparkles, 
-  Target, 
-  Zap, 
-  Users, 
-  Globe, 
-  BookOpen, 
-  Heart, 
-  Award,
-  Lightbulb,
-  Rocket,
-  TrendingUp,
-  Shield,
-  Clock,
-  FileText,
-  GraduationCap,
-  Brain,
-  Cpu,
-  Code,
-  Palette,
-  CheckCircle,
-  ArrowRight,
-  Linkedin,
-  Github,
-  Twitter,
-  Mail
+  Sparkles, Target, Zap, Users, Globe, BookOpen, Heart, 
+  Lightbulb, Rocket, TrendingUp, Shield, Clock, FileText, 
+  Brain, Cpu, Code, Palette, CheckCircle, ArrowRight, 
+  Linkedin, Github, Twitter, Mail, Activity, Terminal, ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
 import Image from "next/image";
 
 function AboutPage() {
@@ -42,7 +21,7 @@ function AboutPage() {
     role: "Founder & CEO",
     bio: "A passionate developer and entrepreneur with a vision to revolutionize how people learn from video content. With background in computer science and AI, Om started PaperTube to solve the problem of information overload in educational videos.",
     education: "B.Tech in Computer Science",
-    expertise: ["AI/ML", "Full-Stack Development", "Product Design", "EdTech"],
+    expertise: ["AI/ML", "Full-Stack Dev", "Neural Logic", "System Architecture"],
     social: {
       linkedin: "https://linkedin.com/in/omavchar",
       github: "https://github.com/omavchar",
@@ -54,507 +33,216 @@ function AboutPage() {
   };
 
   const coreValues = [
-    {
-      icon: <Lightbulb className="h-8 w-8" />,
-      title: "Innovation First",
-      description: "Constantly pushing boundaries in AI-powered learning technology",
-      color: "from-blue-500/10 to-cyan-500/10"
-    },
-    {
-      icon: <Heart className="h-8 w-8" />,
-      title: "User-Centric",
-      description: "Every feature is designed with the learner's experience in mind",
-      color: "from-red-500/10 to-pink-500/10"
-    },
-    {
-      icon: <Shield className="h-8 w-8" />,
-      title: "Privacy & Security",
-      description: "Your data and learning materials are protected with enterprise-grade security",
-      color: "from-green-500/10 to-emerald-500/10"
-    },
-    {
-      icon: <Globe className="h-8 w-8" />,
-      title: "Accessibility",
-      description: "Making quality education tools available to everyone, everywhere",
-      color: "from-purple-500/10 to-violet-500/10"
-    },
-    {
-      icon: <Rocket className="h-8 w-8" />,
-      title: "Continuous Growth",
-      description: "Always evolving to meet the changing needs of modern learners",
-      color: "from-yellow-500/10 to-amber-500/10"
-    },
-    {
-      icon: <Users className="h-8 w-8" />,
-      title: "Community Driven",
-      description: "Building tools that empower learning communities to thrive",
-      color: "from-indigo-500/10 to-blue-500/10"
-    },
+    { icon: <Lightbulb />, title: "Innovation First", description: "Constantly pushing boundaries in AI-powered learning technology", color: "text-blue-500", bg: "bg-blue-500/5" },
+    { icon: <Heart />, title: "User-Centric", description: "Every feature is designed with the learner's experience in mind", color: "text-red-500", bg: "bg-red-500/5" },
+    { icon: <Shield />, title: "Secure Data", description: "Learning materials protected with enterprise-grade encryption", color: "text-emerald-500", bg: "bg-emerald-500/5" },
+    { icon: <Globe />, title: "Accessibility", description: "Making quality education tools available to everyone, everywhere", color: "text-purple-500", bg: "bg-purple-500/5" },
+    { icon: <Rocket />, title: "Fast Evolution", description: "Evolving at light-speed to meet modern learning demands", color: "text-orange-500", bg: "bg-orange-500/5" },
+    { icon: <Users />, title: "Community Driven", description: "Building tools that empower global learning communities", color: "text-indigo-500", bg: "bg-indigo-500/5" },
   ];
 
   const milestones = [
-    {
-      year: "2023",
-      title: "Concept Born",
-      description: "The idea of PaperTube was conceived during a hackathon",
-      icon: <Lightbulb className="h-6 w-6" />
-    },
-    {
-      year: "2024 Q1",
-      title: "First Prototype",
-      description: "Built the initial AI model for YouTube transcription",
-      icon: <Code className="h-6 w-6" />
-    },
-    {
-      year: "2024 Q2",
-      title: "Beta Launch",
-      description: "Released to first 1000 users with positive feedback",
-      icon: <Rocket className="h-6 w-6" />
-    },
-    {
-      year: "2024 Q3",
-      title: "Feature Expansion",
-      description: "Added multiple AI models and PDF export features",
-      icon: <Zap className="h-6 w-6" />
-    },
-    {
-      year: "Present",
-      title: "Growing Community",
-      description: "Serving thousands of students and educators worldwide",
-      icon: <Globe className="h-6 w-6" />
-    },
-    {
-      year: "Future",
-      title: "Global Impact",
-      description: "Expanding to support multiple languages and platforms",
-      icon: <TrendingUp className="h-6 w-6" />
-    },
+    { year: "2023", title: "Concept Sync", description: "PaperTube conceived during an intense engineering hackathon.", icon: <Lightbulb /> },
+    { year: "2024 Q1", title: "Kernel Prototype", description: "First AI synthesis model deployed for video parsing.", icon: <Code /> },
+    { year: "2024 Q2", title: "Beta Protocol", description: "System released to initial 1,000 verified testers.", icon: <Rocket /> },
+    { year: "Present", title: "Scaling Nodes", description: "Supporting thousands of global students monthly.", icon: <Globe /> },
   ];
 
   const technologyStack = [
-    {
-      category: "Frontend",
-      technologies: ["Next.js 14", "React", "TypeScript", "Tailwind CSS", "Shadcn UI"],
-      icon: <Palette className="h-6 w-6" />
-    },
-    {
-      category: "Backend",
-      technologies: ["Node.js", "Express", "MongoDB", "Redis", "Docker"],
-      icon: <Cpu className="h-6 w-6" />
-    },
-    {
-      category: "AI/ML",
-      technologies: ["OpenAI API", "LangChain", "TensorFlow", "PyTorch", "Whisper"],
-      icon: <Brain className="h-6 w-6" />
-    },
-    {
-      category: "Infrastructure",
-      technologies: ["AWS", "Vercel", "Cloudflare", "GitHub Actions", "Sentry"],
-      icon: <Code className="h-6 w-6" />
-    },
-  ];
-
-  const impactStats = [
-    { value: "10,000+", label: "Notes Generated", icon: <FileText className="h-5 w-5" /> },
-    { value: "50,000+", label: "Hours Saved", icon: <Clock className="h-5 w-5" /> },
-    { value: "5,000+", label: "Active Users", icon: <Users className="h-5 w-5" /> },
-    { value: "100+", label: "Countries Served", icon: <Globe className="h-5 w-5" /> },
+    { category: "Frontend", techs: ["Next.js 15", "React", "Tailwind"], icon: <Palette /> },
+    { category: "Backend", techs: ["Node.js", "Redis", "Docker"], icon: <Cpu /> },
+    { category: "AI/ML", techs: ["LangChain", "OpenAI", "Whisper"], icon: <Brain /> },
+    { category: "Cloud", techs: ["AWS", "Vercel", "Cloudflare"], icon: <ShieldCheck /> },
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div
-          className={cn(
-            "absolute inset-0",
-            "[background-size:40px_40px]",
-            "[background-image:linear-gradient(to_right,#262626_1px,transparent_1px),linear-gradient(to_bottom,#262626_1px,transparent_1px)]",
-          )}
-        />
-        <div className="pointer-events-none absolute inset-0 bg-black [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-red-500/30 font-sans">
+      {/* Background Matrix HUD */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-20">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+        <div className="absolute inset-0 bg-radial-gradient from-red-600/10 via-transparent to-transparent"></div>
+      </div>
 
-        <div className="container relative z-10 mx-auto px-4 py-12 sm:py-16">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 border border-red-500/20">
-            <Sparkles className="h-4 w-4" />
-            Our Story • Our Mission • Our Vision
-          </div>
-          
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left Column - Title and Description */}
-            <div className="lg:w-1/2">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="rounded-lg bg-red-500/10 p-2.5">
-                  <BookOpen className="h-6 w-6 text-red-400" />
-                </div>
-                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                  Transforming Education
-                </Badge>
-              </div>
+      {/* --- HERO SECTION: Mission Briefing --- */}
+      <section className="relative pt-32 pb-20 overflow-hidden z-10">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col lg:flex-row gap-16 items-center">
+            <div className="lg:w-3/5 space-y-8">
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="inline-flex items-center gap-2 rounded-full bg-red-600/10 border border-red-600/20 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.3em] text-red-500">
+                <Activity size={12} /> Personnel Dossier v1.0
+              </motion.div>
               
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-                About <span className="bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">PaperTube</span>
+              <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
+                WE FORGE <br />
+                <span className="text-red-600 drop-shadow-[0_0_20px_rgba(220,38,38,0.4)]">KNOWLEDGE</span>
               </h1>
               
-              <p className="text-lg text-neutral-300 mb-6">
-                PaperTube is your AI-powered learning companion — transforming long
-                YouTube lectures into clear, time-stamped, and beautifully designed
-                notes within minutes. Our mission is to make learning smarter,
-                faster, and more enjoyable for every student, creator, and lifelong learner.
+              <p className="text-lg text-neutral-500 font-medium leading-relaxed max-w-2xl uppercase tracking-tight">
+                PaperTube is your AI-powered learning companion — transforming raw 
+                YouTube data into high-density, timestamped intelligence artifacts. 
+                Our mission: <span className="text-white italic">Eradicate information overload.</span>
               </p>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-                <div className="text-center p-3 rounded-lg bg-neutral-900/50">
-                  <div className="text-2xl font-bold text-red-500">2023</div>
-                  <div className="text-xs text-neutral-400">Founded</div>
-                </div>
-                <div className="text-center p-3 rounded-lg bg-neutral-900/50">
-                  <div className="text-2xl font-bold text-red-500">1</div>
-                  <div className="text-xs text-neutral-400">Founder</div>
-                </div>
-                <div className="text-center p-3 rounded-lg bg-neutral-900/50">
-                  <div className="text-2xl font-bold text-red-500">5K+</div>
-                  <div className="text-xs text-neutral-400">Users</div>
-                </div>
-                <div className="text-center p-3 rounded-lg bg-neutral-900/50">
-                  <div className="text-2xl font-bold text-red-500">∞</div>
-                  <div className="text-xs text-neutral-400">Potential</div>
-                </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatusMetric label="Established" value="2023" />
+                <StatusMetric label="Personnel" value="01" />
+                <StatusMetric label="Active Nodes" value="5K+" />
+                <StatusMetric label="Uptime" value="99.9%" />
               </div>
             </div>
 
-            {/* Right Column - Mission Card */}
-            <div className="lg:w-1/2">
-              <Card className="border-neutral-800 bg-neutral-900/50 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-red-400" />
-                    Our Vision & Mission
-                  </CardTitle>
-                  <CardDescription>
-                    What drives us to build PaperTube every day
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-white">🌟 Vision</h3>
-                    <p className="text-sm text-neutral-400">
-                      To become the world's most intelligent learning companion,
-                      transforming passive video consumption into active, productive learning.
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-white">🎯 Mission</h3>
-                    <p className="text-sm text-neutral-400">
-                      Empower every learner to extract maximum value from educational content
-                      through AI-powered summarization, organization, and knowledge retention tools.
-                    </p>
-                  </div>
-                  
-                  <div className="pt-4 border-t border-neutral-800">
-                    <div className="flex items-center gap-2 text-sm text-neutral-400">
-                      <CheckCircle className="h-4 w-4 text-green-400" />
-                      <span>Making education accessible to everyone</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-neutral-400 mt-2">
-                      <CheckCircle className="h-4 w-4 text-green-400" />
-                      <span>Reducing study time by 70% on average</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-neutral-400 mt-2">
-                      <CheckCircle className="h-4 w-4 text-green-400" />
-                      <span>Building the future of personalized learning</span>
-                    </div>
-                  </div>
-                </CardContent>
+            <div className="lg:w-2/5 w-full">
+              <Card className="bg-neutral-950 border-white/5 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity"><Target size={120} /></div>
+                 <h3 className="text-xl font-black italic uppercase text-red-500 mb-6 flex items-center gap-2">
+                    <ShieldCheck size={20} /> Operational Vision
+                 </h3>
+                 <p className="text-sm text-neutral-400 leading-relaxed font-medium mb-8">
+                    To build the world's most intuitive learning terminal, converting passive consumption into a tactile, active performance of the mind.
+                 </p>
+                 <div className="space-y-3">
+                    <CheckItem text="Accessible education infrastructure" />
+                    <CheckItem text="70% average study time compression" />
+                    <CheckItem text="Personalized neural mapping" />
+                 </div>
               </Card>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Impact Stats */}
-      <section className="py-12 bg-black">
+      {/* --- FOUNDER SECTION: The Architect --- */}
+      <section className="py-24 relative z-10 bg-neutral-900/30 border-y border-white/5">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {impactStats.map((stat, index) => (
-              <Card key={index} className="border-neutral-800 bg-neutral-900/50 backdrop-blur-sm text-center">
-                <CardContent className="p-6">
-                  <div className="inline-flex p-3 rounded-lg bg-red-500/10 mb-4">
-                    {stat.icon}
-                  </div>
-                  <div className="text-3xl font-bold text-white mb-2">{stat.value}</div>
-                  <p className="text-sm text-neutral-400">{stat.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Founder Section */}
-      <section className="py-12 sm:py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-10 sm:mb-12">
-            <h2 className="text-2xl font-bold text-white sm:text-3xl">
-              Meet Our Founder
-            </h2>
-            <p className="mt-3 text-gray-400 sm:mt-4">
-              The visionary behind PaperTube's mission
-            </p>
+          <div className="text-center mb-20 space-y-4">
+             <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter">THE <span className="text-red-600">ARCHITECT</span></h2>
+             <p className="text-neutral-500 text-xs font-black uppercase tracking-[0.4em]">Verified Personnel Signature</p>
           </div>
 
-          <Card className="border-neutral-800 bg-neutral-900/50 backdrop-blur-sm max-w-4xl mx-auto">
-            <CardContent className="p-6 sm:p-8">
-              <div className="flex flex-col lg:flex-row gap-8">
-                {/* Founder Image */}
-                <div className="lg:w-1/3 flex flex-col items-center">
-                  <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-red-500/20 mb-6">
-                    <Image
-                      src={founderInfo.src}
-                      alt={founderInfo.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  
-                  <div className="text-center">
-                    <h3 className="text-xl font-bold text-white">{founderInfo.name}</h3>
-                    <p className="text-red-400 font-medium mb-2">{founderInfo.role}</p>
-                    <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs">
-                      {founderInfo.education}
-                    </Badge>
-                  </div>
-                  
-                  {/* Social Links */}
-                  <div className="flex gap-3 mt-6">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 w-10 p-0 rounded-full"
-                      onClick={() => window.open(founderInfo.social.linkedin, '_blank')}
-                    >
-                      <Linkedin className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 w-10 p-0 rounded-full"
-                      onClick={() => window.open(founderInfo.social.github, '_blank')}
-                    >
-                      <Github className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 w-10 p-0 rounded-full"
-                      onClick={() => window.open(founderInfo.social.twitter, '_blank')}
-                    >
-                      <Twitter className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 w-10 p-0 rounded-full"
-                      onClick={() => window.location.href = `mailto:${founderInfo.social.email}`}
-                    >
-                      <Mail className="h-5 w-5" />
-                    </Button>
-                  </div>
+          <div className="max-w-5xl mx-auto rounded-[3.5rem] p-1 bg-gradient-to-br from-red-600/20 to-transparent border border-white/5 shadow-3xl overflow-hidden">
+            <div className="bg-[#080808] rounded-[3.4rem] p-8 md:p-16 flex flex-col md:flex-row gap-16 items-center">
+              <div className="md:w-1/3 flex flex-col items-center space-y-6">
+                <div className="relative h-64 w-64 rounded-3xl overflow-hidden border-4 border-red-600/20 shadow-2xl">
+                   <Image src={founderInfo.src} alt={founderInfo.name} fill className="object-cover grayscale hover:grayscale-0 transition-all duration-700" />
                 </div>
-
-                {/* Founder Details */}
-                <div className="lg:w-2/3 space-y-6">
-                  <div>
-                    <h4 className="text-lg font-semibold text-white mb-2">About {founderInfo.name.split(' ')[0]}</h4>
-                    <p className="text-neutral-300">{founderInfo.bio}</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-lg font-semibold text-white mb-2">Areas of Expertise</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {founderInfo.expertise.map((skill, index) => (
-                        <Badge 
-                          key={index} 
-                          variant="outline" 
-                          className="bg-neutral-800/50 text-neutral-300 border-neutral-700"
-                        >
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                    <div className="flex items-start gap-3">
-                      <QuoteIcon className="h-6 w-6 text-red-400 mt-1 flex-shrink-0" />
-                      <div>
-                        <p className="text-white font-medium italic">"{founderInfo.quote}"</p>
-                        <p className="text-red-400 text-sm mt-2">— {founderInfo.name}</p>
-                      </div>
-                    </div>
-                  </div>
+                <div className="text-center">
+                   <h3 className="text-2xl font-black italic uppercase tracking-tighter">{founderInfo.name}</h3>
+                   <p className="text-red-500 text-[10px] font-black uppercase tracking-widest">{founderInfo.role}</p>
+                </div>
+                <div className="flex gap-4">
+                  <SocialBtn icon={<Linkedin size={18}/>} link={founderInfo.social.linkedin} />
+                  <SocialBtn icon={<Github size={18}/>} link={founderInfo.social.github} />
+                  <SocialBtn icon={<Twitter size={18}/>} link={founderInfo.social.twitter} />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
 
-      {/* Core Values */}
-      <section className="py-12 bg-black">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-10 sm:mb-12">
-            <h2 className="text-2xl font-bold text-white sm:text-3xl">
-              Our Core Values
-            </h2>
-            <p className="mt-3 text-gray-400 sm:mt-4">
-              The principles that guide everything we do
-            </p>
-          </div>
+              <div className="md:w-2/3 space-y-10">
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600 flex items-center gap-2"><Terminal size={12} className="text-red-500"/> Core Profile</h4>
+                  <p className="text-neutral-400 font-medium leading-relaxed italic">"{founderInfo.bio}"</p>
+                </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {coreValues.map((value, index) => (
-              <Card 
-                key={index} 
-                className="border-neutral-800 bg-neutral-900/50 backdrop-blur-sm hover:border-red-500/30 transition-colors duration-300"
-              >
-                <CardContent className="p-6">
-                  <div className={`inline-flex p-3 rounded-lg ${value.color} mb-4`}>
-                    {value.icon}
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">{value.title}</h3>
-                  <p className="text-sm text-neutral-400">{value.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Technology Stack */}
-      <section className="py-12 sm:py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-10 sm:mb-12">
-            <h2 className="text-2xl font-bold text-white sm:text-3xl">
-              Technology Stack
-            </h2>
-            <p className="mt-3 text-gray-400 sm:mt-4">
-              Built with modern technologies for maximum performance
-            </p>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {technologyStack.map((stack, index) => (
-              <Card 
-                key={index} 
-                className="border-neutral-800 bg-neutral-900/50 backdrop-blur-sm hover:border-blue-500/30 transition-colors duration-300"
-              >
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10">
-                      {stack.icon}
-                    </div>
-                    <CardTitle className="text-lg">{stack.category}</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {stack.technologies.map((tech, techIndex) => (
-                      <div key={techIndex} className="flex items-center gap-2">
-                        <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
-                        <span className="text-sm text-neutral-300">{tech}</span>
-                      </div>
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600">Specialized Expertise</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {founderInfo.expertise.map((exp) => (
+                      <Badge key={exp} variant="outline" className="bg-white/5 border-white/10 text-neutral-400 font-black uppercase text-[9px] px-3 py-1 italic">
+                        {exp}
+                      </Badge>
                     ))}
                   </div>
-                </CardContent>
+                </div>
+
+                <div className="p-6 rounded-2xl bg-red-600/5 border border-red-600/20 relative">
+                   <p className="text-white font-black italic uppercase tracking-tight text-lg leading-tight">
+                     "{founderInfo.quote}"
+                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* --- CORE VALUES: System Modules --- */}
+      <section className="py-24 z-10 relative">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {coreValues.map((v, i) => (
+              <Card key={i} className="bg-neutral-950 border-white/5 rounded-3xl p-8 hover:border-red-600/30 transition-all duration-500 group">
+                 <div className={cn("inline-flex p-4 rounded-2xl mb-6 transition-all duration-500 group-hover:scale-110", v.color, v.bg)}>
+                    {React.cloneElement(v.icon as React.ReactElement, { size: 28 })}
+                 </div>
+                 <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-3">{v.title}</h3>
+                 <p className="text-sm text-neutral-500 font-medium leading-relaxed uppercase tracking-tight">{v.description}</p>
               </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Journey Timeline */}
-      <section className="py-12 bg-black">
+      {/* --- TECH STACK: The Engine --- */}
+      <section className="py-24 bg-black relative z-10 overflow-hidden border-t border-white/5">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-10 sm:mb-12">
-            <h2 className="text-2xl font-bold text-white sm:text-3xl">
-              Our Journey
-            </h2>
-            <p className="mt-3 text-gray-400 sm:mt-4">
-              From concept to growing platform
-            </p>
-          </div>
-
-          <div className="relative">
-            {/* Timeline line */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-0.5 bg-gradient-to-b from-red-500 via-orange-500 to-transparent"></div>
-            
-            <div className="space-y-12">
-              {milestones.map((milestone, index) => (
-                <div 
-                  key={index} 
-                  className={`relative flex items-center ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}
-                >
-                  {/* Content */}
-                  <div className={`w-full md:w-5/12 ${index % 2 === 0 ? 'md:pr-8 text-right' : 'md:pl-8'}`}>
-                    <Card className={`border-neutral-800 bg-neutral-900/50 backdrop-blur-sm ${index % 2 === 0 ? 'md:ml-auto' : 'md:mr-auto'}`}>
-                      <CardContent className="p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="p-2 rounded-lg bg-red-500/10">
-                            {milestone.icon}
-                          </div>
-                          <div>
-                            <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
-                              {milestone.year}
-                            </Badge>
-                            <h3 className="text-lg font-semibold text-white mt-2">{milestone.title}</h3>
-                          </div>
-                        </div>
-                        <p className="text-sm text-neutral-400">{milestone.description}</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  {/* Timeline dot */}
-                  <div className="absolute left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full bg-red-500 border-4 border-black"></div>
-                </div>
-              ))}
-            </div>
-          </div>
+           <div className="flex flex-col lg:flex-row gap-12 items-center">
+              <div className="lg:w-1/3">
+                 <h2 className="text-5xl font-black italic uppercase tracking-tighter mb-4">THE <span className="text-red-600">STACK</span></h2>
+                 <p className="text-neutral-500 font-bold uppercase text-xs tracking-[0.2em]">System Architecture & Infrastructure</p>
+              </div>
+              <div className="lg:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 {technologyStack.map((s, i) => (
+                   <div key={i} className="p-6 rounded-[2rem] bg-neutral-900 border border-white/5 flex items-center gap-6">
+                      <div className="text-red-600">{s.icon}</div>
+                      <div>
+                         <p className="text-[10px] font-black uppercase text-neutral-600 tracking-widest mb-1">{s.category}</p>
+                         <p className="text-sm font-bold text-neutral-200">{s.techs.join(" • ")}</p>
+                      </div>
+                   </div>
+                 ))}
+              </div>
+           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-12 sm:py-16">
-        <div className="container mx-auto px-4">
-          <div className="rounded-xl bg-gradient-to-r from-neutral-900 to-black border border-neutral-800 p-6 sm:p-8 md:p-12 text-center">
-            <h2 className="text-xl font-bold text-white sm:text-2xl md:text-3xl">
-              Ready to transform your learning?
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-neutral-400 sm:mt-4">
-              Join thousands of students and educators who are already using PaperTube
-              to make their learning more efficient and effective.
-            </p>
-            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4 sm:mt-8">
-              <Button 
-                onClick={() => window.location.href = '/'}
-                className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white px-6 sm:px-8 py-2.5 sm:py-3 w-full sm:w-auto"
-              >
-                Start Generating Notes
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                className="border-neutral-700 text-neutral-300 hover:bg-neutral-900 hover:text-white px-6 sm:px-8 py-2.5 sm:py-3 w-full sm:w-auto"
-                onClick={() => window.location.href = '/pricing'}
-              >
-                View Pricing Plans
-              </Button>
-            </div>
-            <p className="mt-5 text-xs text-neutral-500 sm:mt-6">
-              Free tier available • No credit card required • Start in seconds
-            </p>
+      {/* --- JOURNEY: Operation Log --- */}
+      <section className="py-24 relative z-10">
+        <div className="container mx-auto px-4 max-w-4xl">
+           <div className="text-center mb-16">
+              <Badge className="bg-red-600 text-white font-black italic uppercase px-4 py-1 mb-4">Operational Timeline</Badge>
+           </div>
+           <div className="relative border-l-2 border-red-600/20 ml-4 md:ml-0 md:pl-0">
+              {milestones.map((m, i) => (
+                <div key={i} className="mb-12 relative pl-10">
+                   <div className="absolute -left-[11px] top-0 h-5 w-5 rounded-full bg-black border-4 border-red-600 z-20 shadow-[0_0_15px_red]" />
+                   <div className="bg-neutral-950 border border-white/5 rounded-3xl p-8 hover:border-white/20 transition-all">
+                      <div className="flex items-center gap-4 mb-2">
+                        <span className="text-red-500 font-black italic font-mono text-xl">{m.year}</span>
+                        <div className="h-px bg-white/10 flex-1" />
+                        <div className="text-neutral-700">{m.icon}</div>
+                      </div>
+                      <h4 className="text-lg font-black italic uppercase tracking-widest text-white mb-2">{m.title}</h4>
+                      <p className="text-sm text-neutral-500 font-medium uppercase tracking-tight">{m.description}</p>
+                   </div>
+                </div>
+              ))}
+           </div>
+        </div>
+      </section>
+
+      {/* --- FINAL CTA: Join System --- */}
+      <section className="container mx-auto px-4 py-24 z-10 relative">
+        <div className="relative rounded-[4rem] bg-red-600 overflow-hidden p-16 md:p-24 text-center shadow-[0_0_100px_rgba(220,38,38,0.2)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.1)_0,transparent_100%)] opacity-30" />
+          <h2 className="text-5xl md:text-7xl font-black text-white italic uppercase tracking-tighter mb-8 leading-none">
+            READY TO <span className="text-black/40">EVOLVE?</span>
+          </h2>
+          <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
+             <Button onClick={() => window.location.href = '/'} className="h-16 px-10 bg-black text-white font-black italic uppercase rounded-2xl text-lg hover:bg-neutral-900 transition-all shadow-2xl">
+               Start Generating Notes <ArrowRight className="ml-2" />
+             </Button>
+             <Button onClick={() => window.location.href = '/pricing'} variant="outline" className="h-16 px-10 border-white/20 text-white font-black italic uppercase rounded-2xl text-lg hover:bg-white/10">
+               View Access Tiers
+             </Button>
           </div>
         </div>
       </section>
@@ -564,13 +252,28 @@ function AboutPage() {
   );
 }
 
-// Helper component for quote icon
-function QuoteIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-    </svg>
-  );
-}
+/* --- Visual Helpers --- */
+
+const StatusMetric = ({ label, value }: { label: string, value: string }) => (
+  <div className="text-left space-y-1">
+     <p className="text-[8px] font-black uppercase tracking-[0.4em] text-neutral-600">{label}</p>
+     <p className="text-2xl font-black uppercase italic text-white leading-none">{value}</p>
+  </div>
+);
+
+const CheckItem = ({ text }: { text: string }) => (
+  <div className="flex items-center gap-3">
+    <div className="h-5 w-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+      <CheckCircle size={12} />
+    </div>
+    <span className="text-xs font-bold text-neutral-400 uppercase tracking-tighter">{text}</span>
+  </div>
+);
+
+const SocialBtn = ({ icon, link }: { icon: React.ReactNode, link: string }) => (
+  <button onClick={() => window.open(link, '_blank')} className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-neutral-500 hover:text-red-500 hover:border-red-600/40 transition-all active:scale-90">
+    {icon}
+  </button>
+);
 
 export default AboutPage;

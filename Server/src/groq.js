@@ -24,6 +24,15 @@ const FREE_MODELS = [
   "meta-llama/llama-prompt-guard-2-86m"
 ];
 
+// Model-specific token limits
+const MODEL_TOKEN_LIMITS = {
+  "meta-llama/llama-guard-4-12b": 1024,
+  "meta-llama/llama-prompt-guard-2-22m": 512,
+  "meta-llama/llama-prompt-guard-2-86m": 512,
+  // Default for other models
+  "default": 4000
+};
+
 // Audio models (separate category)
 const AUDIO_MODELS = [
   "whisper-large-v3",
@@ -54,14 +63,18 @@ class GroqMultiModel {
     while (this.modelIndex < FREE_MODELS.length) {
       const currentModel = FREE_MODELS[this.modelIndex];
       
+      // Get model-specific token limit, fallback to provided max_tokens
+      const modelMaxTokens = MODEL_TOKEN_LIMITS[currentModel] || max_tokens;
+      const effectiveMaxTokens = Math.min(max_tokens, modelMaxTokens);
+      
       try {
-        console.log(`🔄 Trying model: ${currentModel} (${this.modelIndex + 1}/${FREE_MODELS.length})`);
+        console.log(`🔄 Trying model: ${currentModel} (${this.modelIndex + 1}/${FREE_MODELS.length}) with max_tokens: ${effectiveMaxTokens}`);
         
         const result = await client.chat.completions.create({
           model: currentModel,
           messages: messages,
           temperature: temperature,
-          max_tokens: max_tokens,
+          max_tokens: effectiveMaxTokens,
           top_p: top_p,
           stream: stream
         });

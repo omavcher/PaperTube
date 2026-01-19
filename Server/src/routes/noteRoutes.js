@@ -47,11 +47,11 @@ router.put("/update/:id",authMiddleware, noteController.updateNote);
 router.get("/get-all-notes",authMiddleware, noteController.getUserNotes);
 
 
-router.get("/genrate/pdf" , noteController.generatePDF);
+router.get("/generate/pdf" , noteController.generatePDF);
 router.delete('/delete/:noteId', noteController.deletePDF);
 router.get('/list', noteController.getUserPDFs);
 
-
+router.post("/like/:noteId", authMiddleware, noteController.likeNote);
 
 router.get("/explore" , noteController.explore);
 

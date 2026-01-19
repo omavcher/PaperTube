@@ -14,11 +14,13 @@
     "@google/generative-ai": "^0.24.1",
     "@huggingface/inference": "^4.7.1",
     "axios": "^1.13.2",
+    "bytez.js": "^3.0.0",
     "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^10.0.0",
     "dropbox": "^10.34.0",
     "express": "^4.22.1",
+    "express-rate-limit": "^8.2.1",
     "googleapis": "^159.0.0",
     "groq-sdk": "^0.37.0",
     "html-pdf": "^3.0.1",
@@ -32,6 +34,9 @@
     "puppeteer": "^24.25.0",
     "sharp": "^0.34.5",
     "youtube-captions-scraper": "^2.0.3",
+    "youtube-transcript": "^1.2.1",
+    "youtube-transcript-api": "^3.0.6",
+    "youtube-transcript-plus": "^1.1.2",
     "ytdl-core": "^4.11.5"
   },
   "devDependencies": {
