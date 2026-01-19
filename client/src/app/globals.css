@@ -1,33 +1,21 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
-body{
+/* 1. Global / Base Styles (No layer needed for body/scrollbar usually) */
+body {
   background-color: black;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #1f2937;
-}
-
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #1f2937; }
 ::-webkit-scrollbar-thumb {
   background: #4b5563;
   border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
-
-/* Base Styles & Utility Classes */
+/* 2. Components Layer */
 @layer components {
   .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+    @apply max-width-[1200px] mx-auto p-5; /* Using @apply is safer in v4 layers */
   }
 
   .btn {
@@ -43,12 +31,10 @@ body{
   }
 
   .btn-primary { background-color: #3b82f6; color: white; }
-  .btn-success { background-color: #10b981; color: white; }
-  .btn-danger { background-color: #ef4444; color: white; }
-  .btn-warning { background-color: #f59e0b; color: white; }
+  /* ... rest of your buttons ... */
 
   .card {
-    background: #0a0a0a; /* Updated to match your dark theme */
+    background: #0a0a0a;
     padding: 20px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
