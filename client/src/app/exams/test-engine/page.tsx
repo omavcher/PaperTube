@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { 
   Calculator, ChevronLeft, ChevronRight, Clock, 
@@ -33,12 +33,9 @@ const NtaCalculator = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [memory, setMemory] = useState(0);
   const [isRadian, setIsRadian] = useState(false);
   
-  // Logic states replicated from oscZenoedited.js
   const [opCode, setOpCode] = useState(0);
   const [stackVal, setStackVal] = useState(0);
   const [boolClear, setBoolClear] = useState(true);
-  const [opCodeArray, setOpCodeArray] = useState<number[]>([]);
-  const [stackArray, setStackArray] = useState<any[]>([]);
 
   const formatDisplay = (num: number) => {
     let res = num.toPrecision(10).replace(/\.?0+$/, "");
@@ -60,8 +57,6 @@ const NtaCalculator = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setExpression("");
     setStackVal(0);
     setOpCode(0);
-    setOpCodeArray([]);
-    setStackArray([]);
     setBoolClear(true);
   };
 
@@ -69,21 +64,20 @@ const NtaCalculator = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setDisplay(prev => (prev.length > 1 ? prev.slice(0, -1) : "0"));
   };
 
-  // Binary Logic from oscZenoedited.js (Precedence handling)
   const performBinary = (opText: string, newCode: number) => {
     const current = parseFloat(display);
     let runningVal = stackVal;
 
     if (opCode !== 0) {
       switch (opCode) {
-        case 1: runningVal += current; break; // +
-        case 2: runningVal -= current; break; // -
-        case 3: runningVal *= current; break; // *
-        case 4: runningVal /= current; break; // /
-        case 5: runningVal %= current; break; // mod
-        case 6: runningVal = Math.pow(runningVal, current); break; // x^y
-        case 7: runningVal = Math.pow(runningVal, 1 / current); break; // yroot
-        case 8: runningVal = Math.log(runningVal) / Math.log(current); break; // logxBasey
+        case 1: runningVal += current; break;
+        case 2: runningVal -= current; break;
+        case 3: runningVal *= current; break;
+        case 4: runningVal /= current; break;
+        case 5: runningVal %= current; break;
+        case 6: runningVal = Math.pow(runningVal, current); break;
+        case 7: runningVal = Math.pow(runningVal, 1 / current); break;
+        case 8: runningVal = Math.log(runningVal) / Math.log(current); break;
       }
       setDisplay(formatDisplay(runningVal));
       setStackVal(runningVal);
@@ -163,7 +157,6 @@ const NtaCalculator = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       </div>
 
       <div className="flex flex-col gap-[5px]">
-        {/* Memory Row */}
         <div className="flex gap-[5px]">
           <CalcBtn label="mod" onClick={() => performBinary("mod", 5)} />
           <div className="flex items-center gap-2 bg-[#f1f1f1] px-2 h-[25px] rounded border border-[#aaaaaa] text-[9px] text-black">
@@ -178,7 +171,6 @@ const NtaCalculator = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
           <CalcBtn label="M-" onClick={() => setMemory(m => m - parseFloat(display))} color="bg-[#777] text-white" />
         </div>
 
-        {/* Function Rows */}
         <div className="flex gap-[5px]">
           <CalcBtn label="sinh" isMin /> <CalcBtn label="cosh" isMin /> <CalcBtn label="tanh" isMin />
           <CalcBtn label="Exp" /> <CalcBtn label="(" /> <CalcBtn label=")" />
@@ -243,14 +235,14 @@ const CalcBtn = ({ label, onClick, color, isMin, className }: any) => (
   </button>
 );
 
-// --- Main Test Engine ---
+// --- Content Component (Uses useSearchParams) ---
 const MOCK_QUESTIONS: Question[] = [
   { id: 1, type: 'MCQ', marks: 1, negativeMarks: 0.33, text: "Which of the following is a linear data structure?", options: [{ id: 'A', text: "Graph" }, { id: 'B', text: "Tree" }, { id: 'C', text: "Stack" }, { id: 'D', text: "BST" }] },
   { id: 2, type: 'NAT', marks: 2, negativeMarks: 0, text: "Calculate the value of x if 2x + 5 = 15. Write the numeric value only." },
   { id: 3, type: 'MSQ', marks: 2, negativeMarks: 0, text: "Which of the following are prime numbers?", options: [{ id: 'A', text: "2" }, { id: 'B', text: "4" }, { id: 'C', text: "5" }, { id: 'D', text: "9" }] }
 ];
 
-export default function ExamEnginePage() {
+function ExamEngineContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const examId = useMemo(() => Math.random().toString(36).substring(7).toUpperCase(), []);
@@ -348,33 +340,33 @@ export default function ExamEnginePage() {
           </div>
 
           <footer className="mt-auto p-5 border-t border-white/5 flex justify-between bg-black/20 rounded-t-2xl">
-             <div className="flex gap-4">
+              <div className="flex gap-4">
                 <Button variant="outline" className="text-purple-500 border-purple-500/50" onClick={() => {
                   setStatuses({...statuses, [MOCK_QUESTIONS[currentIdx].id]: answers[MOCK_QUESTIONS[currentIdx].id] ? 'answered-marked' : 'marked'});
                   if(currentIdx < MOCK_QUESTIONS.length - 1) setCurrentIdx(currentIdx + 1);
                 }}>Mark for Review & Next</Button>
                 <Button variant="ghost" className="text-red-500" onClick={() => setAnswers({...answers, [MOCK_QUESTIONS[currentIdx].id]: undefined})}>Clear Response</Button>
-             </div>
-             <Button className="bg-green-600 hover:bg-green-700 px-12 font-black" onClick={() => {
+              </div>
+              <Button className="bg-green-600 hover:bg-green-700 px-12 font-black" onClick={() => {
                 setStatuses({...statuses, [MOCK_QUESTIONS[currentIdx].id]: answers[MOCK_QUESTIONS[currentIdx].id] ? 'answered' : 'not-answered'});
                 if(currentIdx < MOCK_QUESTIONS.length - 1) setCurrentIdx(currentIdx + 1);
-             }}>Save & Next</Button>
+              }}>Save & Next</Button>
           </footer>
         </main>
 
         <aside className="w-80 bg-neutral-900/50 flex flex-col p-6 border-l border-white/5">
-           <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-8">
               <div className="h-12 w-12 bg-yellow-500 rounded-xl flex items-center justify-center text-black font-black">OA</div>
               <div><p className="font-black text-sm">OM AVCHAR</p><p className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest">Candidate</p></div>
-           </div>
-           <div className="flex-1 overflow-y-auto">
+            </div>
+            <div className="flex-1 overflow-y-auto">
               <div className="grid grid-cols-4 gap-3">
                 {MOCK_QUESTIONS.map((q, idx) => (
                   <button key={q.id} onClick={() => setCurrentIdx(idx)} className={cn("h-10 w-10 text-xs font-black rounded-lg transition-all", currentIdx === idx ? "border-2 border-yellow-500 scale-110" : "opacity-60", statuses[q.id] === 'answered' ? "bg-green-600" : statuses[q.id] === 'not-answered' ? "bg-red-600" : (statuses[q.id] === 'marked' || statuses[q.id] === 'answered-marked') ? "bg-purple-600 rounded-full" : "bg-white/10")}>{q.id}</button>
                 ))}
               </div>
-           </div>
-           <Button className="w-full bg-yellow-500 text-black font-black h-12 uppercase mt-6" onClick={handleSubmit}>Submit Test</Button>
+            </div>
+            <Button className="w-full bg-yellow-500 text-black font-black h-12 uppercase mt-6" onClick={handleSubmit}>Submit Test</Button>
         </aside>
       </div>
 
@@ -387,5 +379,14 @@ export default function ExamEnginePage() {
         </div>
       )}
     </div>
+  );
+}
+
+// --- Main Page Export (Wrapped in Suspense) ---
+export default function ExamEnginePage() {
+  return (
+    <Suspense fallback={<div className="h-screen w-screen bg-black flex items-center justify-center text-white">Loading Exam Engine...</div>}>
+      <ExamEngineContent />
+    </Suspense>
   );
 }
