@@ -1,43 +1,51 @@
 @import "tailwindcss";
 
-/* 1. Global / Base Styles (No layer needed for body/scrollbar usually) */
-body {
-  background-color: black;
+/* -------------------------------------------------------------------------- */
+/* 1. BASE STYLES                                                             */
+/* -------------------------------------------------------------------------- */
+@layer base {
+  body {
+    @apply bg-black;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1f2937;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+  }
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #1f2937; }
-::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  border-radius: 3px;
-}
-
-/* 2. Components Layer */
+/* -------------------------------------------------------------------------- */
+/* 2. COMPONENTS LAYER                                                        */
+/* -------------------------------------------------------------------------- */
 @layer components {
   .container {
-    @apply max-width-[1200px] mx-auto p-5; /* Using @apply is safer in v4 layers */
+    /* Fixed syntax: max-w is the utility prefix */
+    @apply max-w-[1200px] mx-auto p-5;
   }
 
   .btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: bold;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
+    @apply inline-flex items-center justify-center font-bold px-5 py-2.5 rounded-md cursor-pointer transition-all duration-200 border-none;
   }
 
-  .btn-primary { background-color: #3b82f6; color: white; }
-  /* ... rest of your buttons ... */
+  .btn-primary { @apply bg-[#3b82f6] text-white; }
+  .btn-success { @apply bg-[#10b981] text-white; }
+  .btn-danger  { @apply bg-[#ef4444] text-white; }
+  .btn-warning { @apply bg-[#f59e0b] text-white; }
 
   .card {
-    background: #0a0a0a;
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 20px;
+    @apply bg-[#0a0a0a] p-5 rounded-lg border border-white/10 mb-5;
   }
 }
