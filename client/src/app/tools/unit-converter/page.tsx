@@ -67,7 +67,7 @@ export default function UnitConverterPage() {
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [recentConversions, setRecentConversions] = useState<string[]>([]);
   
-  const debounceTimer = useRef<NodeJS.Timeout>();
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Categories
   const categories: CategoryInfo[] = [
