@@ -10,7 +10,7 @@ import {
   FileUp, FileCheck, Target, 
   Check, X, AlertTriangle, 
   Lightbulb, BarChart,
-  ArrowRight, File
+  ArrowRight, File as FileIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -86,27 +86,26 @@ export default function ResumeATSPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [results, setResults] = useState<AnalysisResult | null>(null);
-  const [autoExtract, setAutoExtract] = useState(true);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [activeTab, setActiveTab] = useState("upload");
+  const [isLibLoaded, setIsLibLoaded] = useState(false);
   
-  // Ref for the dynamically loaded PDF.js
-  const pdfjsRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // SAFE CLIENT-SIDE LOAD
+  // --- Load PDF.js via CDN to avoid Vercel Build Errors ---
   useEffect(() => {
-    const loadPdfJS = async () => {
-      try {
-        // Use the legacy/minified build to avoid 'canvas' dependency issues
-        const pdfjs = await import("pdfjs-dist/build/pdf.min.mjs");
-        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-        pdfjsRef.current = pdfjs;
-      } catch (err) {
-        console.error("PDF.js load error:", err);
-      }
-    };
-    loadPdfJS();
+    if (typeof window !== "undefined" && !window.hasOwnProperty('pdfjsLib')) {
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.mjs";
+      script.type = "module";
+      script.onload = () => {
+        // @ts-ignore
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        setIsLibLoaded(true);
+      };
+      document.head.appendChild(script);
+    } else if (window.hasOwnProperty('pdfjsLib')) {
+      setIsLibLoaded(true);
+    }
   }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,7 +117,7 @@ export default function ResumeATSPage() {
 
     try {
       if (file.type === 'application/pdf') {
-        if (!pdfjsRef.current) {
+        if (!isLibLoaded) {
           toast.error("PDF engine is initializing. Please wait...");
           return;
         }
@@ -137,14 +136,17 @@ export default function ResumeATSPage() {
 
   const extractTextFromPDF = async (file: File) => {
     try {
+      // @ts-ignore
+      const pdfjs = window.pdfjsLib;
       const arrayBuffer = await file.arrayBuffer();
-      const loadingTask = pdfjsRef.current.getDocument({ data: arrayBuffer });
+      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
       const pdf = await loadingTask.promise;
       let fullText = '';
       
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
+        // @ts-ignore
         const pageText = content.items.map((item: any) => item.str).join(' ');
         fullText += pageText + '\n';
       }
@@ -179,7 +181,8 @@ export default function ResumeATSPage() {
         !found.some(f => f.keyword.toLowerCase() === kw.toLowerCase())
       );
 
-      const wordCount = resumeText.split(/\s+/).filter(w => w.length > 0).length;
+      const words = resumeText.split(/\s+/).filter(w => w.length > 0);
+      const wordCount = words.length;
       const score = Math.min(Math.round((found.length / targetKeywords.length) * 100), 100);
 
       setResults({
@@ -191,7 +194,7 @@ export default function ResumeATSPage() {
         stats: {
           wordCount,
           pageCount: Math.ceil(wordCount / 400),
-          keywordDensity: parseFloat(((found.length / wordCount) * 100).toFixed(2)),
+          keywordDensity: parseFloat(((found.length / Math.max(wordCount, 1)) * 100).toFixed(2)),
           readabilityScore: 85
         },
         roleFit: [{ role: selectedRole, score }]

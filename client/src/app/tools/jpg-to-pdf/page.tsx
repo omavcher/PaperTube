@@ -5,100 +5,48 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Upload, Download, FileText, X, 
-  Eye, EyeOff, Trash2, Image as ImageIcon,
-  Sparkles, CheckCircle,
-  FolderOpen, 
-  Loader2, Settings,
-  Maximize2, Minimize2,
-  Filter, Layers, Sliders,
-  Camera, FileUp, Eye as EyeIcon
+  Trash2, Loader2, FileUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import Footer from "@/components/Footer";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
-import Link from "next/link";
 
-// --- Types ---
 interface PDFFile {
   id: string;
   name: string;
   size: number;
   displaySize: string;
   pages: number;
-  lastModified: string;
-  url?: string;
   file: File;
   status: 'pending' | 'processing' | 'converted' | 'error';
-  progress?: number;
 }
-
-interface ConversionSettings {
-  format: 'jpg' | 'png' | 'webp';
-  quality: number;
-  dpi: number;
-  pageRange: 'all' | 'range' | 'custom';
-  customRange: string;
-  startPage: number;
-  endPage: number;
-  resizeMode: 'original' | 'fit' | 'custom';
-  maxWidth: number;
-  maxHeight: number;
-  rotation: number;
-  colorMode: 'color' | 'grayscale' | 'bw';
-}
-
-// --- Logic ---
-let pdfjsLib: any = null;
 
 export default function PDFToJPGPage() {
   const [files, setFiles] = useState<PDFFile[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [convertProgress, setConvertProgress] = useState(0);
   const [convertedImages, setConvertedImages] = useState<any[]>([]);
-  const [showFileList, setShowFileList] = useState(true);
+  const [isLibLoaded, setIsLibLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isProcessingFile, setIsProcessingFile] = useState(false);
-  const [previewImages, setPreviewImages] = useState<string[]>([]);
-  const [selectedPage, setSelectedPage] = useState<number>(0);
-  const [isPDFJSLoaded, setIsPDFJSLoaded] = useState(false);
-  
-  const [conversionSettings, setConversionSettings] = useState<ConversionSettings>({
-    format: 'jpg',
-    quality: 85,
-    dpi: 150,
-    pageRange: 'all',
-    customRange: '1-',
-    startPage: 1,
-    endPage: 10,
-    resizeMode: 'original',
-    maxWidth: 1920,
-    maxHeight: 1080,
-    rotation: 0,
-    colorMode: 'color'
-  });
 
-  // --- PDF.js Initialization ---
+  // --- Load PDF.js via CDN (Fixes Vercel Build Errors) ---
   useEffect(() => {
-    const initPDF = async () => {
-      if (typeof window !== 'undefined' && !isPDFJSLoaded) {
-        try {
-          // 1. Import from 'pdfjs-dist' directly
-          const pdfjs = await import("pdfjs-dist");
-          // 2. Use CDN for the worker to avoid Webpack bundling issues
-          pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-          pdfjsLib = pdfjs;
-          setIsPDFJSLoaded(true);
-        } catch (error) {
-          console.error("Failed to load PDF.js:", error);
-          toast.error("Converter engine failed to load. Please check your connection.");
-        }
-      }
-    };
-    initPDF();
-  }, [isPDFJSLoaded]);
+    if (typeof window !== "undefined" && !window.hasOwnProperty('pdfjsLib')) {
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.mjs";
+      script.type = "module";
+      script.onload = () => {
+        // @ts-ignore
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        setIsLibLoaded(true);
+      };
+      document.head.appendChild(script);
+    } else if (window.hasOwnProperty('pdfjsLib')) {
+      setIsLibLoaded(true);
+    }
+  }, []);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -110,17 +58,22 @@ export default function PDFToJPGPage() {
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
-    if (!selectedFiles || !isPDFJSLoaded) return;
+    // @ts-ignore
+    const pdfjs = window.pdfjsLib;
 
-    setIsProcessingFile(true);
+    if (!selectedFiles || !pdfjs) {
+      toast.error("PDF engine not ready yet");
+      return;
+    }
+
     const newFiles: PDFFile[] = [];
-
-    try {
-      for (const file of Array.from(selectedFiles)) {
-        if (file.type !== 'application/pdf') continue;
-        
+    for (const file of Array.from(selectedFiles)) {
+      if (file.type !== 'application/pdf') continue;
+      
+      try {
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
         
         newFiles.push({
           id: Math.random().toString(36).substr(2, 9),
@@ -128,63 +81,58 @@ export default function PDFToJPGPage() {
           size: file.size,
           displaySize: formatFileSize(file.size),
           pages: pdf.numPages,
-          lastModified: new Date(file.lastModified).toLocaleDateString(),
-          url: URL.createObjectURL(file),
           file: file,
           status: 'pending'
         });
+      } catch (e) {
+        toast.error(`Error loading ${file.name}`);
       }
-      setFiles(prev => [...prev, ...newFiles]);
-    } catch (error) {
-      toast.error("Error loading PDF");
-    } finally {
-      setIsProcessingFile(false);
     }
+    setFiles(prev => [...prev, ...newFiles]);
   };
 
   const convertPDFToImages = async () => {
-    if (!isPDFJSLoaded || files.length === 0) return;
-    setIsConverting(true);
-    setConvertProgress(0);
+    // @ts-ignore
+    const pdfjs = window.pdfjsLib;
+    if (!pdfjs || files.length === 0) return;
 
-    const results: any[] = [];
-    
+    setIsConverting(true);
+    const allResults: any[] = [];
+
     try {
       for (const pdfFile of files) {
         setFiles(prev => prev.map(f => f.id === pdfFile.id ? { ...f, status: 'processing' } : f));
         
         const arrayBuffer = await pdfFile.file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const pagesToConvert = Array.from({ length: pdf.numPages }, (_, i) => i + 1);
-        
+        const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
         const fileImages = [];
-        for (const pageNum of pagesToConvert) {
-          const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: conversionSettings.dpi / 72 });
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 2 }); // High quality scale
           
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
-          
+
           if (context) {
             await page.render({ canvasContext: context, viewport }).promise;
-            const dataUrl = canvas.toDataURL(`image/${conversionSettings.format}`, conversionSettings.quality / 100);
             fileImages.push({
-              fileName: `${pdfFile.name.replace('.pdf', '')}_page_${pageNum}.${conversionSettings.format}`,
-              dataUrl,
-              pageNumber: pageNum
+              fileName: `${pdfFile.name.replace('.pdf', '')}_p${i}.jpg`,
+              dataUrl: canvas.toDataURL('image/jpeg', 0.9)
             });
           }
-          setConvertProgress(Math.round((pageNum / pdf.numPages) * 100));
+          setConvertProgress(Math.round((i / pdf.numPages) * 100));
         }
-        results.push(fileImages);
+        allResults.push(...fileImages);
         setFiles(prev => prev.map(f => f.id === pdfFile.id ? { ...f, status: 'converted' } : f));
       }
-      setConvertedImages(results);
-      toast.success("Conversion successful!");
+      setConvertedImages(allResults);
+      toast.success("All pages converted!");
     } catch (err) {
       toast.error("Conversion failed");
+      console.error(err);
     } finally {
       setIsConverting(false);
     }
@@ -198,25 +146,25 @@ export default function PDFToJPGPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans">
       <main className="flex-grow container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto space-y-8">
-          <div className="text-center space-y-4">
+          <div className="text-center">
              <h1 className="text-5xl font-black italic uppercase tracking-tighter">
                PDF to <span className="text-pink-500">IMAGE</span>
              </h1>
-             <p className="text-neutral-400">High-resolution client-side conversion.</p>
+             <p className="text-neutral-500 mt-2">Zero-Server, 100% Client-Side Encryption.</p>
           </div>
 
-          <Card className="bg-neutral-900 border-neutral-800">
+          <Card className="bg-neutral-900 border-neutral-800 rounded-[2.5rem] overflow-hidden">
             <CardContent className="p-10 text-center">
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-neutral-800 rounded-3xl p-12 hover:border-pink-500/50 cursor-pointer transition-all bg-black/20"
+                className="border-2 border-dashed border-neutral-800 rounded-3xl p-12 hover:border-pink-500/50 cursor-pointer transition-all bg-black/20 group"
               >
-                <FileUp className="mx-auto h-12 w-12 text-pink-500 mb-4" />
+                <FileUp className="mx-auto h-12 w-12 text-neutral-700 group-hover:text-pink-500 transition-colors mb-4" />
                 <h3 className="text-xl font-bold">Drop PDF files here</h3>
-                <p className="text-neutral-500 text-sm mt-2">or click to browse from device</p>
+                <p className="text-neutral-500 text-sm mt-2">Maximum file size: 50MB</p>
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -228,33 +176,43 @@ export default function PDFToJPGPage() {
               </div>
 
               {files.length > 0 && (
-                <div className="mt-8 space-y-4">
+                <div className="mt-8 space-y-3">
                   {files.map(file => (
                     <div key={file.id} className="flex items-center justify-between bg-black/40 p-4 rounded-2xl border border-neutral-800">
-                      <div className="flex items-center gap-4">
-                        <FileText className="text-pink-500" />
-                        <div className="text-left">
-                          <p className="text-sm font-bold truncate max-w-[200px]">{file.name}</p>
-                          <p className="text-[10px] text-neutral-500">{file.displaySize} • {file.pages} Pages</p>
+                      <div className="flex items-center gap-4 text-left">
+                        <div className="p-3 bg-pink-500/10 rounded-xl">
+                           <FileText size={20} className="text-pink-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold truncate max-w-[250px]">{file.name}</p>
+                          <p className="text-[10px] text-neutral-500 uppercase tracking-widest">{file.pages} Pages • {file.displaySize}</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => setFiles(f => f.filter(x => x.id !== file.id))}>
-                        <Trash2 className="h-4 w-4 text-neutral-500 hover:text-red-500" />
-                      </Button>
+                      <div className="flex items-center gap-3">
+                        <Badge className={cn(
+                          "text-[9px] uppercase font-black",
+                          file.status === 'converted' ? "bg-green-500/20 text-green-500" : "bg-pink-500/20 text-pink-500"
+                        )}>
+                          {file.status}
+                        </Badge>
+                        <button onClick={() => setFiles(f => f.filter(x => x.id !== file.id))} className="text-neutral-600 hover:text-red-500 transition-colors">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                   
-                  <div className="pt-6 border-t border-neutral-800">
+                  <div className="pt-6">
                     <Button 
                       onClick={convertPDFToImages} 
-                      disabled={isConverting || !isPDFJSLoaded}
-                      className="w-full h-14 bg-pink-600 hover:bg-pink-700 font-bold text-lg rounded-2xl"
+                      disabled={isConverting || !isLibLoaded}
+                      className="w-full h-16 bg-pink-600 hover:bg-pink-700 font-black text-lg rounded-2xl italic tracking-tighter"
                     >
                       {isConverting ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="animate-spin" /> Processing {convertProgress}%
+                        <span className="flex items-center gap-3">
+                          <Loader2 className="animate-spin" /> EXPORTING {convertProgress}%
                         </span>
-                      ) : "Start Conversion"}
+                      ) : "INITIALIZE CONVERSION"}
                     </Button>
                   </div>
                 </div>
@@ -263,13 +221,14 @@ export default function PDFToJPGPage() {
           </Card>
 
           {convertedImages.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {convertedImages.flat().map((img, i) => (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key={i} className="group relative rounded-xl overflow-hidden border border-neutral-800">
-                  <img src={img.dataUrl} className="w-full aspect-[3/4] object-cover bg-white" alt="page" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <Button size="sm" onClick={() => downloadImage(img.dataUrl, img.fileName)}>
-                      <Download className="h-4 w-4 mr-2" /> Save
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {convertedImages.map((img, i) => (
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} key={i} className="group relative rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900">
+                  <img src={img.dataUrl} className="w-full aspect-[3/4] object-cover" alt="page" />
+                  <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all p-4">
+                    <p className="text-[10px] font-bold text-white mb-3 truncate w-full text-center">{img.fileName}</p>
+                    <Button size="sm" className="w-full bg-white text-black hover:bg-pink-500 hover:text-white" onClick={() => downloadImage(img.dataUrl, img.fileName)}>
+                      <Download className="h-4 w-4 mr-2" /> DOWNLOAD
                     </Button>
                   </div>
                 </motion.div>

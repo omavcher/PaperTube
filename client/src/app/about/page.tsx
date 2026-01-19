@@ -164,22 +164,26 @@ function AboutPage() {
         </div>
       </section>
 
-      {/* --- CORE VALUES: System Modules --- */}
-      <section className="py-24 z-10 relative">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {coreValues.map((v, i) => (
-              <Card key={i} className="bg-neutral-950 border-white/5 rounded-3xl p-8 hover:border-red-600/30 transition-all duration-500 group">
-                 <div className={cn("inline-flex p-4 rounded-2xl mb-6 transition-all duration-500 group-hover:scale-110", v.color, v.bg)}>
-                    {React.cloneElement(v.icon as React.ReactElement, { size: 28 })}
-                 </div>
-                 <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-3">{v.title}</h3>
-                 <p className="text-sm text-neutral-500 font-medium leading-relaxed uppercase tracking-tight">{v.description}</p>
-              </Card>
-            ))}
+     {/* --- CORE VALUES: System Modules --- */}
+<section className="py-24 z-10 relative">
+  <div className="container mx-auto px-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {coreValues.map((v, i) => (
+        <Card key={i} className="bg-neutral-950 border-white/5 rounded-3xl p-8 hover:border-red-600/30 transition-all duration-500 group">
+          <div className={cn("inline-flex p-4 rounded-2xl mb-6 transition-all duration-500 group-hover:scale-110", v.color, v.bg)}>
+            {/* FIX: Cast the icon to an element that accepts a size prop */}
+            {React.isValidElement(v.icon) ? 
+              React.cloneElement(v.icon as React.ReactElement<{ size?: number }>, { size: 28 }) 
+              : null
+            }
           </div>
-        </div>
-      </section>
+          <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-3">{v.title}</h3>
+          <p className="text-sm text-neutral-500 font-medium leading-relaxed uppercase tracking-tight">{v.description}</p>
+        </Card>
+      ))}
+    </div>
+  </div>
+</section>
 
       {/* --- TECH STACK: The Engine --- */}
       <section className="py-24 bg-black relative z-10 overflow-hidden border-t border-white/5">
