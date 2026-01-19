@@ -1,6 +1,7 @@
-/* 1. ALL imports MUST be at the very top */
 @import "tailwindcss";
-@import "tw-animate-css";
+
+/* Fallback for animations if tw-animate-css was failing */
+@plugin "tailwindcss-animate"; 
 
 /* 2. Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
@@ -26,5 +27,3 @@
   margin: 0 auto;
   padding: 20px;
 }
-
-/* ... rest of your code ... */
