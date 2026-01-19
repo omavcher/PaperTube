@@ -220,7 +220,7 @@ export default function BaseConverterPage() {
   );
 }
 
-function BaseInput({ label, value, onChange, onCopy, placeholder, icon, mono }: any) {
+function BaseInput({ label, value, onChange, onCopy, placeholder, icon, mono }: { label: string; value: string; onChange: (v: string) => void; onCopy: () => void; placeholder: string; icon: React.ReactNode; mono?: boolean }) {
   return (
     <div className="space-y-2 group">
       <div className="flex items-center justify-between px-2">
@@ -245,7 +245,7 @@ function BaseInput({ label, value, onChange, onCopy, placeholder, icon, mono }: 
   );
 }
 
-function ConstraintItem({ label, desc }: any) {
+function ConstraintItem({ label, desc }: { label: string; desc: string }) {
   return (
     <div className="flex items-start gap-3">
       <div className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-500 shrink-0" />
@@ -257,7 +257,7 @@ function ConstraintItem({ label, desc }: any) {
   );
 }
 
-function InfoCard({ icon, title, desc }: any) {
+function InfoCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
     <div className="space-y-4">
       <div className="h-10 w-10 rounded-xl bg-slate-500/10 flex items-center justify-center text-slate-400">
