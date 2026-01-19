@@ -1,9 +1,8 @@
+/* 1. ALL imports MUST be at the very top */
 @import "tailwindcss";
 @import "tw-animate-css";
 
-
-
-/* Custom scrollbar for dark theme */
+/* 2. Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -21,32 +20,11 @@
   background: #6b7280;
 }
 
-
-
-/* Test */
+/* 3. Your other custom classes */
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 }
 
-.btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.btn-primary { background-color: #3b82f6; color: white; }
-.btn-success { background-color: #10b981; color: white; }
-.btn-danger { background-color: #ef4444; color: white; }
-.btn-warning { background-color: #f59e0b; color: white; }
-
-.card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 20px;
-} 
+/* ... rest of your code ... */
