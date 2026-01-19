@@ -168,7 +168,7 @@ export default function BugTracker() {
                      </button>
 
                      <div className="flex flex-col gap-3">
-                        <StatusButton status={bug.status} onClick={() => cycleStatus(bug.id, bug.status)} />
+                        <StatusButton status={bug.status as "Open" | "Investigating" | "Resolved"} onClick={() => cycleStatus(bug.id, bug.status)} />
                      </div>
                   </div>
                </div>
