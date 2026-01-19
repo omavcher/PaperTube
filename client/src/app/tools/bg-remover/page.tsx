@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { 
   ArrowLeft, Download, Upload, Trash2, 
-  ShieldCheck, Activity, Cpu, Sparkles, 
-  Image as ImageIcon, Loader2, Maximize2, 
-  Zap, Scan, ArrowRight
+  ShieldCheck, Activity, Zap, ArrowRight,
+  Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import removeBackground from "@imgly/background-removal";
 import Link from "next/link";
+import Image from "next/image"; // Added missing Next.js Image import
 import Footer from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 
@@ -42,7 +42,8 @@ export default function BackgroundRemoverPage() {
 
     try {
       const blob = await removeBackground(imageSource, {
-        progress: (step, current, total) => {
+        // FIX: Added explicit types to parameters to satisfy TypeScript
+        progress: (step: string, current: number, total: number) => {
           const p = Math.round((current / total) * 100);
           setProgress(p);
         }
@@ -63,7 +64,7 @@ export default function BackgroundRemoverPage() {
   const downloadWithBranding = async () => {
     if (!processedImage) return;
 
-    const img = new Image();
+    const img = new window.Image(); // Use window.Image to distinguish from Next.js Image component
     img.src = processedImage;
     img.onload = () => {
       const canvas = document.createElement("canvas");
@@ -78,21 +79,27 @@ export default function BackgroundRemoverPage() {
 
       // --- Add PaperTube Watermark ---
       const fontSize = Math.max(20, canvas.width * 0.03);
-      ctx.font = `black ${fontSize}px Inter, sans-serif`;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+      ctx.font = `900 ${fontSize}px Inter, sans-serif`;
       ctx.textAlign = "right";
       
-      // Background for text visibility
       const text = "PaperTube AI";
       const metrics = ctx.measureText(text);
+      
+      // Background for text visibility
       ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-      ctx.fillRect(canvas.width - metrics.width - 40, canvas.height - fontSize - 40, metrics.width + 20, fontSize + 20);
+      ctx.fillRect(
+        canvas.width - metrics.width - 40, 
+        canvas.height - fontSize - 40, 
+        metrics.width + 20, 
+        fontSize + 20
+      );
 
       // The actual watermark
-      ctx.fillStyle = "rgba(220, 38, 38, 0.8)"; // Red Part
+      ctx.fillStyle = "#dc2626"; // Red Part (Tube)
       ctx.fillText("Tube", canvas.width - 20, canvas.height - 30);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; // White Part
-      ctx.fillText("Paper", canvas.width - metrics.width - 5, canvas.height - 30);
+      
+      ctx.fillStyle = "#ffffff"; // White Part (Paper)
+      ctx.fillText("Paper", canvas.width - ctx.measureText("Tube").width - 25, canvas.height - 30);
 
       const link = document.createElement("a");
       link.download = `PaperTube-bg-removed.png`;
@@ -110,7 +117,6 @@ export default function BackgroundRemoverPage() {
 
   return (
     <div className="min-h-screen bg-[#000000] text-white selection:bg-red-500/30 font-sans">
-      {/* Background Ambience */}
       <div className="fixed inset-0 z-0 pointer-events-none opacity-20">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:40px_40px]" />
       </div>
@@ -142,8 +148,6 @@ export default function BackgroundRemoverPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-12 relative z-10">
         <div className="grid lg:grid-cols-12 gap-12">
-          
-          {/* --- Sidebar: Control Deck --- */}
           <div className="lg:col-span-4 space-y-6">
             <Card className="bg-neutral-950 border-white/5 rounded-[2.5rem] p-8 shadow-2xl">
               <div className="space-y-10">
@@ -184,7 +188,6 @@ export default function BackgroundRemoverPage() {
             </Card>
           </div>
 
-          {/* --- Main Stage: Containment Chamber --- */}
           <div className="lg:col-span-8 space-y-8">
             {!sourceImage ? (
               <label className="group relative block cursor-pointer">
@@ -203,15 +206,12 @@ export default function BackgroundRemoverPage() {
             ) : (
               <div className="space-y-8">
                 <div className="grid md:grid-cols-2 gap-6 h-[400px]">
-                  {/* Original HUD */}
                   <div className="relative rounded-[2rem] bg-neutral-950 border border-white/5 overflow-hidden group">
                     <Image src={sourceImage} alt="Source" fill className="object-contain p-4 opacity-40 group-hover:opacity-100 transition-opacity" />
                     <Badge className="absolute top-4 left-4 bg-black/80 border-white/10 text-[8px] uppercase font-black">Original Asset</Badge>
                   </div>
 
-                  {/* Processed HUD */}
                   <div className="relative rounded-[2rem] bg-[#080808] border border-white/5 overflow-hidden group shadow-inner">
-                    {/* Transparency Checkboard Pattern */}
                     <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] bg-[size:10px_10px]" />
                     
                     <AnimatePresence mode="wait">
