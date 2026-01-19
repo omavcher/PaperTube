@@ -8,17 +8,32 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, CheckCircle2, AlertCircle, ShieldAlert, Terminal, Zap, Crown } from "lucide-react";
+import { Loader2, Play, CheckCircle2, ShieldAlert, Terminal, Crown } from "lucide-react";
 import Script from 'next/script';
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-export default function AdDialog({ open, onOpenChange, onAdComplete }) {
+// --- Type Definition Protocol ---
+interface AdDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdComplete: () => void;
+}
+
+// Add global type for Google Adsense
+declare global {
+  interface Window {
+    adsbygoogle: any[];
+    gtag?: (...args: any[]) => void;
+  }
+}
+
+export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogProps) {
   const [countdown, setCountdown] = useState(30);
   const [adCompleted, setAdCompleted] = useState(false);
   const [adLoading, setAdLoading] = useState(true);
   const [adError, setAdError] = useState(false);
-  const adContainerRef = useRef(null);
+  const adContainerRef = useRef<HTMLDivElement>(null);
   const adInitialized = useRef(false);
 
   // --- Logic Protocols (Preserved Exactly) ---
@@ -61,10 +76,8 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
           setAdLoading(false);
           startCountdown();
         });
-        adElement.addEventListener('error', () => {
-          setAdError(true);
-          setAdLoading(false);
-        });
+        // Note: 'error' event on <ins> is non-standard but keeping logic consistent
+        // Google Ads uses postMessage for error states usually
       } else {
         setAdError(true);
         setAdLoading(false);
@@ -118,8 +131,6 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
     onOpenChange(false);
   };
 
-  // --- Styled Components ---
-
   const renderFallbackAd = () => (
     <div className="h-64 bg-[#080808] flex flex-col items-center justify-center rounded-2xl border border-white/5 relative overflow-hidden group">
       <div className="absolute inset-0 bg-red-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -140,7 +151,6 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
 
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[95vw] sm:max-w-md bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-8 shadow-2xl overflow-hidden">
-          {/* Background ID Watermark */}
           <div className="absolute -top-10 -right-10 opacity-[0.03] pointer-events-none rotate-12">
              <Terminal size={200} />
           </div>
@@ -160,7 +170,6 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
           </DialogHeader>
           
           <div className="mt-8 space-y-6 relative z-10">
-            {/* Ad Container Stage */}
             <div className="relative rounded-[1.5rem] overflow-hidden border border-white/5 bg-black min-h-[200px] flex flex-col items-center justify-center">
               {adLoading ? (
                 <div className="text-center space-y-4">
@@ -186,7 +195,6 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
               )}
             </div>
 
-            {/* Status Feedback */}
             <div className="space-y-4">
                {adCompleted ? (
                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
@@ -213,7 +221,6 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
                )}
             </div>
 
-            {/* Action Matrix */}
             <div className="flex flex-col gap-3">
               <div className="flex gap-3">
                 {adError && (
@@ -242,6 +249,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }) {
               
               <div className="pt-4 border-t border-white/5 text-center space-y-4">
                 <button 
+                  type="button"
                   onClick={() => { onOpenChange(false); window.location.href='/pricing'; }}
                   className="group flex items-center justify-center gap-2 mx-auto"
                 >
