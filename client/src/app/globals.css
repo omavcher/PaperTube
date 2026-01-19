@@ -1,7 +1,9 @@
 @import "tailwindcss";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
-/* Fallback for animations if tw-animate-css was failing */
-@plugin "tailwindcss-animate"; 
+/* If using tailwindcss-animate with v4, ensure it's the latest version */
+@plugin "tailwindcss-animate";
 
 /* 2. Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
