@@ -15,11 +15,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [authLoading, setAuthLoading] = useState(false);
   const pathname = usePathname();
 
-  // Get Client ID from environment variable
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
-  const isNotesPage =
-    pathname?.startsWith("/notes/") || pathname?.startsWith("/admin/");
+  const isNotesPage = pathname?.startsWith("/notes/") || pathname?.startsWith("/admin/");
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -42,8 +39,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     try {
       setAuthLoading(true);
       if (backendResponse?.success) {
-        const { token, user: backendUser, googleAccessToken: gToken, expiresIn } =
-          backendResponse.data;
+        const { token, user: backendUser, googleAccessToken: gToken, expiresIn } = backendResponse.data;
 
         localStorage.setItem("authToken", token);
         localStorage.setItem("googleAccessToken", gToken);
@@ -61,15 +57,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // If Client ID is missing, we render without GoogleOAuthProvider to prevent crash
-  // but we log a clear error for you to see in the browser console.
   if (!clientId) {
-    console.error("CRITICAL ERROR: NEXT_PUBLIC_GOOGLE_CLIENT_ID is not defined in environment variables.");
     return (
       <>
         <Toaster theme="dark" position="top-center" />
         <div className="fixed inset-0 -z-10 opacity-20 pointer-events-none">
           <BackgroundBeams />
+        </div>
+        <div className="p-4 bg-red-500/10 text-red-500 text-center">
+          Missing Google Client ID in .env file
         </div>
         <main className={`flex-1 ${isNotesPage ? "mt-0" : "md:mt-20"}`}>
           {children}
@@ -125,6 +121,5 @@ function GoogleOneTapLoginWrapper({ onSuccess }: any) {
       console.error("Google One Tap Script Load Error");
     }
   });
-
   return null;
 }

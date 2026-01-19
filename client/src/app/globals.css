@@ -1,11 +1,10 @@
 @import "tailwindcss";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+@import "tw-animate-css";
 
-/* If using tailwindcss-animate with v4, ensure it's the latest version */
-@plugin "tailwindcss-animate";
+body{
+  background-color: black;
+}
 
-/* 2. Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -23,9 +22,36 @@
   background: #6b7280;
 }
 
-/* 3. Your other custom classes */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+/* Base Styles & Utility Classes */
+@layer components {
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary { background-color: #3b82f6; color: white; }
+  .btn-success { background-color: #10b981; color: white; }
+  .btn-danger { background-color: #ef4444; color: white; }
+  .btn-warning { background-color: #f59e0b; color: white; }
+
+  .card {
+    background: #0a0a0a; /* Updated to match your dark theme */
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 20px;
+  }
 }
