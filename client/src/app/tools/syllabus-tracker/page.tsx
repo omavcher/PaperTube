@@ -94,7 +94,6 @@ export default function SyllabusTrackerPage() {
               </CardHeader>
               <CardContent className="space-y-8 text-center">
                 <div className="text-6xl font-black text-emerald-500 tracking-tighter">{overallProgress}%</div>
-                <Progress value={overallProgress} className="h-2 bg-white/5" indicatorClassName="bg-emerald-500" />
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-black/40 rounded-xl border border-white/5">
                     <p className="text-2xl font-black">{checkedTopics.length}</p>

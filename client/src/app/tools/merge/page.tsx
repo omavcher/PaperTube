@@ -210,23 +210,24 @@ const handleDragOverItem = (e: React.DragEvent<HTMLDivElement>, index: number) =
   e.stopPropagation();
 };
 
-  const handleDropItem = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (dragIndex === null) return;
+  const handleDropItem = (e: React.DragEvent<HTMLDivElement>, dropIndex: number) => {
+  e.preventDefault();
+  e.stopPropagation(); // Always good practice to stop propagation in drop handlers
+  
+  if (dragIndex === null) return;
 
-    const newFiles = [...files];
-    const draggedFile = newFiles[dragIndex];
-    newFiles.splice(dragIndex, 1);
-    newFiles.splice(dropIndex, 0, draggedFile);
-    
-    // Update order numbers
-    newFiles.forEach((file, idx) => {
-      file.order = idx;
-    });
-    
-    setFiles(newFiles);
-    setDragIndex(null);
-  };
+  const newFiles = [...files];
+  const draggedFile = newFiles[dragIndex];
+  newFiles.splice(dragIndex, 1);
+  newFiles.splice(dropIndex, 0, draggedFile);
+  
+  newFiles.forEach((file, idx) => {
+    file.order = idx;
+  });
+  
+  setFiles(newFiles);
+  setDragIndex(null);
+};
 
   // Calculate total pages
   const totalPages = files.reduce((sum, file) => sum + file.pages, 0);
@@ -511,20 +512,21 @@ const blob = new Blob([mergedFile.data.buffer as ArrayBuffer], { type: 'applicat
                         <AnimatePresence>
                           {files.map((file, index) => (
                             <motion.div
-                              key={file.id}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: 20 }}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, index)}
-                              onDragOver={(e) => handleDragOverItem(e, index)}
-                              onDrop={(e) => handleDropItem(e, index)}
-                              className={cn(
-                                "flex items-center gap-3 p-3 rounded-lg border border-neutral-800 bg-neutral-900/50",
-                                "hover:border-red-500/30 transition-colors cursor-move",
-                                dragIndex === index && "border-red-500/50 bg-red-500/10"
-                              )}
-                            >
+  key={file.id}
+  initial={{ opacity: 0, x: -20 }}
+  animate={{ opacity: 1, x: 0 }}
+  exit={{ opacity: 0, x: 20 }}
+  draggable
+  // Cast the 'e' to any to bypass the Framer Motion event shadow
+  onDragStart={(e: any) => handleDragStart(e, index)}
+  onDragOver={(e: any) => handleDragOverItem(e, index)}
+  onDrop={(e: any) => handleDropItem(e, index)}
+  className={cn(
+    "flex items-center gap-3 p-3 rounded-lg border border-neutral-800 bg-neutral-900/50",
+    "hover:border-red-500/30 transition-colors cursor-move",
+    dragIndex === index && "border-red-500/50 bg-red-500/10"
+  )}
+>
                               <GripVertical className="h-4 w-4 text-neutral-500 flex-shrink-0" />
                               
                               <div className="flex items-center gap-3 flex-1 min-w-0">

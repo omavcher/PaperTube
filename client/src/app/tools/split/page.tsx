@@ -394,7 +394,7 @@ export default function SplitPDFPage() {
   // Download a single split file
   const downloadFile = (result: SplitResult) => {
     try {
-      const blob = new Blob([result.data], { type: 'application/pdf' });
+const blob = new Blob([result.data.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

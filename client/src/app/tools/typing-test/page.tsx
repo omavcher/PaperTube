@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { toPng } from "html-to-image";
 import Link from "next/link";
 import Footer from "@/components/Footer";
+import router from "next/router";
 
 // --- Configuration: Technical Quotes ---
 const SAMPLES = [
