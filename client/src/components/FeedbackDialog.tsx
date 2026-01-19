@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Star, Send, MapPin, Loader2, Mail, CheckCircle, Terminal, User, ShieldCheck } from "lucide-react";
-import { LoginDialog } from "./LoginDialog";
+import { BackendResponse, LoginDialog, UserData } from "./LoginDialog";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -184,7 +184,9 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
         </DialogContent>
       </Dialog>
 
-      <LoginDialog isOpen={isLoginDialogOpen} onClose={() => setIsLoginDialogOpen(false)} />
+      <LoginDialog isOpen={isLoginDialogOpen} onClose={() => setIsLoginDialogOpen(false)} onSuccess={function (googleAccessToken: string, userInfo: UserData, backendResponse?: BackendResponse): void {
+        throw new Error("Function not implemented.");
+      } } />
     </>
   );
 }
