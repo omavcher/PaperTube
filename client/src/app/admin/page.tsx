@@ -11,7 +11,6 @@ import {
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import api from "@/config/api";
-import { headers } from "next/headers";
 
 export default function AdminDashboard() {
    
