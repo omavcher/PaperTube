@@ -15,6 +15,21 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // ✅ Prevent ESLint errors from blocking builds
   },
+  // --- ADD THIS WEBPACK CONFIGURATION ---
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Fixes npm packages that depend on `canvas` or other node modules
+      config.resolve.alias.canvas = false;
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        canvas: false,
+        fs: false,
+        path: false,
+        encoding: false,
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
