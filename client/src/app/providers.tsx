@@ -15,6 +15,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [authLoading, setAuthLoading] = useState(false);
   const pathname = usePathname();
 
+  // Get Client ID from environment variable
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
   const isNotesPage =
     pathname?.startsWith("/notes/") || pathname?.startsWith("/admin/");
 
@@ -23,7 +26,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const userData = localStorage.getItem("user");
     if (token && userData) {
       setIsLoggedIn(true);
-      setUser(JSON.parse(userData));
+      try {
+        setUser(JSON.parse(userData));
+      } catch (e) {
+        console.error("Failed to parse user data", e);
+      }
     }
   }, []);
 
@@ -54,8 +61,25 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // If Client ID is missing, we render without GoogleOAuthProvider to prevent crash
+  // but we log a clear error for you to see in the browser console.
+  if (!clientId) {
+    console.error("CRITICAL ERROR: NEXT_PUBLIC_GOOGLE_CLIENT_ID is not defined in environment variables.");
+    return (
+      <>
+        <Toaster theme="dark" position="top-center" />
+        <div className="fixed inset-0 -z-10 opacity-20 pointer-events-none">
+          <BackgroundBeams />
+        </div>
+        <main className={`flex-1 ${isNotesPage ? "mt-0" : "md:mt-20"}`}>
+          {children}
+        </main>
+      </>
+    );
+  }
+
   return (
-    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>
+    <GoogleOAuthProvider clientId={clientId}>
       <Toaster theme="dark" position="top-center" />
       <div className="fixed inset-0 -z-10 opacity-20 pointer-events-none">
         <BackgroundBeams />
@@ -82,16 +106,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
 function GoogleOneTapLoginWrapper({ onSuccess }: any) {
   useGoogleOneTapLogin({
     onSuccess: async (credentialResponse) => {
-      const idToken = credentialResponse.credential!;
-      const { data: userInfo } = await axios.get(
-        `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`
-      );
-      const response = await api.post("/auth/google", {
-        googleAccessToken: idToken,
-        authType: "id_token",
-      });
-      onSuccess(idToken, userInfo, response.data);
+      try {
+        const idToken = credentialResponse.credential!;
+        const { data: userInfo } = await axios.get(
+          `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`
+        );
+        const response = await api.post("/auth/google", {
+          googleAccessToken: idToken,
+          authType: "id_token",
+        });
+        onSuccess(idToken, userInfo, response.data);
+      } catch (error) {
+        console.error("One Tap Login Error:", error);
+        toast.error("Google One Tap Login Failed");
+      }
     },
+    onError: () => {
+      console.error("Google One Tap Script Load Error");
+    }
   });
 
   return null;
