@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 
 /* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
@@ -19,7 +23,9 @@
   background: #6b7280;
 }
 
-/* Global Utility Classes */
+
+
+/* Test */
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -32,10 +38,6 @@
   border-radius: 5px;
   cursor: pointer;
   font-weight: bold;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
 }
 
 .btn-primary { background-color: #3b82f6; color: white; }
@@ -44,9 +46,9 @@
 .btn-warning { background-color: #f59e0b; color: white; }
 
 .card {
-  background: #0a0a0a;
+  background: white;
   padding: 20px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   margin-bottom: 20px;
-}
+} 
