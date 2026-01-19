@@ -6,7 +6,7 @@ import { HomeFeatureX } from "@/components/HomeFeatureX";
 import { HomeCompare } from "@/components/HomeCompare";
 import HomeLine from "@/components/HomeLine";
 import Testimonials from "@/components/Testimonials";
-import HomeFeedback from "@/components/HomeFeedback";
+import FeebackDailogBox from "@/components/FeebackDailogBox";
 import Footer from "@/components/Footer";
 import { IconLanguage, IconRobot } from "@tabler/icons-react";
 import { FileText, ShieldCheck } from "lucide-react";
@@ -61,7 +61,7 @@ export default function Home() {
       </div>
 
       <div className="w-full">
-        <HomeFeedback/>
+        <FeebackDailogBox/>
       </div>
 
 
