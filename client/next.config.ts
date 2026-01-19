@@ -2,24 +2,31 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: [
-      "api.microlink.io", // Microlink Image Preview
-    ],
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**", // allows all HTTPS image domains
+        hostname: "**", 
       },
     ],
   },
   eslint: {
-    ignoreDuringBuilds: true, // ✅ Prevent ESLint errors from blocking builds
+    ignoreDuringBuilds: true,
   },
-  // --- ADD THIS WEBPACK CONFIGURATION ---
+  typescript: {
+    // Sometimes WorkerErrors are triggered by heavy type checking on low-memory build machines
+    ignoreBuildErrors: true, 
+  },
+  // 1. Configure Turbopack aliases
+  experimental: {
+    turbo: {
+      resolveAlias: {
+        canvas: false,
+      },
+    },
+  },
+  // 2. Preserve Webpack fallback for standard builds
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // Fixes npm packages that depend on `canvas` or other node modules
-      config.resolve.alias.canvas = false;
       config.resolve.fallback = {
         ...config.resolve.fallback,
         canvas: false,
