@@ -716,7 +716,6 @@ export default function QRCodeGeneratorPage() {
                                 bgColor={settings.backgroundColor}
                                 fgColor={settings.color}
                                 level={settings.errorCorrection}
-                                margin={settings.margin}
                               />
                               {logoPreview && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

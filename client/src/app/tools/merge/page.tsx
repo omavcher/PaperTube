@@ -199,14 +199,16 @@ export default function MergePDFPage() {
   };
 
   // Handle drag start for reordering
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDragIndex(index);
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+  setDragIndex(index);
+  if (e.dataTransfer) {
     e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOverItem = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-  };
+  }
+};
+const handleDragOverItem = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+  e.preventDefault();
+  e.stopPropagation();
+};
 
   const handleDropItem = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
@@ -299,7 +301,7 @@ export default function MergePDFPage() {
     if (!mergedFile) return;
     
     try {
-      const blob = new Blob([mergedFile.data], { type: 'application/pdf' });
+const blob = new Blob([mergedFile.data.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

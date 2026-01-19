@@ -933,30 +933,33 @@ Type your content here...`}
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[rehypeRaw]}
                     components={{
-                      code({node, inline, className, children, ...props}) {
-                        const match = /language-(\w+)/.exec(className || '');
-                        const language = match ? match[1] : '';
-                        
-                        if (!inline && language) {
-                          return (
-                            <SyntaxHighlighter
-                              style={vscDarkPlus}
-                              language={language}
-                              PreTag="div"
-                              className="rounded-xl border border-white/10"
-                              {...props}
-                            >
-                              {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
-                          );
-                        }
-                        
-                        return (
-                          <code className={cn("px-1.5 py-0.5 bg-black/30 rounded text-emerald-300 font-mono text-sm", className)} {...props}>
-                            {children}
-                          </code>
-                        );
-                      },
+                      code({ node, className, children, ...props }: any) {
+  const match = /language-(\w+)/.exec(className || '');
+  const isInline = !match; // If there's no language match, it's inline code
+
+  if (!isInline && match) {
+    return (
+      <SyntaxHighlighter
+        style={vscDarkPlus}
+        language={match[1]}
+        PreTag="div"
+        className="rounded-xl border border-white/10"
+        {...props}
+      >
+        {String(children).replace(/\n$/, '')}
+      </SyntaxHighlighter>
+    );
+  }
+
+  return (
+    <code 
+      className={cn("px-1.5 py-0.5 bg-black/30 rounded text-emerald-300 font-mono text-sm", className)} 
+      {...props}
+    >
+      {children}
+    </code>
+  );
+},
                       h1: ({node, ...props}) => <h1 className="text-3xl font-black text-white mt-8 mb-4 border-b border-white/10 pb-2" {...props} />,
                       h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-white mt-6 mb-3" {...props} />,
                       h3: ({node, ...props}) => <h3 className="text-xl font-bold text-white mt-5 mb-2" {...props} />,

@@ -269,7 +269,7 @@ function MetricBox({ label, value, icon }: any) {
   return (
     <div className="space-y-3 p-6 rounded-3xl bg-neutral-950 border border-white/5 hover:border-red-600/30 transition-all group">
        <div className="text-neutral-700 group-hover:text-red-500 transition-colors">
-          {React.cloneElement(icon as React.ReactElement, { size: 18 })}
+          {React.cloneElement(icon as React.ReactElement<any>, { size: 18 })}
        </div>
        <div>
           <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">{label}</p>

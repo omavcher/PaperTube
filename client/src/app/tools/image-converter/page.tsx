@@ -29,7 +29,7 @@ export default function ImageConverterPage() {
   const [sourceInfo, setSourceInfo] = useState<SourceFileInfo | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [targetFormat, setTargetFormat] = useState<SupportedFormat>("image/png");
-  const [quality, setQuality] = useState<number>([90]); // 0-100 scale for UI
+  const [quality, setQuality] = useState<number>(90); // 0-100 scale for UI
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -104,7 +104,7 @@ export default function ImageConverterPage() {
 
     // 3. Export
     // Quality needs to be 0.0 - 1.0 for canvas API
-    const exportQuality = quality[0] / 100;
+    const exportQuality = quality / 100;
     const dataUrl = canvas.toDataURL(targetFormat, exportQuality);
 
     const extensionMap = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
@@ -198,11 +198,11 @@ export default function ImageConverterPage() {
                       <label className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600 flex items-center gap-2">
                         <Scale size={12} className="text-orange-500" /> Compression Level
                       </label>
-                      <span className="text-[10px] font-mono text-orange-500">{quality[0]}%</span>
+                      <span className="text-[10px] font-mono text-orange-500">{quality}%</span>
                     </div>
                     <input 
-                      type="range" min="10" max="100" step="5" value={quality[0]}
-                      onChange={(e) => setQuality([parseInt(e.target.value)])}
+                      type="range" min="10" max="100" step="5" value={quality}
+                      onChange={(e) => setQuality(parseInt(e.target.value))}
                       className="w-full h-1.5 bg-neutral-900 rounded-lg appearance-none cursor-pointer accent-orange-500"
                     />
                     <div className="flex justify-between text-[8px] font-black text-neutral-700 uppercase tracking-widest">
@@ -289,7 +289,7 @@ export default function ImageConverterPage() {
                         <div>
                            <h4 className="font-black uppercase italic tracking-widest text-lg">Ready to Transmute</h4>
                            <p className="text-neutral-500 text-xs font-medium uppercase tracking-tighter">
-                              Targeting: {formatLabels[targetFormat].label} {targetFormat !== 'image/png' && `@ ${quality[0]}%`}
+                              Targeting: {formatLabels[targetFormat].label} {targetFormat !== 'image/png' && `@ ${quality}%`}
                            </p>
                         </div>
                      </div>
