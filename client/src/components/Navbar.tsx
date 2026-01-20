@@ -6,7 +6,6 @@ import {
   Home, Code, Gamepad2, User, Compass, Search, 
   Settings, LogOut, ShieldCheck, Activity, UserCircle,
   Briefcase,
-  Gamepad2 as GamepadIcon,
   Crown,
   ArrowUpRight
 } from "lucide-react";
@@ -84,6 +83,7 @@ export const Navbar = ({ isLoggedIn, user, onLoginSuccess, authLoading }: any) =
 
           <MobileTab href="/pricing" icon={<Zap size={20} />} label="Access" />
           
+          {/* PROFILE / MENU BUTTON */}
           <button 
             onClick={() => setMobileOpen(true)} 
             className="flex flex-col items-center gap-1 p-2 text-neutral-500 active:text-red-500 transition-colors"
@@ -132,8 +132,6 @@ const MobileTab = ({ href, icon, label }: any) => (
 
 const UserHUD = ({ user, onLogout }: any) => {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Membership Logic based on your JSON structure
   const isPremium = user?.membership?.isActive === true;
   const planName = user?.membership?.planName || "Free Node";
 
@@ -142,7 +140,6 @@ const UserHUD = ({ user, onLogout }: any) => {
       <div className="flex items-center gap-3 cursor-pointer group">
         <div className="hidden md:flex flex-col items-end mr-1">
           <span className="text-[10px] font-black text-white uppercase italic tracking-tighter truncate max-w-[100px]">{user?.name}</span>
-          
           {isPremium ? (
             <span className="text-[8px] font-bold text-yellow-500 uppercase tracking-widest flex items-center gap-1">
               <Crown size={8} className="fill-current" /> {planName}
@@ -172,12 +169,6 @@ const UserHUD = ({ user, onLogout }: any) => {
             <div className="px-3 py-2 border-b border-white/5 mb-1">
               <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Neural Identity</p>
               <p className="text-[11px] font-bold text-white truncate">{user?.email}</p>
-              <div className="mt-1 flex items-center gap-2">
-                 <div className={cn("px-2 py-0.5 rounded-full text-[7px] font-black uppercase", isPremium ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20" : "bg-white/5 text-neutral-500 border border-white/10")}>
-                    {planName}
-                 </div>
-                 <div className="text-[7px] font-black text-neutral-600 uppercase">Tokens: {user?.token || 0}</div>
-              </div>
             </div>
             
             <Link href="/profile" className="flex items-center gap-3 p-2.5 hover:bg-white/5 rounded-xl transition-colors text-neutral-400 hover:text-white group">
@@ -185,24 +176,7 @@ const UserHUD = ({ user, onLogout }: any) => {
               <span className="text-[10px] font-black uppercase italic">User Dashboard</span>
             </Link>
 
-            {!isPremium && (
-              <Link href="/pricing" className="flex items-center gap-3 p-2.5 bg-red-600/10 hover:bg-red-600/20 rounded-xl transition-colors text-red-500 group my-1">
-                <Zap size={16} className="fill-current" />
-                <span className="text-[10px] font-black uppercase italic">Upgrade to Pro</span>
-              </Link>
-            )}
-
-            <Link href="/tools" className="flex items-center gap-3 p-2.5 hover:bg-white/5 rounded-xl transition-colors text-neutral-400 hover:text-white group">
-              <Briefcase size={16} className="group-hover:text-red-500" />
-              <span className="text-[10px] font-black uppercase italic">PaperTube Tools</span>
-            </Link>
-
-            <div className="h-px bg-white/5 my-1" />
-
-            <button 
-              onClick={onLogout}
-              className="w-full flex items-center gap-3 p-2.5 hover:bg-red-600/10 rounded-xl transition-colors text-neutral-500 hover:text-red-500 group"
-            >
+            <button onClick={onLogout} className="w-full flex items-center gap-3 p-2.5 hover:bg-red-600/10 rounded-xl transition-colors text-neutral-500 hover:text-red-500 group">
               <LogOut size={16} />
               <span className="text-[10px] font-black uppercase italic">Terminate Session</span>
             </button>
@@ -212,6 +186,74 @@ const UserHUD = ({ user, onLogout }: any) => {
     </div>
   );
 };
+
+const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authLoading, onLogout }: any) => {
+  const isPremium = user?.membership?.isActive === true;
+  const planName = user?.membership?.planName || "Free Node";
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="fixed inset-0 z-[150] bg-black p-8 flex flex-col gap-10 lg:hidden overflow-y-auto"
+        >
+          <div className="flex justify-between items-center">
+             <span className="text-xl font-black italic text-white uppercase tracking-tighter">
+               Paper<span className="text-red-600">Tube</span>
+             </span>
+             <button onClick={onClose} className="p-3 bg-neutral-900 rounded-full text-white"><X /></button>
+          </div>
+          
+          <div className="flex flex-col gap-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600 border-b border-white/5 pb-2">Operational Modules</p>
+            {SUPPORT_TOOLS.map((tool, i) => (
+              <Link key={i} href={tool.href} onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900/50 rounded-2xl border border-white/5">
+                 <div className="text-red-600">{tool.icon}</div>
+                 <div>
+                   <p className="text-xs font-black uppercase text-white">{tool.title}</p>
+                   <p className="text-[8px] text-neutral-600 font-bold uppercase">{tool.desc}</p>
+                 </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-auto">
+            {isLoggedIn ? (
+              <div className="space-y-4">
+                {/* CLICKABLE PROFILE BOX */}
+                <Link href="/profile" onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900 rounded-3xl mb-4 border border-white/5 active:bg-neutral-800 transition-colors">
+                   <img src={user?.picture} className={cn("w-12 h-12 rounded-full border-2", isPremium ? "border-yellow-500" : "border-red-600")} />
+                   <div className="flex-1">
+                     <p className="text-xs font-black uppercase text-white truncate">{user?.name}</p>
+                     <p className="text-[9px] font-bold text-yellow-500 uppercase">{planName} • Dashboard</p>
+                   </div>
+                   <UserCircle size={20} className="text-neutral-500" />
+                </Link>
+
+                <Button 
+                  variant="ghost" 
+                  onClick={() => { onLogout(); onClose(); }} 
+                  className="w-full text-neutral-600 hover:text-red-500 uppercase font-black text-[10px] tracking-[0.3em]"
+                >
+                  <LogOut className="mr-2 h-3 w-3" /> Terminate Session
+                </Button>
+              </div>
+            ) : (
+              <div className="p-6 bg-neutral-900/50 border border-white/5 rounded-[2.5rem] flex flex-col gap-4 text-center">
+                 <p className="text-[10px] font-black text-neutral-500 uppercase">Authentication Required</p>
+                 <GoogleLoginBtn onSuccess={onLoginSuccess} loading={authLoading} />
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+/* --- Remaining logic (GoogleLoginBtn, NavDropdown, etc.) stays the same --- */
 
 function GoogleLoginBtn({ onSuccess, loading }: any) {
   const login = useGoogleLogin({
@@ -232,7 +274,7 @@ function GoogleLoginBtn({ onSuccess, loading }: any) {
       className="flex items-center gap-2 px-5 py-2.5 text-[10px] font-black uppercase italic bg-white text-black rounded-xl hover:bg-neutral-200 transition-all active:scale-95 disabled:opacity-50"
     >
       {loading ? <div className="h-4 w-4 border-2 border-t-transparent border-black rounded-full animate-spin" /> : <FcGoogle size={16} />}
-      {loading ? "SYNCING..." : "INIT_SESSION"}
+      {loading ? "Loading..." : "LogIn"}
     </button>
   );
 }
@@ -262,74 +304,6 @@ const NavDropdown = ({ label, items }: any) => {
         )}
       </AnimatePresence>
     </div>
-  );
-};
-
-const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authLoading, onLogout }: any) => {
-  const isPremium = user?.membership?.isActive === true;
-  const planName = user?.membership?.planName || "Free Node";
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div 
-          initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed inset-0 z-[150] bg-black p-8 flex flex-col gap-10 lg:hidden"
-        >
-          <div className="flex justify-between items-center">
-             <span className="text-xl font-black italic text-white uppercase tracking-tighter">
-               Paper<span className="text-red-600">Tube</span>
-             </span>
-             <button onClick={onClose} className="p-3 bg-neutral-900 rounded-full text-white"><X /></button>
-          </div>
-          
-          <div className="flex flex-col gap-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600 border-b border-white/5 pb-2">Operational Modules</p>
-            {SUPPORT_TOOLS.map((tool, i) => (
-              <Link key={i} href={tool.href} onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900/50 rounded-2xl border border-white/5">
-                 <div className="text-red-600">{tool.icon}</div>
-                 <div>
-                   <p className="text-xs font-black uppercase text-white">{tool.title}</p>
-                   <p className="text-[8px] text-neutral-600 font-bold uppercase">{tool.desc}</p>
-                 </div>
-              </Link>
-            ))}
-          </div>
-
-          <div className="mt-auto">
-            {isLoggedIn ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 bg-neutral-900 rounded-3xl mb-4 border border-white/5">
-                   <img src={user?.picture} className={cn("w-12 h-12 rounded-full border-2", isPremium ? "border-yellow-500" : "border-red-600")} />
-                   <div className="flex-1">
-                     <p className="text-xs font-black uppercase text-white truncate">{user?.name}</p>
-                     <p className="text-[9px] font-bold text-yellow-500 uppercase">{planName}</p>
-                   </div>
-                   {!isPremium && (
-                     <Link href="/pricing" onClick={onClose}>
-                       <Button size="sm" className="h-7 text-[8px] font-black uppercase bg-red-600">Upgrade</Button>
-                     </Link>
-                   )}
-                </div>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => { onLogout(); onClose(); }} 
-                  className="w-full text-neutral-600 hover:text-red-500 uppercase font-black text-[10px] tracking-[0.3em]"
-                >
-                  <LogOut className="mr-2 h-3 w-3" /> Terminate Session
-                </Button>
-              </div>
-            ) : (
-              <div className="p-6 bg-neutral-900/50 border border-white/5 rounded-[2.5rem] flex flex-col gap-4 text-center">
-                 <p className="text-[10px] font-black text-neutral-500 uppercase">Authentication Required</p>
-                 <GoogleLoginBtn onSuccess={onLoginSuccess} loading={authLoading} />
-              </div>
-            )}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 };
 

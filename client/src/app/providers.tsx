@@ -8,6 +8,7 @@ import { GoogleOAuthProvider, useGoogleOneTapLogin } from "@react-oauth/google";
 import axios from "axios";
 import api from "@/config/api";
 import { Toaster, toast } from "sonner";
+import UserTracker from "@/components/UserTracker";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -95,6 +96,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <main className={`flex-1 ${isNotesPage ? "mt-0" : "md:mt-20"}`}>
         {children}
       </main>
+      <UserTracker/>
     </GoogleOAuthProvider>
   );
 }

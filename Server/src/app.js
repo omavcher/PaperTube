@@ -35,6 +35,7 @@ app.use("/api/flashcards", require("./routes/flashcardRoutes"));
 app.use("/api/general", require("./routes/generalRoutes"));
 app.use("/api/quiz", require("./routes/quizRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/analytics", require("./routes/analyticsRoutes"));
 
 // Start daily token reset scheduler
 tokenResetService.startDailyReset();

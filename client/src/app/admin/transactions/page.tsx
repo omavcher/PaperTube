@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   IndianRupee, ArrowUpRight, ArrowDownRight, 
   Search, Filter, Download, 
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import api from "@/config/api";
 
 // --- Mock Transaction Registry ---
 const MOCK_TRANSACTIONS = [
@@ -25,9 +26,38 @@ const MOCK_TRANSACTIONS = [
 
 export default function FinancialLedger() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("All");
 
   // --- Tactical Logic ---
+ useEffect(() => {
+    const fetchTranstionData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('authToken');
+        
+        const response = await api.get('/admin/transactions', {
+          headers: { 
+            'Authorization': `Bearer ${token}` 
+          }
+        });
+
+        console.log('Transactions Data:', response.data);
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching users data:', error);
+        setError('Failed to fetch users data');
+        toast.error("Failed to load personnel data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTranstionData();
+  }, []);
+
+
   const filteredTxns = useMemo(() => {
     return MOCK_TRANSACTIONS.filter(txn => {
       const matchesSearch = txn.user.toLowerCase().includes(searchQuery.toLowerCase()) || txn.id.includes(searchQuery);
