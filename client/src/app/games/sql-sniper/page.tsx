@@ -5,7 +5,8 @@ import {
   Database, Trophy, Play, RotateCcw, 
   Zap, Heart, Timer, ShieldCheck, 
   Activity, Table, History, Calendar,
-  Terminal, Search, ChevronRight
+  Terminal, Search, ChevronRight, Loader2,
+  Fingerprint, HardDrive
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +14,9 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
+import api from "@/config/api";
 
-// --- SQL Question Pool (50+ Levels Logic) ---
+// --- SQL Question Pool (Provided by User) ---
 interface SQLQuestion {
   question: string;
   ans: string;
@@ -105,16 +107,10 @@ const SQL_POOL: SQLQuestion[] = [
   { question: "Materialized daily sales view.", ans: "CREATE MATERIALIZED VIEW daily_sales_summary AS SELECT date, SUM(amount) as total_sales, COUNT(DISTINCT customer_id) as unique_customers FROM sales GROUP BY date;", tier: 4 },
 ];
 
-
-interface MatchRecord {
-  id: string;
-  date: string;
-  score: number;
-  level: number;
-}
+type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
 
 export default function SqlSniper() {
-  const [gameState, setGameState] = useState<'START' | 'PLAYING' | 'GAMEOVER'>('START');
+  const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -122,47 +118,81 @@ export default function SqlSniper() {
   const [level, setLevel] = useState(1);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
-  const [lastIndices, setLastIndices] = useState<number[]>([]);
-  const [history, setHistory] = useState<MatchRecord[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  // --- Device Detection Logic ---
+  const getDeviceMetadata = () => {
+    if (typeof window === "undefined") return { isMobile: false, browser: "Unknown" };
+    
+    const ua = navigator.userAgent;
+    let browser = "Unknown Browser";
+    
+    // Detect Browser Name
+    if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("SamsungBrowser")) browser = "Samsung Browser";
+    else if (ua.includes("Opera") || ua.includes("OPR")) browser = "Opera";
+    else if (ua.includes("Trident")) browser = "Internet Explorer";
+    else if (ua.includes("Edge")) browser = "Edge";
+    else if (ua.includes("Chrome")) browser = "Chrome";
+    else if (ua.includes("Safari")) browser = "Safari";
 
-  // --- Persistence: Load History ---
+    // Detect Mobile via Screen Width + UserAgent
+    const isMobile = /Mobi|Android|iPhone/i.test(ua) || window.innerWidth < 768;
+
+    return { isMobile, browser };
+  };
+  // --- Identity & Telemetry Sync ---
+  const getIdentity = () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      return userStr ? JSON.parse(userStr) : { id: "guest_node", name: "Guest", email: "anonymous@void.com" };
+    } catch { return { id: "guest_node", name: "Guest", email: "anonymous@void.com" }; }
+  };
+
+  const pushStatsToBackend = async (finalScore: number, finalLevel: number) => {
+    setGameState('SYNCING');
+    const user = getIdentity();
+    const payload = {
+      userId: user.id || user._id,
+      name: user.name,
+      email: user.email,
+      game: "SQL Sniper",
+      stats: {
+        score: finalScore,
+        level: finalLevel,
+        timestamp: new Date().toISOString()
+      },
+      device: getDeviceMetadata()
+    };
+
+    try {
+      await api.post("/general/game-stats", payload);
+      toast.success("TELEMETRY_SYNCED");
+    } catch (error) {
+      toast.error("SYNC_OFFLINE", { description: "Mission data cached locally." });
+    } finally {
+      setGameState('GAMEOVER');
+    }
+  };
+
   useEffect(() => {
-    const savedHistory = localStorage.getItem("sql_sniper_history");
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
     const savedHigh = localStorage.getItem("sql_sniper_high");
     if (savedHigh) setHighScore(parseInt(savedHigh));
+    const savedHistory = localStorage.getItem("sql_sniper_history");
+    if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, []);
 
-  const saveMatch = useCallback((finalScore: number, finalLevel: number) => {
-    const newRecord: MatchRecord = {
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      score: finalScore,
-      level: finalLevel
-    };
-    const updated = [newRecord, ...history].slice(0, 5);
-    setHistory(updated);
-    localStorage.setItem("sql_sniper_history", JSON.stringify(updated));
-    if (finalScore > highScore) {
-      setHighScore(finalScore);
-      localStorage.setItem("sql_sniper_high", finalScore.toString());
-    }
-  }, [history, highScore]);
-
-  // --- Progression Logic ---
+  // --- Core Game Logic ---
   const generateQuestion = useCallback(() => {
-    let targetTier = level <= 10 ? 1 : level <= 25 ? 2 : 3;
+    // HARDER SCALING: Introduce T3/T4 queries much earlier
+    const targetTier = level < 5 ? 1 : level < 12 ? 2 : level < 20 ? 3 : 4;
     const pool = SQL_POOL.filter(q => q.tier <= targetTier);
+    const nextIdx = Math.floor(Math.random() * pool.length);
+    
+    // Find absolute index in main pool
+    const actualIdx = SQL_POOL.findIndex(s => s.question === pool[nextIdx].question);
+    setCurrentIdx(actualIdx);
 
-    let nextIdx;
-    do {
-      nextIdx = Math.floor(Math.random() * pool.length);
-    } while (lastIndices.includes(nextIdx));
-
-    setLastIndices(prev => [nextIdx, ...prev].slice(0, 3));
-    setCurrentIdx(nextIdx);
-
-    // Generate 4 options
+    // Hard Options Generation: Pick similar queries to confuse the user
     const correctAns = pool[nextIdx].ans;
     const opts = new Set<string>();
     opts.add(correctAns);
@@ -171,9 +201,9 @@ export default function SqlSniper() {
     }
     setOptions(Array.from(opts).sort(() => Math.random() - 0.5));
 
-    // Time scales with level
-    setTimeLeft(Math.max(4, 12 - (level * 0.2)));
-  }, [level, lastIndices]);
+    // Time decay: Starts at 12s, floor at 4s
+    setTimeLeft(Math.max(4.0, 12 - (level * 0.35)));
+  }, [level]);
 
   useEffect(() => {
     let timer: any;
@@ -187,9 +217,9 @@ export default function SqlSniper() {
 
   const handleAnswer = (choice: string) => {
     if (choice === SQL_POOL[currentIdx].ans) {
-      setScore(s => s + (10 * level));
+      setScore(s => s + (50 * SQL_POOL[currentIdx].tier));
       setLevel(l => l + 1);
-      toast.success("Query Successful", { duration: 600 });
+      toast.success("QUERY_SUCCESS", { duration: 500 });
       generateQuestion();
     } else {
       handleWrong();
@@ -199,162 +229,145 @@ export default function SqlSniper() {
   const handleWrong = () => {
     if (lives > 1) {
       setLives(l => l - 1);
-      toast.error("Syntax Error!", { description: "Connection Refused." });
+      toast.error("SYNTAX_ERROR", { description: "Connection interrupted." });
       generateQuestion();
     } else {
-      setGameState('GAMEOVER');
-      saveMatch(score, level);
+      pushStatsToBackend(score, level);
     }
   };
 
-  const startGame = () => {
-    setScore(0);
-    setLives(3);
-    setLevel(1);
-    setLastIndices([]);
-    setGameState('PLAYING');
-    generateQuestion();
-  };
-
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6 selection:bg-emerald-500/30 overflow-hidden">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-emerald-600/30 overflow-hidden">
       
-      <div className="max-w-3xl w-full relative">
-        {/* --- HUD --- */}
-        <div className="flex justify-between items-center mb-8 bg-neutral-900/50 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md">
+      {/* --- HUD --- */}
+      <div className="w-full max-w-2xl bg-neutral-900/20 border border-white/5 p-6 rounded-[2.5rem] md:rounded-[3rem] backdrop-blur-3xl mb-8 shadow-2xl">
+        <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-             <div className="h-12 w-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
-               <Database size={24} />
-             </div>
-             <div>
-               <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Row Score</p>
-               <p className="text-2xl font-black tabular-nums">{score}</p>
-             </div>
+            <div className="h-12 w-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 border border-emerald-500/20">
+              <Database size={24} />
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">Rows_Fetched</p>
+              <p className="text-2xl font-black tabular-nums tracking-tighter">{score}</p>
+            </div>
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex gap-1.5">
             {[...Array(3)].map((_, i) => (
-              <Heart key={i} size={22} className={cn("transition-all duration-300", i < lives ? "text-red-500 fill-red-500" : "text-neutral-800")} />
+              <Heart key={i} size={22} className={cn("transition-all", i < lives ? "text-red-600 fill-red-600" : "text-neutral-900")} />
             ))}
           </div>
+
           <div className="text-right">
-            <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Session Depth</p>
-            <p className="text-2xl font-black text-emerald-500 tabular-nums">LVL {level}</p>
+            <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">Infiltration_Lvl</p>
+            <span className={cn("text-xl font-black tabular-nums", timeLeft < 3 ? "text-red-600 animate-pulse" : "text-white")}>
+              {timeLeft.toFixed(1)}s
+            </span>
           </div>
         </div>
+      </div>
 
+      <div className="max-w-4xl w-full relative z-10">
         <AnimatePresence mode="wait">
+          
+          {/* --- VIEW: START --- */}
           {gameState === 'START' && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-10 py-10">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-10 py-12">
               <div className="space-y-4">
-                <div className="inline-flex p-8 bg-emerald-500/10 rounded-[3rem] border border-emerald-500/20 shadow-[0_0_60px_rgba(16,185,129,0.1)]">
-                  <Terminal size={64} className="text-emerald-500" />
+                <div className="inline-flex p-10 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10 shadow-[0_0_80px_rgba(16,185,129,0.1)]">
+                  <Terminal size={100} className="text-emerald-500" />
                 </div>
-                <h1 className="text-6xl font-black tracking-tighter uppercase italic text-white">SQL <span className="text-emerald-500">SNIPER</span></h1>
-                <p className="text-neutral-400 max-w-sm mx-auto">Master relational algebra. Select the correct query to satisfy the requirements across 50+ levels.</p>
+                <h1 className="text-6xl md:text-9xl font-black tracking-tighter uppercase italic leading-none">
+                  SQL_<span className="text-emerald-500">SNIPER</span>
+                </h1>
+                <p className="text-neutral-500 text-[10px] md:text-xs font-black uppercase tracking-[0.4em] max-w-sm mx-auto leading-relaxed">
+                  Analyze_Requirement // Inject_Correct_Query // Phase_v4.0
+                </p>
               </div>
-              <Button onClick={startGame} className="w-full h-24 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-2xl rounded-3xl shadow-[0_20px_50px_rgba(16,185,129,0.3)]">
-                CONNECT TO SERVER <Play className="ml-3 fill-black" />
+              <Button onClick={() => { setScore(0); setLives(3); setLevel(1); setGameState('PLAYING'); generateQuestion(); }} 
+                className="w-full h-24 bg-emerald-600 hover:bg-emerald-500 text-black font-black text-3xl rounded-[2.5rem] shadow-2xl active:scale-95 transition-all">
+                START <Play size={28} className="ml-3 fill-black" />
               </Button>
             </motion.div>
           )}
 
+          {/* --- VIEW: PLAYING --- */}
           {gameState === 'PLAYING' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-              {/* Timer */}
-              <div className="space-y-2">
-                <div className="w-full h-3 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
-                  <motion.div 
-                    initial={{ width: '100%' }}
-                    animate={{ width: `${(timeLeft / 12) * 100}%` }}
-                    className={cn("h-full transition-colors duration-200", timeLeft < 4 ? "bg-red-500 shadow-[0_0_15px_red]" : "bg-emerald-500 shadow-[0_0_15px_#10b981]")}
-                  />
-                </div>
+              <div className="w-full h-2 bg-neutral-950 rounded-full overflow-hidden border border-white/5">
+                <motion.div 
+                  initial={{ width: '100%' }}
+                  animate={{ width: `${(timeLeft / 12) * 100}%` }}
+                  className={cn("h-full transition-colors", timeLeft < 3 ? "bg-red-600" : "bg-emerald-500")}
+                />
               </div>
 
-              {/* Requirement Card */}
+              {/* Data Requirement Card */}
               <div className="relative group">
-                <div className="absolute inset-0 bg-emerald-500/10 blur-[100px] rounded-full group-hover:bg-emerald-500/20 transition-all" />
-                <Card className="bg-neutral-900 border-2 border-white/5 rounded-[3rem] p-12 text-center relative z-10 shadow-2xl">
-                  <Badge className="bg-emerald-500/10 text-emerald-400 mb-6 uppercase tracking-[0.3em] px-4 py-1 text-xs border border-emerald-500/20">Data Requirement</Badge>
-                  <h2 className="text-3xl md:text-4xl font-black tracking-tight text-white leading-tight">
+                <div className="absolute inset-0 bg-emerald-500/5 blur-[100px] rounded-full group-hover:bg-emerald-500/10 transition-all duration-700" />
+                <Card className="bg-neutral-900/40 border-2 border-white/5 rounded-[4rem] p-10 md:p-16 text-center relative z-10 backdrop-blur-xl">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[10px] mb-6 tracking-[0.4em]">DATA_SPECIFICATION</Badge>
+                  <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight italic">
                     "{SQL_POOL[currentIdx].question}"
                   </h2>
                 </Card>
               </div>
 
-              {/* Query Options */}
+              {/* Answer Matrix: 1-column for mobile readability */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {options.map((opt, i) => (
                   <Button 
                     key={i} 
                     onClick={() => handleAnswer(opt)}
-                    className="h-auto py-6 px-6 bg-neutral-900 border border-white/5 hover:border-emerald-500 hover:bg-emerald-500/5 text-sm md:text-base font-mono text-emerald-400 text-left justify-start rounded-2xl transition-all whitespace-normal break-all leading-relaxed"
+                    className="h-auto min-h-[100px] py-6 px-8 bg-neutral-900 border border-white/5 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-left justify-start rounded-[2rem] transition-all transform active:scale-95 group"
                   >
-                    <ChevronRight size={16} className="mr-3 shrink-0" /> {opt}
+                    <div className="flex gap-4 items-start">
+                      <ChevronRight size={18} className="text-neutral-700 group-hover:text-emerald-500 mt-1 shrink-0" />
+                      <span className="font-mono text-sm md:text-base text-emerald-400 break-all leading-relaxed">{opt}</span>
+                    </div>
                   </Button>
                 ))}
               </div>
             </motion.div>
           )}
 
-          {gameState === 'GAMEOVER' && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
-              <div className="text-center bg-neutral-900/50 p-12 rounded-[4rem] border border-red-500/20 shadow-2xl backdrop-blur-xl">
-                 <ShieldCheck size={80} className="text-red-500 mx-auto mb-6 opacity-50" />
-                 <h2 className="text-6xl font-black text-white uppercase italic tracking-tighter mb-10">Connection <span className="text-red-500">Lost</span></h2>
+          {(gameState === 'GAMEOVER' || gameState === 'SYNCING') && (
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10">
+              <div className="text-center bg-neutral-900/50 p-12 rounded-[4rem] border border-red-900/20 shadow-2xl backdrop-blur-3xl relative overflow-hidden">
+                 <div className="absolute inset-0 bg-red-600/5 animate-pulse" />
+                 <h2 className="text-6xl md:text-8xl font-black text-red-600 uppercase italic tracking-tighter mb-10 relative z-10">CONNECTION_LOST</h2>
                  
-                 <div className="grid grid-cols-2 gap-6 mb-10">
-                   <div className="bg-black/40 p-8 rounded-[2.5rem] border border-white/5 text-center">
-                     <p className="text-[10px] font-black text-neutral-500 uppercase mb-2">Final Rows</p>
-                     <p className="text-5xl font-black text-emerald-500">{score}</p>
+                 <div className="grid grid-cols-2 gap-6 mb-10 relative z-10">
+                   <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
+                     <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Rows_Secured</p>
+                     <p className="text-5xl font-black text-emerald-500 leading-none">{score}</p>
                    </div>
-                   <div className="bg-black/40 p-8 rounded-[2.5rem] border border-white/5 text-center">
-                     <p className="text-[10px] font-black text-neutral-500 uppercase mb-2">Schema Depth</p>
-                     <p className="text-5xl font-black text-white">{level}</p>
+                   <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
+                     <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Max_Depth</p>
+                     <p className="text-5xl font-black text-white leading-none">L{level}</p>
                    </div>
                  </div>
 
-                 <Button onClick={startGame} className="w-full h-20 bg-white text-black font-black text-2xl rounded-3xl hover:bg-emerald-500 transition-all shadow-xl">
-                   RESTORE DB <RotateCcw className="ml-3" />
-                 </Button>
-              </div>
-
-              {/* --- Mission History Log --- */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 px-4 text-neutral-500">
-                  <History size={16} />
-                  <h3 className="text-xs font-black uppercase tracking-[0.4em]">Query History</h3>
-                </div>
-                <div className="space-y-3">
-                  {history.map((match) => (
-                    <div key={match.id} className="bg-neutral-900/40 border border-white/5 p-6 rounded-[2rem] flex justify-between items-center group hover:border-emerald-500/40 transition-all">
-                      <div className="flex items-center gap-5">
-                        <div className="p-4 bg-black rounded-2xl text-neutral-500 group-hover:text-emerald-500 transition-colors">
-                          <Calendar size={20} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-neutral-600 font-bold uppercase">{match.date}</span>
-                          <span className="text-lg font-black text-emerald-400">Level {match.level} Reach</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] font-black text-neutral-600 uppercase block mb-1">Score</span>
-                        <span className="text-3xl font-black tabular-nums">{match.score}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {history.length === 0 && <p className="text-center text-xs text-neutral-700 italic">No prior database logs found.</p>}
-                </div>
+                 {gameState === 'SYNCING' ? (
+                   <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-[0.4em] uppercase">
+                      <Loader2 size={16} className="animate-spin" /> UPLOADING_MISSION_STATS...
+                   </div>
+                 ) : (
+                   <Button onClick={() => setGameState('START')} className="w-full h-20 bg-white text-black font-black text-2xl rounded-3xl hover:bg-emerald-500 hover:text-white transition-all active:scale-95 shadow-2xl">
+                    RESTART <RotateCcw size={24} className="ml-3" />
+                   </Button>
+                 )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      <div className="mt-16 flex gap-12 text-[10px] font-black uppercase tracking-[0.5em] text-neutral-800">
-        <span className="flex items-center gap-2"><Table size={14} /> ACID Compliant</span>
-        <span className="flex items-center gap-2"><Activity size={14} /> Latency: 4ms</span>
-        <span className="flex items-center gap-2 font-mono italic">PB: {highScore}</span>
+      {/* Meta HUD */}
+      <div className="mt-16 flex flex-wrap justify-center gap-12 text-[10px] font-black uppercase tracking-[0.5em] text-neutral-900">
+        <span className="flex items-center gap-2"><Fingerprint size={14} /> ID: {getIdentity().id.substring(0,10)}...</span>
+        <span className="flex items-center gap-2"><HardDrive size={14} /> pb_node: {highScore}</span>
+        <span className="flex items-center gap-2 italic">v2026.VOID-ARCADE</span>
       </div>
     </div>
   );

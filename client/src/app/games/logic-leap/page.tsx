@@ -10,7 +10,7 @@ import {
   Clock, TrendingUp, BarChart3,
   Lightbulb, Puzzle, Network,
   BookOpen, Award, Star,
-  ShieldAlert, Lock, Crown
+  ShieldAlert, Lock, Crown, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,25 +18,20 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
+import api from "@/config/api";
 
 // --- Types ---
-interface MatchRecord {
-  id: string;
-  date: string;
-  score: number;
-  level: number;
-}
-
 interface AptitudeQuestion {
   question: string;
   options: string[];
   answer: string;
   explanation?: string;
-  tier: number; // 1: 12th Grade, 2: Competitive Exams, 3: GATE, 4: CAT/MBA, 5: UPSC/Civil Services
-  category: 'quantitative' | 'logical' | 'verbal' | 'data-interpretation' | 'puzzles';
+  tier: number; 
+  category: string;
 }
 
-// --- Comprehensive Aptitude Question Pool (70+ Questions) ---
+type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
+
 const APTITUDE_POOL: AptitudeQuestion[] = [
   // Tier 1: 12th Grade Level (15 questions)
   { 
@@ -649,119 +644,99 @@ const APTITUDE_POOL: AptitudeQuestion[] = [
   }
 ];
 
-// Helper functions
-const getQuestionsByTier = (currentLevel: number): AptitudeQuestion[] => {
-  if (currentLevel < 15) return APTITUDE_POOL.filter(q => q.tier === 1);
-  if (currentLevel < 30) return APTITUDE_POOL.filter(q => q.tier <= 2);
-  if (currentLevel < 45) return APTITUDE_POOL.filter(q => q.tier <= 3);
-  if (currentLevel < 60) return APTITUDE_POOL.filter(q => q.tier <= 4);
-  return APTITUDE_POOL; // All questions including UPSC level
-};
-
-const getTierName = (tier: number): string => {
-  switch(tier) {
-    case 1: return 'EASY';
-    case 2: return 'COMPETITIVE';
-    case 3: return 'MODERATE';
-    case 4: return 'HARD';
-    case 5: return 'HEROIC';
-    default: return 'UNKNOWN';
-  }
-};
-
-const getTierColor = (tier: number): string => {
-  switch(tier) {
-    case 1: return 'border-green-500';
-    case 2: return 'border-blue-500';
-    case 3: return 'border-yellow-500';
-    case 4: return 'border-orange-500';
-    case 5: return 'border-red-500';
-    default: return 'border-white/10';
-  }
-};
-
-const getTierBadgeColor = (tier: number): string => {
-  switch(tier) {
-    case 1: return 'bg-green-500/20 text-green-500 border-green-500/30';
-    case 2: return 'bg-blue-500/20 text-blue-500 border-blue-500/30';
-    case 3: return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30';
-    case 4: return 'bg-orange-500/20 text-orange-500 border-orange-500/30';
-    case 5: return 'bg-red-500/20 text-red-500 border-red-500/30';
-    default: return 'bg-neutral-500/20 text-neutral-500 border-neutral-500/30';
-  }
-};
-
-const getCategoryIcon = (category: string) => {
-  switch(category) {
-    case 'quantitative': return <Calculator size={20} />;
-    case 'logical': return <Puzzle size={20} />;
-    case 'verbal': return <BookOpen size={20} />;
-    case 'data-interpretation': return <BarChart3 size={20} />;
-    case 'puzzles': return <Lightbulb size={20} />;
-    default: return <Brain size={20} />;
-  }
-};
 
 export default function LogicLeap() {
-  const [gameState, setGameState] = useState<'START' | 'PLAYING' | 'GAMEOVER'>('START');
+  const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [timeLeft, setTimeLeft] = useState(15);
   const [level, setLevel] = useState(1);
   const [currentQ, setCurrentQ] = useState<AptitudeQuestion | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
   const [lastIndices, setLastIndices] = useState<number[]>([]);
-  const [history, setHistory] = useState<MatchRecord[]>([]);
-  const [showExplanation, setShowExplanation] = useState(false);
+  // --- Device Detection Logic ---
+  const getDeviceMetadata = () => {
+    if (typeof window === "undefined") return { isMobile: false, browser: "Unknown" };
+    
+    const ua = navigator.userAgent;
+    let browser = "Unknown Browser";
+    
+    // Detect Browser Name
+    if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("SamsungBrowser")) browser = "Samsung Browser";
+    else if (ua.includes("Opera") || ua.includes("OPR")) browser = "Opera";
+    else if (ua.includes("Trident")) browser = "Internet Explorer";
+    else if (ua.includes("Edge")) browser = "Edge";
+    else if (ua.includes("Chrome")) browser = "Chrome";
+    else if (ua.includes("Safari")) browser = "Safari";
 
-  // --- Persistence: Load History ---
+    // Detect Mobile via Screen Width + UserAgent
+    const isMobile = /Mobi|Android|iPhone/i.test(ua) || window.innerWidth < 768;
+
+    return { isMobile, browser };
+  };
+  // --- Identity Detection ---
+  const getIdentity = () => {
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : { id: "guest_node", name: "Guest", email: "anonymous@void.com" };
+    } catch { return { id: "guest_node", name: "Guest", email: "anonymous@void.com" }; }
+  };
+
+  // --- Telemetry Sync ---
+  const pushStats = async (finalScore: number, finalLevel: number) => {
+    setGameState('SYNCING');
+    const user = getIdentity();
+    
+    const payload = {
+      userId: user.id || user._id,
+      name: user.name,
+      email: user.email,
+      game: "Logic Leap",
+      stats: {
+        score: finalScore,
+        level: finalLevel,
+        timestamp: new Date().toISOString()
+      },
+      device: getDeviceMetadata()
+    };
+
+    try {
+      await api.post("/general/game-stats", payload);
+      toast.success("TELEMETRY_SYNCED");
+    } catch (error) {
+      toast.error("SYNC_OFFLINE", { description: "Mission data stored locally." });
+    } finally {
+      setGameState('GAMEOVER');
+    }
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem("logic_leap_history");
-    if (saved) setHistory(JSON.parse(saved));
     const savedHigh = localStorage.getItem("logic_leap_high");
     if (savedHigh) setHighScore(parseInt(savedHigh));
+    const savedHistory = localStorage.getItem("logic_leap_history");
+    if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, []);
 
-  const saveMatch = useCallback((finalScore: number, finalLevel: number) => {
-    const newRecord: MatchRecord = {
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      score: finalScore,
-      level: finalLevel
-    };
-    const updated = [newRecord, ...history].slice(0, 5);
-    setHistory(updated);
-    localStorage.setItem("logic_leap_history", JSON.stringify(updated));
-    if (finalScore > highScore) {
-      setHighScore(finalScore);
-      localStorage.setItem("logic_leap_high", finalScore.toString());
-    }
-  }, [history, highScore]);
-
-  // --- Generate Question Based on Level ---
+  // --- Intelligence Engine ---
   const generateQuestion = useCallback(() => {
-    const questionsByTier = getQuestionsByTier(level);
+    // HARDER Scaling: Phases determine the Tier pool
+    const targetTier = level < 8 ? 1 : level < 18 ? 2 : level < 30 ? 3 : level < 45 ? 4 : 5;
+    const pool = APTITUDE_POOL.filter(q => q.tier <= targetTier);
     
-    if (questionsByTier.length === 0) return;
-
     let nextIdx;
     do {
-      nextIdx = Math.floor(Math.random() * questionsByTier.length);
-    } while (lastIndices.includes(nextIdx) && lastIndices.length < questionsByTier.length);
+      nextIdx = Math.floor(Math.random() * pool.length);
+    } while (lastIndices.includes(nextIdx) && pool.length > 5);
 
-    const selectedQ = questionsByTier[nextIdx];
-    const actualIndex = APTITUDE_POOL.findIndex(q => q === selectedQ);
-
-    setLastIndices(prev => [actualIndex, ...prev].slice(0, 5));
-    setCurrentQ(selectedQ);
-    setShowExplanation(false);
+    setLastIndices(prev => [nextIdx, ...prev].slice(0, 5));
+    setCurrentQ(pool[nextIdx]);
     
-    // Adjust time based on difficulty
-    const baseTime = 20 - (selectedQ.tier * 2);
-    setTimeLeft(Math.max(8, baseTime));
+    // Time Decay: Starts at 15s, drops to floor of 6s
+    setTimeLeft(Math.max(6.0, 15 - (level * 0.3)));
   }, [level, lastIndices]);
 
-  // Timer
   useEffect(() => {
     let timer: any;
     if (gameState === 'PLAYING' && timeLeft > 0) {
@@ -773,16 +748,11 @@ export default function LogicLeap() {
   }, [timeLeft, gameState]);
 
   const handleAnswer = (choice: string) => {
-    if (!currentQ) return;
-
-    if (choice === currentQ.answer) {
-      const points = 10 * currentQ.tier * level;
-      setScore(s => s + points);
+    if (choice === currentQ?.answer) {
+      setScore(s => s + (100 * level));
       setLevel(l => l + 1);
-      toast.success(`+${points} IQ Points`, { 
-        description: `Tier ${getTierName(currentQ.tier)} mastered!` 
-      });
-      setTimeout(() => generateQuestion(), 800);
+      toast.success("LOGIC_STABLE", { duration: 500 });
+      generateQuestion();
     } else {
       handleWrong();
     }
@@ -791,307 +761,138 @@ export default function LogicLeap() {
   const handleWrong = () => {
     if (lives > 1) {
       setLives(l => l - 1);
-      setShowExplanation(true);
-      toast.error("Incorrect Logic", { 
-        description: currentQ?.explanation || "Pattern mismatch." 
-      });
-      setTimeout(() => {
-        setShowExplanation(false);
-        generateQuestion();
-      }, 1500);
+      toast.error("NEURAL_MISMATCH", { description: "Pattern Invalid" });
+      generateQuestion();
     } else {
-      setGameState('GAMEOVER');
-      saveMatch(score, level);
+      pushStats(score, level);
     }
   };
 
-  const startGame = () => {
-    setScore(0);
-    setLives(3);
-    setLevel(1);
-    setLastIndices([]);
-    setGameState('PLAYING');
-    generateQuestion();
-  };
-
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 selection:bg-emerald-500/30 overflow-hidden">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-emerald-600/30 overflow-hidden">
       
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse delay-1000" />
-      </div>
-
-      <div className="max-w-2xl w-full relative z-10">
-        {/* --- HUD --- */}
-        <div className="flex justify-between items-center mb-8 bg-black/40 p-6 rounded-[2rem] border border-white/10 backdrop-blur-xl shadow-2xl">
+      {/* --- HUD --- */}
+      <div className="w-full max-w-2xl bg-neutral-900/20 border border-white/5 p-6 rounded-[2.5rem] md:rounded-[3rem] backdrop-blur-3xl mb-8 shadow-2xl">
+        <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-             <div className="h-14 w-14 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl flex items-center justify-center text-white border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-               <Brain size={28} />
-             </div>
-             <div>
-               <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.3em] mb-1">IQ SCORE</p>
-               <p className="text-3xl font-black tabular-nums bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">{score}</p>
-             </div>
-          </div>
-          
-          <div className="flex flex-col items-center">
-            <div className="flex gap-2 mb-2">
-              {[...Array(3)].map((_, i) => (
-                <Heart key={i} size={20} className={cn(
-                  "transition-all duration-300",
-                  i < lives ? "text-red-500 fill-red-500 animate-pulse" : "text-neutral-800"
-                )} />
-              ))}
+            <div className="h-12 w-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 border border-emerald-500/20">
+              <Brain size={24} />
             </div>
-            <Badge className={cn(
-              "text-[10px] font-black px-3 py-1",
-              getTierBadgeColor(currentQ?.tier || 1)
-            )}>
-              {currentQ ? getTierName(currentQ.tier) : 'READY'}
-            </Badge>
+            <div>
+              <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">IQ_Score</p>
+              <p className="text-2xl font-black tabular-nums">{score}</p>
+            </div>
           </div>
-          
+
+          <div className="flex gap-1.5">
+            {[...Array(3)].map((_, i) => (
+              <Heart key={i} size={22} className={cn("transition-all", i < lives ? "text-red-600 fill-red-600" : "text-neutral-950")} />
+            ))}
+          </div>
+
           <div className="text-right">
-            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.3em] mb-1">LOGIC DEPTH</p>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-16 bg-neutral-800 rounded-full overflow-hidden">
-                <div 
-                  className={cn(
-                    "h-full transition-all duration-300",
-                    level < 15 ? "bg-green-500" :
-                    level < 30 ? "bg-blue-500" :
-                    level < 45 ? "bg-yellow-500" :
-                    level < 60 ? "bg-orange-500" : "bg-red-500"
-                  )}
-                  style={{ width: `${Math.min(100, (level / 70) * 100)}%` }}
-                />
-              </div>
-              <p className="text-2xl font-black text-white tabular-nums">Lvl {level}</p>
-            </div>
+            <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">Infiltration_Lvl</p>
+            <span className={cn("text-xl font-black tabular-nums", timeLeft < 4 ? "text-red-600 animate-pulse" : "text-white")}>
+              {timeLeft.toFixed(1)}s
+            </span>
           </div>
         </div>
+      </div>
 
+      <div className="max-w-2xl w-full relative">
         <AnimatePresence mode="wait">
+          
           {gameState === 'START' && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              className="text-center space-y-10 py-10"
-            >
-              <div className="space-y-6">
-                <div className="inline-flex p-8 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 rounded-[3rem] border border-emerald-500/20 shadow-[0_0_80px_rgba(16,185,129,0.2)]">
-                  <Brain size={80} className="text-emerald-400" />
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-10">
+              <div className="space-y-4">
+                <div className="inline-flex p-10 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10 shadow-[0_0_80px_rgba(16,185,129,0.1)]">
+                  <Puzzle size={80} className="text-emerald-500" />
                 </div>
-                <div>
-                  <h1 className="text-7xl font-black tracking-tighter uppercase italic text-white mb-2">
-                    Logic <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Leap</span>
-                  </h1>
-                  <p className="text-neutral-400 max-w-md mx-auto text-lg">
-                    Master aptitude across 70+ levels • 
-                  </p>
-                </div>
-                <div className="grid grid-cols-5 gap-2 max-w-md mx-auto">
-                  {[1, 2, 3, 4, 5].map(tier => (
-                    <div key={tier} className={cn(
-                      "p-2 rounded-lg text-center",
-                      getTierBadgeColor(tier)
-                    )}>
-                      <p className="text-[8px] font-black uppercase">{getTierName(tier)}</p>
-                    </div>
-                  ))}
-                </div>
+                <h1 className="text-6xl md:text-8xl font-black tracking-tighter uppercase italic leading-none">LOGIC_<span className="text-emerald-500">LEAP</span></h1>
+                <p className="text-neutral-600 text-[10px] md:text-xs font-black uppercase tracking-[0.4em] max-w-sm mx-auto">
+                  Neural_Aptitude_Testing_Module_v5.0
+                </p>
               </div>
-              <Button 
-                onClick={startGame} 
-                className="w-full h-28 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-black text-3xl rounded-[2.5rem] shadow-[0_25px_60px_rgba(16,185,129,0.4)] transform hover:scale-[1.02] transition-all duration-300"
-              >
-                ENGAGE NEURAL NET <Play className="ml-4 fill-black" size={28} />
+              <Button onClick={() => { setScore(0); setLives(3); setLevel(1); setGameState('PLAYING'); generateQuestion(); }} 
+                className="w-full h-24 bg-emerald-600 hover:bg-emerald-500 text-black font-black text-3xl rounded-[2.5rem] shadow-2xl active:scale-95 transition-all">
+                START <Play size={28} className="ml-3 fill-black" />
               </Button>
             </motion.div>
           )}
 
-          {gameState === 'PLAYING' && currentQ && (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              className="space-y-8"
-            >
-              {/* Timer & Difficulty */}
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    {getCategoryIcon(currentQ.category)}
-                    <span className="text-xs font-black text-neutral-500 uppercase tracking-widest">
-                      {currentQ.category.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Timer size={16} className="text-neutral-500" />
-                    <span className={cn(
-                      "text-lg font-black tabular-nums",
-                      timeLeft < 5 ? "text-red-500 animate-pulse" : "text-emerald-500"
-                    )}>
-                      {timeLeft.toFixed(1)}s
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full h-3 bg-neutral-900 rounded-full overflow-hidden border border-white/10">
-                  <motion.div 
-                    initial={{ width: '100%' }}
-                    animate={{ width: `${(timeLeft / 20) * 100}%` }}
-                    className={cn(
-                      "h-full transition-colors duration-200",
-                      timeLeft < 5 ? "bg-gradient-to-r from-red-500 to-red-700" :
-                      timeLeft < 10 ? "bg-gradient-to-r from-orange-500 to-yellow-500" :
-                      "bg-gradient-to-r from-emerald-500 to-cyan-500"
-                    )}
-                  />
-                </div>
+          {gameState === 'PLAYING' && (
+            <motion.div key="playing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+              <div className="w-full h-2 bg-neutral-950 rounded-full overflow-hidden border border-white/5">
+                <motion.div 
+                  initial={{ width: '100%' }}
+                  animate={{ width: `${(timeLeft / 15) * 100}%` }}
+                  className={cn("h-full transition-colors", timeLeft < 4 ? "bg-red-600" : "bg-emerald-500")}
+                />
               </div>
 
-              {/* Question Card */}
+              {/* Requirement Card */}
               <div className="relative group">
-                <div className="absolute -inset-2 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 blur-xl rounded-[3.5rem]" />
-                <Card className={cn(
-                  "bg-black/50 border-2 rounded-[3rem] p-10 relative z-10 shadow-2xl backdrop-blur-md",
-                  getTierColor(currentQ.tier)
-                )}>
-                  <div className="flex justify-between items-start mb-8">
-                    <Badge className={cn(
-                      "text-xs font-black px-4 py-1.5 uppercase tracking-[0.3em]",
-                      getTierBadgeColor(currentQ.tier)
-                    )}>
-                      {getTierName(currentQ.tier)} • Level {level}
-                    </Badge>
-                    <div className="text-right">
-                      <p className="text-[10px] text-neutral-500 font-black">POINTS</p>
-                      <p className="text-xl font-black text-emerald-500">{10 * currentQ.tier * level}</p>
-                    </div>
-                  </div>
-                  
-                  <h2 className="text-2xl md:text-3xl font-bold text-white leading-relaxed text-center mb-8">
-                    {currentQ.question}
+                <div className="absolute inset-0 bg-emerald-500/5 blur-[100px] rounded-full group-hover:bg-emerald-500/10 transition-all duration-700" />
+                <Card className="bg-neutral-900/40 border-2 border-white/5 rounded-[3rem] p-10 md:p-16 text-center relative z-10 backdrop-blur-xl">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[10px] mb-6 tracking-[0.4em]">DATA_REQUIREMENT</Badge>
+                  <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white leading-tight italic">
+                    "{currentQ?.question}"
                   </h2>
-
-                  {showExplanation && currentQ.explanation && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-2xl p-6 mb-6"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Lightbulb size={16} className="text-emerald-500" />
-                        <span className="text-sm font-bold text-emerald-400">Explanation</span>
-                      </div>
-                      <p className="text-neutral-300 text-sm">{currentQ.explanation}</p>
-                    </motion.div>
-                  )}
                 </Card>
               </div>
 
-              {/* Options Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                {currentQ.options.map((option, i) => (
+              {/* Option Matrix: 2x2 Grid optimized for mobile thumbs */}
+              <div className="grid grid-cols-2 gap-4 md:gap-8">
+                {currentQ?.options.map((opt, i) => (
                   <Button 
                     key={i} 
-                    onClick={() => handleAnswer(option)}
-                    className={cn(
-                      "h-24 bg-neutral-900/80 border border-white/10 hover:border-emerald-500 hover:bg-emerald-500/10",
-                      "text-lg font-bold rounded-2xl transition-all duration-300 transform hover:scale-[1.02]",
-                      "active:scale-95 shadow-lg backdrop-blur-sm"
-                    )}
+                    onClick={() => handleAnswer(opt)}
+                    className="h-24 md:h-32 bg-neutral-900/50 border border-white/5 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-xl md:text-3xl font-black rounded-[2rem] transition-all transform active:scale-90"
                   >
-                    <ChevronRight size={20} className="mr-3 text-emerald-500" />
-                    {option}
+                    {opt}
                   </Button>
                 ))}
               </div>
             </motion.div>
           )}
 
-          {gameState === 'GAMEOVER' && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              className="space-y-10"
-            >
-              <div className="text-center bg-black/40 p-12 rounded-[4rem] border border-red-500/20 shadow-2xl backdrop-blur-xl">
-                 <div className="inline-flex p-6 bg-gradient-to-br from-red-500/10 to-red-700/10 rounded-full mb-6">
-                   <Target size={80} className="text-red-500" />
-                 </div>
-                 <h2 className="text-6xl font-black text-white uppercase italic tracking-tighter mb-6">
-                   Neural <span className="bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">Overload</span>
-                 </h2>
+          {(gameState === 'GAMEOVER' || gameState === 'SYNCING') && (
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10">
+              <div className="text-center bg-neutral-900/50 p-12 rounded-[4rem] border border-red-900/20 shadow-2xl backdrop-blur-3xl relative overflow-hidden">
+                 <div className="absolute inset-0 bg-red-600/5 animate-pulse" />
+                 <h2 className="text-6xl md:text-8xl font-black text-red-600 uppercase italic tracking-tighter mb-10 relative z-10">CORE_FAILURE</h2>
                  
-                 <div className="grid grid-cols-2 gap-6 mb-10">
-                   <div className="bg-gradient-to-br from-black/40 to-emerald-500/10 p-10 rounded-[2.5rem] border border-emerald-500/20 text-center">
-                     <p className="text-[10px] font-black text-neutral-400 uppercase mb-2 tracking-[0.3em]">Final IQ</p>
-                     <p className="text-6xl font-black bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">{score}</p>
+                 <div className="grid grid-cols-2 gap-6 mb-10 relative z-10">
+                   <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
+                     <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Final_IQ</p>
+                     <p className="text-5xl font-black text-emerald-500 leading-none">{score}</p>
                    </div>
-                   <div className="bg-gradient-to-br from-black/40 to-blue-500/10 p-10 rounded-[2.5rem] border border-blue-500/20 text-center">
-                     <p className="text-[10px] font-black text-neutral-400 uppercase mb-2 tracking-[0.3em]">Logic Depth</p>
-                     <p className="text-6xl font-black text-white">LVL {level}</p>
+                   <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
+                     <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Max_Phase</p>
+                     <p className="text-5xl font-black text-white leading-none">L{level}</p>
                    </div>
                  </div>
 
-                 <Button 
-                   onClick={startGame} 
-                   className="w-full h-20 bg-gradient-to-r from-white to-gray-200 hover:from-emerald-400 hover:to-cyan-400 text-black font-black text-2xl rounded-[2.5rem] transition-all duration-300 shadow-xl"
-                 >
-                   REBOOT COGNITION <RotateCcw className="ml-4" size={24} />
-                 </Button>
-              </div>
-
-              {/* --- Mission History Log --- */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 px-4 text-neutral-500">
-                  <History size={18} />
-                  <h3 className="text-sm font-black uppercase tracking-[0.4em]">COGNITIVE RECORDS</h3>
-                </div>
-                <div className="space-y-3">
-                  {history.map((match) => (
-                    <motion.div 
-                      key={match.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="bg-gradient-to-r from-black/40 to-neutral-900/40 border border-white/5 p-6 rounded-[2rem] flex justify-between items-center group hover:border-emerald-500/40 transition-all duration-300"
-                    >
-                      <div className="flex items-center gap-5">
-                        <div className="p-4 bg-black rounded-2xl text-neutral-500 group-hover:text-emerald-500 transition-colors">
-                          <Calendar size={22} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-neutral-600 font-bold uppercase">{match.date}</span>
-                          <span className="text-lg font-black text-emerald-400 italic">Tier {Math.min(5, Math.ceil(match.level/15))}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] font-black text-neutral-600 uppercase block mb-1">Score</span>
-                        <span className="text-3xl font-black tabular-nums bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">{match.score}</span>
-                      </div>
-                    </motion.div>
-                  ))}
-                  {history.length === 0 && (
-                    <div className="text-center p-8 border border-dashed border-white/10 rounded-[2rem]">
-                      <p className="text-sm text-neutral-600 italic">No cognitive records found.</p>
-                      <p className="text-xs text-neutral-700 mt-1">Complete your first mission!</p>
-                    </div>
-                  )}
-                </div>
+                 {gameState === 'SYNCING' ? (
+                   <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-[0.4em] uppercase">
+                      <Loader2 size={16} className="animate-spin" /> UPLOADING_TELEMETRY...
+                   </div>
+                 ) : (
+                   <Button onClick={() => setGameState('START')} className="w-full h-20 bg-white text-black font-black text-2xl rounded-3xl hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-2xl">
+                    RESTART <RotateCcw size={24} className="ml-3" />
+                   </Button>
+                 )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Footer Stats */}
-      <div className="mt-16 flex flex-wrap justify-center gap-8 text-[10px] font-black uppercase tracking-[0.5em] text-neutral-700">
-        <span className="flex items-center gap-2"><ShieldCheck size={14} /> NEURAL SHIELD 100%</span>
-        <span className="flex items-center gap-2"><Activity size={14} /> COGNITIVE LOAD: {Math.min(100, Math.floor(level * 1.5))}%</span>
-        <span className="flex items-center gap-2"><Crown size={14} /> HIGH SCORE: {highScore}</span>
-        <span className="flex items-center gap-2"><Lock size={14} /> SECURE CONNECTION</span>
+      {/* Meta HUD */}
+      <div className="mt-16 flex flex-wrap justify-center gap-12 text-[10px] font-black uppercase tracking-[0.5em] text-neutral-900">
+        <span className="flex items-center gap-2"><Lock size={14} /> ID: {getIdentity().id.substring(0,10)}...</span>
+        <span className="flex items-center gap-2"><Trophy size={14} /> pb_node: {highScore}</span>
+        <span className="flex items-center gap-2 italic text-emerald-900"><ShieldCheck size={14} /> Verified_Profile</span>
       </div>
     </div>
   );

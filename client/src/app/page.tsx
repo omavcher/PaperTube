@@ -13,6 +13,7 @@ import { FileText, ShieldCheck } from "lucide-react";
 import FeatureHomeSection from "@/components/FeatureHomeSection";
 import ToolsGlimpse from "@/components/ToolsGlimpse";
 import ArcadeGlimpse from "@/components/ArcadeGlimpse";
+import PricingShowcase from "@/components/PricingShowcase";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -41,6 +42,10 @@ export default function Home() {
         <div className="w-full my-20">
        <ToolsGlimpse/>
 </div>
+    
+    <div className="w-full">
+        <PricingShowcase/>
+      </div>
 
 <div className="w-full my-20">
        <ArcadeGlimpse/>

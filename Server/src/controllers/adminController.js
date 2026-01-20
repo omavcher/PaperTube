@@ -6,6 +6,8 @@ const Transaction = require("../models/Transaction");
 const Analytics = require("../models/Analytics");
 const Bug = require("../models/Bug");
 const mongoose = require("mongoose");
+const Feedback = require("../models/Feedback");
+const GameStats = require("../models/GameStats");
 
 exports.getDiagnostics = async (req, res) => {
   try {
@@ -223,5 +225,118 @@ exports.getAllBugs = async (req, res) => {
 };
 
 
+exports.getAllFeedback = async (req, res) => {
+  try {
+    const feedbacks = await Feedback.find().sort({ createdAt: -1 }).lean();
+    res.status(200).json({
+      success: true,
+      data: feedbacks
+    });
+  } catch (error) {
+    console.error("❌ Get All Feedback Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching feedback.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+exports.deleteFeedback = async (req, res) => {
+  try {
+    const feedbackId = req.params.id;
+    const feedback = await Feedback.findById(feedbackId);
+    if (!feedback) {
+      return res.status(404).json({
+        success: false,
+        message: "Feedback not found."
+      });
+    }
+    await Feedback.deleteOne({ _id: feedbackId });
+    res.status(200).json({
+      success: true,
+      message: "Feedback deleted successfully."
+    });
+  }
+  catch (error) { 
+    console.error("❌ Delete Feedback Error:", error);
+    res.status(500).json({  
+      success: false,
+      message: "Server error while deleting feedback.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+exports.respondToFeedback = async (req, res) => {
+  try {
+    const feedbackId = req.params.id;
+    const { response } = req.body;
+    const feedback = await Feedback.findById(feedbackId);
+    if (!feedback) {
+      return res.status(404).json({
+        success: false,
+        message: "Feedback not found."
+      });
+    }
+    feedback.adminResponse = response;
+    feedback.respondedAt = new Date();
+    await feedback.save();
+    res.status(200).json({
+      success: true,
+      message: "Responded to feedback successfully."
+    });
+  }
+  catch (error) {
+    console.error("❌ Respond to Feedback Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while responding to feedback.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
 
 
+
+exports.getAnalytics = async (req, res) => {
+  try {
+    const logs = await Analytics.find().sort({ timestamp: -1 }).lean();
+    res.status(200).json({
+      success: true,
+      data: logs
+    });
+  } catch (error) {
+    console.error("❌ Get Analytics Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching analytics.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+
+exports.getArcadeDiagnostics = async (req, res) => {
+  try {
+    // 1. Total Players
+    const totalPlayers = await GameStats.distinct("userId").then(users => users.length);
+    // 2. Global High Scores (Top 10)
+    const arcadeScores = await GameStats.find()
+      .sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      data: {
+        totalPlayers,
+       arcadeScores
+      }
+    });
+  } catch (error) {
+    console.error("❌ Get Arcade Diagnostics Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching arcade diagnostics.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};

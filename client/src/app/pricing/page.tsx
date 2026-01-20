@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   Smartphone, Tag, Zap, User, Loader2, IndianRupee, 
   ShieldCheck, Activity, Terminal, CheckCircle2, XCircle, 
-  CreditCard, TicketPercent, Sparkles, X, ArrowRight
+  CreditCard, TicketPercent, Sparkles, X, ArrowRight, Timer, Users, Flame
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ const AVAILABLE_COUPONS: Coupon[] = [
   { id: '4', name: 'Starter Chip', code: 'FIRST50', value: 50, type: 'flat' },
 ];
 
-// --- Custom Neural Modal (Z-Index Fixed) ---
+// --- Custom Neural Modal ---
 function NeuralModal({ isOpen, onClose, children }: { isOpen: boolean, onClose: () => void, children: React.ReactNode }) {
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
@@ -41,7 +41,6 @@ function NeuralModal({ isOpen, onClose, children }: { isOpen: boolean, onClose: 
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-6 overflow-hidden">
-          {/* Backdrop */}
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -49,8 +48,6 @@ function NeuralModal({ isOpen, onClose, children }: { isOpen: boolean, onClose: 
             onClick={onClose}
             className="absolute inset-0 bg-black/90 backdrop-blur-2xl"
           />
-          
-          {/* Modal Container */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -58,13 +55,11 @@ function NeuralModal({ isOpen, onClose, children }: { isOpen: boolean, onClose: 
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
             className="relative w-full max-w-5xl bg-[#080808] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[3rem] shadow-[0_0_100px_rgba(220,38,38,0.2)] overflow-hidden max-h-[100vh] md:max-h-[90vh] flex flex-col"
           >
-            {/* Header / Close Button */}
             <div className="absolute top-6 right-6 z-[210]">
               <button onClick={onClose} className="p-2.5 rounded-full bg-white/5 hover:bg-red-600 transition-colors text-white border border-white/5">
                 <X size={20} />
               </button>
             </div>
-
             <div className="overflow-y-auto flex-1 custom-scrollbar">
               {children}
             </div>
@@ -75,12 +70,19 @@ function NeuralModal({ isOpen, onClose, children }: { isOpen: boolean, onClose: 
   );
 }
 
-// --- Purchase Interface Component ---
+// --- Purchase Interface (With FOMO Timer) ---
 function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpdateMobile, billingPeriod, activeOffers }: any) {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [mobile, setMobile] = useState(user?.mobile || "");
   const [isMobileEditable, setIsMobileEditable] = useState(!user?.mobile);
+  
+  // Timer for Urgency
+  const [timeLeft, setTimeLeft] = useState(900); // 15 minutes
+  useEffect(() => {
+    const timer = setInterval(() => setTimeLeft(t => (t > 0 ? t - 1 : 0)), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const baseAmount = packageData ? (billingPeriod === 'monthly' ? packageData.monthlyPrice : packageData.yearlyPrice) : 0;
   const bestOffer = activeOffers[0];
@@ -95,6 +97,12 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
   const discountedAmount = Math.max(0, baseAmount - totalDiscount);
   const gstAmount = discountedAmount * 0.18;
   const totalAmount = discountedAmount + gstAmount;
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   const applyCode = (code: string) => {
     const found = AVAILABLE_COUPONS.find(c => c.code === code.toUpperCase().trim());
@@ -111,59 +119,50 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
     <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full">
       {/* Left Section: Inputs */}
       <div className="lg:col-span-7 p-8 md:p-12 space-y-10 border-b lg:border-b-0 lg:border-r border-white/5">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-red-600/10 border border-red-600/20 flex items-center justify-center">
-            <CreditCard className="text-red-500" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-red-600/10 border border-red-600/20 flex items-center justify-center">
+              <CreditCard className="text-red-500" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Acquisition Node</h2>
+              <p className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">Gateway Locked</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Acquisition Node</h2>
-            <p className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">Secured Payment Terminal</p>
+          {/* URGENCY TIMER */}
+          <div className="bg-red-600/10 border border-red-600/20 px-4 py-2 rounded-2xl flex items-center gap-3">
+             <Timer size={16} className="text-red-500 animate-pulse" />
+             <span className="font-mono text-lg font-black text-red-500">{formatTime(timeLeft)}</span>
           </div>
         </div>
 
-        {/* User HUD */}
-       {/* Personnel Identity Section */}
-<section className="space-y-4">
-  <label className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500 flex items-center gap-2">
-    <User size={14}/> Personnel Identity
-  </label>
-  <div className="p-5 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center gap-5 group hover:bg-white/[0.04] transition-all">
-    {/* Profile Image with Fallback to Initial */}
-    <div className="h-16 w-16 rounded-2xl bg-neutral-900 border border-white/10 flex items-center justify-center overflow-hidden shadow-[0_0_20px_rgba(220,38,38,0.1)]">
-      {user?.picture ? (
-        <img 
-          src={user.picture} 
-          alt={user.name} 
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-        />
-      ) : (
-        <span className="text-red-600 font-black italic text-2xl uppercase">
-          {user?.name?.charAt(0) || "U"}
-        </span>
-      )}
-    </div>
-
-    <div className="space-y-1">
-      <div className="flex items-center gap-2">
-        <p className="font-black uppercase tracking-tighter text-lg text-white leading-none">
-          {user?.name}
-        </p>
-        {/* Membership Badge based on success JSON */}
-        {user?.membership?.isActive && (
-          <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-            <ShieldCheck size={10} className="text-emerald-500" />
-            <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">
-              {user.membership.planName}
-            </span>
-          </div>
-        )}
-      </div>
-      <p className="text-[10px] text-neutral-600 font-mono tracking-widest uppercase leading-none">
-        {user?.email}
-      </p>
-    </div>
-  </div> 
-</section>
+        {/* Personnel Identity */}
+        <section className="space-y-4">
+          <label className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500 flex items-center gap-2">
+            <User size={14}/> Personnel Identity
+          </label>
+          <div className="p-5 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center gap-5 group hover:bg-white/[0.04] transition-all">
+            <div className="h-16 w-16 rounded-2xl bg-neutral-900 border border-white/10 flex items-center justify-center overflow-hidden shadow-[0_0_20px_rgba(220,38,38,0.1)]">
+              {user?.picture ? (
+                <img src={user.picture} alt={user.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              ) : (
+                <span className="text-red-600 font-black italic text-2xl uppercase">{user?.name?.charAt(0) || "U"}</span>
+              )}
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <p className="font-black uppercase tracking-tighter text-lg text-white leading-none">{user?.name}</p>
+                {user?.membership?.isActive && (
+                  <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                    <ShieldCheck size={10} className="text-emerald-500" />
+                    <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">{user.membership.planName}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-neutral-600 font-mono tracking-widest uppercase leading-none">{user?.email}</p>
+            </div>
+          </div> 
+        </section>
 
         {/* Mobile Input */}
         <section className="space-y-4">
@@ -181,7 +180,7 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
             </div>
             <button 
               onClick={() => isMobileEditable ? onUpdateMobile(mobile).then(() => setIsMobileEditable(false)) : setIsMobileEditable(true)}
-              className={cn("h-14 px-8 rounded-2xl font-black uppercase italic transition-all", isMobileEditable ? "bg-red-600 text-white" : "bg-neutral-900 text-neutral-400 border border-white/5")}
+              className={cn("h-14 px-8 rounded-2xl font-black uppercase italic transition-all", isMobileEditable ? "bg-red-600 text-white shadow-lg shadow-red-900/20" : "bg-neutral-900 text-neutral-400 border border-white/5")}
             >
               {isMobileEditable ? "Sync" : "Edit"}
             </button>
@@ -190,7 +189,7 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
 
         {/* Coupons */}
         <section className="space-y-4">
-          <label className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-600 flex items-center gap-2"><Tag size={14}/> Protocols Available</label>
+          <label className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-600 flex items-center gap-2"><Tag size={14}/> Applied Protocols</label>
           <div className="flex gap-3">
             <input 
               value={couponCode}
@@ -200,7 +199,6 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
             />
             <button onClick={() => applyCode(couponCode)} className="px-8 h-12 bg-transparent border border-red-600 text-red-500 rounded-xl font-black uppercase italic hover:bg-red-600 hover:text-white transition-all text-xs">Verify</button>
           </div>
-          
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {AVAILABLE_COUPONS.map(c => (
               <button 
@@ -209,9 +207,7 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
                 className="p-3 bg-white/[0.01] border border-dashed border-white/5 rounded-xl hover:border-red-600/50 hover:bg-red-600/[0.03] transition-all text-left group"
               >
                 <p className="text-[10px] font-black group-hover:text-red-500 mb-1">{c.code}</p>
-                <p className="text-[9px] font-black text-emerald-500 uppercase">
-                  {c.type === 'percent' ? `-${c.value}%` : `₹${c.value} OFF`}
-                </p>
+                <p className="text-[9px] font-black text-emerald-500 uppercase">{c.type === 'percent' ? `-${c.value}%` : `₹${c.value} OFF`}</p>
               </button>
             ))}
           </div>
@@ -222,9 +218,9 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
       <div className="lg:col-span-5 bg-neutral-900/30 p-8 md:p-12 flex flex-col justify-between">
         <div className="space-y-8">
           <div className="pb-8 border-b border-white/5">
-             <Badge className="bg-red-600/10 text-red-500 border-none px-0 text-[8px] font-black uppercase tracking-[0.4em] mb-2">Billing Unit</Badge>
+             <Badge className="bg-red-600 text-white border-none px-3 text-[8px] font-black uppercase tracking-[0.4em] mb-2 animate-bounce">LIMITED_TIME_OFFER</Badge>
              <h3 className="text-4xl font-black italic uppercase tracking-tighter text-white">{packageData?.name} Plan</h3>
-             <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mt-2">{billingPeriod} protocol enabled</p>
+             <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mt-2">Cost effective logic: ₹{(totalAmount / (billingPeriod === 'monthly' ? 30 : 365)).toFixed(2)} / Day</p>
           </div>
 
           <div className="space-y-4">
@@ -263,9 +259,14 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
             {isProcessing ? <Loader2 className="animate-spin" /> : <><Zap fill="white" size={20}/> Execute Sync</>}
           </button>
 
-          <div className="flex justify-center gap-6 text-[8px] font-black text-neutral-700 uppercase tracking-widest">
-            <span className="flex items-center gap-1"><ShieldCheck size={10}/> 256-BIT SSL</span>
-            <span className="flex items-center gap-1"><IndianRupee size={10}/> RAZORPAY SECURE</span>
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-[8px] font-black text-emerald-500 uppercase tracking-widest">
+               <ShieldCheck size={12}/> Secure Payment • No Hidden Charges
+            </div>
+            <div className="flex justify-center gap-6 text-[8px] font-black text-neutral-700 uppercase tracking-widest opacity-50">
+              <span className="flex items-center gap-1">256-BIT SSL</span>
+              <span className="flex items-center gap-1">RAZORPAY SECURE</span>
+            </div>
           </div>
         </div>
       </div>
@@ -281,10 +282,17 @@ export default function PricingSection() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
 
+  // FOMO Stats
+  const [activeSyncs, setActiveSyncs] = useState(8420);
+  useEffect(() => {
+    const interval = setInterval(() => setActiveSyncs(s => s + Math.floor(Math.random() * 5)), 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   const plans = [
-    { id: "scholar", name: "Scholar", monthlyPrice: 149, yearlyPrice: 1490, description: "Occasional learner protocol.", features: ["Model A + B", "1 Premium AI Model", "90 Min Video Limit"], cta: "Initialize" },
-    { id: "pro", name: "Pro Scholar", monthlyPrice: 299, yearlyPrice: 2990, description: "Exam-ready synthesis engine.", popular: true, highlight: true, features: ["ALL 5 AI Models", "4 Hour Video Limit", "20 Batch Process"], cta: "Activate Pro" },
-    { id: "power", name: "Power Institute", monthlyPrice: 599, yearlyPrice: 5990, description: "Research & Team grade.", features: ["All 5 AI Models", "8 Hour Video Limit", "Unlimited Batching"], cta: "Deploy Enterprise" },
+    { id: "scholar", name: "Scholar", monthlyPrice: 149, yearlyPrice: 1490, description: "Occasional learner protocol.", features: ["Model A + B", "1 Premium AI Model", "90 Min Video Limit"], cta: "Initialize", slots: "84% Occupied" },
+    { id: "pro", name: "Pro Scholar", monthlyPrice: 299, yearlyPrice: 2990, description: "Exam-ready synthesis engine.", popular: true, highlight: true, features: ["ALL 5 AI Models", "4 Hour Video Limit", "20 Batch Process"], cta: "Activate Pro", slots: "97% Occupied" },
+    { id: "power", name: "Power Institute", monthlyPrice: 599, yearlyPrice: 5990, description: "Research & Team grade.", features: ["All 5 AI Models", "8 Hour Video Limit", "Unlimited Batching"], cta: "Deploy Enterprise", slots: "Full Access" },
   ];
 
   useEffect(() => {
@@ -310,7 +318,6 @@ export default function PricingSection() {
 
   const handlePurchase = async (details: any) => {
     setIsProcessing(details.packageId);
-    // Integration logic...
     setTimeout(() => setIsProcessing(null), 2000);
     toast.info("Opening Gateway Terminal...");
   };
@@ -328,14 +335,24 @@ export default function PricingSection() {
       </NeuralModal>
 
       <section className="relative min-h-screen bg-[#050505] text-white py-24 px-4 font-sans overflow-hidden">
-        <div className="absolute inset-0 z-0 opacity-20 [background-image:linear-gradient(to_right,#333_1px,transparent_1px),linear-gradient(to_bottom,#333_1px,transparent_1px)] [background-size:40px_40px]" />
+        {/* FOMO Background Pattern */}
+        <div className="absolute inset-0 z-0 opacity-10 [background-image:linear-gradient(to_right,#333_1px,transparent_1px),linear-gradient(to_bottom,#333_1px,transparent_1px)] [background-size:40px_40px]" />
         
+        {/* LIVE HUD COUNTER (Social Proof) */}
+        <div className="relative z-20 flex justify-center mb-10">
+           <div className="bg-emerald-500/5 border border-emerald-500/20 px-6 py-2 rounded-full flex items-center gap-3 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">{activeSyncs.toLocaleString()} Engineers Currently Sync'd</p>
+           </div>
+        </div>
+
         <div className="relative z-10 max-w-7xl mx-auto">
           <div className="text-center mb-16 space-y-6">
-             <Badge className="bg-red-600/10 text-red-500 border-red-600/20 px-4 py-1.5 uppercase font-black tracking-[0.3em] text-[10px]">Access Protocol</Badge>
+             <Badge className="bg-red-600/10 text-red-500 border-red-600/20 px-4 py-1.5 uppercase font-black tracking-[0.3em] text-[10px]">Transmission Node</Badge>
              <h1 className="text-6xl md:text-9xl font-black italic uppercase tracking-tighter leading-[0.8] mb-4">
-               SYNC <span className="text-red-600 drop-shadow-[0_0_20px_rgba(220,38,38,0.5)]">TIER</span>
+               SYNC <span className="text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.5)]">TIER</span>
              </h1>
+             <p className="text-neutral-500 uppercase font-black text-xs tracking-[0.4em]">Upgrade to eliminate process latency</p>
           </div>
 
           {/* Billing Switcher */}
@@ -352,13 +369,25 @@ export default function PricingSection() {
           {/* Plan Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {plans.map((plan) => (
-              <div key={plan.id} className={cn("relative p-10 rounded-[3.5rem] border border-white/5 bg-neutral-950 flex flex-col group transition-all duration-500", plan.highlight && "border-red-600/40 shadow-2xl bg-[#080808]")}>
-                {plan.popular && <Badge className="absolute top-10 right-10 bg-red-600 text-white font-black italic uppercase text-[8px] px-3 py-1 rounded-lg">Elite Class</Badge>}
-                <h3 className="text-4xl font-black italic uppercase tracking-tighter mb-8 group-hover:text-red-500 transition-colors">{plan.name}</h3>
-                <div className="mb-10">
-                  <span className="text-6xl font-black italic tracking-tighter">₹{billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}</span>
-                  <span className="text-neutral-700 text-xs font-bold uppercase tracking-widest ml-2">/ {billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+              <div key={plan.id} className={cn("relative p-10 rounded-[3.5rem] border border-white/5 bg-neutral-950 flex flex-col group transition-all duration-500 hover:-translate-y-2", plan.highlight && "border-red-600/40 shadow-2xl bg-[#080808]")}>
+                {plan.popular && <Badge className="absolute top-10 right-10 bg-red-600 text-white font-black italic uppercase text-[8px] px-3 py-1 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">Elite Class</Badge>}
+                
+                {/* SCARCITY LABEL */}
+                <div className="mb-4 flex items-center gap-2">
+                   <Flame size={12} className="text-orange-500" />
+                   <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">{plan.slots}</span>
                 </div>
+
+                <h3 className="text-4xl font-black italic uppercase tracking-tighter mb-8 group-hover:text-red-500 transition-colors">{plan.name}</h3>
+                
+                <div className="mb-10">
+                  <div className="flex items-end">
+                    <span className="text-6xl font-black italic tracking-tighter text-white">₹{billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}</span>
+                    <span className="text-neutral-700 text-xs font-bold uppercase tracking-widest ml-2 mb-2">/ {billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+                  </div>
+                  <p className="text-[10px] font-bold text-neutral-600 uppercase mt-2 italic tracking-tighter">Approx. ₹{( (billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice) / (billingPeriod === 'monthly' ? 30 : 365) ).toFixed(2)} per day</p>
+                </div>
+
                 <div className="space-y-4 mb-12 flex-1">
                   {plan.features.map((f, i) => (
                     <div key={i} className="flex items-center gap-3 text-xs font-bold uppercase tracking-tight text-neutral-400">
@@ -366,14 +395,22 @@ export default function PricingSection() {
                     </div>
                   ))}
                 </div>
+
                 <button 
                   onClick={() => { setSelectedPackage(plan); setModalOpen(true); }}
-                  className={cn("h-16 rounded-2xl font-black uppercase italic tracking-widest text-lg shadow-2xl active:scale-95 transition-all", plan.highlight ? "bg-red-600 text-white hover:bg-red-700" : "bg-neutral-900 text-neutral-400 hover:bg-white hover:text-black")}
+                  className={cn("h-16 rounded-2xl font-black uppercase italic tracking-widest text-lg shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3", plan.highlight ? "bg-red-600 text-white hover:bg-red-700" : "bg-neutral-900 text-neutral-400 hover:bg-white hover:text-black")}
                 >
-                  {plan.cta}
+                  {plan.cta} <ArrowRight size={18} />
                 </button>
               </div>
             ))}
+          </div>
+          
+          {/* SECURE HUB FOOTER (Trust) */}
+          <div className="mt-20 flex flex-wrap justify-center gap-10 opacity-30 grayscale hover:grayscale-0 transition-all duration-700">
+             <div className="flex items-center gap-2 font-black italic text-xs"><ShieldCheck size={16}/> 256-BIT ENCRYPTION</div>
+             <div className="flex items-center gap-2 font-black italic text-xs"><Activity size={16}/> 99.9% UPTIME NODE</div>
+             <div className="flex items-center gap-2 font-black italic text-xs"><IndianRupee size={16}/> SECURE RAZORPAY</div>
           </div>
         </div>
       </section>

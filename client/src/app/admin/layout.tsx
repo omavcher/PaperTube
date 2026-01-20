@@ -7,13 +7,16 @@ import {
   Terminal, Activity, BarChart3, ChevronRight, 
   Menu, X, Sparkles, Bug, FileText, Share2, Search,
   Home, Bell, UserCircle, Shield, Moon,
-  List
+  List,
+  Fence,
+  Gamepad2Icon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { FcFeedback } from "react-icons/fc";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -234,27 +237,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             />
           </div>
 
-          <div className="mb-3 md:mb-4">
-            <p className="px-2 md:px-4 py-1 md:py-2 text-[8px] font-black uppercase tracking-[0.3em] text-neutral-600">
-              Blogging
-            </p>
-            <AdminNavLink
-              href="/admin/blog-create" 
-              icon={<FileText size={isMobile ? 20 : 18} />} 
-              label="Create Blog" 
-              active={pathname.includes("/blog-create")} 
-              expanded={isSidebarOpen} 
-              mobile={isMobile}
-            />
-            <AdminNavLink
-              href="/admin/blog-list" 
-              icon={<List size={isMobile ? 20 : 18} />} 
-              label="Blog List" 
-              active={pathname.includes("/blog-list")} 
-              expanded={isSidebarOpen} 
-              mobile={isMobile}
-            />
-          </div>
 
           {/* Analytics */}
           <div className="mb-3 md:mb-4">
@@ -269,14 +251,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               expanded={isSidebarOpen} 
               mobile={isMobile}
             />
-            <AdminNavLink 
-              href="/admin/seo" 
-              icon={<Search size={isMobile ? 20 : 18} />} 
-              label="SEO" 
-              active={pathname.includes("/seo")} 
-              expanded={isSidebarOpen} 
-              mobile={isMobile}
-            />
+              <AdminNavLink
+    href="/admin/feedback"
+    icon={<Fence size={isMobile ? 20 : 18} />}
+    label="Feedback"
+    active={pathname.includes("/feedback")}
+    expanded={isSidebarOpen}
+    mobile={isMobile}
+  />
+  <AdminNavLink
+    href="/admin/arced"
+    icon={<Gamepad2Icon size={isMobile ? 20 : 18} />}
+    label="ARCED"
+    active={pathname.includes("/arced")}
+    expanded={isSidebarOpen}
+    mobile={isMobile}
+  />
           </div>
 
           {/* Settings */}

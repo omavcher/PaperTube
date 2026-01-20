@@ -1,271 +1,221 @@
 "use client";
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, CheckCircle2, ShieldAlert, Terminal, Crown } from "lucide-react";
-import Script from 'next/script';
-import { motion } from "framer-motion";
+import { 
+  ShieldAlert, Crown, ExternalLink, 
+  Timer, CheckCircle2, Lock, Activity, 
+  ShieldCheck
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
-// --- Type Definition Protocol ---
 interface AdDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdComplete: () => void;
 }
 
-// Add global type for Google Adsense
-declare global {
-  interface Window {
-    adsbygoogle: any[];
-    gtag?: (...args: any[]) => void;
+// --- Manual Ad Registry (Strict Desktop/Mobile Visuals) ---
+const MANUAL_ADS = [
+  {
+    id: "pro-node",
+    landscapeImg: "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?auto=format&fit=crop&w=1200&q=80",
+    portraitImg: "https://images.unsplash.com/photo-1639322537228-f710d846310a?auto=format&fit=crop&w=800&q=80",
+    link: "/pricing",
+    title: "ACTIVATE_ELITE_NODE",
+    desc: "Bypass all signal verification protocols instantly."
+  },
+  {
+    id: "neural-api",
+    landscapeImg: "https://images.unsplash.com/photo-1620712943543-bcc4628c7190?auto=format&fit=crop&w=1200&q=80",
+    portraitImg: "https://images.unsplash.com/photo-1675557009875-436f5993936f?auto=format&fit=crop&w=800&q=80",
+    link: "/tools",
+    title: "NEURAL_TOOLKIT_v5",
+    desc: "Access 50+ engineering modules for free."
+  },
+  {
+    id: "dev-community",
+    landscapeImg: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80",
+    portraitImg: "https://images.unsplash.com/photo-1558494949-ef010cbdcc48?auto=format&fit=crop&w=800&q=80",
+    link: "/community",
+    title: "JOIN_THE_RESISTANCE",
+    desc: "Collaborate with 10k+ senior architects."
   }
-}
+];
 
 export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogProps) {
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(10);
   const [adCompleted, setAdCompleted] = useState(false);
-  const [adLoading, setAdLoading] = useState(true);
-  const [adError, setAdError] = useState(false);
-  const adContainerRef = useRef<HTMLDivElement>(null);
-  const adInitialized = useRef(false);
-
-  // --- Logic Protocols (Preserved Exactly) ---
-  const loadAdSense = () => {
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8343501385468147";
-    script.crossOrigin = "anonymous";
-    script.onload = () => initializeAd();
-    script.onerror = () => {
-      console.error('Failed to load AdSense script');
-      setAdError(true);
-      setAdLoading(false);
-    };
-    document.head.appendChild(script);
-  };
-
-  const initializeAd = () => {
-    if (!window.adsbygoogle || !adContainerRef.current) {
-      setAdError(true);
-      setAdLoading(false);
-      return;
-    }
-    try {
-      const adContainer = adContainerRef.current;
-      adContainer.innerHTML = `
-        <ins class="adsbygoogle"
-          style="display:block; text-align:center;"
-          data-ad-layout="in-article"
-          data-ad-format="fluid"
-          data-ad-client="ca-pub-8343501385468147"
-          data-ad-slot="4924261839"
-          data-full-width-responsive="true">
-        </ins>
-      `;
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-      const adElement = adContainer.querySelector('ins');
-      if (adElement) {
-        adElement.addEventListener('load', () => {
-          setAdLoading(false);
-          startCountdown();
-        });
-        // Note: 'error' event on <ins> is non-standard but keeping logic consistent
-        // Google Ads uses postMessage for error states usually
-      } else {
-        setAdError(true);
-        setAdLoading(false);
-      }
-    } catch (error) {
-      setAdError(true);
-      setAdLoading(false);
-    }
-  };
-
-  const startCountdown = () => {
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setAdCompleted(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  };
+  const [selectedAd, setSelectedAd] = useState(MANUAL_ADS[0]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (open && !adInitialized.current) {
-      setCountdown(30);
+    if (open) {
+      const randomAd = MANUAL_ADS[Math.floor(Math.random() * MANUAL_ADS.length)];
+      setSelectedAd(randomAd);
+      setCountdown(10);
       setAdCompleted(false);
-      setAdLoading(true);
-      setAdError(false);
-      loadAdSense();
-      adInitialized.current = true;
-    } else if (!open) {
-      adInitialized.current = false;
+
+      if (timerRef.current) clearInterval(timerRef.current);
+      
+      timerRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current!);
+            setAdCompleted(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [open]);
 
-  const handleComplete = () => {
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'ad_completed', { event_category: 'engagement', event_label: 'rewarded_ad' });
+  const handleAction = () => {
+    if (adCompleted) {
+      onAdComplete();
+      onOpenChange(false);
     }
-    onAdComplete();
-    onOpenChange(false);
   };
-
-  const handleSkipAd = () => {
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'ad_skipped', { event_category: 'engagement', event_label: 'rewarded_ad' });
-    }
-    onAdComplete();
-    onOpenChange(false);
-  };
-
-  const renderFallbackAd = () => (
-    <div className="h-64 bg-[#080808] flex flex-col items-center justify-center rounded-2xl border border-white/5 relative overflow-hidden group">
-      <div className="absolute inset-0 bg-red-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="w-16 h-16 bg-red-600/10 rounded-full flex items-center justify-center border border-red-600/20 mb-4 animate-pulse">
-        <Play className="w-8 h-8 text-red-500 fill-current" />
-      </div>
-      <p className="text-sm font-black uppercase italic tracking-widest text-white">Signal Handshake Failed</p>
-      <p className="text-[10px] text-neutral-600 mt-2 uppercase font-bold">Manual override required to proceed</p>
-      <div className="mt-6 px-4 py-2 bg-black border border-white/5 rounded-lg">
-        <p className="text-[9px] font-mono text-red-500/70 uppercase">Error_Log::AD_BLOCKER_DETECTED_OR_TIMEOUT</p>
-      </div>
-    </div>
-  );
 
   return (
-    <>
-      <Script id="adsense-init" strategy="lazyOnload" onError={() => setAdError(true)} />
-
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] sm:max-w-md bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-8 shadow-2xl overflow-hidden">
-          <div className="absolute -top-10 -right-10 opacity-[0.03] pointer-events-none rotate-12">
-             <Terminal size={200} />
-          </div>
-
-          <DialogHeader className="space-y-4">
-            <div className="flex justify-center">
-               <div className="p-3 rounded-2xl bg-red-600/10 border border-red-600/20 text-red-500">
-                  <ShieldAlert size={24} />
-               </div>
-            </div>
-            <DialogTitle className="text-center text-2xl font-black uppercase italic tracking-tighter">
-              Protocol <span className="text-red-600">Handshake</span>
-            </DialogTitle>
-            <DialogDescription className="text-center text-neutral-500 text-xs font-medium uppercase tracking-wide leading-relaxed">
-              To maintain free access to our neural models, please verify this operational signal.
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={(val) => { if (adCompleted) onOpenChange(val); }}>
+      <DialogContent className="max-w-[95vw] md:max-w-4xl bg-black border-white/10 text-white rounded-[2rem] md:rounded-[3.5rem] p-0 overflow-hidden shadow-[0_0_100px_rgba(220,38,38,0.25)] border-t-0 select-none outline-none">
+        
+        <div className="flex flex-col max-h-[90vh] md:max-h-none overflow-y-auto no-scrollbar">
           
-          <div className="mt-8 space-y-6 relative z-10">
-            <div className="relative rounded-[1.5rem] overflow-hidden border border-white/5 bg-black min-h-[200px] flex flex-col items-center justify-center">
-              {adLoading ? (
-                <div className="text-center space-y-4">
-                  <div className="relative h-12 w-12 mx-auto">
-                    <div className="absolute inset-0 border-2 border-red-600/20 rounded-full" />
-                    <div className="absolute inset-0 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                  </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600 animate-pulse">Initializing Ad_Stream</p>
-                </div>
-              ) : adError ? (
-                <div className="w-full">
-                  {renderFallbackAd()}
-                </div>
-              ) : (
-                <div className="w-full h-full">
-                  <div ref={adContainerRef} className="w-full" id="ad-container" />
-                  {!adCompleted && (
-                    <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-lg text-[10px] font-black italic shadow-lg shadow-red-900/20">
-                      T-{countdown}S
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-4">
-               {adCompleted ? (
-                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
-                    <div className="flex items-center justify-center gap-2 text-emerald-500 mb-1">
-                      <CheckCircle2 size={16} />
-                      <span className="text-xs font-black uppercase tracking-widest">Handshake Verified</span>
-                    </div>
-                    <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Identity stable. Neural assets unlocked.</p>
-                 </motion.div>
-               ) : (
-                 <div className="space-y-3">
-                    <div className="flex justify-between text-[9px] font-black uppercase tracking-[0.2em] text-neutral-600">
-                       <span>Verification Progress</span>
-                       <span className="text-red-500">{Math.round(((30 - countdown) / 30) * 100)}%</span>
-                    </div>
-                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                      <motion.div 
-                        className="h-full bg-red-600 shadow-[0_0_10px_red]"
-                        animate={{ width: `${((30 - countdown) / 30) * 100}%` }}
-                        transition={{ duration: 1, ease: "linear" }}
-                      />
-                    </div>
-                 </div>
-               )}
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-3">
-                {adError && (
-                  <Button
-                    onClick={handleSkipAd}
-                    variant="outline"
-                    className="flex-1 h-14 border-white/10 bg-neutral-950 text-neutral-400 hover:text-white rounded-2xl text-[10px] font-black uppercase italic tracking-widest"
-                  >
-                    Bypass Signal
-                  </Button>
-                )}
-                
-                <Button
-                  onClick={handleComplete}
-                  disabled={!adCompleted && !adError}
-                  className={cn(
-                    "flex-1 h-14 rounded-2xl text-xs font-black uppercase italic tracking-[0.2em] transition-all active:scale-95 shadow-xl",
-                    adCompleted || adError
-                      ? "bg-white text-black hover:bg-red-600 hover:text-white" 
-                      : "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-white/5"
-                  )}
-                >
-                  {adError ? 'Execute Generation' : adCompleted ? 'Initialize Session' : 'Awaiting Peer...'}
-                </Button>
+          {/* --- STATUS HEADER (Responsive Padding) --- */}
+          <div className="p-5 md:p-8 bg-neutral-900/40 border-b border-white/5 flex items-center justify-between sticky top-0 z-20 backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "p-2.5 rounded-xl transition-colors duration-500",
+                adCompleted ? "bg-emerald-500/10 text-emerald-500" : "bg-red-600/10 text-red-500"
+              )}>
+                {adCompleted ? <ShieldCheck size={20} /> : <Lock size={20} />}
               </div>
-              
-              <div className="pt-4 border-t border-white/5 text-center space-y-4">
-                <button 
-                  type="button"
-                  onClick={() => { onOpenChange(false); window.location.href='/pricing'; }}
-                  className="group flex items-center justify-center gap-2 mx-auto"
-                >
-                  <Crown className="w-3 h-3 text-yellow-500" />
-                  <span className="text-[10px] font-black uppercase italic text-neutral-500 group-hover:text-yellow-500 transition-colors">
-                    Remove ads via Premium Protocol
-                  </span>
-                </button>
-                <p className="text-[8px] font-bold text-neutral-800 uppercase tracking-widest">
-                  By accessing terminal you agree to <a href="/terms" className="hover:text-neutral-400">Terms_of_Sync</a>
+              <div>
+                <h2 className="text-xs md:text-xl font-black uppercase italic tracking-tighter leading-none">
+                  {adCompleted ? "Verified" : "Lockdown"}
+                </h2>
+                <p className="text-[7px] md:text-[10px] font-bold text-neutral-600 uppercase tracking-[0.3em] mt-1 hidden sm:block">
+                  NODE_ID: {selectedAd.id.toUpperCase()} // v4.2
                 </p>
               </div>
             </div>
+
+            <div className={cn(
+              "flex flex-col items-end gap-1 px-4 py-2 md:px-6 md:py-3 rounded-2xl border transition-all duration-500",
+              adCompleted ? "border-emerald-500/20 bg-emerald-500/5" : "border-red-600/20 bg-red-600/5"
+            )}>
+              <span className="text-[6px] md:text-[8px] font-black uppercase tracking-widest text-neutral-500">Signal_Hold</span>
+              <span className={cn(
+                "text-lg md:text-2xl font-mono font-black tabular-nums leading-none",
+                adCompleted ? "text-emerald-500" : "text-red-600"
+              )}>
+                {adCompleted ? "00" : countdown.toString().padStart(2, '0')}<span className="text-[10px] ml-0.5">S</span>
+              </span>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+
+          {/* --- DYNAMIC VISUAL PORT (Responsive Ratio) --- */}
+          <div className="p-3 md:p-8">
+            <a 
+              href={selectedAd.link} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group block relative w-full rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border border-white/5 bg-neutral-950 shadow-2xl transition-transform active:scale-[0.98]"
+            >
+              {/* Aspect Ratio Switch: 4:5 for Mobile, 21:9 for Laptop */}
+              <div className="relative w-full aspect-[4/5] md:aspect-[21/9]">
+                <img 
+                  src={selectedAd.portraitImg} 
+                  alt="" 
+                  className="block md:hidden w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-700" 
+                />
+                <img 
+                  src={selectedAd.landscapeImg} 
+                  alt="" 
+                  className="hidden md:block w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-700" 
+                />
+                
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                <div className="absolute top-4 left-4">
+                   <Badge className="bg-red-600 text-white font-black italic text-[7px] md:text-[9px] px-3 py-1 border-none shadow-lg uppercase tracking-widest">Sponsored</Badge>
+                </div>
+
+                <div className="absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 flex items-end justify-between gap-4">
+                  <div className="space-y-1 md:space-y-2">
+                    <h3 className="text-lg md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">
+                      {selectedAd.title}
+                    </h3>
+                    <p className="text-[8px] md:text-sm text-neutral-400 font-bold uppercase tracking-widest line-clamp-1">
+                      {selectedAd.desc}
+                    </p>
+                  </div>
+                  <div className="p-3 md:p-6 rounded-xl md:rounded-[2rem] bg-white text-black group-hover:bg-red-600 group-hover:text-white transition-all shadow-xl">
+                    <ExternalLink size={18} className="md:w-6 md:h-6" />
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+
+          {/* --- INTERACTION CONTROL --- */}
+          <div className="px-5 pb-6 md:px-10 md:pb-10 space-y-6">
+            <div className="flex flex-col gap-4">
+              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                 <motion.div 
+                   initial={{ width: "0%" }}
+                   animate={{ width: `${((10 - countdown) / 10) * 100}%` }}
+                   transition={{ duration: 1, ease: "linear" }}
+                   className={cn(
+                     "h-full transition-colors duration-500",
+                     adCompleted ? "bg-emerald-500 shadow-[0_0_10px_#10b981]" : "bg-red-600 shadow-[0_0_10px_#dc2626]"
+                   )}
+                 />
+              </div>
+
+              <Button
+                onClick={handleAction}
+                disabled={!adCompleted}
+                className={cn(
+                  "w-full h-14 md:h-20 rounded-2xl md:rounded-3xl text-[10px] md:text-lg font-black uppercase italic tracking-[0.2em] transition-all active:scale-95 shadow-2xl border-none",
+                  adCompleted 
+                    ? "bg-white text-black hover:bg-emerald-500 hover:text-white" 
+                    : "bg-neutral-900 text-neutral-700 cursor-not-allowed border-white/5 opacity-50"
+                )}
+              >
+                {adCompleted ? "Execute_Session" : `Handshake_Sequence_${countdown}s`}
+              </Button>
+            </div>
+
+            {/* Premium Shortcut */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t border-white/5 opacity-50 hover:opacity-100 transition-opacity">
+              <button 
+                onClick={() => { onOpenChange(false); window.location.href='/pricing'; }}
+                className="flex items-center gap-2 group"
+              >
+                <Crown className="w-3 h-3 text-yellow-500" />
+                <span className="text-[8px] md:text-[10px] font-black uppercase italic text-neutral-500 group-hover:text-yellow-500 transition-colors">
+                  Remove Protocols via Premium
+                </span>
+              </button>
+              
+              <div className="hidden sm:flex items-center gap-4 text-neutral-800 text-[8px] font-mono font-black uppercase">
+                 <span className="flex items-center gap-1"><Activity size={10}/> STABLE</span>
+                 <span>TERMINAL_4.2.0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -63,6 +63,12 @@ const UserSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User"
     }],
+
+    // Tactical Stats
+  xp: { type: Number, default: 0 },
+  rank: { type: String, default: "NOVICE_NODE" },
+  totalGamesPlayed: { type: Number, default: 0 },
+  
     followingUsers: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "User"

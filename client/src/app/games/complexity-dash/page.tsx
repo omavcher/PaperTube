@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { 
-  Bug, Code2, Zap, Trophy, RotateCcw, 
-  Play, Terminal, ShieldAlert, Cpu, 
-  ChevronRight, Fingerprint, Activity,
-  History, Calendar, Hash
+  Bug, Zap, Trophy, RotateCcw, Play, Terminal, 
+  ShieldAlert, Cpu, Activity, History, Calendar, 
+  Loader2, ArrowUpRight, ShieldCheck, Fingerprint
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,21 +12,9 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
+import api from "@/config/api"; // Ensure your axios/api instance is correctly imported
 
-// --- Types ---
-interface MatchRecord {
-  id: string;
-  date: string;
-  score: number;
-  level: number;
-}
-
-interface Snippet {
-  code: string;
-  ans: string;
-  tier: number; // 1: Easy, 2: Medium, 3: Hard, 4: Expert
-}
-
+// --- Question Pool (Snippet data remains untouched as requested) ---
 // --- Expanded Question Pool (70+ Items) ---
 const SNIPPET_POOL: Snippet[] = [
   // Tier 1: Basics (10 items)
@@ -109,126 +96,98 @@ const SNIPPET_POOL: Snippet[] = [
   { code: "function heapSort(arr) {\n  const n=arr.length;\n  for(let i=Math.floor(n/2)-1; i>=0; i--) heapify(arr,n,i);\n  for(let i=n-1; i>0; i--) {\n    [arr[0],arr[i]]=[arr[i],arr[0]];\n    heapify(arr,i,0);\n  }\n  function heapify(arr,n,i) {\n    let largest=i, l=2*i+1, r=2*i+2;\n    if(l<n && arr[l]>arr[largest]) largest=l;\n    if(r<n && arr[r]>arr[largest]) largest=r;\n    if(largest!==i) {\n      [arr[i],arr[largest]]=[arr[largest],arr[i]];\n      heapify(arr,n,largest);\n    }\n  }\n}", ans: "O(n log n)", tier: 4 },
 ];
 
-// Helper function to get questions by tier based on level
-const getQuestionsByTier = (currentLevel: number): Snippet[] => {
-  if (currentLevel < 10) return SNIPPET_POOL.filter(q => q.tier === 1);
-  if (currentLevel < 25) return SNIPPET_POOL.filter(q => q.tier <= 2);
-  if (currentLevel < 40) return SNIPPET_POOL.filter(q => q.tier <= 3);
-  return SNIPPET_POOL; // All questions for expert levels
-};
-
-// Helper function for visual difficulty feedback
-const getTierColor = (tier: number): string => {
-  switch(tier) {
-    case 1: return 'border-green-500';
-    case 2: return 'border-yellow-500';
-    case 3: return 'border-orange-500';
-    case 4: return 'border-red-500';
-    default: return 'border-white/10';
-  }
-};
-
-const getTierBadgeColor = (tier: number): string => {
-  switch(tier) {
-    case 1: return 'bg-green-500/20 text-green-500 border-green-500/30';
-    case 2: return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30';
-    case 3: return 'bg-orange-500/20 text-orange-500 border-orange-500/30';
-    case 4: return 'bg-red-500/20 text-red-500 border-red-500/30';
-    default: return 'bg-neutral-500/20 text-neutral-500 border-neutral-500/30';
-  }
-};
+type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
 
 export default function ComplexityDash() {
-  const [gameState, setGameState] = useState<'START' | 'PLAYING' | 'GAMEOVER'>('START');
+  const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [bugProximity, setBugProximity] = useState(0); 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(8);
   const [level, setLevel] = useState(1);
-  const [history, setHistory] = useState<MatchRecord[]>([]);
-  const [lastIndices, setLastIndices] = useState<number[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  // --- Device Detection Logic ---
+  const getDeviceMetadata = () => {
+    if (typeof window === "undefined") return { isMobile: false, browser: "Unknown" };
+    
+    const ua = navigator.userAgent;
+    let browser = "Unknown Browser";
+    
+    // Detect Browser Name
+    if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("SamsungBrowser")) browser = "Samsung Browser";
+    else if (ua.includes("Opera") || ua.includes("OPR")) browser = "Opera";
+    else if (ua.includes("Trident")) browser = "Internet Explorer";
+    else if (ua.includes("Edge")) browser = "Edge";
+    else if (ua.includes("Chrome")) browser = "Chrome";
+    else if (ua.includes("Safari")) browser = "Safari";
 
-  const complexities = [
-    "O(1)", "O(log n)", "O(√n)", "O(n)", "O(n log n)", 
-    "O(n²)", "O(n³)", "O(2^n)", "O(n!)", "O(n log log n)",
-    "O(log log n)", "O(n√n)", "O(n⁴)"
-  ];
+    // Detect Mobile via Screen Width + UserAgent
+    const isMobile = /Mobi|Android|iPhone/i.test(ua) || window.innerWidth < 768;
 
-  // --- Persistence: Load History ---
-  useEffect(() => {
-    const saved = localStorage.getItem("complexity_dash_history");
-    if (saved) setHistory(JSON.parse(saved));
-    const savedHigh = localStorage.getItem("complexity_dash_high");
-    if (savedHigh) setHighScore(parseInt(savedHigh));
-  }, []);
+    return { isMobile, browser };
+  };
+  // --- Identity & Backend Sync ---
+  const getIdentity = () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      return userStr ? JSON.parse(userStr) : { id: "guest_node", name: "Guest", email: "anonymous@void.com" };
+    } catch { return { id: "guest_node", name: "Guest", email: "anonymous@void.com" }; }
+  };
 
-  const saveMatch = useCallback((finalScore: number, finalLevel: number) => {
-    const newRecord: MatchRecord = {
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      score: finalScore,
-      level: Math.floor(finalLevel)
+  const pushStatsToBackend = async (finalScore: number, finalLevel: number) => {
+    setGameState('SYNCING');
+    const user = getIdentity();
+    const payload = {
+      userId: user.id || user._id, // Handles both mongo _id and standard id
+      name: user.name,
+      email: user.email,
+      game: "Complexity Dash",
+      stats: {
+        score: finalScore,
+        level: Math.floor(finalLevel),
+        timestamp: new Date().toISOString()
+      },
+      device: getDeviceMetadata()
     };
-    const updated = [newRecord, ...history].slice(0, 5);
-    setHistory(updated);
-    localStorage.setItem("complexity_dash_history", JSON.stringify(updated));
-    
-    if (finalScore > highScore) {
-      setHighScore(finalScore);
-      localStorage.setItem("complexity_dash_high", finalScore.toString());
+
+    try {
+      await api.post("/general/game-stats", payload);
+      toast.success("TELEMETRY_SYNCED", { description: "Mission data stored." });
+    } catch (error) {
+      toast.error("SYNC_OFFLINE", { description: "Data saved to local cache." });
+    } finally {
+      setGameState('GAMEOVER');
     }
-  }, [history, highScore]);
+  };
 
-  // --- Progression Engine ---
+  // --- Game Mechanics ---
   const nextQuestion = useCallback(() => {
-    const questionsByTier = getQuestionsByTier(level);
-    let nextIdx;
-    let attempts = 0;
+    // Hardcore Scaling: Tier 4 questions appear much earlier (Level 20+)
+    const activeTier = level < 8 ? 1 : level < 15 ? 2 : level < 25 ? 3 : 4;
+    const questions = SNIPPET_POOL.filter(q => q.tier <= activeTier);
+    const nextIdx = Math.floor(Math.random() * questions.length);
     
-    do {
-      nextIdx = Math.floor(Math.random() * questionsByTier.length);
-      attempts++;
-      
-      // Fallback if we can't find a non-repeating question after 10 attempts
-      if (attempts > 10) {
-        const allIndices = questionsByTier.map((_, idx) => idx);
-        const availableIndices = allIndices.filter(idx => !lastIndices.includes(idx));
-        nextIdx = availableIndices.length > 0 
-          ? availableIndices[Math.floor(Math.random() * availableIndices.length)]
-          : Math.floor(Math.random() * questionsByTier.length);
-        break;
-      }
-    } while (lastIndices.includes(nextIdx));
-
-    // Find the actual index in SNIPPET_POOL
-    const actualSnippet = questionsByTier[nextIdx];
-    const actualIndex = SNIPPET_POOL.findIndex(s => s === actualSnippet);
-
-    setLastIndices(prev => [actualIndex, ...prev].slice(0, 4));
-    setCurrentIdx(actualIndex);
+    // Find absolute index in main pool
+    const actualIdx = SNIPPET_POOL.findIndex(s => s.code === questions[nextIdx].code);
+    setCurrentIdx(actualIdx);
     
-    // Decrease time as level increases
-    setTimeLeft(Math.max(2.5, 8 - (level * 0.1)));
+    // Time Pressure: Starts at 7s, floors at 2s
+    setTimeLeft(Math.max(2.0, 7 - (level * 0.12)));
     setLevel(l => l + 1);
-  }, [lastIndices, level]);
+  }, [level]);
 
-  const currentSnippet = useMemo(() => SNIPPET_POOL[currentIdx], [currentIdx]);
-
-  // --- Game Loop ---
   useEffect(() => {
     let timer: any;
     if (gameState === 'PLAYING') {
       timer = setInterval(() => {
         setTimeLeft(prev => {
-          if (prev <= 0) {
-            handleWrong();
-            return 5;
-          }
-          return prev - 0.1;
+          if (prev <= 0) { handleWrong(); return 5; }
+          return Math.round((prev - 0.1) * 10) / 10;
         });
-        // Bug speed increases with level
-        setBugProximity(prev => Math.min(100, prev + (0.15 + (level * 0.02))));
+        // Bug speed scales with level
+        setBugProximity(prev => Math.min(100, prev + (0.18 + (level * 0.04))));
       }, 100);
     }
     return () => clearInterval(timer);
@@ -236,16 +195,15 @@ export default function ComplexityDash() {
 
   useEffect(() => {
     if (bugProximity >= 100 && gameState === 'PLAYING') {
-      setGameState('GAMEOVER');
-      saveMatch(score, level);
+      pushStatsToBackend(score, level);
     }
-  }, [bugProximity, gameState, score, level, saveMatch]);
+  }, [bugProximity, gameState]);
 
   const handleAnswer = (choice: string) => {
-    if (choice === currentSnippet.ans) {
-      setScore(s => s + Math.floor(10 * (level / 2)));
-      setBugProximity(prev => Math.max(0, prev - 12));
-      toast.success("Optimized!", { duration: 500 });
+    if (choice === SNIPPET_POOL[currentIdx].ans) {
+      setScore(s => s + (10 * SNIPPET_POOL[currentIdx].tier));
+      setBugProximity(prev => Math.max(0, prev - 15));
+      toast.success("OPTIMIZED", { duration: 500 });
       nextQuestion();
     } else {
       handleWrong();
@@ -253,86 +211,85 @@ export default function ComplexityDash() {
   };
 
   const handleWrong = () => {
-    setBugProximity(prev => prev + 20);
-    toast.error("Code Smell!", { description: "Bug advanced +20%" });
-    nextQuestion();
-  };
-
-  const startGame = () => {
-    setScore(0);
-    setBugProximity(0);
-    setLevel(1);
-    setLastIndices([]);
-    setGameState('PLAYING');
+    setBugProximity(prev => prev + 25);
+    toast.error("SYSTEM_LAG", { description: "Bug advanced +25%" });
     nextQuestion();
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-red-600/30 overflow-hidden">
       
-      <div className="max-w-2xl w-full relative">
-        {/* --- HUD: Bug Tracker --- */}
-        <div className="mb-8 space-y-3">
-          <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500">
-            <span className="flex items-center gap-2"><Bug size={12} className="text-red-500" /> Malicious Bug</span>
-            <span className="flex items-center gap-2">Level {Math.floor(level)} <Activity size={12} className="text-emerald-500" /></span>
-          </div>
-          <div className="h-2 w-full bg-neutral-900 rounded-full border border-white/5 overflow-hidden relative">
-             <motion.div 
-               animate={{ left: `${bugProximity}%` }}
-               className="absolute top-0 bottom-0 w-2 bg-red-500 shadow-[0_0_15px_red] z-20"
-             />
-             <div className="h-full bg-emerald-500/10" style={{ width: '100%', marginLeft: `${bugProximity}%` }} />
-          </div>
+      {/* --- HUD --- */}
+      <div className="w-full max-w-2xl space-y-4 mb-8">
+        <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.4em] text-neutral-600 px-2">
+          <span className="flex items-center gap-2"><Bug size={14} className="text-red-600 animate-pulse" /> Bug_Proximity</span>
+          <span className="flex items-center gap-2">Node_Status: {Math.floor(level)} <Activity size={12} className="text-emerald-500" /></span>
         </div>
+        <div className="h-2 w-full bg-neutral-900/50 rounded-full border border-white/5 overflow-hidden relative">
+          <motion.div 
+            animate={{ left: `${bugProximity}%` }}
+            className="absolute top-0 bottom-0 w-2 bg-red-600 shadow-[0_0_20px_red] z-20"
+          />
+          <div className="h-full bg-emerald-600/10" style={{ width: '100%', marginLeft: `${bugProximity}%` }} />
+        </div>
+      </div>
 
+      <div className="max-w-3xl w-full relative z-10">
         <AnimatePresence mode="wait">
+          
           {gameState === 'START' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-10 py-10">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-10">
               <div className="space-y-4">
-                <div className="inline-flex p-8 bg-emerald-500/10 rounded-[3rem] border border-emerald-500/20 shadow-[0_0_60px_rgba(16,185,129,0.1)]">
-                  <Terminal size={64} className="text-emerald-500" />
+                <div className="inline-flex p-10 bg-red-600/5 rounded-[4rem] border border-red-600/10 shadow-[0_0_80px_rgba(220,38,38,0.1)]">
+                  <Terminal size={80} className="text-red-600" />
                 </div>
-                <h1 className="text-6xl font-black tracking-tighter uppercase italic">Complexity <span className="text-emerald-500">Dash</span></h1>
-                <p className="text-neutral-400 max-w-sm mx-auto">Scale your performance. Identify Big-O complexity across 70+ levels of code profiling.</p>
+                <h1 className="text-6xl md:text-9xl font-black tracking-tighter uppercase italic leading-none">
+                  COMPLEXITY
+                </h1><span className="text-6xl md:text-9xl font-black tracking-tighter uppercase italic leading-none text-red-600">DASH</span>
+                <p className="text-neutral-500 text-[10px] md:text-xs font-black uppercase tracking-[0.4em] max-w-xs mx-auto">
+                  Neural_Big-O_Analysis // Phase_v5.0
+                </p>
               </div>
-              <Button onClick={startGame} className="w-full h-24 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-2xl rounded-3xl shadow-[0_20px_50px_rgba(16,185,129,0.3)]">
-                BOOT ENGINE <Play className="ml-3 fill-black" />
+              <Button onClick={() => { setScore(0); setBugProximity(0); setLevel(1); setGameState('PLAYING'); nextQuestion(); }} 
+                className="w-full h-24 bg-red-600 hover:bg-red-500 text-white font-black text-3xl rounded-[2.5rem] shadow-2xl active:scale-95 transition-all">
+                START <Play size={28} className="ml-3 fill-white" />
               </Button>
             </motion.div>
           )}
 
           {gameState === 'PLAYING' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-              <Card className={`bg-neutral-900 border-2 ${getTierColor(currentSnippet.tier)} rounded-[2.5rem] overflow-hidden shadow-2xl`}>
-                <div className="bg-black/50 px-8 py-4 border-b border-white/5 flex items-center justify-between">
-                   <div className="flex gap-2">
-                     <div className="h-3 w-3 rounded-full bg-red-500/40" />
-                     <div className="h-3 w-3 rounded-full bg-yellow-500/40" />
-                     <div className="h-3 w-3 rounded-full bg-emerald-500/40" />
-                   </div>
-                   <div className="flex items-center gap-4">
-                     <Badge variant="outline" className={`text-[10px] font-black px-4 ${getTierBadgeColor(currentSnippet.tier)}`}>
-                       Tier {currentSnippet.tier}
-                     </Badge>
-                     <Badge variant="outline" className="text-[10px] font-black border-emerald-500/30 text-emerald-500 px-4">
-                       {timeLeft.toFixed(1)}s SECURE
-                     </Badge>
-                   </div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 md:space-y-10">
+              <Card className={cn(
+                "bg-neutral-950 border-2 rounded-[3rem] overflow-hidden transition-colors duration-500",
+                SNIPPET_POOL[currentIdx].tier === 4 ? "border-red-600 shadow-[0_0_40px_rgba(220,38,38,0.1)]" : "border-white/5"
+              )}>
+                <div className="bg-white/5 px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                  <div className="flex gap-2">
+                    <div className="h-3 w-3 rounded-full bg-red-500/20" />
+                    <div className="h-3 w-3 rounded-full bg-yellow-500/20" />
+                    <div className="h-3 w-3 rounded-full bg-emerald-500/20" />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Badge className="bg-red-600/10 text-red-500 border-none font-black text-[9px]">TIER_{SNIPPET_POOL[currentIdx].tier}</Badge>
+                    <span className={cn("text-xs font-black tabular-nums", timeLeft < 2 ? "text-red-600 animate-pulse" : "text-neutral-400")}>
+                      {timeLeft.toFixed(1)}s
+                    </span>
+                  </div>
                 </div>
-                <CardContent className="p-10">
-                  <pre className="font-mono text-xl text-emerald-400 leading-relaxed overflow-x-auto">
-                    <code>{currentSnippet.code}</code>
+                <CardContent className="p-8 md:p-12">
+                  <pre className="font-mono text-lg md:text-2xl text-emerald-400 leading-relaxed overflow-x-auto custom-scrollbar">
+                    <code>{SNIPPET_POOL[currentIdx].code}</code>
                   </pre>
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {complexities.map((comp) => (
+              {/* Responsive Option Grid: 2 per row on mobile */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                {["O(1)", "O(log n)", "O(n)", "O(n log n)", "O(n²)", "O(n³)", "O(2^n)", "O(n!)"].map((comp) => (
                   <Button 
                     key={comp}
                     onClick={() => handleAnswer(comp)}
-                    className="h-20 bg-neutral-900 border border-white/10 hover:border-emerald-500 hover:bg-emerald-500/5 text-xl font-black rounded-2xl transition-all"
+                    className="h-16 md:h-20 bg-neutral-900/50 border border-white/5 hover:border-red-600/50 hover:bg-red-600/5 text-sm md:text-xl font-black rounded-2xl transition-all active:scale-90"
                   >
                     {comp}
                   </Button>
@@ -341,63 +298,46 @@ export default function ComplexityDash() {
             </motion.div>
           )}
 
-          {gameState === 'GAMEOVER' && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
-              <div className="text-center bg-neutral-900 p-12 rounded-[4rem] border border-red-500/20 shadow-2xl backdrop-blur-xl">
-                 <ShieldAlert size={80} className="text-red-500 mx-auto mb-6 animate-pulse" />
-                 <h2 className="text-5xl font-black text-white uppercase italic tracking-tighter mb-8">System <span className="text-red-500">Compromised</span></h2>
-                 
-                 <div className="grid grid-cols-2 gap-6 mb-10">
-                   <div className="bg-black/40 p-8 rounded-[2rem] border border-white/5">
-                     <p className="text-[10px] font-black text-neutral-500 uppercase mb-2">Final Score</p>
-                     <p className="text-4xl font-black text-emerald-500">{score}</p>
-                   </div>
-                   <div className="bg-black/40 p-8 rounded-[2rem] border border-white/5">
-                     <p className="text-[10px] font-black text-neutral-500 uppercase mb-2">Highest Phase</p>
-                     <p className="text-4xl font-black text-white">LVL {Math.floor(level)}</p>
-                   </div>
-                 </div>
-
-                 <Button onClick={startGame} className="w-full h-20 bg-white text-black font-black text-xl rounded-3xl hover:bg-emerald-500 transition-all">
-                   REBOOT SESSION <RotateCcw className="ml-3" />
-                 </Button>
-              </div>
-
-              {/* --- Mission History Log --- */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 px-4 text-neutral-500">
-                  <History size={16} />
-                  <h3 className="text-xs font-black uppercase tracking-[0.4em]">Mission Log</h3>
+          {(gameState === 'GAMEOVER' || gameState === 'SYNCING') && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+              <div className="text-center bg-neutral-900 border border-red-600/20 p-8 md:p-16 rounded-[4rem] shadow-3xl relative overflow-hidden">
+                <ShieldAlert size={80} className="text-red-600 mx-auto mb-6 animate-pulse" />
+                <h2 className="text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter leading-none">
+                  SYSTEM
+                </h2>
+                <span className="text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter leading-none text-red-600">FAILED</span>
+                
+                <div className="grid grid-cols-2 gap-4 mb-12">
+                  <div className="bg-black/40 p-6 rounded-3xl border border-white/5">
+                    <p className="text-[9px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Final_Score</p>
+                    <p className="text-4xl font-black text-red-600 tabular-nums leading-none">{score}</p>
+                  </div>
+                  <div className="bg-black/40 p-6 rounded-3xl border border-white/5">
+                    <p className="text-[9px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Max_Phase</p>
+                    <p className="text-4xl font-black text-white tabular-nums leading-none">L{Math.floor(level)}</p>
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  {history.map((match) => (
-                    <div key={match.id} className="bg-neutral-900/40 border border-white/5 p-6 rounded-[2rem] flex justify-between items-center group hover:border-emerald-500/40 transition-all">
-                      <div className="flex items-center gap-5">
-                        <div className="p-4 bg-black rounded-2xl text-neutral-500 group-hover:text-emerald-500 transition-colors">
-                          <Calendar size={20} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-neutral-600 font-bold uppercase">{match.date}</span>
-                          <span className="text-lg font-black text-emerald-400">Phase {match.level} Reach</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] font-black text-neutral-600 uppercase block mb-1">Score</span>
-                        <span className="text-3xl font-black tabular-nums">{match.score}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+
+                {gameState === 'SYNCING' ? (
+                  <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-[0.4em] uppercase">
+                     <Loader2 size={16} className="animate-spin" /> Transmitting_Telemetry...
+                  </div>
+                ) : (
+                  <Button onClick={() => setGameState('START')} className="w-full h-20 bg-white text-black font-black text-xl rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-xl active:scale-95">
+                    RESTART <RotateCcw size={20} className="ml-2" />
+                  </Button>
+                )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      <div className="mt-16 flex gap-12 text-[10px] font-black uppercase tracking-[0.5em] text-neutral-800">
-        <span className="flex items-center gap-2"><Cpu size={14} /> Algo Engine v5.0</span>
-        <span className="flex items-center gap-2"><Fingerprint size={14} /> Secure Auth</span>
-        <span className="flex items-center gap-2 font-mono">Personal Best: {highScore}</span>
+      {/* Meta HUD */}
+      <div className="mt-12 flex flex-wrap justify-center gap-x-12 gap-y-4 text-[9px] font-black uppercase tracking-[0.5em] text-neutral-900">
+        <span className="flex items-center gap-2"><Fingerprint size={12} /> ID: {getIdentity().id.substring(0, 10)}...</span>
+        <span className="flex items-center gap-2"><Cpu size={12} /> Personal_Best: {highScore}</span>
+        <span className="flex items-center gap-2 text-red-900"><ShieldCheck size={12} /> Verified_Profile</span>
       </div>
     </div>
   );

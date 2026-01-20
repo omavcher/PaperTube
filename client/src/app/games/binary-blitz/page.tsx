@@ -1,20 +1,21 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { 
-  Trophy, Play, RotateCcw, Zap, 
-  Heart, Timer, ChevronRight, Binary as BinaryIcon,
-  ShieldCheck, BrainCircuit, Activity, Cpu,
-  History, Calendar, BarChart3
+  Trophy, Play, RotateCcw, Zap, Heart, Timer, 
+  Binary as BinaryIcon, ShieldCheck, BrainCircuit, 
+  Activity, Cpu, History, Calendar, BarChart3, 
+  User as UserIcon, LogOut, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import api from "@/config/api";
 
-// --- Types & Records ---
-type GameState = 'START' | 'PLAYING' | 'GAMEOVER';
+// --- Types ---
+type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
 
 interface Question {
   text: string;
@@ -39,89 +40,110 @@ export default function BinaryBlitzGame() {
   const [question, setQuestion] = useState<Question | null>(null);
   const [level, setLevel] = useState(1);
   const [history, setHistory] = useState<MatchRecord[]>([]);
-
-  // --- Persistence Logic ---
-  useEffect(() => {
-    const savedHistory = localStorage.getItem("binary_blitz_history");
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
+  const [isSyncing, setIsSyncing] = useState(false);
+  // --- Device Detection Logic ---
+  const getDeviceMetadata = () => {
+    if (typeof window === "undefined") return { isMobile: false, browser: "Unknown" };
     
-    // Set High Score from history
-    const savedHighScore = localStorage.getItem("binary_blitz_highscore");
-    if (savedHighScore) setHighScore(parseInt(savedHighScore));
-  }, []);
+    const ua = navigator.userAgent;
+    let browser = "Unknown Browser";
+    
+    // Detect Browser Name
+    if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("SamsungBrowser")) browser = "Samsung Browser";
+    else if (ua.includes("Opera") || ua.includes("OPR")) browser = "Opera";
+    else if (ua.includes("Trident")) browser = "Internet Explorer";
+    else if (ua.includes("Edge")) browser = "Edge";
+    else if (ua.includes("Chrome")) browser = "Chrome";
+    else if (ua.includes("Safari")) browser = "Safari";
 
-  const saveMatch = useCallback((finalScore: number, finalLevel: number) => {
-    const newRecord: MatchRecord = {
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      score: finalScore,
-      level: finalLevel
+    // Detect Mobile via Screen Width + UserAgent
+    const isMobile = /Mobi|Android|iPhone/i.test(ua) || window.innerWidth < 768;
+
+    return { isMobile, browser };
+  };
+  // --- Identity Detection ---
+  const getUser = () => {
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  };
+
+  // --- Backend Statistics Sync ---
+  const syncStatsToBackend = async (finalScore: number, finalLevel: number) => {
+    setIsSyncing(true);
+    const user = getUser();
+    
+    const payload = {
+      userId: user?.id || "guest_node",
+      name: user?.name || "Guest",
+      email: user?.email || "anonymous@void.com",
+      game: "Binary Blitz",
+      stats: {
+        score: finalScore,
+        level: finalLevel,
+        timestamp: new Date().toISOString()
+      },
+      device: getDeviceMetadata()
     };
 
-    // Update History (last 5)
-    const updatedHistory = [newRecord, ...history].slice(0, 5);
-    setHistory(updatedHistory);
-    localStorage.setItem("binary_blitz_history", JSON.stringify(updatedHistory));
-
-    // Update High Score
-    if (finalScore > highScore) {
-      setHighScore(finalScore);
-      localStorage.setItem("binary_blitz_highscore", finalScore.toString());
-      toast.success("NEW HIGH SCORE!", { icon: "🏆" });
+    try {
+      await api.post("/general/game-stats", payload);
+      toast.success("TELEMETRY_SYNCED", { description: "Mission data stored in neural link." });
+    } catch (error) {
+      console.error("Sync Failure:", error);
+      toast.error("SYNC_FAILURE", { description: "Data cached locally." });
+    } finally {
+      setIsSyncing(false);
     }
-  }, [history, highScore]);
+  };
 
-  // --- Progression Engine Logic ---
+  // --- Progression Engine (Hardcore Calibration) ---
   const generateQuestion = useCallback(() => {
     let text = "";
     let answer = 0;
     let type = "";
     const options: number[] = [];
 
-    if (level <= 10) {
-      type = "BINARY CONVERSION";
-      const bits = level <= 3 ? 2 : level <= 7 ? 3 : 4;
-      answer = Math.floor(Math.random() * Math.pow(2, bits));
-      text = answer.toString(2).padStart(bits, '0');
+    // Increase difficulty based on level
+    if (level <= 5) {
+      type = "BASIC_CONV"; // 4-bit
+      answer = Math.floor(Math.random() * 16);
+      text = answer.toString(2).padStart(4, '0');
     } 
-    else if (level <= 20) {
-      type = "LOGIC GATE";
+    else if (level <= 12) {
+      type = "GATE_LOGIC";
       const a = Math.random() > 0.5 ? 1 : 0;
       const b = Math.random() > 0.5 ? 1 : 0;
-      const gates = level <= 15 ? ['AND', 'OR'] : ['AND', 'OR', 'XOR'];
+      const gates = ['AND', 'OR', 'XOR', 'NAND'];
       const gate = gates[Math.floor(Math.random() * gates.length)];
       text = `${a} ${gate} ${b}`;
-      answer = gate === 'AND' ? (a & b) : gate === 'OR' ? (a | b) : (a ^ b);
+      if(gate === 'AND') answer = a & b;
+      else if(gate === 'OR') answer = a | b;
+      else if(gate === 'XOR') answer = a ^ b;
+      else answer = (a & b) === 1 ? 0 : 1;
     }
-    else if (level <= 35) {
-      const subType = Math.random() > 0.5;
-      if (subType) {
-        type = "8-BIT FRAGMENT";
-        answer = Math.floor(Math.random() * 64) + 64;
-        text = answer.toString(2);
-      } else {
-        type = "NOT LOGIC";
-        const a = Math.random() > 0.5 ? 1 : 0;
-        text = `NOT (${a})`;
-        answer = a === 1 ? 0 : 1;
-      }
+    else if (level <= 25) {
+      type = "HEX_READY"; // 8-bit fragments
+      answer = Math.floor(Math.random() * 240) + 15;
+      text = answer.toString(2).padStart(8, '0');
     }
     else {
-      type = "NESTED CIRCUIT";
+      type = "NESTED_CIRCUIT"; // Complex Boolean
       const a = Math.random() > 0.5 ? 1 : 0;
       const b = Math.random() > 0.5 ? 1 : 0;
       const c = Math.random() > 0.5 ? 1 : 0;
       const gate1 = Math.random() > 0.5 ? 'AND' : 'OR';
-      const gate2 = Math.random() > 0.5 ? 'XOR' : 'AND';
+      const gate2 = Math.random() > 0.5 ? 'XOR' : 'NAND';
       const mid = gate1 === 'AND' ? (a & b) : (a | b);
-      answer = gate2 === 'XOR' ? (mid ^ c) : (mid & c);
+      answer = gate2 === 'XOR' ? (mid ^ c) : ((mid & c) === 1 ? 0 : 1);
       text = `(${a} ${gate1} ${b}) ${gate2} ${c}`;
     }
 
     options.push(answer);
     while (options.length < 4) {
-      const offset = Math.floor(Math.random() * 5) - 2;
-      const rand = Math.max(0, answer + offset + (Math.random() > 0.5 ? 1 : -1));
+      const rand = Math.floor(Math.random() * (answer + 10)) + Math.max(0, answer - 5);
       if (!options.includes(rand)) options.push(rand);
     }
     
@@ -132,9 +154,11 @@ export default function BinaryBlitzGame() {
       type 
     });
 
-    setTimeLeft(Math.max(2.5, 10 - (level * 0.15)));
+    // Harder Timer: Starts at 8s, drops to 2s by level 40
+    setTimeLeft(Math.max(2.0, 8 - (level * 0.15)));
   }, [level]);
 
+  // --- Game Loop Hooks ---
   useEffect(() => {
     let timer: any;
     if (gameState === 'PLAYING' && timeLeft > 0) {
@@ -147,9 +171,8 @@ export default function BinaryBlitzGame() {
 
   const handleAnswer = (val: number) => {
     if (val === question?.answer) {
-      setScore(s => s + (timeLeft > 5 ? 20 : 10));
+      setScore(s => s + (timeLeft > 3 ? 50 : 25));
       setLevel(l => l + 1);
-      toast.success(`Level ${level} Decoded!`, { duration: 500 });
       generateQuestion();
     } else {
       handleWrong();
@@ -159,11 +182,11 @@ export default function BinaryBlitzGame() {
   const handleWrong = () => {
     if (lives > 1) {
       setLives(l => l - 1);
-      toast.error("System Glitch!", { description: "Incorrect Output" });
       generateQuestion();
+      toast.error("VOLTAGE_DROP", { description: "Integrity compromised." });
     } else {
       setGameState('GAMEOVER');
-      saveMatch(score, level);
+      syncStatsToBackend(score, level);
     }
   };
 
@@ -176,81 +199,102 @@ export default function BinaryBlitzGame() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6 selection:bg-emerald-500/30">
-      <div className="max-w-xl w-full">
-        
-        {/* --- HUD --- */}
-        <div className="flex justify-between items-center mb-8 bg-neutral-900/50 p-6 rounded-3xl border border-white/5 backdrop-blur-sm">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 border border-emerald-500/20">
-              <Trophy size={24} />
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-emerald-500/30">
+      
+      {/* --- HUD: Laptop/Mobile Responsive --- */}
+      <div className="w-full max-w-2xl bg-neutral-900/30 border border-white/5 p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] backdrop-blur-xl mb-6 shadow-2xl">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 md:h-12 md:w-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500 border border-emerald-500/20">
+              <Trophy size={20} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest leading-none mb-1">Yield</p>
-              <p className="text-2xl font-black tabular-nums">{score}</p>
+              <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">Yield</p>
+              <p className="text-xl md:text-2xl font-black tabular-nums">{score}</p>
             </div>
           </div>
 
-          <div className="flex gap-2">
-            {[...Array(3)].map((_, i) => (
-              <Heart key={i} size={22} className={cn("transition-all duration-300", i < lives ? "text-red-500 fill-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "text-neutral-800")} />
-            ))}
+          {/* User ID Tag */}
+          <div className="hidden sm:flex flex-col items-center opacity-40 group">
+             <UserIcon size={14} className="text-neutral-500 mb-1" />
+             <span className="text-[7px] font-black uppercase tracking-widest">{getUser()?.name || "GUEST_NODE"}</span>
           </div>
 
-          <div className="text-right">
-            <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest leading-none mb-1">Depth</p>
-            <p className="text-2xl font-black text-emerald-500 tabular-nums">Lvl {level}</p>
+          <div className="flex gap-1.5">
+            {[...Array(3)].map((_, i) => (
+              <Heart key={i} size={18} className={cn("transition-all", i < lives ? "text-red-600 fill-red-600" : "text-neutral-900")} />
+            ))}
           </div>
         </div>
 
+        {/* Level Path Tracker */}
+        <div className="mt-6 flex items-center justify-between text-[8px] font-black uppercase text-neutral-600 tracking-widest">
+           <span>Sub-Level: {level}</span>
+           <div className="flex gap-1">
+             {[...Array(5)].map((_, i) => (
+               <div key={i} className={cn("h-1 w-4 rounded-full", level % 5 > i || level % 5 === 0 ? "bg-emerald-500" : "bg-neutral-800")} />
+             ))}
+           </div>
+        </div>
+      </div>
+
+      <div className="max-w-xl w-full">
         <AnimatePresence mode="wait">
+          
+          {/* --- VIEW: START --- */}
           {gameState === 'START' && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} className="text-center space-y-8">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-8">
               <div className="space-y-4">
-                <div className="inline-flex p-6 bg-emerald-500/10 rounded-[2.5rem] border border-emerald-500/20 mb-4 shadow-[0_0_50px_rgba(16,185,129,0.1)]">
-                  <BrainCircuit size={80} className="text-emerald-500" />
+                <div className="inline-flex p-8 bg-emerald-500/5 rounded-[3rem] border border-emerald-500/10 mb-4 shadow-[0_0_50px_rgba(16,185,129,0.1)]">
+                  <BrainCircuit size={100} className="text-emerald-500" />
                 </div>
-                <h1 className="text-6xl font-black tracking-tighter uppercase italic">Binary <span className="text-emerald-500">Blitz</span></h1>
-                <p className="text-neutral-400 max-w-sm mx-auto">Neural-link active. Decrypt the system to reach Phase 50.</p>
+                <h1 className="text-6xl md:text-8xl font-black tracking-tighter uppercase italic leading-none">
+                  VOID_<span className="text-emerald-500">BLITZ</span>
+                </h1>
+                <p className="text-neutral-500 text-[10px] md:text-xs font-bold uppercase tracking-[0.3em] max-w-xs mx-auto">
+                  NEURAL_ENGINE_STABLE // PHASE_01_READY
+                </p>
               </div>
-              <Button onClick={startGame} className="w-full h-24 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-3xl rounded-[2rem] shadow-[0_0_50px_rgba(16,185,129,0.3)]">
-                BOOT ENGINE <Play className="ml-3 fill-black" />
+              <Button onClick={startGame} className="w-full h-24 bg-emerald-600 hover:bg-emerald-500 text-black font-black text-3xl rounded-[2.5rem] shadow-[0_0_40px_rgba(16,185,129,0.3)] active:scale-95 transition-all">
+                INIT_SYNC <Play size={28} className="ml-3 fill-black" />
               </Button>
             </motion.div>
           )}
 
+          {/* --- VIEW: PLAYING --- */}
           {gameState === 'PLAYING' && (
-            <motion.div key="playing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-              <div className="space-y-2">
-                <div className="flex justify-between text-[10px] font-black uppercase text-neutral-500 px-2 tracking-widest">
-                   <span>Processing Time</span>
+            <motion.div key="playing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+              <div className="space-y-3">
+                <div className="flex justify-between text-[9px] font-black uppercase text-neutral-500 px-2 tracking-[0.4em]">
+                   <span>Processing_Load</span>
                    <span>{timeLeft.toFixed(1)}s</span>
                 </div>
-                <div className="w-full h-3 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
+                <div className="w-full h-2 bg-neutral-950 rounded-full overflow-hidden border border-white/5">
                   <motion.div 
                     initial={{ width: '100%' }}
-                    animate={{ width: `${(timeLeft / 10) * 100}%` }}
-                    className={cn("h-full transition-colors duration-200", timeLeft < 3 ? "bg-red-500 shadow-[0_0_15px_red]" : "bg-emerald-500 shadow-[0_0_15px_#10b981]")}
+                    animate={{ width: `${(timeLeft / 8) * 100}%` }}
+                    className={cn("h-full transition-colors", timeLeft < 2.5 ? "bg-red-600" : "bg-emerald-500")}
                   />
                 </div>
               </div>
 
-              <div className="bg-neutral-900/80 border-2 border-emerald-500/20 rounded-[3rem] p-16 text-center relative overflow-hidden backdrop-blur-md">
-                <div className="absolute top-0 right-0 p-8 opacity-5">
-                   <Activity size={160} />
-                </div>
-                <Badge className="bg-emerald-500/10 text-emerald-400 mb-8 uppercase tracking-[0.3em] px-4 py-1 text-xs border border-emerald-500/20">{question?.type}</Badge>
-                <h2 className="text-6xl md:text-8xl font-black tracking-tighter text-white mb-2 font-mono">
+              {/* Central Display */}
+              <div className="bg-neutral-900/40 border-2 border-emerald-500/20 rounded-[3rem] p-10 md:p-20 text-center relative overflow-hidden backdrop-blur-xl">
+                <Badge className="bg-emerald-500/10 text-emerald-500 mb-6 uppercase text-[9px] font-black border border-emerald-500/20 tracking-[0.4em]">
+                  {question?.type || "ANALYZING..."}
+                </Badge>
+                <h2 className="text-5xl md:text-8xl font-black tracking-tighter text-white font-mono break-all leading-none">
                   {question?.text}
                 </h2>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              {/* Control Matrix (2x2 on Mobile, Good spacing on Laptop) */}
+              <div className="grid grid-cols-2 gap-4 md:gap-8">
                 {question?.options.map((opt, i) => (
                   <Button 
                     key={i} 
                     onClick={() => handleAnswer(opt)}
-                    className="h-28 bg-neutral-900 border border-white/5 hover:border-emerald-500 hover:bg-emerald-500/5 text-4xl font-black rounded-[2rem] transition-all transform active:scale-95 shadow-xl"
+                    className="h-24 md:h-32 bg-neutral-900 border border-white/5 hover:border-emerald-500/50 hover:bg-emerald-500/5 text-4xl md:text-6xl font-black rounded-[2rem] md:rounded-[2.5rem] transition-all transform active:scale-90"
                   >
                     {opt}
                   </Button>
@@ -259,69 +303,43 @@ export default function BinaryBlitzGame() {
             </motion.div>
           )}
 
+          {/* --- VIEW: GAMEOVER --- */}
           {gameState === 'GAMEOVER' && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-              <div className="text-center bg-neutral-900/50 p-12 rounded-[4rem] border border-red-500/20 shadow-2xl backdrop-blur-lg">
-                <h2 className="text-6xl font-black text-red-500 uppercase italic tracking-tighter mb-2">Core Failed</h2>
-                <p className="text-neutral-500 uppercase font-black tracking-[0.5em] text-xs mb-8">Match Statistics</p>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <div className="text-center bg-neutral-900 border border-red-900/20 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] shadow-3xl">
+                <h2 className="text-5xl font-black text-red-600 uppercase italic tracking-tighter mb-10">CORE_FAILED</h2>
                 
-                <div className="grid grid-cols-2 gap-6 mb-10">
-                  <div className="bg-black/40 p-8 rounded-[2.5rem] border border-white/5 text-center">
-                    <p className="text-[10px] font-black text-neutral-500 uppercase mb-2">Final Yield</p>
-                    <p className="text-5xl font-black text-emerald-500">{score}</p>
+                <div className="grid grid-cols-2 gap-4 mb-10">
+                  <div className="bg-black/40 p-6 rounded-3xl border border-white/5">
+                    <p className="text-[8px] font-black text-neutral-600 uppercase mb-1">Final_Yield</p>
+                    <p className="text-4xl font-black text-emerald-500 leading-none">{score}</p>
                   </div>
-                  <div className="bg-black/40 p-8 rounded-[2.5rem] border border-white/5 text-center">
-                    <p className="text-[10px] font-black text-neutral-500 uppercase mb-2">Max Depth</p>
-                    <p className="text-5xl font-black text-white">{level}</p>
+                  <div className="bg-black/40 p-6 rounded-3xl border border-white/5">
+                    <p className="text-[8px] font-black text-neutral-600 uppercase mb-1">Max_Depth</p>
+                    <p className="text-4xl font-black text-white leading-none">L{level}</p>
                   </div>
                 </div>
 
-                <Button onClick={startGame} className="w-full h-20 bg-white text-black font-black text-2xl rounded-3xl hover:bg-emerald-500 transition-all shadow-xl">
-                  REBOOT ENGINE <RotateCcw className="ml-3" />
-                </Button>
-              </div>
-
-              {/* --- Local Storage History --- */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 px-2 text-neutral-500">
-                  <History size={16} />
-                  <h3 className="text-xs font-black uppercase tracking-widest">Mission Log (Last 5)</h3>
-                </div>
-                <div className="space-y-2">
-                  {history.map((match) => (
-                    <div key={match.id} className="bg-neutral-900/30 border border-white/5 p-5 rounded-[2rem] flex justify-between items-center group hover:border-emerald-500/30 transition-all">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-black rounded-xl border border-white/5 text-neutral-500 group-hover:text-emerald-500 transition-colors">
-                          <Calendar size={18} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-neutral-600 font-bold uppercase">{match.date}</span>
-                          <span className="text-sm font-black text-emerald-400">Phase {match.level} Infiltrated</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] font-black text-neutral-600 uppercase block mb-1">Yield</span>
-                        <span className="text-2xl font-black tracking-tighter">{match.score}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {history.length === 0 && (
-                    <div className="text-center py-10 border-2 border-dashed border-white/5 rounded-[2rem]">
-                      <p className="text-xs text-neutral-700 font-bold uppercase tracking-widest italic">No prior data discovered.</p>
-                    </div>
-                  )}
-                </div>
+                {isSyncing ? (
+                  <div className="w-full h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-600">
+                    <Loader2 size={16} className="animate-spin" /> SYNCHRONIZING_TELEMENTRY...
+                  </div>
+                ) : (
+                  <Button onClick={startGame} className="w-full h-20 bg-white text-black font-black text-xl rounded-2xl hover:bg-emerald-500 transition-all shadow-xl active:scale-95">
+                    REBOOT_SYSTEM <RotateCcw size={20} className="ml-2" />
+                  </Button>
+                )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
       
-      {/* HUD Icons */}
-      <div className="mt-16 flex gap-12 text-[10px] font-black uppercase tracking-[0.4em] text-neutral-800">
-        <span className="flex items-center gap-2"><ShieldCheck size={14} /> Encrypted Logic</span>
-        <span className="flex items-center gap-2"><BarChart3 size={14} /> Personal Best: {highScore}</span>
-        <span className="flex items-center gap-2 font-mono italic">v2026.1-CORE</span>
+      {/* Footer Meta HUD */}
+      <div className="mt-12 flex flex-wrap justify-center gap-x-12 gap-y-4 text-[9px] font-black uppercase tracking-[0.4em] text-neutral-800">
+        <span className="flex items-center gap-2 text-emerald-900"><ShieldCheck size={12} /> Encrypted_Handshake</span>
+        <span className="flex items-center gap-2"><Cpu size={12} /> Personal_Best: {highScore}</span>
+        <span className="flex items-center gap-2 italic">v2026.VOID-CORE</span>
       </div>
     </div>
   );
