@@ -7,21 +7,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { 
-  ShieldAlert, Crown, ExternalLink, 
-  Timer, CheckCircle2, Lock, Activity, 
-  ShieldCheck
+  ExternalLink, 
+  Lock, Activity, 
+  ShieldCheck,
+  Crown
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-interface AdDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAdComplete: () => void;
-}
-
-// --- Manual Ad Registry (Strict Desktop/Mobile Visuals) ---
 const MANUAL_ADS = [
   {
     id: "pro-node",
@@ -38,16 +32,14 @@ const MANUAL_ADS = [
     link: "/tools",
     title: "NEURAL_TOOLKIT_v5",
     desc: "Access 50+ engineering modules for free."
-  },
-  {
-    id: "dev-community",
-    landscapeImg: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80",
-    portraitImg: "https://images.unsplash.com/photo-1558494949-ef010cbdcc48?auto=format&fit=crop&w=800&q=80",
-    link: "/community",
-    title: "JOIN_THE_RESISTANCE",
-    desc: "Collaborate with 10k+ senior architects."
   }
 ];
+
+interface AdDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdComplete: () => void;
+}
 
 export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogProps) {
   const [countdown, setCountdown] = useState(10);
@@ -67,7 +59,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
       timerRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
-            clearInterval(timerRef.current!);
+            if (timerRef.current) clearInterval(timerRef.current);
             setAdCompleted(true);
             return 0;
           }
@@ -87,12 +79,15 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if (adCompleted) onOpenChange(val); }}>
-      <DialogContent className="max-w-[95vw] md:max-w-4xl bg-black border-white/10 text-white rounded-[2rem] md:rounded-[3.5rem] p-0 overflow-hidden shadow-[0_0_100px_rgba(220,38,38,0.25)] border-t-0 select-none outline-none">
+      {/* FIX 1: z-[200] added to jump over the Navbar (z-100) 
+          FIX 2: max-h-[90vh] ensures the dialog doesn't bleed off the laptop screen
+      */}
+      <DialogContent className="z-[200] max-w-[95vw] md:max-w-4xl bg-black border-white/10 text-white rounded-[2rem] md:rounded-[3.5rem] p-0 overflow-hidden shadow-[0_0_100px_rgba(220,38,38,0.25)] border-t-0 select-none outline-none">
         
-        <div className="flex flex-col max-h-[90vh] md:max-h-none overflow-y-auto no-scrollbar">
+        <div className="flex flex-col max-h-[85vh] md:max-h-[90vh] overflow-y-auto no-scrollbar">
           
-          {/* --- STATUS HEADER (Responsive Padding) --- */}
-          <div className="p-5 md:p-8 bg-neutral-900/40 border-b border-white/5 flex items-center justify-between sticky top-0 z-20 backdrop-blur-xl">
+          {/* --- HEADER --- */}
+          <div className="p-5 md:p-8 bg-neutral-900/60 border-b border-white/5 flex items-center justify-between sticky top-0 z-20 backdrop-blur-2xl">
             <div className="flex items-center gap-3">
               <div className={cn(
                 "p-2.5 rounded-xl transition-colors duration-500",
@@ -105,7 +100,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
                   {adCompleted ? "Verified" : "Lockdown"}
                 </h2>
                 <p className="text-[7px] md:text-[10px] font-bold text-neutral-600 uppercase tracking-[0.3em] mt-1 hidden sm:block">
-                  NODE_ID: {selectedAd.id.toUpperCase()} // v4.2
+                  NODE_ID: {selectedAd.id.toUpperCase()}
                 </p>
               </div>
             </div>
@@ -124,7 +119,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
             </div>
           </div>
 
-          {/* --- DYNAMIC VISUAL PORT (Responsive Ratio) --- */}
+          {/* --- CONTENT AREA --- */}
           <div className="p-3 md:p-8">
             <a 
               href={selectedAd.link} 
@@ -132,7 +127,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
               rel="noopener noreferrer"
               className="group block relative w-full rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border border-white/5 bg-neutral-950 shadow-2xl transition-transform active:scale-[0.98]"
             >
-              {/* Aspect Ratio Switch: 4:5 for Mobile, 21:9 for Laptop */}
+              {/* FIXED RATIO: aspect-[21/9] for laptop prevents the image from being too tall */}
               <div className="relative w-full aspect-[4/5] md:aspect-[21/9]">
                 <img 
                   src={selectedAd.portraitImg} 
@@ -147,19 +142,19 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
                 
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                 <div className="absolute top-4 left-4">
-                   <Badge className="bg-red-600 text-white font-black italic text-[7px] md:text-[9px] px-3 py-1 border-none shadow-lg uppercase tracking-widest">Sponsored</Badge>
+                   <Badge className="bg-red-600 text-white font-black italic text-[7px] md:text-[9px] px-3 py-1 border-none uppercase">Sponsored</Badge>
                 </div>
 
                 <div className="absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 flex items-end justify-between gap-4">
                   <div className="space-y-1 md:space-y-2">
-                    <h3 className="text-lg md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">
+                    <h3 className="text-lg md:text-4xl font-black italic uppercase tracking-tighter text-white">
                       {selectedAd.title}
                     </h3>
                     <p className="text-[8px] md:text-sm text-neutral-400 font-bold uppercase tracking-widest line-clamp-1">
                       {selectedAd.desc}
                     </p>
                   </div>
-                  <div className="p-3 md:p-6 rounded-xl md:rounded-[2rem] bg-white text-black group-hover:bg-red-600 group-hover:text-white transition-all shadow-xl">
+                  <div className="p-3 md:p-6 rounded-xl md:rounded-[2rem] bg-white text-black group-hover:bg-red-600 group-hover:text-white transition-all">
                     <ExternalLink size={18} className="md:w-6 md:h-6" />
                   </div>
                 </div>
@@ -167,10 +162,10 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
             </a>
           </div>
 
-          {/* --- INTERACTION CONTROL --- */}
-          <div className="px-5 pb-6 md:px-10 md:pb-10 space-y-6">
+          {/* --- FOOTER / CONTROLS --- */}
+          <div className="px-5 pb-8 md:px-10 md:pb-10 space-y-6">
             <div className="flex flex-col gap-4">
-              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                  <motion.div 
                    initial={{ width: "0%" }}
                    animate={{ width: `${((10 - countdown) / 10) * 100}%` }}
@@ -186,7 +181,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
                 onClick={handleAction}
                 disabled={!adCompleted}
                 className={cn(
-                  "w-full h-14 md:h-20 rounded-2xl md:rounded-3xl text-[10px] md:text-lg font-black uppercase italic tracking-[0.2em] transition-all active:scale-95 shadow-2xl border-none",
+                  "w-full h-14 md:h-20 rounded-2xl md:rounded-3xl text-[10px] md:text-lg font-black uppercase italic tracking-[0.2em] transition-all active:scale-95",
                   adCompleted 
                     ? "bg-white text-black hover:bg-emerald-500 hover:text-white" 
                     : "bg-neutral-900 text-neutral-700 cursor-not-allowed border-white/5 opacity-50"
@@ -196,14 +191,13 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
               </Button>
             </div>
 
-            {/* Premium Shortcut */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t border-white/5 opacity-50 hover:opacity-100 transition-opacity">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t border-white/5">
               <button 
                 onClick={() => { onOpenChange(false); window.location.href='/pricing'; }}
                 className="flex items-center gap-2 group"
               >
                 <Crown className="w-3 h-3 text-yellow-500" />
-                <span className="text-[8px] md:text-[10px] font-black uppercase italic text-neutral-500 group-hover:text-yellow-500 transition-colors">
+                <span className="text-[8px] md:text-[10px] font-black uppercase italic text-neutral-500 group-hover:text-yellow-500">
                   Remove Protocols via Premium
                 </span>
               </button>
