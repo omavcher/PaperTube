@@ -12,7 +12,7 @@ import { SYLLABUS_DATA } from "@/config/syllabus-data";
 import { LoginDialog } from "@/components/LoginDialog";
 
 export default function SyllabusTrackerPage() {
-  const [selectedExam, setSelectedExam] = useState<string>("GATE-CSE-2026");
+  const [selectedExam, setSelectedExam] = useState<string>("GATE-CSE-2027");
   const [checkedTopics, setCheckedTopics] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -82,7 +82,7 @@ export default function SyllabusTrackerPage() {
     }
   };
 
-  const currentExam = SYLLABUS_DATA[selectedExam] || SYLLABUS_DATA["GATE-CSE-2026"];
+  const currentExam = SYLLABUS_DATA[selectedExam] || SYLLABUS_DATA["GATE-CSE-2027"];
   const allTopics = useMemo(() => currentExam.subjects.flatMap(s => s.topics), [selectedExam]);
   const progressPercent = Math.round((checkedTopics.length / allTopics.length) * 100) || 0;
 

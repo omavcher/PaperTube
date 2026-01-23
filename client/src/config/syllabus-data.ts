@@ -13,7 +13,7 @@ export interface Exam {
 
 export const SYLLABUS_DATA: Record<string, Exam> = {
   // GATE Exams
-  "GATE-CSE-2026": {
+  "GATE-CSE-2027": {
     id: "gate_cse",
     name: "GATE Computer Science & IT",
     logo: "https://upload.wikimedia.org/wikipedia/en/thumb/6/69/IIT_Madras_Logo.svg/330px-IIT_Madras_Logo.svg.png",
@@ -159,7 +159,7 @@ export const SYLLABUS_DATA: Record<string, Exam> = {
     ]
   },
 
-  "GATE-EE-2026": {
+  "GATE-EE-2027": {
     id: "gate_ee",
     name: "GATE Electrical Engineering",
     logo: "https://upload.wikimedia.org/wikipedia/en/thumb/6/69/IIT_Madras_Logo.svg/330px-IIT_Madras_Logo.svg.png",
@@ -215,7 +215,7 @@ export const SYLLABUS_DATA: Record<string, Exam> = {
     ]
   },
 
-  "GATE-CE-2026": {
+  "GATE-CE-2027": {
     id: "gate_ce",
     name: "GATE Civil Engineering",
     logo: "https://upload.wikimedia.org/wikipedia/en/thumb/6/69/IIT_Madras_Logo.svg/330px-IIT_Madras_Logo.svg.png",
@@ -272,7 +272,7 @@ export const SYLLABUS_DATA: Record<string, Exam> = {
   },
 
   // JEE Exams
-  "JEE-MAIN-2026": {
+  "JEE-MAIN-2027": {
     id: "jee_main",
     name: "JEE Main (Engineering)",
     logo: "https://upload.wikimedia.org/wikipedia/en/thumb/b/b0/National_Testing_Agency_logo.png/421px-National_Testing_Agency_logo.png",
@@ -327,7 +327,7 @@ export const SYLLABUS_DATA: Record<string, Exam> = {
     ]
   },
 
-  "JEE-ADVANCED-2026": {
+  "JEE-ADVANCED-2027": {
     id: "jee_adv",
     name: "JEE Advanced",
     logo: "https://upload.wikimedia.org/wikipedia/en/thumb/b/b0/National_Testing_Agency_logo.png/421px-National_Testing_Agency_logo.png",
@@ -373,7 +373,7 @@ export const SYLLABUS_DATA: Record<string, Exam> = {
   },
 
   // NEET
-  "NEET-UG-2026": {
+  "NEET-UG-2027": {
     id: "neet_ug",
     name: "NEET (Medical Entrance)",
     logo: "https://upload.wikimedia.org/wikipedia/en/thumb/b/b0/National_Testing_Agency_logo.png/421px-National_Testing_Agency_logo.png",
@@ -450,7 +450,7 @@ export const SYLLABUS_DATA: Record<string, Exam> = {
   },
 
   // CAT
-  "CAT-2026": {
+  "CAT-2027": {
     id: "cat_exam",
     name: "CAT (MBA Entrance)",
     logo: "https://www.uxdt.nic.in/wp-content/uploads/2024/06/iim-ahmedabad--feture-img-01.jpg",
@@ -502,7 +502,7 @@ export const SYLLABUS_DATA: Record<string, Exam> = {
   },
 
   // NDA
-  "NDA-2026": {
+  "NDA-2027": {
     id: "nda",
     name: "NDA (National Defence Academy)",
     logo: "https://imgs.search.brave.com/GBZ0-7CeovveFKW1iCtTuXkY79iFTwarWkMj8W6XJR8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly91cGxv/YWQud2lraW1lZGlh/Lm9yZy93aWtpcGVk/aWEvY29tbW9ucy82/LzZlL05hdGlvbmFs/X0RlZmVuY2VfQWNh/ZGVteV9OREEucG5n",
@@ -539,7 +539,7 @@ export const SYLLABUS_DATA: Record<string, Exam> = {
   },
 
   // CA Exams
-  "CA-FOUNDATION-2026": {
+  "CA-FOUNDATION-2027": {
     id: "ca_foundation",
     name: "CA Foundation",
     logo: "https://imgs.search.brave.com/AJAA364ELyG5WNXkKd-rv06ZzYEjDSSMAVbWlI5kO44/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWFn/ZXMuc2Vla2xvZ28u/Y29tL2xvZ28tcG5n/LzEzLzEvdGhlLWlu/c3RpdHV0ZS1vZi1j/aGFydGVyZWQtYWNj/b3VudGFudHMtb2Yt/aW5kaWEtbG9nby1w/bmdfc2Vla2xvZ28t/MTM4NjE4LnBuZw",
@@ -599,7 +599,7 @@ export const SYLLABUS_DATA: Record<string, Exam> = {
     ]
   },
 
-  "CA-INTERMEDIATE-2026": {
+  "CA-INTERMEDIATE-2027": {
     id: "ca_intermediate",
     name: "CA Intermediate",
     logo: "https://imgs.search.brave.com/AJAA364ELyG5WNXkKd-rv06ZzYEjDSSMAVbWlI5kO44/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWFn/ZXMuc2Vla2xvZ28u/Y29tL2xvZ28tcG5n/LzEzLzEvdGhlLWlu/c3RpdHV0ZS1vZi1j/aGFydGVyZWQtYWNj/b3VudGFudHMtb2Yt/aW5kaWEtbG9nby1w/bmdfc2Vla2xvZ28t/MTM4NjE4LnBuZw",
