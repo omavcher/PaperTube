@@ -17,7 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  const isNotesPage = pathname?.startsWith("/notes/") || pathname?.startsWith("/admin/") || pathname?.startsWith("/schools/");
+  const isNotesPage = pathname?.startsWith("/notes/") || pathname?.startsWith("/admin/") || pathname?.startsWith("/schools/") || pathname?.startsWith("/tools/");
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
