@@ -9,6 +9,7 @@ import axios from "axios";
 import api from "@/config/api";
 import { Toaster, toast } from "sonner";
 import UserTracker from "@/components/UserTracker";
+import { cn } from "@/lib/utils";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -17,7 +18,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  const isNotesPage = pathname?.startsWith("/notes/") || pathname?.startsWith("/admin/") || pathname?.startsWith("/schools/") || pathname?.startsWith("/tools/");
+
+  // --- GRANULAR VISIBILITY MAP ---
+  // Hide Desktop Nav on high-focus tools or admin pages
+  const hideDesktopNav = [
+    "/admin", 
+    "/tools/code-to-image", 
+    "/notes/", 
+    "/logic-gate-lab"
+  ].some(path => pathname?.startsWith(path));
+
+  // Hide Mobile Bottom Dock on tools that require full-screen height
+  const hideMobileNav = [
+    "/admin", 
+    "/sentinel"
+  ].some(path => pathname?.startsWith(path));
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -32,11 +47,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const handleLoginSuccess = async (
-    googleAccessToken: string,
-    userInfo: any,
-    backendResponse?: any
-  ) => {
+
+
+  const handleLoginSuccess = async (googleAccessToken: string, userInfo: any, backendResponse?: any) => {
     try {
       setAuthLoading(true);
       if (backendResponse?.success) {
@@ -49,54 +62,45 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
         setUser(backendUser);
         setIsLoggedIn(true);
-        toast.success(`Welcome ${backendUser.name}`);
+        toast.success(`Identity Verified: ${backendUser.name}`);
       }
     } catch {
-      toast.error("Login Failed");
+      toast.error("Auth Handshake Failed");
     } finally {
       setAuthLoading(false);
     }
   };
 
-  if (!clientId) {
-    return (
-      <>
-        <Toaster theme="dark" position="top-center" />
-        <div className="fixed inset-0 -z-10 opacity-20 pointer-events-none">
-          <BackgroundBeams />
-        </div>
-        <div className="p-4 bg-red-500/10 text-red-500 text-center">
-          Missing Google Client ID in .env file
-        </div>
-        <main className={`flex-1 ${isNotesPage ? "mt-0" : "md:mt-20"}`}>
-          {children}
-        </main>
-      </>
-    );
-  }
-
   return (
-    <GoogleOAuthProvider clientId={clientId}>
-      <Toaster theme="dark" position="top-center" />
+    <GoogleOAuthProvider clientId={clientId || ""}>
+      <Toaster theme="dark" position="top-center" richColors />
+      
+      {/* Matrix Background */}
       <div className="fixed inset-0 -z-10 opacity-20 pointer-events-none">
         <BackgroundBeams />
       </div>
 
       <GoogleOneTapLoginWrapper onSuccess={handleLoginSuccess} />
 
-      {!isNotesPage && (
-        <Navbar
-          isLoggedIn={isLoggedIn}
-          user={user}
-          onLoginSuccess={handleLoginSuccess}
-          authLoading={authLoading}
-        />
-      )}
+      <Navbar
+        isLoggedIn={isLoggedIn}
+        user={user}
+        onLoginSuccess={handleLoginSuccess}
+        authLoading={authLoading}
+        hideDesktop={hideDesktopNav}
+        hideMobile={hideMobileNav}
+      />
 
-      <main className={`flex-1 ${isNotesPage ? "mt-0" : "md:mt-20"}`}>
+      {/* Main Content Wrapper with Adaptive Padding */}
+      <main className={cn(
+        "flex-1 transition-all duration-500",
+        !hideDesktopNav ? "lg:mt-20" : "mt-0",
+        !hideMobileNav ? "pb-20 lg:pb-0" : "pb-0"
+      )}>
         {children}
       </main>
-      <UserTracker/>
+
+      <UserTracker />
     </GoogleOAuthProvider>
   );
 }
@@ -116,12 +120,8 @@ function GoogleOneTapLoginWrapper({ onSuccess }: any) {
         onSuccess(idToken, userInfo, response.data);
       } catch (error) {
         console.error("One Tap Login Error:", error);
-        toast.error("Google One Tap Login Failed");
       }
     },
-    onError: () => {
-      console.error("Google One Tap Script Load Error");
-    }
   });
   return null;
 }
