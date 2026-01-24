@@ -12,7 +12,7 @@ const TransactionSchema = new mongoose.Schema({
   baseAmount: { type: Number },
   discountAmount: { type: Number, default: 0 },
   gstAmount: { type: Number, default: 0 },
-  tokens: { type: Number, default: 0 },
+  tokens: { type: Number, default: null },
   status: { type: String, enum: ['success', 'failed'], required: true },
   couponCode: { type: String },
   packageMeta: { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -29,7 +29,7 @@ const TransactionSchema = new mongoose.Schema({
 const TokenUsageSchema = new mongoose.Schema({
   name: { type: String, required: true },
   date: { type: Date, default: Date.now },
-  tokens: { type: Number, required: true },
+  tokens: { type: Number, required: true , default: 0},
 });
 
 const UserSchema = new mongoose.Schema(
@@ -86,6 +86,11 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    tokens: {
+      type: Number,
+      default: 3,
+    },
+    tokenUsageHistory: [TokenUsageSchema],
     lastTokenReset: {
       type: Date,
       default: Date.now

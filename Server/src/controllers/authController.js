@@ -628,7 +628,7 @@ exports.getProfile = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const user = await User.findById(userId).select('-password -__v'); 
+    const user = await User.findById(userId).select('-password -__v -googleAccessToken -googleId -followerUsers'); 
 
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });

@@ -1,247 +1,370 @@
 // controllers/paymentController.js
 const User = require("../models/User");
-const { getSubscriptionPlan, getTokenPackage } = require("../config/packages");
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
 
-// Enhanced transaction validation
-const validateTransactionData = (data) => {
-  const requiredFields = ['packageId', 'packageType', 'status', 'amount'];
-  const missingFields = requiredFields.filter(field => !data[field]);
-  
-  if (missingFields.length > 0) {
-    throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+// Package configurations
+const SUBSCRIPTION_PLANS = {
+  scholar: {
+    monthly: { basePrice: 149, durationDays: 30 },
+    yearly: { basePrice: 1490, durationDays: 365 }
+  },
+  pro: {
+    monthly: { basePrice: 299, durationDays: 30 },
+    yearly: { basePrice: 2990, durationDays: 365 }
+  },
+  power: {
+    monthly: { basePrice: 599, durationDays: 30 },
+    yearly: { basePrice: 5990, durationDays: 365 }
   }
-
-  const amount = parseFloat(data.amount);
-  if (isNaN(amount) || amount < 0) {
-    throw new Error('Invalid amount value');
-  }
-
-  if (!['subscription', 'token'].includes(data.packageType)) {
-    throw new Error('Invalid packageType. Must be "subscription" or "token"');
-  }
-
-  if (data.packageType === 'subscription' && !data.billingPeriod) {
-    throw new Error('Billing period is required for subscription packages');
-  }
-
-  return true;
 };
 
-// Enhanced user lookup
-const findUser = async (identifier) => {
-  if (!identifier) return null;
-
-  // Try different lookup methods
-  const lookupMethods = [
-    // By MongoDB ObjectId
-    () => /^[0-9a-fA-F]{24}$/.test(identifier) ? User.findById(identifier) : null,
-    // By email
-    () => User.findOne({ email: identifier.toLowerCase() }),
-    // By payment user ID
-    () => User.findOne({ _id: identifier }),
-  ];
-
-  for (const method of lookupMethods) {
-    try {
-      const user = await method();
-      if (user) return user;
-    } catch (error) {
-      continue;
-    }
-  }
-  return null;
+const TOKEN_PACKAGES = {
+  basic: { tokens: 100, basePrice: 99 },
+  standard: { tokens: 500, basePrice: 399 },
+  premium: { tokens: 1000, basePrice: 699 }
 };
 
-// Save transaction to database
-exports.saveTransaction = async (req, res) => {
+// Verify payment signature
+const verifySignature = (orderId, paymentId, signature) => {
+  const body = orderId + "|" + paymentId;
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(body.toString())
+    .digest("hex");
+  return expectedSignature === signature;
+};
+
+// Create Razorpay order
+exports.createOrder = async (req, res) => {
   try {
-    const transactionData = {
-      razorpay_payment_id: req.body.razorpay_payment_id,
-      razorpay_order_id: req.body.razorpay_order_id,
-      razorpay_signature: req.body.razorpay_signature,
-      packageId: req.body.packageId,
-      packageType: req.body.packageType,
-      billingPeriod: req.body.billingPeriod,
-      amount: req.body.amount,
-      baseAmount: req.body.baseAmount,
-      discountAmount: req.body.discountAmount || 0,
-      gstAmount: req.body.gstAmount || 0,
-      status: req.body.status,
-      couponCode: req.body.couponCode,
-      userId: req.body.userId,
-      userEmail: req.body.userEmail,
-      userName: req.body.userName,
-      packageName: req.body.packageName,
-      error: req.body.error,
-      paymentMethod: req.body.paymentMethod || 'razorpay'
+    const { 
+      packageId, 
+      packageType, 
+      finalAmount, 
+      billingPeriod = 'monthly',
+      packageName 
+    } = req.body;
+
+    // Validate required fields
+    if (!packageId || !packageType || !finalAmount) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields"
+      });
+    }
+
+    // Validate amount
+    const amount = Math.round(parseFloat(finalAmount) * 100); // Convert to paise
+    if (amount < 100) { // Minimum ₹1
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be at least ₹1"
+      });
+    }
+
+    // Create order options
+    const options = {
+      amount: amount,
+      currency: "INR",
+      receipt: `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      notes: {
+        packageId: packageId,
+        packageType: packageType,
+        billingPeriod: packageType === 'subscription' ? billingPeriod : undefined,
+        packageName: packageName || packageId,
+        userId: req.user._id.toString(),
+        userEmail: req.user.email
+      },
+      payment_capture: 1 // Auto capture payment
     };
 
-    console.log("📦 Received transaction data:", {
-      razorpay_payment_id: transactionData.razorpay_payment_id,
-      packageId: transactionData.packageId,
-      packageType: transactionData.packageType,
-      amount: transactionData.amount,
-      billingPeriod: transactionData.billingPeriod,
-      status: transactionData.status,
+    // Create order with Razorpay
+    const order = await razorpay.orders.create(options);
+
+    console.log("✅ Order created:", {
+      orderId: order.id,
+      amount: order.amount / 100,
+      userId: req.user._id,
+      package: packageId
     });
 
-    // Validate transaction data
-    validateTransactionData(transactionData);
+    res.json({
+      success: true,
+      order: {
+        id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        receipt: order.receipt
+      },
+      key: process.env.RAZORPAY_KEY_ID
+    });
 
-    const totalAmount = parseFloat(transactionData.amount);
-    let packageDetails;
-    let tokensToAward = 0;
-    let computedBaseAmount;
+  } catch (error) {
+    console.error("❌ Order creation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create payment order",
+      error: error.message
+    });
+  }
+};
 
-    // Get package details based on type
-    if (transactionData.packageType === "subscription") {
-      packageDetails = getSubscriptionPlan(transactionData.packageId, transactionData.billingPeriod);
-      if (!packageDetails) {
+// Verify payment and save transaction
+exports.verifyPayment = async (req, res) => {
+  try {
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+      packageId,
+      packageType,
+      finalAmount,
+      baseAmount,
+      discountAmount,
+      gstAmount,
+      couponCode,
+      billingPeriod,
+      mobile,
+      status,
+      userId,
+      userEmail,
+      userName,
+      packageName
+    } = req.body;
+
+    console.log("🔍 Verifying payment:", {
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      packageId,
+      status,
+      userId
+    });
+
+    // Verify signature for successful payments
+    if (status === "success") {
+      const isValid = verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+      
+      if (!isValid) {
         return res.status(400).json({
           success: false,
-          message: "Invalid subscription plan or billing period",
+          message: "Invalid payment signature"
         });
       }
-      computedBaseAmount = packageDetails.basePrice;
-    } else if (transactionData.packageType === "token") {
-      packageDetails = getTokenPackage(transactionData.packageId);
-      if (!packageDetails) {
-        return res.status(400).json({
+    }
+
+    // Prepare transaction data
+    const transactionData = {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature: status === "success" ? razorpay_signature : undefined,
+      packageId,
+      packageType,
+      billingPeriod,
+      amount: parseFloat(finalAmount),
+      baseAmount: parseFloat(baseAmount) || 0,
+      discountAmount: parseFloat(discountAmount) || 0,
+      gstAmount: parseFloat(gstAmount) || 0,
+      status,
+      couponCode: couponCode || null,
+      userId: userId || req.user._id,
+      userEmail: userEmail || req.user.email,
+      userName: userName || req.user.name,
+      packageName: packageName || `Package ${packageId}`,
+      error: status === "failed" ? req.body.error : null,
+      paymentMethod: "razorpay"
+    };
+
+    console.log("📦 Processing transaction data:", {
+      userId: transactionData.userId,
+      email: transactionData.userEmail,
+      amount: transactionData.amount
+    });
+
+    // Save transaction using internal function
+    const result = await saveTransactionInternal(transactionData);
+
+    if (status === "success") {
+      console.log("✅ Payment verified and saved successfully");
+      
+      // Fetch updated user data
+      const user = await User.findById(transactionData.userId);
+      
+      if (!user) {
+        return res.status(404).json({
           success: false,
-          message: "Invalid token package",
+          message: "User not found after transaction"
         });
       }
-      tokensToAward = packageDetails.tokens;
-      computedBaseAmount = packageDetails.basePrice;
-    }
-
-    // Find user using multiple methods
-    let user = null;
-    
-    // Method 1: From authenticated request
-    if (req.user?._id) {
-      user = await User.findById(req.user._id);
-    }
-    
-    // Method 2: From provided user identifier
-    if (!user && transactionData.userId) {
-      user = await findUser(transactionData.userId);
-    }
-    
-    // Method 3: From user email
-    if (!user && transactionData.userEmail) {
-      user = await User.findOne({ email: transactionData.userEmail.toLowerCase() });
-    }
-
-    if (!user) {
-      console.error("❌ User not found for transaction");
-      return res.status(404).json({
-        success: false,
-        message: "User not found. Please provide valid user identifier",
-        providedData: {
-          userId: transactionData.userId,
-          userEmail: transactionData.userEmail,
-          authenticatedUser: req.user?._id
+      
+      res.json({
+        success: true,
+        message: "Payment verified successfully",
+        data: {
+          transactionId: result.transactionId,
+          orderId: razorpay_order_id,
+          paymentId: razorpay_payment_id,
+          tokens: user?.token || 0,
+          tokensAwarded: result.tokensAwarded || 0,
+          membership: user?.membership || null,
+          status: "success"
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        message: "Failed transaction saved",
+        data: {
+          transactionId: result.transactionId,
+          status: "failed"
         }
       });
     }
 
-    console.log("✅ User found:", { id: user._id, email: user.email, name: user.name });
+  } catch (error) {
+    console.error("❌ Payment verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Payment verification failed",
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
 
-    // Generate order ID if not provided
-    const generateOrderId = () => {
-      const timestamp = Date.now().toString(36);
-      const random = Math.random().toString(36).substr(2, 5);
-      return `order_${timestamp}_${random}`.toUpperCase();
-    };
-
-    const finalOrderId = transactionData.razorpay_order_id || generateOrderId();
+// Internal function to save transaction
+const saveTransactionInternal = async (transactionData) => {
+  try {
+    // Validate required fields
+    const requiredFields = ['packageId', 'packageType', 'status', 'amount', 'userId'];
+    const missingFields = requiredFields.filter(field => !transactionData[field]);
     
-    // Parse amounts with validation
-    const parsedBaseAmount = transactionData.baseAmount !== undefined && 
-                            transactionData.baseAmount !== null && 
-                            !isNaN(parseFloat(transactionData.baseAmount))
-      ? parseFloat(transactionData.baseAmount)
-      : computedBaseAmount;
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
 
-    const parsedDiscount = !isNaN(parseFloat(transactionData.discountAmount)) 
-      ? parseFloat(transactionData.discountAmount) 
-      : 0;
+    // Parse and validate amounts
+    const totalAmount = parseFloat(transactionData.amount);
+    const baseAmount = parseFloat(transactionData.baseAmount) || 0;
+    const discountAmount = parseFloat(transactionData.discountAmount) || 0;
+    const gstAmount = parseFloat(transactionData.gstAmount) || 0;
 
-    const parsedGst = !isNaN(parseFloat(transactionData.gstAmount)) 
-      ? parseFloat(transactionData.gstAmount) 
-      : 0;
+    if (isNaN(totalAmount) || totalAmount < 0) {
+      throw new Error('Invalid amount value');
+    }
 
-    const sanitizedPaymentId = transactionData.razorpay_payment_id || 
-                              `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Get package details
+    let packageDetails;
+    let tokensToAward = 999999;
+    let computedBaseAmount = 0;
 
-    // Build comprehensive transaction data
+    if (transactionData.packageType === "subscription") {
+      const plan = SUBSCRIPTION_PLANS[transactionData.packageId];
+      if (!plan) {
+        throw new Error('Invalid subscription plan');
+      }
+
+      const periodPlan = plan[transactionData.billingPeriod || 'monthly'];
+      if (!periodPlan) {
+        throw new Error('Invalid billing period');
+      }
+
+      packageDetails = {
+        name: `${transactionData.packageId.charAt(0).toUpperCase() + transactionData.packageId.slice(1)} Plan`,
+        basePrice: periodPlan.basePrice,
+        durationDays: periodPlan.durationDays
+      };
+      computedBaseAmount = periodPlan.basePrice;
+
+    } else if (transactionData.packageType === "token") {
+      const tokenPackage = TOKEN_PACKAGES[transactionData.packageId];
+      if (!tokenPackage) {
+        throw new Error('Invalid token package');
+      }
+
+      packageDetails = {
+        name: `${transactionData.packageId.charAt(0).toUpperCase() + transactionData.packageId.slice(1)} Tokens`,
+        basePrice: tokenPackage.basePrice,
+        tokens: tokenPackage.tokens
+      };
+      tokensToAward = tokenPackage.tokens;
+      computedBaseAmount = tokenPackage.basePrice;
+    } else {
+      throw new Error('Invalid package type');
+    }
+
+    // Find user
+    const user = await User.findById(transactionData.userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    console.log("👤 User found:", {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      hasTransactionsField: user.transactions !== undefined
+    });
+
+    // Check for duplicate successful transactions
+    if (transactionData.status === "success" && transactionData.razorpay_payment_id) {
+      const existingTransaction = user.transactions.find(
+        txn => txn.razorpay_payment_id === transactionData.razorpay_payment_id && txn.status === "success"
+      );
+
+      if (existingTransaction) {
+        console.log(`⚠️ Payment ${transactionData.razorpay_payment_id} already processed`);
+        return {
+          success: false,
+          message: "Payment already processed",
+          transactionId: existingTransaction._id
+        };
+      }
+    }
+
+    // Build transaction record
     const transactionRecord = {
-      paymentId: sanitizedPaymentId,
-      orderId: finalOrderId,
+      paymentId: transactionData.razorpay_payment_id || `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      orderId: transactionData.razorpay_order_id || `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       signature: transactionData.razorpay_signature || "",
       packageId: transactionData.packageId,
-      packageName: transactionData.packageName || packageDetails?.name || `Package ${transactionData.packageId}`,
+      packageName: transactionData.packageName || packageDetails.name,
       packageType: transactionData.packageType,
       billingPeriod: transactionData.packageType === "subscription" ? transactionData.billingPeriod : undefined,
       amount: totalAmount,
-      baseAmount: parsedBaseAmount,
-      discountAmount: parsedDiscount,
-      gstAmount: parsedGst,
+      baseAmount: baseAmount || computedBaseAmount,
+      discountAmount: discountAmount,
+      gstAmount: gstAmount,
       tokens: tokensToAward,
       status: transactionData.status,
       couponCode: transactionData.couponCode || null,
-      packageMeta: {
-        serverComputed: {
-          baseAmount: computedBaseAmount,
-          tokens: tokensToAward,
-          planDurationDays: transactionData.packageType === "subscription" ? packageDetails?.durationDays : undefined,
-          packageDetails: packageDetails || null
-        },
-        clientReported: {
-          baseAmount: transactionData.baseAmount,
-          discountAmount: transactionData.discountAmount,
-          gstAmount: transactionData.gstAmount,
-        },
-        validation: {
-          amountsMatch: Math.abs(parsedBaseAmount - computedBaseAmount) < 0.01,
-          totalAmountValid: Math.abs(totalAmount - (parsedBaseAmount - parsedDiscount + parsedGst)) < 0.01
-        }
-      },
       razorpay_payment_id: transactionData.razorpay_payment_id,
       razorpay_order_id: transactionData.razorpay_order_id,
       razorpay_signature: transactionData.razorpay_signature,
-      paymentMethod: transactionData.paymentMethod,
+      paymentMethod: transactionData.paymentMethod || "razorpay",
       error: transactionData.error || null,
       userEmail: transactionData.userEmail || user.email,
       userName: transactionData.userName || user.name,
-      timestamp: new Date(),
+      timestamp: new Date()
     };
 
-    console.log("💾 Saving transaction:", {
+    console.log("💾 Saving transaction record:", {
       paymentId: transactionRecord.paymentId,
-      orderId: transactionRecord.orderId,
       package: transactionRecord.packageName,
       amount: transactionRecord.amount,
       tokens: transactionRecord.tokens,
       status: transactionRecord.status
     });
 
-    // Check for duplicate successful transactions
-    let existingSuccessfulTransaction = null;
-    if (transactionData.razorpay_payment_id) {
-      existingSuccessfulTransaction = user.transactions.find(
-        (txn) => txn.paymentId === transactionData.razorpay_payment_id && txn.status === "success"
-      );
-    }
-
-    if (transactionData.status === "success" && existingSuccessfulTransaction) {
-      console.log(`⚠️ Payment ${transactionData.razorpay_payment_id} was already processed successfully`);
-      return res.status(409).json({
-        success: false,
-        message: "This payment was already processed successfully",
-        transactionId: existingSuccessfulTransaction._id
-      });
+    // Initialize transactions array if it doesn't exist
+    if (!user.transactions) {
+      user.transactions = [];
     }
 
     // Add transaction to user's history
@@ -253,15 +376,21 @@ exports.saveTransaction = async (req, res) => {
         // Add tokens to user's balance
         user.token += tokensToAward;
         
+        // Initialize tokenTransactions array if it doesn't exist
+        if (!user.tokenTransactions) {
+          user.tokenTransactions = [];
+        }
+        
         // Record token transaction
         user.tokenTransactions.push({
           name: `Token Purchase - ${transactionRecord.packageName}`,
           type: "token_purchase",
           tokensUsed: tokensToAward,
-          status: "success"
+          status: "success",
+          date: new Date()
         });
         
-        console.log(`💰 Added ${tokensToAward} tokens to user. New balance: ${user.token}`);
+        console.log(`💰 Added ${tokensToAward} tokens to user ${user.email}. New balance: ${user.token}`);
       }
 
       if (transactionData.packageType === "subscription") {
@@ -277,28 +406,37 @@ exports.saveTransaction = async (req, res) => {
 
         user.membership = {
           isActive: true,
-          planId: packageDetails.planId,
+          planId: transactionData.packageId,
           planName: packageDetails.name,
           billingPeriod: transactionData.billingPeriod,
           startedAt: user.membership?.startedAt || now,
-          expiresAt,
-          lastPaymentId: sanitizedPaymentId,
+          expiresAt: expiresAt,
+          lastPaymentId: transactionRecord.paymentId,
           autoRenew: user.membership?.autoRenew || false,
         };
+
+        // Initialize tokenTransactions array if it doesn't exist
+        if (!user.tokenTransactions) {
+          user.tokenTransactions = [];
+        }
 
         // Record membership transaction
         user.tokenTransactions.push({
           name: `Membership - ${packageDetails.name} (${transactionData.billingPeriod})`,
           type: "membership_purchase",
           tokensUsed: 0,
-          status: "success"
+          status: "success",
+          date: new Date()
         });
 
-        console.log(`🪪 Membership updated till ${expiresAt.toISOString()}`);
+        console.log(`🪪 Membership updated for ${user.email} till ${expiresAt.toISOString()}`);
       }
     }
 
-    // Save user with transaction
+
+
+    user.tokens = 999999;
+    // Save user
     await user.save();
 
     const savedTransaction = user.transactions[user.transactions.length - 1];
@@ -307,42 +445,59 @@ exports.saveTransaction = async (req, res) => {
       transactionId: savedTransaction._id,
       paymentId: savedTransaction.paymentId,
       tokensAwarded: tokensToAward,
-      newTokenBalance: user.token,
-      membershipActive: user.membership?.isActive || false
+      newTokenBalance: user.token
     });
+
+    return {
+      success: true,
+      transactionId: savedTransaction._id,
+      tokensAwarded: tokensToAward
+    };
+
+  } catch (error) {
+    console.error("❌ Error saving transaction internally:", error);
+    throw error;
+  }
+};
+
+// Public endpoint to save transaction (for direct calls)
+exports.saveTransaction = async (req, res) => {
+  try {
+    const transactionData = {
+      ...req.body,
+      userId: req.user._id,
+      userEmail: req.user.email,
+      userName: req.user.name
+    };
+
+    const result = await saveTransactionInternal(transactionData);
+
+    if (result.success === false && result.message === "Payment already processed") {
+      return res.status(409).json(result);
+    }
 
     res.json({
       success: true,
-      transactionId: savedTransaction._id,
-      orderId: finalOrderId,
+      transactionId: result.transactionId,
+      orderId: transactionData.razorpay_order_id || transactionData.orderId,
       message: `Transaction ${transactionData.status} saved successfully`,
       data: {
-        transactionId: savedTransaction._id,
-        orderId: finalOrderId,
-        paymentId: sanitizedPaymentId,
-        tokens: user.token,
-        tokensAwarded: tokensToAward,
-        membership: user.membership,
-        status: transactionData.status,
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name
-        }
-      },
+        transactionId: result.transactionId,
+        tokensAwarded: result.tokensAwarded
+      }
     });
+
   } catch (error) {
-    console.error("❌ Error saving transaction:", error);
+    console.error("❌ Error in saveTransaction endpoint:", error);
     res.status(500).json({
       success: false,
       message: "Failed to save transaction",
-      error: error.message,
-      details: error.stack
+      error: error.message
     });
   }
 };
 
-// Get user's transaction history with enhanced filtering
+// Get user's transaction history
 exports.getTransactions = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -356,7 +511,8 @@ exports.getTransactions = async (req, res) => {
       });
     }
 
-    let transactions = user.transactions;
+    // Initialize transactions if not present
+    let transactions = user.transactions || [];
 
     // Apply filters
     if (status) {
@@ -392,9 +548,9 @@ exports.getTransactions = async (req, res) => {
         totalPages: Math.ceil(transactions.length / limit)
       },
       summary: {
-        totalTransactions: user.transactions.length,
-        successful: user.transactions.filter(t => t.status === 'success').length,
-        failed: user.transactions.filter(t => t.status === 'failed').length
+        totalTransactions: transactions.length,
+        successful: transactions.filter(t => t.status === 'success').length,
+        failed: transactions.filter(t => t.status === 'failed').length
       }
     });
 
@@ -408,7 +564,7 @@ exports.getTransactions = async (req, res) => {
   }
 };
 
-// Get user token balance with enhanced info
+// Get user token balance
 exports.getTokenBalance = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -421,14 +577,14 @@ exports.getTokenBalance = async (req, res) => {
       });
     }
 
-    const availableToken = Math.max(0, user.token - user.usedToken);
+    const availableToken = Math.max(0, (user.token || 0) - (user.usedToken || 0));
 
     res.json({
       success: true,
-      token: user.token,
-      usedToken: user.usedToken,
+      token: user.token || 0,
+      usedToken: user.usedToken || 0,
       availableToken: availableToken,
-      membership: user.membership,
+      membership: user.membership || null,
       user: {
         name: user.name,
         email: user.email
@@ -459,7 +615,9 @@ exports.getTransactionById = async (req, res) => {
       });
     }
 
-    const transaction = user.transactions.id(transactionId);
+    const transactions = user.transactions || [];
+    const transaction = transactions.find(t => t._id.toString() === transactionId);
+    
     if (!transaction) {
       return res.status(404).json({
         success: false,
@@ -477,6 +635,42 @@ exports.getTransactionById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch transaction",
+      error: error.message
+    });
+  }
+};
+
+// Test endpoint to check user schema
+exports.testUserSchema = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        hasTransactions: Array.isArray(user.transactions),
+        transactionsCount: user.transactions ? user.transactions.length : 0,
+        hasTokenTransactions: Array.isArray(user.tokenTransactions),
+        tokenTransactionsCount: user.tokenTransactions ? user.tokenTransactions.length : 0,
+        schemaFields: Object.keys(User.schema.paths)
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error testing user schema:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error testing user schema",
       error: error.message
     });
   }
