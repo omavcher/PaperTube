@@ -2,7 +2,7 @@ const Groq = require("groq-sdk");
 const dotenv = require("dotenv");
 dotenv.config();
 
-const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const client = new Groq("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");
 
 // List of all available free models in priority order
 const FREE_MODELS = [
