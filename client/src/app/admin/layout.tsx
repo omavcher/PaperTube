@@ -9,7 +9,8 @@ import {
   Home, Bell, UserCircle, Shield, Moon,
   List,
   Fence,
-  Gamepad2Icon
+  Gamepad2Icon,
+  File
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FcFeedback } from "react-icons/fc";
+import { Icon2fa, IconAnalyze, IconBrandStorybook } from "@tabler/icons-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -202,9 +204,47 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               expanded={isSidebarOpen} 
               mobile={isMobile}
             />
-          </div>
+          </div>  
 
-      
+
+          {/*  Content Bank */}
+          <div className="mb-3 md:mb-4">
+            <p className="px-2 md:px-4 py-1 md:py-2 text-[8px] font-black uppercase tracking-[0.3em] text-neutral-600">
+              Content Bank
+            </p>
+    <AdminNavLink 
+  href="/admin/content-analytics"
+  icon={<IconAnalyze size={isMobile ? 20 : 18} />}
+  label="Content Analytics"
+  active={pathname.includes("/content-analytics")}
+  expanded={isSidebarOpen}
+  mobile={isMobile}
+/>
+
+            <AdminNavLink 
+  href="/admin/success-stories" 
+  icon={<IconBrandStorybook  size={isMobile ? 20 : 18} />} 
+  label="Success Stories" 
+  active={pathname.includes("/success-stories")} 
+  expanded={isSidebarOpen} 
+  mobile={isMobile}
+/>
+
+<AdminNavLink 
+  href="/admin/blog" 
+  icon={<File  size={isMobile ? 20 : 18} />} 
+  label="Blog Console" 
+  active={pathname.includes("/blog")} 
+  expanded={isSidebarOpen} 
+  mobile={isMobile}
+/>
+
+          </div>     
+
+
+
+
+
 
           {/* Intelligence Ops */}
           <div className="mb-3 md:mb-4">

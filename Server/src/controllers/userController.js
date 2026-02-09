@@ -665,3 +665,122 @@ exports.getUserFollowing = async (req, res) => {
     });
   }
 };
+
+
+// helper
+const isSameDay = (d1, d2) =>
+  d1.toDateString() === d2.toDateString();
+
+exports.updateStreak = async (req, res) => {
+   try {
+    const userId = req.user._id; // from auth middleware
+    const user = await User.findById(userId);
+
+    const today = new Date();
+
+    if (!user.streak.lastVisit) {
+      // first visit ever
+      user.streak.count = 1;
+    } else {
+      const last = new Date(user.streak.lastVisit);
+      const diffDays = Math.floor(
+        (today - last) / (1000 * 60 * 60 * 24)
+      );
+
+      if (isSameDay(today, last)) {
+        // same day → nothing
+      } 
+      else if (diffDays === 1) {
+        user.streak.count += 1;
+      } 
+      else {
+        user.streak.count = 1;
+      }
+    }
+
+    user.streak.lastVisit = today;
+    await user.save();
+
+    res.json({
+      success: true,
+      streak: user.streak.count
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+exports.getGrobleLeaderboard = async (req, res) => {
+  try {
+    const currentUserId = req.body.userId;
+    console.log("📊 Fetching Groble Leaderboard for user:", currentUserId);
+
+    // 1️⃣ Top 10 users by XP
+    const topUsers = await User.find({})
+      .sort({ xp: -1 })
+      .limit(10)
+      .select("name username picture xp rank")
+      .lean();
+
+    const leaderboard = topUsers.map((user, index) => ({
+      position: index + 1,
+      userId: user._id.toString(),
+      name: user.name,
+      username: user.username,
+      avatar: user.picture,
+      xp: user.xp,
+      badge: user.rank
+    }));
+
+    let currentUserRank = null;
+
+    // 2️⃣ Only process rank if NOT guest
+    if (currentUserId && currentUserId !== "guest_node") {
+
+      // Check if user already in top 10
+      const foundInTop10 = leaderboard.find(
+        u => u.userId === currentUserId.toString()
+      );
+
+      if (foundInTop10) {
+        // ✅ User already in leaderboard
+        currentUserRank = foundInTop10;
+      } else {
+        // 3️⃣ Calculate global rank
+        const currentUser = await User.findById(currentUserId)
+          .select("xp name picture rank")
+          .lean();
+
+        if (currentUser) {
+          const betterUsersCount = await User.countDocuments({
+            xp: { $gt: currentUser.xp }
+          });
+
+          currentUserRank = {
+            position: betterUsersCount + 1,
+            userId: currentUserId,
+            name: currentUser.name,
+            avatar: currentUser.picture,
+            xp: currentUser.xp,
+            badge: currentUser.rank
+          };
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      leaderboard,
+      currentUserRank // null for guest users
+    });
+
+  } catch (error) {
+    console.error("❌ Global Leaderboard Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch global leaderboard"
+    });
+  }
+};
+

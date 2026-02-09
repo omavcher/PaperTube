@@ -86,6 +86,10 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    streak: {
+    count: { type: Number, default: 0 },
+    lastVisit: { type: Date }
+  },
     tokens: {
       type: Number,
       default: 3,

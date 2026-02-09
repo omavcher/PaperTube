@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 import { 
   Menu as MenuIcon, X, ChevronDown, Cpu, Zap, 
   Home, Code, Compass, User, LogOut, ShieldCheck, 
-  UserCircle, Crown, Calendar, Coins, PlusCircle
+  UserCircle, Crown, Calendar, Coins, PlusCircle,
+  Flame
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import Link from "next/link";
@@ -133,9 +134,7 @@ export const Navbar = ({
 /* --- Optimized Sub-Components --- */
 
 const TokenBadge = ({ user }: any) => {
-  // If user is subscribed, we don't show tokens
   if (user?.membership?.isActive) return null;
-
   const tokens = user?.tokens || 0;
 
   if (tokens === 0) {
@@ -191,39 +190,88 @@ const UserHUD = ({ user, onLogout }: any) => {
       <AnimatePresence>
         {isOpen && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-            className="absolute top-full right-0 mt-2 w-72 bg-[#0a0a0a] border border-white/10 rounded-2xl p-3 shadow-2xl backdrop-blur-xl z-[110]"
+            className="absolute top-full right-0 mt-2 w-72 bg-[#0a0a0a] border border-white/10 rounded-[2rem] p-4 shadow-2xl backdrop-blur-xl z-[110] overflow-hidden"
           >
-            <div className="mb-2 p-3 bg-white/5 rounded-xl border border-white/5">
-                <div className="flex justify-between items-start">
+            {/* --- Status Header --- */}
+            <div className="mb-4 p-4 bg-white/5 rounded-2xl border border-white/5 relative overflow-hidden">
+                <div className="flex justify-between items-start relative z-10">
                     <div>
-                        <p className="text-[8px] font-bold text-neutral-500 uppercase">Profile Status</p>
-                        <p className={cn("text-xs font-black uppercase italic", planInfo.color)}>{isActive ? planInfo.name : "Basic Access"}</p>
+                        <p className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">Profile Status</p>
+                        <p className={cn("text-xs font-black uppercase italic leading-tight", planInfo.color)}>{isActive ? planInfo.name : "Basic Access"}</p>
                     </div>
                     {isActive ? (
-                        <div className="px-2 py-0.5 bg-green-500/10 text-green-500 text-[8px] font-bold rounded-full">PRO</div>
+                        <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[8px] font-black rounded-lg px-2">PRO</Badge>
                     ) : (
-                        <div className="flex flex-col items-end gap-1">
-                             <div className="flex items-center gap-1 text-[10px] font-black text-white italic"><Coins size={10} className="text-yellow-500"/> {user?.tokens}</div>
-                        </div>
+                        <div className="flex items-center gap-1 text-[10px] font-black text-white italic"><Coins size={10} className="text-yellow-500"/> {user?.tokens}</div>
                     )}
                 </div>
             </div>
 
-            <Link href="/profile" className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors group">
-              <UserCircle size={16} className="text-red-500" />
-              <span className="text-[10px] font-black uppercase italic text-white group-hover:translate-x-1 transition-transform">Neural Dashboard</span>
-            </Link>
+           {/* --- Minimalist & Gentle Streak Widget --- */}
+<Link href="/quest">
+  <motion.div 
+    whileHover={{ y: -2 }}
+    whileTap={{ scale: 0.98 }}
+    className="mb-4 p-4 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 rounded-2xl flex items-center justify-between group cursor-pointer transition-all duration-300 backdrop-blur-sm"
+  >
+    <div className="flex items-center gap-4">
+      {/* Soft Glow Icon */}
+      <div className="relative flex items-center justify-center">
+        <div className="absolute inset-0 bg-red-500/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="h-10 w-10 rounded-full bg-neutral-900 border border-white/5 flex items-center justify-center">
+          <Flame 
+            size={18} 
+            className="text-red-500/80 transition-all duration-700 group-hover:text-red-500 group-hover:fill-red-500/10" 
+          />
+        </div>
+      </div>
 
-            <button onClick={onLogout} className="w-full flex items-center gap-3 p-3 hover:bg-red-600/10 rounded-xl transition-colors text-neutral-500 hover:text-red-500">
-              <LogOut size={16} />
-              <span className="text-[10px] font-black uppercase italic">Terminate Link</span>
-            </button>
+      <div className="flex flex-col">
+        <span className="text-sm font-medium tracking-tight text-neutral-200">
+          5 Day Streak
+        </span>
+        <span className="text-[10px] text-neutral-500 font-medium tracking-wide uppercase opacity-80">
+          Keep the momentum going
+        </span>
+      </div>
+    </div>
+
+    {/* Subtle Status Indicator */}
+    <div className="flex items-center gap-3">
+      <div className="h-1 w-8 bg-neutral-800 rounded-full overflow-hidden">
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: "70%" }}
+          className="h-full bg-red-500/40"
+        />
+      </div>
+      <ChevronDown size={14} className="text-neutral-600 -rotate-90 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+    </div>
+  </motion.div>
+</Link>
+
+            {/* --- Action Links --- */}
+            <div className="space-y-1">
+              <Link href="/profile" className="flex items-center gap-3 p-3.5 hover:bg-white/5 rounded-xl transition-all group">
+                <UserCircle size={16} className="text-red-500" />
+                <span className="text-[10px] font-black uppercase italic text-white group-hover:translate-x-1 transition-transform">Neural Dashboard</span>
+              </Link>
+
+              <button onClick={onLogout} className="w-full flex items-center gap-3 p-3.5 hover:bg-red-600/10 rounded-xl transition-all group text-neutral-500 hover:text-red-500">
+                <LogOut size={16} />
+                <span className="text-[10px] font-black uppercase italic group-hover:translate-x-1 transition-transform">Terminate Link</span>
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
 };
+
+const Badge = ({ children, className }: any) => (
+  <div className={cn("px-2 py-0.5 rounded uppercase tracking-widest border", className)}>{children}</div>
+);
 
 const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authLoading, onLogout }: any) => {
   const isActive = user?.membership?.isActive;
@@ -236,24 +284,30 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
           className="fixed inset-0 z-[150] bg-black p-8 flex flex-col lg:hidden overflow-y-auto"
         >
           <div className="flex justify-between items-center mb-10">
-             <span className="text-xl font-black italic text-white uppercase italic">Paper<span className="text-red-600">Tube</span></span>
+             <LogoSection />
              <button onClick={onClose} className="p-3 bg-neutral-900 rounded-full text-white"><X /></button>
           </div>
 
           {isLoggedIn && (
-              <div className="mb-8 p-6 bg-neutral-900/50 rounded-[2rem] border border-white/5 flex flex-col gap-4">
+              <div className="mb-8 p-6 bg-neutral-900/50 rounded-[2.5rem] border border-white/5 flex flex-col gap-5">
                   <div className="flex items-center gap-4">
-                    <div className={cn("h-16 w-16 rounded-2xl border-2 overflow-hidden", isActive ? "border-yellow-500" : "border-red-600")}>
+                    <div className={cn("h-16 w-16 rounded-2xl border-2 overflow-hidden shadow-2xl", isActive ? "border-yellow-500" : "border-red-600")}>
                         <img src={user?.picture} alt="" className="w-full h-full object-cover" />
                     </div>
                     <div>
-                        <p className="text-sm font-black text-white italic uppercase tracking-tighter">{user.name}</p>
-                        <p className={cn("text-[10px] font-bold uppercase tracking-widest", isActive ? "text-yellow-500" : "text-neutral-500")}>
+                        <p className="text-sm font-black text-white italic uppercase tracking-tighter leading-none mb-1">{user.name}</p>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest", isActive ? "text-yellow-500" : "text-neutral-500")}>
                             {isActive ? planName : "Basic Access"}
                         </p>
                     </div>
                   </div>
                   
+                  {/* Mobile Streak */}
+                  <div className="flex items-center gap-3 p-3 bg-red-600/10 rounded-2xl border border-red-600/20">
+                     <Flame size={16} className="text-red-500 fill-current" />
+                     <span className="text-[10px] font-black uppercase italic text-white">5-Day Active Streak</span>
+                  </div>
+
                   {!isActive && (
                       <div className="flex items-center justify-between p-3 bg-black rounded-xl border border-white/5">
                           <div className="flex items-center gap-2">
@@ -271,7 +325,7 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
           <div className="flex flex-col gap-4">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600 border-b border-white/5 pb-2">Operational Hub</p>
             {SUPPORT_TOOLS.map((tool, i) => (
-              <Link key={i} href={tool.href} onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900/50 rounded-2xl border border-white/5">
+              <Link key={i} href={tool.href} onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900/50 rounded-2xl border border-white/5 active:scale-95 transition-transform">
                   <div className="text-red-600">{tool.icon}</div>
                   <div><p className="text-xs font-black uppercase text-white">{tool.title}</p><p className="text-[8px] text-neutral-600 font-bold uppercase">{tool.desc}</p></div>
               </Link>
@@ -280,7 +334,7 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
 
           <div className="mt-auto pt-10">
             {isLoggedIn ? (
-              <button onClick={onLogout} className="w-full flex items-center justify-center gap-3 p-4 bg-red-600/10 rounded-2xl text-red-500 font-black uppercase text-[10px]">
+              <button onClick={onLogout} className="w-full flex items-center justify-center gap-3 p-5 bg-red-600/10 rounded-2xl text-red-500 font-black uppercase text-[10px] active:scale-95 transition-all">
                 <LogOut size={16} /> Terminate Connection
               </button>
             ) : (

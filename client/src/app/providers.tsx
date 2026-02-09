@@ -47,7 +47,30 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+   useEffect(() => {
+  const updateStreak = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
 
+      await api.post(
+        "/users/update-streak",
+        {}, // 👈 no body needed
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          withCredentials: true,
+        }
+      );
+    } catch (err) {
+      console.log("Streak error", err);
+    }
+  };
+
+  updateStreak();
+}, []);
+
+  
 
   const handleLoginSuccess = async (googleAccessToken: string, userInfo: any, backendResponse?: any) => {
     try {

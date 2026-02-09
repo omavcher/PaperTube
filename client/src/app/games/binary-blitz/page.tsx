@@ -76,7 +76,7 @@ export default function BinaryBlitzGame() {
     const user = getUser();
     
     const payload = {
-      userId: user?.id || "guest_node",
+      userId: user?._id || "guest_node",
       name: user?.name || "Guest",
       email: user?.email || "anonymous@void.com",
       game: "Binary Blitz",

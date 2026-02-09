@@ -5,9 +5,12 @@ import { BackgroundBeamsWithCollision } from '@/components/ui/background-beams-w
 import { 
   FileText, Github, Twitter, Linkedin, 
   Youtube, ArrowRight, ShieldCheck, 
-  Activity, Globe, Zap, Heart
+  Activity, Globe, Zap, Heart,
+  Mail
 } from 'lucide-react';
 import Link from 'next/link';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -104,6 +107,29 @@ export default function Footer() {
               </div>
             </div>
 
+{/* Newsletter */}
+            <div className="bg-gradient-to-br from-red-900/20 to-[#0f0f0f] border border-red-600/20 rounded-2xl p-5 relative overflow-hidden">
+              <div className="relative z-10">
+                <h3 className="text-sm md:text-lg font-black italic uppercase text-white mb-1">Intel Updates</h3>
+                <p className="text-[10px] md:text-xs text-neutral-300 mb-3 font-medium leading-relaxed">
+                  Join 15,000+ engineers.
+                </p>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 w-3 h-3" />
+                    <Input 
+                      placeholder="Email address" 
+                      className="bg-black/50 border-white/10 pl-8 h-9 text-[10px] font-bold rounded-lg focus-visible:ring-red-600"
+                    />
+                  </div>
+                  <Button className="w-full bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[9px] h-9 rounded-lg">
+                    Subscribe
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+
             <div className="flex flex-wrap justify-center items-center gap-6 text-neutral-800">
                <StatusMetric icon={<Globe size={12} />} label="Nodes" value="4.2k" />
                <StatusMetric icon={<Activity size={12} />} label="Latency" value="12ms" />
@@ -113,7 +139,8 @@ export default function Footer() {
 
         </div>
       </div>
-      
+        
+
       {/* Decorative Glow Line */}
       <div className="h-px w-full bg-gradient-to-r from-transparent via-red-600/40 to-transparent" />
     </footer>
