@@ -30,10 +30,8 @@ app.use("/api/payment", authPayment);
 app.use("/api/chart", chartRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use("/api/users", require("./routes/userRoutes"));
-app.use("/api/flashcards", require("./routes/flashcardRoutes"));
 // app.use("/api/tools", require("./routes/toolRoutes"));
 app.use("/api/general", require("./routes/generalRoutes"));
-app.use("/api/quiz", require("./routes/quizRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/analytics", require("./routes/analyticsRoutes"));
 

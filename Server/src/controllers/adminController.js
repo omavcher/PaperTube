@@ -16,8 +16,6 @@ exports.getDiagnostics = async (req, res) => {
     // 1. Basic Counts
     const totalUsers = await User.countDocuments();
     const totalNotes = await Note.countDocuments();
-    const totalFlashcardSets = await FlashcardSet.countDocuments();
-    const totalQuizzes = await Quiz.countDocuments();
 
     // 2. Revenue Calculation
     const totalRevenue = await Transaction.aggregate([
@@ -43,41 +41,10 @@ exports.getDiagnostics = async (req, res) => {
       .lean()
       .select('title createdAt thumbnail owner');
 
-    // --- FLASHCARDS ---
-    const recentFlashcardSets = await FlashcardSet.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate({
-        path: 'owner',
-        select: 'name email'
-      })
-      .lean()
-      .select('title createdAt thumbnail owner');
-
-    // --- QUIZZES ---
-    // Note: Quiz model uses 'userId', not 'owner'. We fetch it and map it to 'owner' for consistency.
-    const recentQuizzesRaw = await Quiz.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate({
-        path: 'userId',
-        select: 'name email'
-      })
-      .lean()
-      .select('title createdAt thumbnail userId');
-
-    // Standardize Quiz structure (rename userId -> owner)
-    const recentQuizzes = recentQuizzesRaw.map(quiz => ({
-      ...quiz,
-      owner: quiz.userId, // Map the populated user object to 'owner'
-      userId: undefined   // Remove the old key to avoid confusion
-    }));
 
     // 5. Construct Response
     const last5Creations = {
       notes: recentNotes,
-      flashcardSets: recentFlashcardSets,
-      quizzes: recentQuizzes
     };
 
     res.status(200).json({
@@ -85,8 +52,6 @@ exports.getDiagnostics = async (req, res) => {
       data: {
         totalUsers,
         totalNotes,
-        totalFlashcardSets,
-        totalQuizzes,
         totalRevenue: totalRevenue[0] ? totalRevenue[0].totalAmount : 0,
         sourceDistribution,
         last5Creations
@@ -147,23 +112,17 @@ exports.deleteUser = async (req, res) => {
 
 exports.getAllTransactions = async (req, res) => {
   try {
-    // 1. Find all transactions
-    // 2. .populate('userId') fetches data from the User collection
-    // 3. We specify the fields we want: 'name email picture mobile'
-    const transactions = await Transaction.find()
-      .populate({
-        path: 'userId',
-        select: 'name email picture mobile' // These are the fields from UserSchema
-      })
-      .sort({ timestamp: -1 }) // Usually better to see newest first
-      .lean();
-
+    // Fetch all transactions
+    const transactions = await Transaction.find({});
+    // Return success response
     res.status(200).json({
       success: true,
       count: transactions.length,
       data: transactions
     });
+
   } catch (error) {
+    console.error("❌ Error fetching transactions:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching transactions",
@@ -175,27 +134,16 @@ exports.getAllTransactions = async (req, res) => {
 exports.getRecentCreations = async (req, res) => {
   try {
     const recentNotes = await Note.find().sort({ createdAt: -1 }).lean().select('title createdAt thumbnail visibility generationDetails views likes owner');
-    const recentFlashcardSets = await FlashcardSet.find().sort({ createdAt: -1 }).lean().select('title createdAt thumbnail owner visibility generationDetails');
-    const recentQuizzes = await Quiz.find().sort({ createdAt: -1 }).lean().select('title createdAt thumbnail owner settings');
 
     const notes = await Promise.all(recentNotes.map(async (note) => {
       const user = await User.findById(note.owner).select('name email picture').lean();
       return { note, user };
     }));
 
-    const flashcardSets = await Promise.all(recentFlashcardSets.map(async (set) => {
-      const user = await User.findById(set.owner).select('name email picture').lean();
-      return { set, user };
-    }));
-
-    const quizzes = await Promise.all(recentQuizzes.map(async (quiz) => {
-      const user = await User.findById(quiz.owner).select('name email picture').lean();
-      return { quiz, user };
-    }));
 
 res.status(200).json({
       success: true,
-      data: { notes, flashcardSets, quizzes }
+      data: { notes }
     });
 
   } catch (error) { 
@@ -608,5 +556,146 @@ exports.getContentAnalytics = async (req, res) => {
   } catch (error) {
     console.error("Analytics Error:", error);
     res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+
+
+
+exports.chnageNoteVisibility = async (req, res) => {
+  try {
+    const { noteId } = req.params;
+    const { visibility } = req.body;
+
+    // 1. Validate Input
+    const validStatuses = ["public", "private", "unlisted"];
+    if (!visibility || !validStatuses.includes(visibility)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid visibility. Allowed values: ${validStatuses.join(", ")}`
+      });
+    }
+
+    // 2. Find and Update Note
+    const updatedNote = await Note.findByIdAndUpdate(
+      noteId,
+      { visibility: visibility },
+      { new: true } // Return the updated document
+    ).select('title visibility slug'); // Select specific fields to return
+
+    // 3. Handle Not Found
+    if (!updatedNote) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found"
+      });
+    }
+
+    // 4. Success Response
+    return res.status(200).json({
+      success: true,
+      message: `Note visibility updated to ${visibility}`,
+      data: updatedNote
+    });
+
+  } catch (error) {
+    console.error("❌ Error changing note visibility:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating visibility",
+      error: error.message
+    });
+  }
+};
+
+exports.deleteNote = async (req, res) => {
+  try {
+    const { noteId } = req.params;
+
+    // 1. Find and Delete Note
+    const deletedNote = await Note.findByIdAndDelete(noteId);
+
+    // 2. Handle Not Found
+    if (!deletedNote) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found",
+      });
+    }
+
+    // 3. Success Response
+    return res.status(200).json({
+      success: true,
+      message: "Note deleted successfully",
+      data: { _id: deletedNote._id, title: deletedNote.title }
+    });
+
+  } catch (error) {
+    console.error("❌ Error deleting note:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while deleting note",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+const ToolAnalytics = require("../models/ToolAnalytics");
+
+// Get aggregated analytics for the Admin Dashboard
+exports.getToolAnalytics = async (req, res) => {
+  try {
+    // 1. Total Metrics
+    const totalInteractions = await ToolAnalytics.countDocuments();
+    const totalViews = await ToolAnalytics.countDocuments({ eventType: 'view' });
+    const totalClicks = await ToolAnalytics.countDocuments({ eventType: 'click' });
+
+    // 2. Top Performing Tools (Aggregation)
+    const topTools = await ToolAnalytics.aggregate([
+      { $match: { eventType: 'view' } }, // Count actual page views
+      { $group: { _id: "$toolName", count: { $sum: 1 }, category: { $first: "$category" } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // 3. Traffic Sources
+    const trafficSources = await ToolAnalytics.aggregate([
+      { $group: { _id: "$source", count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    // 4. Device Breakdown
+    const deviceStats = await ToolAnalytics.aggregate([
+      { $group: { _id: "$device", count: { $sum: 1 } } }
+    ]);
+
+    // 5. Recent Live Activity
+    const recentActivity = await ToolAnalytics.find()
+      .sort({ timestamp: -1 })
+      .limit(10)
+      .populate('userId', 'name email') // If you want user details
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totals: {
+          interactions: totalInteractions,
+          views: totalViews,
+          clicks: totalClicks
+        },
+        topTools,
+        trafficSources,
+        deviceStats,
+        recentActivity
+      }
+    });
+
+  } catch (error) {
+    console.error("Analytics Aggregation Error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch analytics" });
   }
 };

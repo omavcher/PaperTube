@@ -3,25 +3,22 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  User, Eye, FileText, Users, ThumbsUp, Crown, Award, Clock, Share2, 
-  MoreVertical, ArrowLeft, Settings, Grid3x3, List, ChevronRight, 
-  Zap, Loader2, Activity, ShieldCheck, ShieldAlert, Home, Edit3,
-  UserPlus, UserMinus, Check
+  Eye, FileText, Share2, MoreHorizontal, ArrowLeft, Grid3x3, List, Zap, Loader2,
+  ShieldAlert, Home, Edit3, Crown, Calendar, MapPin, UserX, Clock, X, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import api from "@/config/api";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
-  DropdownMenuTrigger, DropdownMenuLabel 
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import Footer from "@/components/Footer";
 
+// --- MAIN COMPONENT ---
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
@@ -29,7 +26,7 @@ export default function UserProfilePage() {
 
   // --- States ---
   const [loading, setLoading] = useState(true);
-  const [errorState, setErrorState] = useState<{status: boolean; message: string}>({status: false, message: ""});
+  const [errorState, setErrorState] = useState<{ status: boolean; message: string }>({ status: false, message: "" });
   const [user, setUser] = useState<any | null>(null);
   const [notes, setNotes] = useState<any[]>([]);
   const [stats, setStats] = useState<any | null>(null);
@@ -38,8 +35,11 @@ export default function UserProfilePage() {
   const [activeTab, setActiveTab] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Report Modal State
+  const [isReportOpen, setIsReportOpen] = useState(false);
+
   const getAuthToken = useCallback(() => typeof window !== 'undefined' ? localStorage.getItem("authToken") : null, []);
-  
+
   const isOwnProfile = useMemo(() => {
     if (!currentUser || !user) return false;
     return (currentUser._id === user._id) || (currentUser.username === user.username);
@@ -57,14 +57,14 @@ export default function UserProfilePage() {
         setLoading(true);
         const res = await api.get(`/users/${username}/profile`);
         if (!res.data.success || !res.data.user) {
-          setErrorState({ status: true, message: res.data.message || "Personnel not found." });
+          setErrorState({ status: true, message: res.data.message || "User not found." });
           return;
         }
         setUser(res.data.user);
         setNotes(res.data.notes || []);
         setStats(res.data.stats);
       } catch (err: any) {
-        setErrorState({ status: true, message: "Protocol Handshake Failed." });
+        setErrorState({ status: true, message: "Unable to load profile data." });
       } finally { setLoading(false); }
     };
     loadProfile();
@@ -72,11 +72,10 @@ export default function UserProfilePage() {
 
   const handleFollowToggle = async () => {
     const token = getAuthToken();
-    
     if (!token) {
       toast.error("Authentication Required", {
-        description: "Please use the login button in the navigation bar to proceed.",
-        action: { label: "Login Now", onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+        description: "Please login to follow creators.",
+        action: { label: "Login", onClick: () => router.push('/login') },
       });
       return;
     }
@@ -84,17 +83,17 @@ export default function UserProfilePage() {
     try {
       setFollowLoading(true);
       const res = await api.post(`/users/${user._id}/follow`, {}, { headers: { 'Auth': token } });
-      
+
       if (res.data.success) {
         setUser((prev: any) => ({
           ...prev,
           isFollowing: res.data.isFollowing,
           followersCount: res.data.isFollowing ? prev.followersCount + 1 : prev.followersCount - 1
         }));
-        toast.success(res.data.isFollowing ? `Linked with ${user.name}` : `Unlinked from ${user.name}`);
+        toast.success(res.data.isFollowing ? `Following ${user.name}` : `Unfollowed ${user.name}`);
       }
     } catch (err) {
-      toast.error("Operation failed. Try again later.");
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setFollowLoading(false);
     }
@@ -104,169 +103,163 @@ export default function UserProfilePage() {
   if (errorState.status) return <ErrorScreen message={errorState.message} router={router} />;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-red-500/30 font-sans relative overflow-x-hidden">
-      <div className="fixed inset-0 z-0 opacity-20 pointer-events-none">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]"></div>
-      </div>
+    <div className="min-h-screen bg-black text-neutral-200 font-sans selection:bg-red-500/20 selection:text-red-200">
+      
+      {/* Report Modal Integration */}
+      <ReportModal 
+        isOpen={isReportOpen} 
+        onClose={() => setIsReportOpen(false)} 
+        userId={user?._id}
+        userName={user?.name}
+      />
 
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-black/60 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-xl hover:bg-white/5 text-neutral-500"><ArrowLeft size={20}/></Button>
-            <div className="flex items-center gap-3">
-               <Avatar className="h-9 w-9 border border-white/10 shadow-xl bg-neutral-900">
-                  <AvatarImage src={user?.picture} />
-                  <AvatarFallback className="bg-red-600 font-black text-[10px] italic">ID</AvatarFallback>
-               </Avatar>
-               <div className="hidden xs:block">
-                  <p className="text-[10px] font-black uppercase italic tracking-widest text-white truncate max-w-[120px]">@{user?.username}</p>
-                  <p className="text-[8px] font-bold text-neutral-600 uppercase tracking-[0.2em] leading-none mt-0.5">Active Protocol</p>
-               </div>
-            </div>
-          </div>
+      {/* --- Navbar --- */}
+      <header className="sticky top-0 z-50 bg-black backdrop-blur-md border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-neutral-400 hover:text-white -ml-2">
+            <ArrowLeft size={18} className="mr-2" /> Back
+          </Button>
+          
           <div className="flex items-center gap-2">
              <Button variant="ghost" size="icon" onClick={() => {
-               navigator.clipboard.writeText(window.location.href);
-               toast.success("Identity link copied");
-             }} className="rounded-xl text-neutral-500 hover:text-red-500 transition-all"><Share2 size={18}/></Button>
+                navigator.clipboard.writeText(window.location.href);
+                toast.success("Profile link copied");
+             }} className="text-neutral-400 hover:text-white"><Share2 size={18}/></Button>
              
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                   <Button variant="ghost" size="icon" className="rounded-xl text-neutral-500 hover:text-white"><MoreVertical size={18}/></Button>
+                   <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white"><MoreHorizontal size={18}/></Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-neutral-950 border-white/10 text-white rounded-2xl w-48 shadow-2xl p-2 z-[60]">
-                   <DropdownMenuItem className="rounded-xl focus:bg-red-600 focus:text-white transition-colors cursor-pointer text-xs font-black uppercase italic">Report Entity</DropdownMenuItem>
+                <DropdownMenuContent align="end" className="bg-neutral-900 border-neutral-800 text-neutral-200">
+                   <DropdownMenuItem 
+                      onClick={() => setIsReportOpen(true)}
+                      className="text-red-500 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
+                    >
+                      Report User
+                   </DropdownMenuItem>
                 </DropdownMenuContent>
              </DropdownMenu>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 pt-12 pb-24 relative z-10">
-        <div className="grid lg:grid-cols-12 gap-10">
+      <main className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
+        <div className="flex flex-col lg:flex-row gap-12">
           
-          {/* --- LEFT: PERSONNEL HUD --- */}
-          <div className="lg:col-span-4 space-y-8">
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-              className="p-8 rounded-[3rem] bg-neutral-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl text-center lg:text-left relative overflow-hidden group"
+          {/* --- LEFT: Sidebar / Profile Info --- */}
+          <aside className="lg:w-1/3 xl:w-1/4 flex-shrink-0 space-y-8">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="relative"
             >
-              <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none rotate-12 group-hover:rotate-0 transition-transform duration-1000">
-                 <ShieldCheck size={120} />
+              {/* Profile Image Group */}
+              <div className="relative inline-block mb-4">
+                 <div className="absolute inset-0 bg-gradient-to-tr from-red-500/20 to-blue-500/20 rounded-full blur-2xl opacity-50" />
+                 <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-neutral-950 shadow-2xl bg-neutral-900">
+                    <AvatarImage src={user?.picture} className="object-cover" />
+                    <AvatarFallback className="bg-neutral-800 text-neutral-400 text-3xl font-medium">{user?.name?.[0]}</AvatarFallback>
+                 </Avatar>
+                 {user?.isPremium && (
+                    <div className="absolute bottom-2 right-2 bg-neutral-950 p-1.5 rounded-full border border-neutral-800" title="Premium Member">
+                       <Crown size={16} className="text-amber-500 fill-amber-500" />
+                    </div>
+                 )}
               </div>
 
-              <div className="relative inline-block mb-6">
-                <div className="absolute inset-0 bg-red-600/30 blur-3xl rounded-full animate-pulse opacity-50" />
-                <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-red-600 relative z-10 shadow-[0_0_40px_rgba(220,38,38,0.2)] bg-black">
-                  <AvatarImage src={user?.picture} />
-                  <AvatarFallback className="text-red-600 text-5xl font-black italic uppercase">{user?.name?.[0]}</AvatarFallback>
-                </Avatar>
-                {user?.isPremium && (
-                  <div className="absolute -top-1 -right-1 z-20 bg-amber-500 rounded-full p-2.5 shadow-[0_0_15px_rgba(245,158,11,0.5)] border-2 border-black">
-                    <Crown size={16} className="text-black" />
-                  </div>
-                )}
+              {/* User Details */}
+              <div className="space-y-3">
+                 <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">{user?.name}</h1>
+                    <p className="text-neutral-500 font-medium text-sm">@{user?.username}</p>
+                 </div>
+
+                 {/* Meta Data */}
+                 <div className="flex flex-wrap gap-4 text-xs text-neutral-500 pt-2">
+                    <div className="flex items-center gap-1.5">
+                       <Calendar size={14} />
+                       <span>Joined {new Date(user?.joinDate).toLocaleDateString(undefined, { month: 'short', year: 'numeric'})}</span>
+                    </div>
+                    {user?.location && (
+                      <div className="flex items-center gap-1.5">
+                        <MapPin size={14} />
+                        <span>{user.location}</span>
+                      </div>
+                    )}
+                 </div>
               </div>
 
-              <div className="space-y-4 relative z-10">
-                <div className="space-y-1">
-                   <h2 className="text-4xl font-black italic uppercase tracking-tighter text-white leading-none">{user?.name}</h2>
-                   <p className="text-red-500 text-[10px] font-black uppercase tracking-[0.4em] pt-2">@{user?.username}</p>
-                </div>
-                
-                <p className="text-neutral-500 text-xs font-medium uppercase tracking-tight border-t border-white/5 pt-4">
-                  {user?.bio || "Neural node active. Identity parameters verified by the void."}
-                </p>
-                
-                <div className="pt-6 space-y-4">
-                  {isOwnProfile ? (
+              {/* Action Buttons */}
+              <div className="pt-6 flex gap-3">
+                 {isOwnProfile ? (
                     <Button 
-                      onClick={() => router.push('/profile')} 
-                      className="w-full h-14 bg-white text-black font-black uppercase italic rounded-2xl text-xs hover:bg-red-600 hover:text-white transition-all shadow-xl active:scale-95 group"
+                       onClick={() => router.push('/profile')} 
+                       variant="outline"
+                       className="w-full h-10 border-neutral-800 bg-neutral-900/50 hover:bg-neutral-900 text-neutral-200"
                     >
-                       <Edit3 size={16} className="mr-2 group-hover:rotate-12 transition-transform" /> Edit Profile
+                       <Edit3 size={14} className="mr-2" /> Edit Profile
                     </Button>
-                  ) : (
+                 ) : (
                     <Button 
-                      onClick={handleFollowToggle} 
-                      disabled={followLoading}
-                      className={cn(
-                        "w-full h-14 font-black uppercase italic rounded-2xl text-xs transition-all shadow-xl active:scale-95 group",
-                        user?.isFollowing 
-                          ? "bg-neutral-800 text-white border border-white/10 hover:bg-red-600/10 hover:text-red-500 hover:border-red-500/50" 
-                          : "bg-red-600 hover:bg-red-700 text-white"
-                      )}
-                    >
-                       {followLoading ? (
-                         <Loader2 className="animate-spin" size={16} />
-                       ) : user?.isFollowing ? (
-                         <div className="flex items-center gap-2">
-                           <Check size={16} className="group-hover:hidden" />
-                           <UserMinus size={16} className="hidden group-hover:block" />
-                           <span className="group-hover:hidden uppercase">Following</span>
-                           <span className="hidden group-hover:block uppercase tracking-widest">Unfollow</span>
-                         </div>
-                       ) : (
-                         <div className="flex items-center gap-2">
-                           <UserPlus size={16} />
-                           <span className="uppercase">Follow Node</span>
-                         </div>
+                       onClick={handleFollowToggle} 
+                       disabled={followLoading}
+                       className={cn(
+                          "w-full h-10 font-medium transition-all",
+                          user?.isFollowing 
+                             ? "bg-neutral-800 text-white hover:bg-red-900/20 hover:text-red-500 hover:border-red-500/20 border border-transparent" 
+                             : "bg-white text-black hover:bg-neutral-200"
                        )}
+                    >
+                       {followLoading ? <Loader2 className="animate-spin" size={16} /> : 
+                        user?.isFollowing ? "Following" : "Follow"}
                     </Button>
-                  )}
-                  
-                  <div className="grid grid-cols-3 gap-2">
-                     <StatusMini label="Nodes" val={stats?.totalNotes || 0} />
-                     <StatusMini label="Syncs" val={user?.followersCount || 0} />
-                     <StatusMini label="Trust" val="100%" />
-                  </div>
-                </div>
+                 )}
+              </div>
+
+              {/* Quick Stats (Sidebar) */}
+              <div className="grid grid-cols-3 gap-2 py-6 border-b border-neutral-900 lg:border-none">
+                 <StatItem label="Notes" value={stats?.totalNotes || 0} />
+                 <StatItem label="Followers" value={user?.followersCount || 0} />
+                 <StatItem label="Views" value={stats?.totalViews || 0} />
               </div>
             </motion.div>
+          </aside>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <InfoNode label="Origin" val={user?.joinDate ? new Date(user?.joinDate).toLocaleDateString() : 'N/A'} icon={<Clock size={12}/>} />
-               <InfoNode label="Access" val={user?.membershipPlan || "Standard"} icon={<Award size={12}/>} />
-            </div>
+          {/* --- RIGHT: Content Area --- */}
+          <div className="flex-1 min-w-0">
+              
+             {/* Main Tabs */}
+             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                   
+                   <div className="flex items-center gap-1 bg-neutral-900 p-1 rounded-lg border border-neutral-800 self-end sm:self-auto">
+                      <Button onClick={() => setViewMode('grid')} variant="ghost" size="icon" className={cn("h-8 w-8 rounded-md hover:bg-neutral-800", viewMode === 'grid' && "bg-neutral-800 text-white shadow-sm")}><Grid3x3 size={16}/></Button>
+                      <Button onClick={() => setViewMode('list')} variant="ghost" size="icon" className={cn("h-8 w-8 rounded-md hover:bg-neutral-800", viewMode === 'list' && "bg-neutral-800 text-white shadow-sm")}><List size={16}/></Button>
+                   </div>
+                </div>
+
+                <TabsContent value={activeTab} className="mt-0">
+                   <AnimatePresence mode="wait">
+                      {notes.length === 0 ? (
+                          <motion.div 
+                             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                             className="flex flex-col items-center justify-center py-24 text-neutral-600 border border-dashed border-neutral-800 rounded-2xl bg-neutral-900/20"
+                          >
+                             <FileText size={48} className="mb-4 opacity-50" />
+                             <p className="text-sm font-medium">No notes published yet.</p>
+                          </motion.div>
+                      ) : (
+                          <div className={cn("grid gap-4 md:gap-6", viewMode === 'grid' ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
+                             {notes.map((note, i) => (
+                                <NoteCard key={note._id} note={note} index={i} viewMode={viewMode} username={username} router={router} />
+                             ))}
+                          </div>
+                      )}
+                   </AnimatePresence>
+                </TabsContent>
+             </Tabs>
           </div>
 
-          {/* --- RIGHT: CONTENT MATRIX --- */}
-          <div className="lg:col-span-8 space-y-10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-               <HUDStat label="Intelligence Nodes" val={stats?.totalNotes || 0} icon={FileText} color="text-red-500" />
-               <HUDStat label="Global Views" val={stats?.totalViews || 0} icon={Eye} color="text-blue-500" />
-               <HUDStat label="Sync Rate" val={stats?.totalLikes || 0} icon={ThumbsUp} color="text-emerald-500" />
-               <HUDStat label="Network Scale" val={user?.followersCount || 0} icon={Users} color="text-purple-500" />
-            </div>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/5 pb-2">
-                  <TabsList className="bg-transparent p-0 h-auto gap-8">
-                     <TabTrigger value="all" label="All Nodes" />
-                     <TabTrigger value="premium" label="Elite Access" icon={<Crown size={12}/>} />
-                  </TabsList>
-                  
-                  <div className="flex items-center gap-2 bg-neutral-900/50 p-1 rounded-xl border border-white/5 self-end">
-                     <Button onClick={() => setViewMode('grid')} variant="ghost" size="icon" className={cn("h-9 w-10 rounded-lg", viewMode === 'grid' ? "bg-red-600 text-white" : "text-neutral-500")}><Grid3x3 size={16}/></Button>
-                     <Button onClick={() => setViewMode('list')} variant="ghost" size="icon" className={cn("h-9 w-10 rounded-lg", viewMode === 'list' ? "bg-red-600 text-white" : "text-neutral-500")}><List size={16}/></Button>
-                  </div>
-               </div>
-
-               <TabsContent value={activeTab} className="mt-0 outline-none">
-                  {notes.length === 0 ? (
-                    <div className="py-32 text-center bg-neutral-950/40 rounded-[3rem] border border-dashed border-white/5">
-                       <Activity size={48} className="mx-auto text-neutral-900 mb-4" />
-                       <p className="text-[10px] font-black uppercase italic tracking-[0.5em] text-neutral-700">Database Empty</p>
-                    </div>
-                  ) : (
-                    <div className={cn("grid gap-6", viewMode === 'grid' ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
-                        {notes.map((note, i) => (
-                          <NoteCard key={note._id} note={note} index={i} viewMode={viewMode} username={username} router={router} />
-                        ))}
-                    </div>
-                  )}
-               </TabsContent>
-            </Tabs>
-          </div>
         </div>
       </main>
       <Footer />
@@ -274,19 +267,114 @@ export default function UserProfilePage() {
   );
 }
 
-// --- SUB-COMPONENTS (HUD STYLE) ---
+// --- SUB-COMPONENTS ---
 
-const HUDStat = ({ label, val, icon: Icon, color }: any) => (
-  <div className="bg-black border border-white/5 p-5 rounded-[2.5rem] relative overflow-hidden group hover:border-red-600/30 transition-all duration-500 shadow-2xl">
-    <div className="flex justify-between items-start mb-5 relative z-10">
-      <div className={cn("p-2.5 rounded-xl bg-neutral-900 border border-white/5 shadow-inner", color)}><Icon size={20}/></div>
-      <div className="h-2 w-2 rounded-full bg-red-600 animate-pulse shadow-[0_0_10px_red]" />
+// 1. REPORT MODAL COMPONENT (New)
+const ReportModal = ({ isOpen, onClose, userId, userName }: any) => {
+  const [reason, setReason] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async () => {
+    if (!reason) {
+      toast.error("Please select a reason.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem("authToken");
+      
+      const res = await api.post(`/users/${userId}/report`, {
+        reason,
+        description
+      }, { headers: { 'Auth': token } });
+
+      if (res.data.success) {
+        toast.success("Report submitted", { description: "We will review your report shortly." });
+        onClose();
+        setReason("");
+        setDescription("");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to submit report");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2 text-red-500">
+             <AlertTriangle size={20} />
+             <h3 className="font-bold text-lg text-white">Report User</h3>
+          </div>
+          <button onClick={onClose} className="text-neutral-500 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        <p className="text-sm text-neutral-400 mb-6">
+          You are reporting <span className="text-white font-medium">{userName}</span>. This action is anonymous.
+        </p>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-neutral-500 uppercase">Reason</label>
+            <select 
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            >
+              <option value="" disabled>Select a reason...</option>
+              <option value="spam">Spam or Bot</option>
+              <option value="harassment">Harassment or Bullying</option>
+              <option value="inappropriate_content">Inappropriate Content</option>
+              <option value="impersonation">Impersonation</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-neutral-500 uppercase">Description (Optional)</label>
+            <textarea 
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-red-500 min-h-[100px] resize-none"
+              placeholder="Please provide more details..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-8">
+          <Button variant="ghost" onClick={onClose} className="flex-1 hover:bg-neutral-800 text-neutral-400">Cancel</Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={submitting}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+          >
+            {submitting ? <Loader2 className="animate-spin" size={16} /> : "Submit Report"}
+          </Button>
+        </div>
+      </motion.div>
     </div>
-    <div className="relative z-10">
-      <p className="text-[8px] font-black text-neutral-700 uppercase tracking-widest mb-1 leading-none">{label}</p>
-      <p className="text-2xl font-black text-white italic tracking-tighter leading-none">{val.toLocaleString() || 0}</p>
-    </div>
-  </div>
+  );
+};
+
+const StatItem = ({ label, value }: { label: string, value: number | string }) => (
+   <div className="text-center p-3 rounded-xl bg-neutral-900/30 border border-white/5">
+      <p className="text-lg font-bold text-white tracking-tight">{Number(value).toLocaleString()}</p>
+      <p className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">{label}</p>
+   </div>
 );
 
 const NoteCard = ({ note, index, viewMode, username, router }: any) => (
@@ -294,68 +382,93 @@ const NoteCard = ({ note, index, viewMode, username, router }: any) => (
     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
     onClick={() => router.push(`/note/${username}/${note.slug}`)}
     className={cn(
-      "group relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-neutral-950 transition-all duration-500 cursor-pointer hover:border-red-600/30",
-      viewMode === 'list' ? "flex flex-col sm:flex-row items-center p-4 gap-6 min-h-32" : "flex flex-col"
+      "group relative overflow-hidden bg-neutral-900/40 border border-white/5 rounded-2xl cursor-pointer hover:bg-neutral-900 hover:border-white/10 transition-all duration-300",
+      viewMode === 'list' ? "flex flex-row items-stretch h-32" : "flex flex-col"
     )}
   >
-    <div className={cn("relative overflow-hidden shrink-0", viewMode === 'list' ? "h-24 w-full sm:w-44 rounded-2xl" : "aspect-video")}>
-       <img src={note.thumbnail} alt="v" className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
-       {note.isPremium && <div className="absolute top-3 left-3 bg-red-600 p-2 rounded-xl z-10 border border-white/20"><Crown size={12} className="text-white fill-white"/></div>}
-       <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 z-10">
-         <p className="text-[9px] font-black text-white italic uppercase tracking-widest flex items-center gap-1.5 leading-none"><Eye size={12} className="text-red-600"/> {note.views || 0}</p>
-       </div>
+    <div className={cn("relative overflow-hidden bg-neutral-800 shrink-0", viewMode === 'list' ? "w-48" : "aspect-[16/9]")}>
+       {note.thumbnail ? (
+          <img src={note.thumbnail} alt={note.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+       ) : (
+          <div className="h-full w-full flex items-center justify-center bg-neutral-800"><Zap size={24} className="text-neutral-700"/></div>
+       )}
+       
+       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+       
+       {note.isPremium && (
+          <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10">
+             <Crown size={12} className="text-amber-400" />
+          </div>
+       )}
     </div>
-    <div className="p-6 flex-1 min-w-0">
-       <h3 className="text-sm font-black italic uppercase tracking-tighter text-white truncate group-hover:text-red-500 transition-colors mb-2">{note.title}</h3>
-       <div className="flex items-center justify-between font-bold text-[9px] text-neutral-600 uppercase">
-          <span>{new Date(note.createdAt).toLocaleDateString()}</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg group-hover:text-red-500"><ChevronRight size={20}/></Button>
+
+    <div className="p-4 flex flex-col justify-between flex-1 min-w-0">
+       <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-neutral-200 group-hover:text-white leading-tight line-clamp-2 transition-colors">
+             {note.title}
+          </h3>
+          <p className="text-xs text-neutral-500 line-clamp-1">{note.excerpt || "No description provided."}</p>
+       </div>
+       
+       <div className="flex items-center justify-between pt-4 mt-auto">
+          <div className="flex items-center gap-3 text-[10px] font-medium text-neutral-500 uppercase tracking-wider">
+             <span className="flex items-center gap-1"><Clock size={12}/> {new Date(note.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+             <span className="flex items-center gap-1"><Eye size={12}/> {note.views || 0}</span>
+          </div>
        </div>
     </div>
   </motion.div>
 );
 
-const TabTrigger = ({ value, label, icon }: any) => (
-  <TabsTrigger value={value} className="bg-transparent data-[state=active]:text-red-500 text-neutral-600 font-black uppercase italic text-[11px] tracking-[0.2em] p-0 rounded-none border-none transition-all relative group h-10">
-     <div className="flex items-center gap-2">
-      {icon && <span className="text-neutral-500 group-data-[state=active]:text-red-500 transition-colors">{icon}</span>}
-      <span>{label}</span>
-     </div>
-     <motion.div layoutId="activeTab" className="absolute -bottom-1 left-0 right-0 h-[2px] bg-red-600 opacity-0 group-data-[state=active]:opacity-100 shadow-[0_0_10px_red]" />
-  </TabsTrigger>
-);
+const ErrorScreen = ({ message, router }: { message: string; router: any }) => {
+  const isNotFound = message?.toLowerCase().includes("found");
 
-const StatusMini = ({ label, val }: any) => (
-  <div className="flex-1 bg-black/40 border border-white/5 p-4 rounded-3xl text-center">
-     <p className="text-[8px] font-black text-neutral-700 uppercase tracking-widest mb-1.5 leading-none">{label}</p>
-     <p className="text-sm font-black italic text-white leading-none">{val}</p>
-  </div>
-);
+  return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }} 
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4 }}
+        className="flex flex-col items-center"
+      >
+        <div className={cn(
+          "p-6 rounded-3xl mb-8 border backdrop-blur-sm",
+          isNotFound 
+            ? "bg-neutral-900/50 border-white/5 text-neutral-400" 
+            : "bg-red-500/10 border-red-500/20 text-red-500"
+        )}>
+          {isNotFound ? (
+             <UserX size={64} strokeWidth={1} /> 
+          ) : (
+             <ShieldAlert size={64} strokeWidth={1} />
+          )}
+        </div>
 
-const InfoNode = ({ label, val, icon }: any) => (
-  <div className="p-6 rounded-[2.5rem] bg-neutral-900/30 border border-white/5 flex items-center gap-4 shadow-2xl">
-     <div className="text-red-600 p-3 bg-black rounded-2xl border border-white/5 shadow-inner">{icon}</div>
-     <div>
-        <p className="text-[9px] font-black text-neutral-700 uppercase tracking-widest leading-none mb-1">{label}</p>
-        <p className="text-[11px] font-bold text-neutral-400 leading-none">{val}</p>
-     </div>
-  </div>
-);
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
+          {isNotFound ? "User Not Found" : "User Not Found"}
+        </h2>
+        
+        <p className="text-neutral-500 max-w-sm mb-10 text-base leading-relaxed">
+          {isNotFound 
+            ? "The profile you are looking for does not exist or may have been removed." 
+            : message || "We couldn't load this information."}
+        </p>
 
-const ErrorScreen = ({ message, router }: { message: string; router: any }) => (
-  <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 text-center">
-    <ShieldAlert size={64} className="text-red-600 animate-pulse mb-8" />
-    <h2 className="text-4xl font-black italic uppercase text-white mb-4 tracking-tighter">Access Denied</h2>
-    <p className="text-neutral-500 font-medium text-sm mb-12 uppercase tracking-tight italic">{message}</p>
-    <Button onClick={() => router.push('/')} className="h-16 px-10 bg-white text-black font-black uppercase italic rounded-2xl hover:bg-red-600 hover:text-white transition-all">
-      <Home size={18} className="mr-3" /> Return to Void
-    </Button>
-  </div>
-);
+        <Button 
+          onClick={() => router.push('/')} 
+          className="h-12 px-8 rounded-full bg-white text-black font-medium hover:bg-neutral-200 transition-transform active:scale-95"
+        >
+          <Home size={18} className="mr-2" /> 
+          Return to Home
+        </Button>
+      </motion.div>
+    </div>
+  );
+};
 
 const LoadingScreen = () => (
-  <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-8">
-    <div className="h-24 w-24 border-4 border-red-600 border-t-transparent rounded-full animate-spin shadow-[0_0_30px_rgba(220,38,38,0.3)]" />
-    <p className="text-red-600 font-black uppercase italic tracking-[0.6em] animate-pulse text-xs">Accessing User Directory</p>
+  <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center gap-4">
+    <Loader2 className="h-8 w-8 text-white animate-spin" />
+    <p className="text-neutral-500 text-xs font-medium uppercase tracking-widest">Loading Profile</p>
   </div>
 );

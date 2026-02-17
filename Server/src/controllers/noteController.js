@@ -2,20 +2,11 @@ const mongoose = require("mongoose");
 const Note = require("../models/Note");
 const User = require("../models/User");
 const Comment = require("../models/Comment");
-const FlashcardSet = require("../models/FlashcardSet");
-const puppeteer = require("puppeteer");
-const path = require('path');
-const fs = require('fs');
-const pdf = require('html-pdf');
-const axios = require('axios');
-const { Dropbox } = require('dropbox');
 const { getTranscript } = require('../youtube-transcript');
-const { get } = require("mongoose");
 const {GoogleGenAI} = require("@google/genai");
 const { google } = require("googleapis");
 const html_to_pdf = require("html-pdf-node");
 dotenv = require("dotenv");
-const Quiz = require("../models/Quiz");
 
 
 const GoogleDriveService = require('../services/googleDriveService');
@@ -250,7 +241,6 @@ const extractVideoId = (url) => {
   }
 };
 
-const fetch = require("node-fetch");
 
 // Function to get image links from Google Custom Search
 const getImgLink = async (query, count = 1) => {
@@ -1078,7 +1068,7 @@ exports.getUserNotes = async (req, res) => {
       .sort(sortOptions)
       .skip(skip)
       .limit(limitNum)
-      .select('-__v -transcript')
+      .select('-__v -transcript -img_with_url -content')
       .lean();
 
     const totalNotes = await Note.countDocuments(searchQuery);
@@ -1433,138 +1423,49 @@ exports.explore = async (req, res) => {
       limit = 12, 
       search = '', 
       sortBy = 'updatedAt', 
-      sortOrder = 'desc',
-      type = 'all' 
+      sortOrder = 'desc'
     } = req.query;
 
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.max(1, parseInt(limit));
     const skip = (pageNum - 1) * limitNum;
 
-    // Normalize type parameter (support singular forms)
-    const normalizedType = type.toLowerCase();
-    let contentType;
-    
-    if (normalizedType.includes('note')) {
-      contentType = 'notes';
-    } else if (normalizedType.includes('flashcard')) {
-      contentType = 'flashcards';
-    } else if (normalizedType.includes('quiz')) {
-      contentType = 'quizzes';
-    } else {
-      contentType = 'all';
-    }
-
-    // 1. Build base queries for all content types
-    const notesQuery = { visibility: "public" };
-    const flashcardsQuery = { visibility: "public" };
-    const quizzesQuery = {}; // Quizzes are always public by default
+    // 1. Build Query (Only for Notes)
+    const query = { visibility: "public" };
     
     if (search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
-      
-      notesQuery.$or = [
+      query.$or = [
         { title: searchRegex },
         { content: searchRegex },
         { transcript: searchRegex }
       ];
-      
-      flashcardsQuery.title = searchRegex;
-      quizzesQuery.title = searchRegex;
     }
 
-    // 2. Sort options mapping
-    const sortFieldMap = {
-      'lastEdit': 'updatedAt',
-      'dateCreated': 'createdAt',
-      'alphabetical': 'title'
-    };
-    const sortField = sortFieldMap[sortBy] || 'updatedAt';
-    const sortDirection = sortOrder === 'desc' ? -1 : 1;
-    const sortOptions = { [sortField]: sortDirection };
-
-    // 3. Fetch data based on content type
-    let notesData = [];
-    let flashcardsData = [];
-    let quizzesData = [];
-
-    if (contentType === 'all') {
-      // Fetch all types for 'all' content
-      [notesData, flashcardsData, quizzesData] = await Promise.all([
-        Note.find(notesQuery)
-          .populate('owner', 'name picture username')
-          .sort(sortOptions)
-          .skip(0)
-          .limit(limitNum * 3)
-          .select('-__v -transcript')
-          .lean(),
-        
-        FlashcardSet.find(flashcardsQuery)
-          .populate('owner', 'name picture username')
-          .sort(sortOptions)
-          .skip(0)
-          .limit(limitNum * 3)
-          .select('title slug thumbnail videoUrl videoId flashcards generationDetails status createdAt updatedAt owner views')
-          .lean(),
-        
-        Quiz.find(quizzesQuery)
-          .populate('userId', 'name picture username')
-          .sort(sortOptions)
-          .skip(0)
-          .limit(limitNum * 3)
-          .select('title slug thumbnail videoUrl videoId settings questions userEmail transcriptSource createdAt updatedAt userId')
-          .lean()
-      ]);
+    // 2. Sort Options
+    const sortOptions = {};
+    if (sortBy === 'alphabetical') {
+        sortOptions['title'] = sortOrder === 'desc' ? -1 : 1;
     } else {
-      // Fetch specific type with pagination
-      if (contentType === 'notes') {
-        notesData = await Note.find(notesQuery)
-          .populate('owner', 'name picture username')
-          .sort(sortOptions)
-          .skip(skip)
-          .limit(limitNum)
-          .select('-__v -transcript')
-          .lean();
-      } else if (contentType === 'flashcards') {
-        flashcardsData = await FlashcardSet.find(flashcardsQuery)
-          .populate('owner', 'name picture username')
-          .sort(sortOptions)
-          .skip(skip)
-          .limit(limitNum)
-          .select('title slug thumbnail videoUrl videoId flashcards generationDetails status createdAt updatedAt owner views')
-          .lean();
-      } else if (contentType === 'quizzes') {
-        quizzesData = await Quiz.find(quizzesQuery)
-          .populate('userId', 'name picture username')
-          .sort(sortOptions)
-          .skip(skip)
-          .limit(limitNum)
-          .select('title slug thumbnail videoUrl videoId settings questions userEmail transcriptSource createdAt updatedAt userId')
-          .lean();
-      }
+        const field = sortBy === 'lastEdit' ? 'updatedAt' : sortBy;
+        sortOptions[field] = sortOrder === 'desc' ? -1 : 1;
     }
 
-    // 4. Transformation function for user data
-    const transformUser = (user) => {
-      if (!user) {
-        return {
-          _id: 'unknown',
-          name: 'Anonymous',
-          avatarUrl: null,
-          username: null
-        };
-      }
-      
-      return {
-        _id: user._id,
-        name: user.name || 'Anonymous',
-        avatarUrl: user.picture,
-        username: user.username || null
-      };
-    };
+    // 3. Fetch Data (Directly from Note collection)
+    const notes = await Note.find(query)
+      .populate('owner', 'name picture username') 
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limitNum)
+      .select('-__v -transcript -content -img_with_url -pdf_data') // Exclude heavy fields
+      .lean();
 
-    // Transform notes
-    const transformedNotes = notesData.map(note => ({
+    // 4. Get Total Count
+    const totalNotes = await Note.countDocuments(query);
+    const totalPages = Math.ceil(totalNotes / limitNum);
+
+    // 5. Transform Data
+    const transformedItems = notes.map(note => ({
       _id: note._id,
       title: note.title,
       slug: note.slug,
@@ -1573,140 +1474,31 @@ exports.explore = async (req, res) => {
       videoId: note.videoId,
       createdAt: note.createdAt,
       updatedAt: note.updatedAt,
-      lastEdit: note.updatedAt ? note.updatedAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      type: 'note',
-      contentType: 'note',
-      creator: transformUser(note.owner),
       views: note.views || 0,
-      contentCount: 1
-    }));
-
-    // Transform flashcards
-    const transformedFlashcards = flashcardsData.map(flashcard => ({
-      _id: flashcard._id,
-      title: flashcard.title,
-      slug: flashcard.slug,
-      thumbnail: flashcard.thumbnail,
-      videoUrl: flashcard.videoUrl,
-      videoId: flashcard.videoId,
-      createdAt: flashcard.createdAt,
-      updatedAt: flashcard.updatedAt,
-      lastEdit: flashcard.updatedAt ? flashcard.updatedAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      type: 'flashcard',
-      contentType: 'flashcard',
-      creator: transformUser(flashcard.owner),
-      flashcardsCount: flashcard.flashcards ? flashcard.flashcards.length : 0,
-      generationDetails: flashcard.generationDetails,
-      views: flashcard.views || 0,
-      contentCount: flashcard.flashcards ? flashcard.flashcards.length : 0
-    }));
-
-    // Transform quizzes
-    const transformedQuizzes = quizzesData.map(quiz => ({
-      _id: quiz._id,
-      title: quiz.title,
-      slug: quiz.slug,
-      thumbnail: quiz.thumbnail,
-      videoUrl: quiz.videoUrl,
-      videoId: quiz.videoId,
-      createdAt: quiz.createdAt,
-      updatedAt: quiz.updatedAt,
-      lastEdit: quiz.updatedAt ? quiz.updatedAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      type: 'quiz',
-      contentType: 'quiz',
-      creator: transformUser(quiz.userId),
-      questionsCount: quiz.questions ? quiz.questions.length : 0,
-      settings: {
-        difficulty: quiz.settings?.difficulty || 'medium',
-        quizType: quiz.settings?.quizType || 'mcq',
-        language: quiz.settings?.language || 'English',
-        includeExplanation: quiz.settings?.includeExplanation || true
-      },
-      transcriptAvailable: quiz.transcriptSource === 'transcript',
-      userEmail: quiz.userEmail,
-      contentCount: quiz.questions ? quiz.questions.length : 0
-    }));
-
-    // 5. Combine and paginate results
-    let combinedItems = [];
-    let totalItems = 0;
-    let totalPages = 0;
-
-    if (contentType === 'all') {
-      // Merge all items
-      combinedItems = [
-        ...transformedNotes, 
-        ...transformedFlashcards, 
-        ...transformedQuizzes
-      ];
-      
-      // Sort merged items
-      combinedItems.sort((a, b) => {
-        let valA, valB;
-        
-        if (sortBy === 'alphabetical') {
-          valA = a.title.toLowerCase();
-          valB = b.title.toLowerCase();
-        } else {
-          const field = sortBy === 'lastEdit' ? 'updatedAt' : sortBy;
-          valA = new Date(a[field] || a.createdAt);
-          valB = new Date(b[field] || b.createdAt);
-        }
-        
-        if (sortDirection === -1) {
-          return valA < valB ? 1 : -1;
-        }
-        return valA > valB ? 1 : -1;
-      });
-      
-      // Get total counts for all types
-      const [totalNotesCount, totalFlashcardsCount, totalQuizzesCount] = await Promise.all([
-        Note.countDocuments(notesQuery),
-        FlashcardSet.countDocuments(flashcardsQuery),
-        Quiz.countDocuments(quizzesQuery)
-      ]);
-      
-      totalItems = totalNotesCount + totalFlashcardsCount + totalQuizzesCount;
-      totalPages = Math.ceil(totalItems / limitNum);
-      
-      // Apply pagination to merged results
-      combinedItems = combinedItems.slice(skip, skip + limitNum);
-      
-    } else {
-      // For specific types
-      if (contentType === 'notes') {
-        combinedItems = transformedNotes;
-        totalItems = await Note.countDocuments(notesQuery);
-      } else if (contentType === 'flashcards') {
-        combinedItems = transformedFlashcards;
-        totalItems = await FlashcardSet.countDocuments(flashcardsQuery);
-      } else if (contentType === 'quizzes') {
-        combinedItems = transformedQuizzes;
-        totalItems = await Quiz.countDocuments(quizzesQuery);
+      type: 'note', 
+      creator: note.owner ? {
+        _id: note.owner._id,
+        name: note.owner.name,
+        avatarUrl: note.owner.picture,
+        username: note.owner.username
+      } : { 
+        _id: 'unknown', 
+        name: 'Anonymous', 
+        avatarUrl: null 
       }
-      
-      totalPages = Math.ceil(totalItems / limitNum);
-    }
+    }));
 
-    // 6. Get all counts for the response
-    const [totalNotesCount, totalFlashcardsCount, totalQuizzesCount] = await Promise.all([
-      Note.countDocuments(notesQuery),
-      FlashcardSet.countDocuments(flashcardsQuery),
-      Quiz.countDocuments(quizzesQuery)
-    ]);
-
+    // 6. Return Response
     return res.status(200).json({
       success: true,
-      message: totalItems === 0 ? "No public content found" : "Explore content fetched successfully",
+      message: transformedItems.length > 0 ? "Notes fetched successfully" : "No public notes found",
       data: {
-        items: combinedItems,
+        items: transformedItems,
         pagination: {
           currentPage: pageNum,
-          totalPages: totalPages || 0,
-          totalItems: totalItems || 0,
-          totalNotes: totalNotesCount || 0,
-          totalFlashcards: totalFlashcardsCount || 0,
-          totalQuizzes: totalQuizzesCount || 0,
+          totalPages,
+          totalItems: totalNotes, // Total items is just total notes now
+          totalNotes,
           hasNext: pageNum < totalPages,
           hasPrev: pageNum > 1
         }
@@ -1742,7 +1534,7 @@ exports.getComments = async (req, res) => {
     // Get comments with user data populated
     const comments = await Comment.find({ note: noteId })
       .populate('user', 'name picture')
-      .populate('replies.user', 'name picture')
+      .populate('replies.user', 'name picture username')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -1880,6 +1672,7 @@ exports.likeComment = async (req, res) => {
 };
 
 // Create a reply to a comment
+// Create a reply to a comment
 exports.createReply = async (req, res) => {
   try {
     const { commentId } = req.params;
@@ -1901,20 +1694,31 @@ exports.createReply = async (req, res) => {
       });
     }
 
-    // Create new reply
+    // 1. Create new reply object
     const newReply = {
       content: content.trim(),
       user: user._id,
       isAiResponse,
+      likes: 0,
+      userLiked: [],
       createdAt: new Date()
     };
 
+    // 2. Push to array
     comment.replies.push(newReply);
+    
+    // 3. Save the parent document
     await comment.save();
 
-    // Populate user data for the new reply
+    // 4. FIX: Populate the 'user' field inside the 'replies' array of the PARENT document
+    // We specifically populate the user details for the replies
+    await comment.populate({
+      path: 'replies.user',
+      select: 'name picture username' // Added username just in case your frontend needs it
+    });
+
+    // 5. Retrieve the last reply (the one we just added) which is now populated
     const savedReply = comment.replies[comment.replies.length - 1];
-    await savedReply.populate('user', 'name picture');
 
     res.status(201).json({
       success: true,
@@ -1922,7 +1726,7 @@ exports.createReply = async (req, res) => {
       data: {
         reply: {
           ...savedReply.toObject(),
-          userLiked: false
+          userLiked: false // Default state for the creator
         }
       }
     });
@@ -2008,6 +1812,7 @@ exports.getNoteALLBySlug = async (req, res) => {
     // Find note with all necessary fields
     const note = await Note.findOne({ slug })
       .populate('owner', 'name picture email username') // Get username directly
+      .select('-pdf_data -transcript -img_with_url')
       .lean();
 
     if (!note) {
@@ -2463,226 +2268,6 @@ function getEmptyAnalyticsResponse() {
 
 
 
-// Get user's notes with pagination and search
-exports.getUserNotes = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const { 
-      page = 1, 
-      limit = 20, 
-      search = "",
-      sortBy = "createdAt",
-      sortOrder = "desc"
-    } = req.query;
-
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
-    // Build match queries for all content types
-    const notesMatchQuery = { owner: new mongoose.Types.ObjectId(userId) };
-    const flashcardsMatchQuery = { owner: userId };
-    const quizzesMatchQuery = { userId: userId }; // Quizzes use userId instead of owner
-    
-    if (search) {
-      const searchRegex = { $regex: search, $options: "i" };
-      notesMatchQuery.title = searchRegex;
-      flashcardsMatchQuery.title = searchRegex;
-      quizzesMatchQuery.title = searchRegex;
-    }
-
-    // Parallel fetching of all content types
-    const [notesData, flashcardsData, quizzesData] = await Promise.all([
-      // Get notes with comments count in single aggregation
-      Note.aggregate([
-        { $match: notesMatchQuery },
-        {
-          $lookup: {
-            from: "comments",
-            localField: "_id",
-            foreignField: "note",
-            as: "comments"
-          }
-        },
-        {
-          $addFields: {
-            commentsCount: { $size: "$comments" },
-            likesCount: { $sum: "$comments.likes" }
-          }
-        },
-        {
-          $project: {
-            _id: 1,
-            title: 1,
-            thumbnail: 1,
-            videoUrl: 1,
-            videoId: 1,
-            visibility: 1,
-            createdAt: 1,
-            updatedAt: 1,
-            views: 1,
-            slug: 1,
-            fileType: 1,
-            commentsCount: 1,
-            likesCount: 1
-          }
-        },
-        { $sort: { [sortBy]: sortOrder === "desc" ? -1 : 1 } },
-        { $skip: skip },
-        { $limit: limitNum }
-      ]),
-
-      // Get flashcards
-      FlashcardSet.find(flashcardsMatchQuery)
-        .sort({ [sortBy]: sortOrder === "desc" ? -1 : 1 })
-        .skip(skip)
-        .limit(limitNum)
-        .select('title slug thumbnail videoUrl videoId flashcards generationDetails status visibility createdAt updatedAt')
-        .lean(),
-
-      // Get quizzes
-      Quiz.find(quizzesMatchQuery)
-        .sort({ [sortBy]: sortOrder === "desc" ? -1 : 1 })
-        .skip(skip)
-        .limit(limitNum)
-        .select('title slug thumbnail videoUrl videoId settings questions userEmail transcriptSource createdAt updatedAt userId')
-        .lean()
-    ]);
-
-    // Transform notes to include type
-    const transformedNotes = notesData.map(note => ({
-      ...note,
-      type: 'note',
-      contentCount: 1 // For consistency with other types
-    }));
-
-    // Transform flashcards to include type and match structure
-    const transformedFlashcards = flashcardsData.map(flashcard => ({
-      _id: flashcard._id,
-      title: flashcard.title,
-      slug: flashcard.slug,
-      thumbnail: flashcard.thumbnail,
-      videoUrl: flashcard.videoUrl,
-      videoId: flashcard.videoId,
-      visibility: flashcard.visibility || 'private',
-      createdAt: flashcard.createdAt,
-      updatedAt: flashcard.updatedAt,
-      views: 0, // Flashcards don't have views yet
-      fileType: 'flashcard',
-      commentsCount: 0, // Flashcards don't have comments yet
-      likesCount: 0, // Flashcards don't have likes yet
-      type: 'flashcard',
-      contentCount: flashcard.flashcards ? flashcard.flashcards.length : 0, // Number of cards
-      generationDetails: flashcard.generationDetails,
-      status: flashcard.status || 'completed'
-    }));
-
-    // Transform quizzes to include type and match structure
-    const transformedQuizzes = quizzesData.map(quiz => ({
-      _id: quiz._id,
-      title: quiz.title,
-      slug: quiz.slug,
-      thumbnail: quiz.thumbnail,
-      videoUrl: quiz.videoUrl,
-      videoId: quiz.videoId,
-      visibility: 'private', // Quizzes are private by default
-      createdAt: quiz.createdAt,
-      updatedAt: quiz.updatedAt,
-      views: 0, // Quizzes don't have views yet
-      fileType: 'quiz',
-      commentsCount: 0, // Quizzes don't have comments yet
-      likesCount: 0, // Quizzes don't have likes yet
-      type: 'quiz',
-      contentCount: quiz.questions ? quiz.questions.length : 0, // Number of questions
-      settings: {
-        difficulty: quiz.settings?.difficulty || 'medium',
-        quizType: quiz.settings?.quizType || 'mcq',
-        language: quiz.settings?.language || 'English',
-        includeExplanation: quiz.settings?.includeExplanation || true
-      },
-      transcriptAvailable: quiz.transcriptSource === 'transcript',
-      userEmail: quiz.userEmail
-    }));
-
-    // Combine all data
-    const combinedData = [
-      ...transformedNotes, 
-      ...transformedFlashcards, 
-      ...transformedQuizzes
-    ];
-
-    // Sort combined data
-    combinedData.sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortBy) {
-        case 'createdAt':
-          aValue = new Date(a.createdAt);
-          bValue = new Date(b.createdAt);
-          break;
-        case 'updatedAt':
-          aValue = new Date(a.updatedAt);
-          bValue = new Date(b.updatedAt);
-          break;
-        case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
-          break;
-        case 'contentCount':
-          aValue = a.contentCount || 0;
-          bValue = b.contentCount || 0;
-          break;
-        default:
-          aValue = new Date(a.createdAt);
-          bValue = new Date(b.createdAt);
-      }
-      
-      if (sortOrder === "desc") {
-        return bValue > aValue ? 1 : bValue < aValue ? -1 : 0;
-      } else {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-      }
-    });
-
-    // Apply pagination to combined results
-    const startIndex = skip;
-    const endIndex = startIndex + limitNum;
-    const paginatedData = combinedData.slice(startIndex, endIndex);
-
-    // Get total counts for all content types
-    const [totalNotes, totalFlashcards, totalQuizzes] = await Promise.all([
-      Note.countDocuments(notesMatchQuery),
-      FlashcardSet.countDocuments(flashcardsMatchQuery),
-      Quiz.countDocuments(quizzesMatchQuery)
-    ]);
-
-    const totalCount = totalNotes + totalFlashcards + totalQuizzes;
-
-    res.status(200).json({
-      success: true,
-      data: paginatedData,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limitNum),
-        counts: {
-          notes: totalNotes,
-          flashcards: totalFlashcards,
-          quizzes: totalQuizzes
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Get User Content Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Error fetching user content",
-      error: error.message
-    });
-  }
-};
 
 // Delete a note and its associated comments
 exports.deleteNote = async (req, res) => {
@@ -3163,3 +2748,72 @@ exports.likeNote = async (req, res) => {
     });
   }
 }
+
+
+
+
+// DELETE MAIN COMMENT (And automatically delete all replies)
+exports.deleteComment = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user._id; // Assuming authMiddleware adds user to req
+
+    const comment = await Comment.findById(commentId);
+
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Comment not found" });
+    }
+
+    // Check if the user deleting is the owner of the comment
+    if (comment.user.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized to delete this comment" });
+    }
+
+    // Since replies are embedded in the comment document, 
+    // deleting the document automatically removes the replies.
+    await Comment.findByIdAndDelete(commentId);
+
+    return res.status(200).json({ success: true, message: "Comment and its replies deleted successfully" });
+  } catch (error) {
+    console.error("Delete comment error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// DELETE A SPECIFIC REPLY
+exports.deleteReply = async (req, res) => {
+  try {
+    const { commentId, replyId } = req.params;
+    const userId = req.user._id;
+
+    // Find the parent comment
+    const comment = await Comment.findById(commentId);
+
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Parent comment not found" });
+    }
+
+    // Find the specific reply within the array
+    const reply = comment.replies.id(replyId);
+
+    if (!reply) {
+      return res.status(404).json({ success: false, message: "Reply not found" });
+    }
+
+    // Check if user owns the reply
+    if (reply.user.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized to delete this reply" });
+    }
+
+    // Remove the reply using Mongoose subdocument .pull() or .remove()
+    // Using $pull is often safer for arrays
+    comment.replies.pull({ _id: replyId });
+    
+    await comment.save();
+
+    return res.status(200).json({ success: true, message: "Reply deleted successfully" });
+  } catch (error) {
+    console.error("Delete reply error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};

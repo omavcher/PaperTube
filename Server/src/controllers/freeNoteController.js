@@ -1,14 +1,23 @@
 const User = require('../models/User');
 const Note = require('../models/Note');
-const GroqMultiModel = require('../utils/groqMultiModel');
 const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
 
 const FREE_MODELS = ['sankshipta', 'bhashasetu'];
 const MAX_FREE_VIDEO_LENGTH = 90 * 60; // 90 minutes in seconds
 
-// Initialize Groq client
-const groqClient = new GroqMultiModel();
+const OPENROUTER_API_KEY = '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';
+
+// OpenRouter model priority queue - higher priority first
+let openRouterModelQueue = [
+  "nvidia/nemotron-3-nano-30b-a3b:free",
+  "openrouter/free",
+  "nvidia/nemotron-nano-12b-v2-vl:free",
+  "tngtech/deepseek-r1t-chimera:free"
+];
+
+// Track failed models for OpenRouter
+let failedOpenRouterModels = new Set();
 
 // Map frontend detail levels to backend enum values
 const mapDetailLevel = (level) => {
@@ -51,7 +60,104 @@ const extractVideoId = (url) => {
   }
 };
 
-const fetch = require("node-fetch");
+/**
+ * OpenRouter AI chat completion with model fallback
+ */
+async function openRouterChatCompletion(messages, options = {}) {
+  const {
+    temperature = 0.7,
+    max_tokens = 4000,
+    top_p = 1,
+    timeout = 60000
+  } = options;
+
+  // Rebuild queue: put failed models at the end
+  const workingModels = openRouterModelQueue.filter(m => !failedOpenRouterModels.has(m));
+  const failedModelsList = openRouterModelQueue.filter(m => failedOpenRouterModels.has(m));
+  openRouterModelQueue = [...workingModels, ...failedModelsList];
+  
+  let lastError = null;
+  
+  for (const model of openRouterModelQueue) {
+    console.log(`🔄 OpenRouter trying model: ${model}`);
+    
+    try {
+      // Create timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`OpenRouter request timeout after ${timeout}ms`)), timeout);
+      });
+
+      // Create fetch promise
+      const fetchPromise = fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://yt2pdf.in",
+          "X-Title": "YT2PDF"
+        },
+        body: JSON.stringify({ 
+          model: model,
+          messages: messages,
+          temperature: temperature,
+          max_tokens: max_tokens,
+          top_p: top_p,
+          stream: false,
+          reasoning: { enabled: false }
+        })
+      });
+
+      // Race between fetch and timeout
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${JSON.stringify(errorData)}`);
+      }
+      
+      const data = await response.json();
+      
+      // Success - move this model to front of queue for next time
+      openRouterModelQueue = [
+        model,
+        ...openRouterModelQueue.filter(m => m !== model && !failedOpenRouterModels.has(m)),
+        ...failedModelsList
+      ];
+      
+      failedOpenRouterModels.delete(model);
+      
+      console.log(`✅ OpenRouter success with: ${model}`);
+      
+      return {
+        success: true,
+        model: model,
+        content: data.choices[0].message.content,
+        usage: data.usage,
+        fullResponse: data
+      };
+      
+    } catch (error) {
+      console.log(`❌ OpenRouter model ${model} failed: ${error.message}`);
+      failedOpenRouterModels.add(model);
+      lastError = error;
+      
+      // If rate limited, wait a bit
+      if (error.message.includes('429') || error.message.includes('rate limit')) {
+        console.log(`⏳ Rate limit hit. Waiting 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
+      continue; // Try next model
+    }
+  }
+  
+  // If all models failed
+  return {
+    success: false,
+    error: `All OpenRouter models failed. Last error: ${lastError?.message}`,
+    models_tried: openRouterModelQueue.length
+  };
+}
 
 // Function to get YouTube video duration using YouTube Data API
 async function getYouTubeVideoDuration(videoId) {
@@ -211,7 +317,7 @@ ${transcript}
       }
     ];
 
-    const response = await groqClient.chatCompletion(messages, {
+    const response = await openRouterChatCompletion(messages, {
       temperature: 0.3,
       max_tokens: 500
     });
@@ -244,10 +350,6 @@ ${transcript}
     throw err;
   }
 }
-
-
-
-
 
 // Function to fetch YouTube transcript
 const fetchTranscript = async (videoId) => {
@@ -633,10 +735,11 @@ exports.createNote = async (req, res) => {
     console.log('Settings received:', { language: settings?.language, detailLevel: settings?.detailLevel, prompt });
     
     // STEP 1: Fetch transcript
-    console.log('Fetching transcript...');
     let transcript;
     try {
+      console.log("Fetching transcript for video ID:", videoId);
       transcript = await getTranscript(videoId);
+      console.log(`Transcript fetched, length: ${transcript?.length || 0} characters`);
       if (!transcript || transcript.trim().length === 0) {
         throw new Error('Transcript is empty or unavailable for this video');
       }
@@ -668,7 +771,7 @@ exports.createNote = async (req, res) => {
       }
     }
 
-    // STEP 3: Generate PDF content using AI with language and detail level support
+    // STEP 3: Generate PDF content using OpenRouter AI with language and detail level support
     console.log(`Generating PDF content with ${model} model...`);
     console.log(`Language: ${settings?.language || 'English'}, Detail Level: ${settings?.detailLevel || 'Standard Notes'}`);
     
@@ -686,17 +789,11 @@ exports.createNote = async (req, res) => {
       }
     ];
 
-    // Add timeout for Groq API
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('AI generation timeout after 60 seconds')), 60000);
-    });
-
-    const groqPromise = groqClient.chatCompletion(messages, {
+    const response = await openRouterChatCompletion(messages, {
       temperature: 0.7,
-      max_tokens: 4000
+      max_tokens: 4000,
+      timeout: 90000 // 90 seconds timeout for OpenRouter
     });
-
-    const response = await Promise.race([groqPromise, timeoutPromise]);
 
     if (!response.success) {
       throw new Error(`AI generation failed: ${response.error}`);
@@ -733,6 +830,7 @@ exports.createNote = async (req, res) => {
         generatedAt: new Date(),
         processingTime: processingTime,
         type: 'free',
+        aiModel: response.model // Track which OpenRouter model was used
       },
     });
 
@@ -1005,6 +1103,47 @@ exports.getNoteDetails = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch note details",
+      error: error.message
+    });
+  }
+};
+
+// Reset OpenRouter model failures (useful for testing)
+exports.resetOpenRouterModels = async (req, res) => {
+  try {
+    failedOpenRouterModels.clear();
+    console.log('🔄 OpenRouter failed models reset');
+    
+    res.json({
+      success: true,
+      message: "OpenRouter model failures reset successfully",
+      currentQueue: openRouterModelQueue
+    });
+  } catch (error) {
+    console.error('Error resetting OpenRouter models:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reset OpenRouter models",
+      error: error.message
+    });
+  }
+};
+
+// Get OpenRouter model status
+exports.getOpenRouterModelStatus = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      modelQueue: openRouterModelQueue,
+      failedModels: Array.from(failedOpenRouterModels),
+      workingModels: openRouterModelQueue.filter(m => !failedOpenRouterModels.has(m)),
+      totalModels: openRouterModelQueue.length
+    });
+  } catch (error) {
+    console.error('Error fetching OpenRouter model status:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch OpenRouter model status",
       error: error.message
     });
   }

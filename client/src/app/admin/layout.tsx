@@ -10,7 +10,8 @@ import {
   List,
   Fence,
   Gamepad2Icon,
-  File
+  File,
+  ChartBarBig
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -283,6 +284,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <p className="px-2 md:px-4 py-1 md:py-2 text-[8px] font-black uppercase tracking-[0.3em] text-neutral-600">
               Analytics
             </p>
+            <AdminNavLink 
+              href="/admin/tools-analytics" 
+              icon={<ChartBarBig size={isMobile ? 20 : 18} />} 
+              label="Tools Analytics" 
+              active={pathname.includes("/tools-analytics")} 
+              expanded={isSidebarOpen} 
+              mobile={isMobile}
+            />
             <AdminNavLink 
               href="/admin/analytics" 
               icon={<BarChart3 size={isMobile ? 20 : 18} />} 

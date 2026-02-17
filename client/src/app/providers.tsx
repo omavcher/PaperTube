@@ -23,15 +23,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Hide Desktop Nav on high-focus tools or admin pages
   const hideDesktopNav = [
     "/admin", 
-    "/tools/code-to-image", 
     "/notes/", 
-    "/logic-gate-lab"
+    "/note/"
   ].some(path => pathname?.startsWith(path));
 
   // Hide Mobile Bottom Dock on tools that require full-screen height
   const hideMobileNav = [
     "/admin", 
-    "/sentinel"
+    "/sentinel",
+    "/notes/",
+    "/note/"
   ].some(path => pathname?.startsWith(path));
 
   useEffect(() => {

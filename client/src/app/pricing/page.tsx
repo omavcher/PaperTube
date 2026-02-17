@@ -5,7 +5,7 @@ import {
   Smartphone, Tag, Zap, User, Loader2, IndianRupee, 
   ShieldCheck, Activity, Terminal, CheckCircle2, XCircle, 
   CreditCard, TicketPercent, Sparkles, X, ArrowRight, Timer, Users, Flame,
-  ExternalLink
+  ExternalLink, Coins, Database, Cpu
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -190,9 +190,18 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
     return () => clearInterval(timer);
   }, []);
 
-  const baseAmount = packageData ? (billingPeriod === 'monthly' ? packageData.monthlyPrice : packageData.yearlyPrice) : 0;
+  const isTokenPackage = packageData.type === 'token';
+
+  // Determine base amount
+  let baseAmount = 0;
+  if (isTokenPackage) {
+    baseAmount = packageData.price;
+  } else {
+    baseAmount = billingPeriod === 'monthly' ? packageData.monthlyPrice : packageData.yearlyPrice;
+  }
+
   const bestOffer = activeOffers[0];
-  const offerDiscount = bestOffer ? (baseAmount * bestOffer.discountPercent) / 100 : 0;
+  const offerDiscount = bestOffer && !isTokenPackage ? (baseAmount * bestOffer.discountPercent) / 100 : 0;
   
   const extraDiscount = useMemo(() => {
     if (!appliedCoupon) return 0;
@@ -224,14 +233,14 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
   const handlePurchase = () => {
     const paymentData: PaymentData = {
       packageId: packageData.id,
-      packageType: 'subscription',
+      packageType: isTokenPackage ? 'token' : 'subscription',
       finalAmount: totalAmount,
       baseAmount: baseAmount,
       discountAmount: totalDiscount,
       gstAmount: gstAmount,
       mobile: mobile,
       couponCode: appliedCoupon?.code,
-      billingPeriod: billingPeriod,
+      billingPeriod: isTokenPackage ? undefined : billingPeriod,
       packageName: packageData.name
     };
     onPurchase(paymentData);
@@ -319,7 +328,7 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
             <input 
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              className="flex-1 bg-black border border-white/10 h-12 rounded-xl px-5 font-mono text-sm uppercase outline-none focus:border-red-600/50"
+              className="flex-1 bg-black border text-white border-white/10 h-12 rounded-xl px-5 font-mono text-sm uppercase outline-none focus:border-red-600/50"
               placeholder="MANUAL_ENTRY"
             />
             <button 
@@ -336,7 +345,7 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
                 onClick={() => applyCode(c.code)}
                 className="p-3 bg-white/[0.01] border border-dashed border-white/5 rounded-xl hover:border-red-600/50 hover:bg-red-600/[0.03] transition-all text-left group"
               >
-                <p className="text-[10px] font-black group-hover:text-red-500 mb-1">{c.code}</p>
+                <p className="text-[10px] font-black text-white group-hover:text-red-500 mb-1">{c.code}</p>
                 <p className="text-[9px] font-black text-emerald-500 uppercase">
                   {c.type === 'percent' ? `-${c.value}%` : `₹${c.value} OFF`}
                 </p>
@@ -353,10 +362,17 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
             <Badge className="bg-red-600 text-white border-none px-3 text-[8px] font-black uppercase tracking-[0.4em] mb-2 animate-bounce">
               LIMITED_TIME_OFFER
             </Badge>
-            <h3 className="text-4xl font-black italic uppercase tracking-tighter text-white">{packageData?.name} Plan</h3>
-            <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mt-2">
-              Cost effective logic: ₹{(totalAmount / (billingPeriod === 'monthly' ? 30 : 365)).toFixed(2)} / Day
-            </p>
+            <h3 className="text-4xl font-black italic uppercase tracking-tighter text-white">{packageData?.name}</h3>
+            
+            {!isTokenPackage ? (
+              <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mt-2">
+                Cost effective logic: ₹{(totalAmount / (billingPeriod === 'monthly' ? 30 : 365)).toFixed(2)} / Day
+              </p>
+            ) : (
+               <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mt-2">
+                One-time purchase • Valid Forever
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -412,6 +428,7 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
 
 // --- Main Component ---
 export default function PricingSection() {
+  const [viewMode, setViewMode] = useState<"subscription" | "token">("subscription");
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [user, setUser] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -422,59 +439,81 @@ export default function PricingSection() {
   const [transactionResult, setTransactionResult] = useState<any>(null);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
-  const plans = [
+  // --- Data Definition ---
+  const subscriptionPlans = [
     { 
       id: "scholar", 
+      type: "subscription",
       name: "Scholar", 
       monthlyPrice: 149, 
       yearlyPrice: 1490, 
       description: "Don't fall behind. The essential toolkit for survival.", 
-      features: [
-        "Access to All Premium Models",
-        "Unlimited AI Quiz Generation", 
-        "6hr Video Processing / Daily", 
-        "Basic Game Access", 
-        "Standard Tools Access"
-      ], 
+      features: ["Access to All Premium Models", "Unlimited AI Quiz", "6hr Video Processing/Day", "Basic Game Access", "Standard Tools"], 
       cta: "Join the Protocol", 
       slots: "Only 14 Slots Left"
     },
     { 
       id: "pro", 
+      type: "subscription",
       name: "Pro Scholar", 
       monthlyPrice: 299, 
       yearlyPrice: 2990, 
-      description: "The Choice of Toppers. 92% of users sync here for exams.", 
+      description: "The Choice of Toppers. 92% of users sync here.", 
       popular: true, 
       highlight: true, 
-      features: [
-        "Everything in Scholar",
-        "Priority 'Fast-Lane' AI Speed", 
-        "Verified Scholar Badge",
-        "Zero Interruptions (No Ads)", 
-        "12hr Video Processing / Daily", 
-        "Early Access to Beta Tools"
-      ], 
+      features: ["Everything in Scholar", "Priority 'Fast-Lane' Speed", "Verified Scholar Badge", "Zero Ads", "12hr Video Processing/Day", "Beta Tools Access"], 
       cta: "Claim Pro Access", 
       slots: "97% Capacity Reached" 
     },
     { 
       id: "power", 
+      type: "subscription",
       name: "Power Scholar", 
       monthlyPrice: 599, 
       yearlyPrice: 5990, 
-      description: "God-mode for Engineers. Unlimited power, zero limits.", 
-      features: [
-        "Everything in Pro Scholar",
-        "Unlimited Video & PDF Processing",
-        "Instant AI Image Generation",
-        "Bulk Documentation Engine",
-        "Personalized Career Roadmap",
-        "VIP Support (Priority Node)"
-      ], 
+      description: "God-mode for Engineers. Unlimited power.", 
+      features: ["Everything in Pro", "Unlimited Processing", "Instant Image Gen", "Bulk Documentation", "Career Roadmap", "VIP Support"], 
       cta: "Unlock God-Mode", 
       slots: "Limited to 50 Users" 
     },
+  ];
+
+  const tokenPackages = [
+    {
+      id: "basic",
+      type: "token",
+      name: "Basic Chip",
+      tokens: 100,
+      price: 99,
+      description: "Emergency supply for quick tasks.",
+      features: ["100 Neural Tokens", "Valid Forever", "Instant Credit", "Access Basic Models"],
+      cta: "Inject Tokens",
+      icon: Database
+    },
+    {
+      id: "standard",
+      type: "token",
+      name: "Standard Core",
+      tokens: 500,
+      price: 399,
+      description: "Standard supply for week-long projects.",
+      popular: true,
+      highlight: true,
+      features: ["500 Neural Tokens", "Valid Forever", "Instant Credit", "Access All Models", "Priority Queue"],
+      cta: "Inject Tokens",
+      icon: Cpu
+    },
+    {
+      id: "premium",
+      type: "token",
+      name: "Premium Node",
+      tokens: 1000,
+      price: 699,
+      description: "Massive supply for heavy lifting.",
+      features: ["1000 Neural Tokens", "Valid Forever", "Instant Credit", "Access All Models", "Top Priority Queue", "Bulk Operations"],
+      cta: "Inject Tokens",
+      icon: Coins
+    }
   ];
 
   useEffect(() => {
@@ -570,7 +609,7 @@ export default function PricingSection() {
         amount: orderData.order.amount,
         currency: orderData.order.currency,
         name: "Neural Protocol",
-        description: `${paymentData.packageName} - ${paymentData.billingPeriod}`,
+        description: `${paymentData.packageName}`,
         image: "/logo.png",
         order_id: orderData.order.id,
         handler: async (response: any) => {
@@ -635,7 +674,6 @@ export default function PricingSection() {
         },
         notes: {
           package: paymentData.packageName,
-          billing: paymentData.billingPeriod,
           userId: user?._id
         },
         theme: {
@@ -668,23 +706,6 @@ export default function PricingSection() {
     } catch (error: any) {
       console.error("Payment error:", error);
       toast.error(error.message || "Payment failed");
-      
-      // Save failed transaction
-      try {
-        await api.post("/payment/save-transaction", {
-          ...paymentData,
-          status: "failed",
-          error: error.message || "Payment initialization failed",
-          userId: user?._id,
-          userEmail: user?.email,
-          userName: user?.name
-        }, {
-          headers: { 'Auth': localStorage.getItem("authToken") }
-        });
-      } catch (saveError) {
-        console.error("Failed to save transaction:", saveError);
-      }
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -731,7 +752,7 @@ export default function PricingSection() {
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto">
-          <div className="text-center mb-16 space-y-6">
+          <div className="text-center mb-12 space-y-6">
             <Badge className="bg-red-600/10 text-red-500 border-red-600/20 px-4 py-1.5 uppercase font-black tracking-[0.3em] text-[10px]">
               Transmission Node
             </Badge>
@@ -743,52 +764,98 @@ export default function PricingSection() {
             </p>
           </div>
 
-          {/* Billing Switcher */}
-          <div className="flex justify-center mb-16">
-            <div className="relative flex bg-neutral-900/50 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl">
-              <button 
-                onClick={() => setBillingPeriod("monthly")} 
-                className={cn("px-10 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all z-10", 
-                  billingPeriod === 'monthly' ? "text-white" : "text-neutral-600")}
-              >
-                Monthly
-              </button>
-              <button 
-                onClick={() => setBillingPeriod("yearly")} 
-                className={cn("px-10 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all z-10 relative", 
-                  billingPeriod === 'yearly' ? "text-white" : "text-neutral-600")}
-              >
-                Yearly 
-                <Badge className="absolute -top-3 -right-2 bg-emerald-600 text-[8px] px-2 py-0.5 border-none shadow-lg">
-                  SAVE 16%
-                </Badge>
-              </button>
-              <motion.div 
-                animate={{ x: billingPeriod === 'monthly' ? 0 : '100%' }} 
-                className="absolute top-1.5 left-1.5 bottom-1.5 w-[calc(50%-6px)] bg-red-600 rounded-xl shadow-lg" 
-              />
-            </div>
+          {/* Type Switcher (Memberships vs Tokens) */}
+          <div className="flex justify-center mb-8">
+             <div className="bg-neutral-900/50 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl flex gap-2">
+                <button 
+                  onClick={() => setViewMode("subscription")} 
+                  className={cn(
+                    "px-6 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all flex items-center gap-2",
+                    viewMode === "subscription" ? "bg-red-600 text-white shadow-lg" : "text-neutral-500 hover:text-white"
+                  )}
+                >
+                  <ShieldCheck size={14} /> Protocol Memberships
+                </button>
+                <button 
+                   onClick={() => setViewMode("token")} 
+                   className={cn(
+                    "px-6 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all flex items-center gap-2",
+                    viewMode === "token" ? "bg-red-600 text-white shadow-lg" : "text-neutral-500 hover:text-white"
+                  )}
+                >
+                  <Coins size={14} /> Token Injectors
+                </button>
+             </div>
           </div>
 
+          {/* Billing Switcher (Only for Subscriptions) */}
+          <AnimatePresence mode="wait">
+            {viewMode === "subscription" && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} 
+                animate={{ opacity: 1, height: 'auto' }} 
+                exit={{ opacity: 0, height: 0 }}
+                className="flex justify-center mb-16"
+              >
+                <div className="relative flex bg-neutral-900/50 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl">
+                  <button 
+                    onClick={() => setBillingPeriod("monthly")} 
+                    className={cn("px-10 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all z-10", 
+                      billingPeriod === 'monthly' ? "text-white" : "text-neutral-600")}
+                  >
+                    Monthly
+                  </button>
+                  <button 
+                    onClick={() => setBillingPeriod("yearly")} 
+                    className={cn("px-10 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all z-10 relative", 
+                      billingPeriod === 'yearly' ? "text-white" : "text-neutral-600")}
+                  >
+                    Yearly 
+                    <Badge className="absolute -top-3 -right-2 bg-emerald-600 text-[8px] px-2 py-0.5 border-none shadow-lg">
+                      SAVE 16%
+                    </Badge>
+                  </button>
+                  <motion.div 
+                    animate={{ x: billingPeriod === 'monthly' ? 0 : '100%' }} 
+                    className="absolute top-1.5 left-1.5 bottom-1.5 w-[calc(50%-6px)] bg-red-600 rounded-xl shadow-lg" 
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Plan Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {plans.map((plan) => (
+          <motion.div 
+            key={viewMode}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          >
+            {(viewMode === "subscription" ? subscriptionPlans : tokenPackages).map((plan: any) => (
               <div key={plan.id} className={cn("relative p-10 rounded-[3.5rem] border border-white/5 bg-neutral-950 flex flex-col group transition-all duration-500 hover:-translate-y-2", 
                 plan.highlight && "border-red-600/40 shadow-2xl bg-[#080808]")}
               >
                 {plan.popular && (
                   <Badge className="absolute top-10 right-10 bg-red-600 text-white font-black italic uppercase text-[8px] px-3 py-1 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">
-                    Elite Class
+                    {viewMode === "subscription" ? "Elite Class" : "Most Popular"}
                   </Badge>
                 )}
                 
-                {/* Scarcity Label */}
-                <div className="mb-4 flex items-center gap-2">
-                  <Flame size={12} className="text-orange-500" />
-                  <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">
-                    {plan.slots}
-                  </span>
-                </div>
+                {viewMode === "subscription" ? (
+                    <div className="mb-4 flex items-center gap-2">
+                        <Flame size={12} className="text-orange-500" />
+                        <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">
+                        {plan.slots}
+                        </span>
+                    </div>
+                ) : (
+                    <div className="mb-4 flex items-center gap-2">
+                         <div className="p-2 bg-neutral-900 rounded-lg">
+                             <plan.icon size={16} className="text-red-500" />
+                         </div>
+                    </div>
+                )}
 
                 <h3 className="text-4xl font-black italic uppercase tracking-tighter mb-8 group-hover:text-red-500 transition-colors">
                   {plan.name}
@@ -797,19 +864,27 @@ export default function PricingSection() {
                 <div className="mb-10">
                   <div className="flex items-end">
                     <span className="text-6xl font-black italic tracking-tighter text-white">
-                      ₹{billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
+                      ₹{viewMode === "subscription" ? (billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice) : plan.price}
                     </span>
-                    <span className="text-neutral-700 text-xs font-bold uppercase tracking-widest ml-2 mb-2">
-                      / {billingPeriod === 'monthly' ? 'mo' : 'yr'}
-                    </span>
+                    {viewMode === "subscription" && (
+                        <span className="text-neutral-700 text-xs font-bold uppercase tracking-widest ml-2 mb-2">
+                        / {billingPeriod === 'monthly' ? 'mo' : 'yr'}
+                        </span>
+                    )}
                   </div>
-                  <p className="text-[10px] font-bold text-neutral-600 uppercase mt-2 italic tracking-tighter">
-                    Approx. ₹{((billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice) / (billingPeriod === 'monthly' ? 30 : 365)).toFixed(2)} per day
-                  </p>
+                  {viewMode === "subscription" ? (
+                      <p className="text-[10px] font-bold text-neutral-600 uppercase mt-2 italic tracking-tighter">
+                        Approx. ₹{((billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice) / (billingPeriod === 'monthly' ? 30 : 365)).toFixed(2)} per day
+                      </p>
+                  ) : (
+                      <p className="text-[10px] font-bold text-neutral-600 uppercase mt-2 italic tracking-tighter">
+                          Single Purchase • {plan.tokens.toLocaleString()} Tokens
+                      </p>
+                  )}
                 </div>
 
                 <div className="space-y-4 mb-12 flex-1">
-                  {plan.features.map((f, i) => (
+                  {plan.features.map((f: string, i: number) => (
                     <div key={i} className="flex items-center gap-3 text-xs font-bold uppercase tracking-tight text-neutral-400">
                       <CheckCircle2 size={16} className="text-red-600" /> {f}
                     </div>
@@ -828,7 +903,7 @@ export default function PricingSection() {
                 </button>
               </div>
             ))}
-          </div>
+          </motion.div>
           
           {/* Trust Footer */}
           <div className="mt-20 flex flex-wrap justify-center gap-10 opacity-30 grayscale hover:grayscale-0 transition-all duration-700">

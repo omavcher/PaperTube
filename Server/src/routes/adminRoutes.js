@@ -11,6 +11,7 @@ router.get('/transactions', adminAuth, adminController.getAllTransactions);
 router.get('/bugs', adminAuth, adminController.getAllBugs);
 router.get('/creations', adminAuth, adminController.getRecentCreations);
 
+
 router.get('/feedback', adminAuth, adminController.getAllFeedback);
 router.delete('/feedback/:id', adminAuth, adminController.deleteFeedback);
 router.patch('/feedback/:id', adminAuth, adminController.respondToFeedback);
@@ -31,4 +32,8 @@ router.delete('/blog/delete/:id',adminAuth, adminController.deletePost);
 
 
 router.get('/content-analytics', adminController.getContentAnalytics);
+
+router.get("/analytics/tools", adminAuth, adminController.getToolAnalytics);
+router.put('/note/:noteId/visibility',adminAuth, adminController.chnageNoteVisibility );
+router.delete('/note/:noteId', adminAuth, adminController.deleteNote);
 module.exports = router;

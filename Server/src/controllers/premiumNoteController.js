@@ -256,8 +256,6 @@ const extractVideoId = (url) => {
   }
 };
 
-const fetch = require("node-fetch");
-
 // Function to get YouTube video duration using YouTube Data API
 async function getYouTubeVideoDuration(videoId) {
   try {

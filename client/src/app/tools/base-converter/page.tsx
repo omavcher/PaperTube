@@ -15,13 +15,13 @@ import { toast } from "sonner";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { useToolAnalytics } from "@/hooks/useToolAnalytics";
 export default function BaseConverterPage() {
   const [decimalValue, setDecimalValue] = useState<string>("");
   const [binaryValue, setBinaryValue] = useState<string>("");
   const [octalValue, setOctalValue] = useState<string>("");
   const [hexValue, setHexValue] = useState<string>("");
-
+useToolAnalytics("base-converter", "BASE CONV", "Engineering Tools");
   // --- Real-time Conversion Logic ---
   const updateAllBases = (value: string, fromBase: number) => {
     if (value === "") {

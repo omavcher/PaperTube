@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useCallback, useEffect, JSX } from "react";
+import React, { useState, useCallback, useEffect, JSX } from "react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -19,16 +19,11 @@ import {
   Lock,
   User,
   Sparkles,
-  Filter
+  FileText,
+  Plus,
+  Compass
 } from "lucide-react";
-import {
-  IconCards,
-  IconPuzzle,
-  IconChartBar,
-  IconFileText,
-  IconFolderCode,
-  IconLayoutGrid
-} from "@tabler/icons-react";
+import { IconFolderCode } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import api from "@/config/api";
@@ -37,10 +32,10 @@ import {
   EmptyContent,
   EmptyDescription,
   EmptyHeader,
-  EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 // --- Types ---
 interface Creator {
@@ -49,8 +44,6 @@ interface Creator {
   avatarUrl?: string;
   username?: string;
 }
-
-type NoteType = 'note' | 'flashcard' | 'quiz';
 
 interface Note {
   _id: string;
@@ -64,61 +57,35 @@ interface Note {
   views?: number;
   thumbnail?: string;
   videoId?: string;
-  type?: NoteType;
-  flashcardsCount?: number;
-  generationDetails?: any;
-  questionsCount?: number;
-  settings?: any;
-  transcriptAvailable?: boolean;
   visibility?: string;
-  fileType?: string;
-  commentsCount?: number;
-  likesCount?: number;
-  contentCount?: number;
-  status?: string;
+  lastEdit?: string;
 }
 
 interface Pagination {
   currentPage: number;
   totalPages: number;
-  totalItems: number;
-  totalNotes?: number;
-  totalFlashcards?: number;
-  totalQuizzes?: number;
+  totalNotes: number;
   hasNext: boolean;
   hasPrev: boolean;
-  page?: number;
-  limit?: number;
-  total?: number;
-  counts?: {
-    notes: number;
-    flashcards: number;
-    quizzes: number;
-  };
 }
 
 interface ExploreResponse {
   success: boolean;
   message?: string;
   data: {
-    items: Note[];
+    items: Note[]; 
     pagination: Pagination;
   };
 }
 
 interface PersonalNotesResponse {
   success: boolean;
-  data: Note[];
-  pagination: Pagination;
+  message?: string;
+  data: {
+    notes: Note[]; 
+    pagination: Pagination;
+  };
 }
-
-// --- Configuration ---
-const CONTENT_TYPES = [
-  { id: 'all', label: 'All', icon: IconLayoutGrid, color: 'text-zinc-400', bg: 'bg-zinc-800' },
-  { id: 'note', label: 'Notes', icon: IconFileText, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
-  { id: 'flashcard', label: 'Flashcards', icon: IconCards, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
-  { id: 'quiz', label: 'Quizzes', icon: IconPuzzle, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
-];
 
 // --- Helpers ---
 const getYouTubeThumbnail = (url: string | undefined) => {
@@ -145,35 +112,6 @@ const formatCreatorNameForUrl = (name: string): string => {
   return name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 };
 
-// --- Normalize Note Data ---
-const normalizeNote = (note: any): Note => {
-  // Handle both explore and personal note structures
-  return {
-    _id: note._id,
-    slug: note.slug,
-    title: note.title,
-    videoUrl: note.videoUrl,
-    updatedAt: note.updatedAt,
-    createdAt: note.createdAt,
-    creator: note.creator,
-    views: note.views,
-    thumbnail: note.thumbnail,
-    videoId: note.videoId,
-    type: note.type as NoteType || (note.fileType as NoteType),
-    flashcardsCount: note.flashcardsCount,
-    generationDetails: note.generationDetails,
-    questionsCount: note.questionsCount,
-    settings: note.settings,
-    transcriptAvailable: note.transcriptAvailable,
-    visibility: note.visibility,
-    fileType: note.fileType,
-    commentsCount: note.commentsCount,
-    likesCount: note.likesCount,
-    contentCount: note.contentCount || note.questionsCount || note.flashcardsCount,
-    status: note.status
-  };
-};
-
 // --- Sub-Component: Note Card ---
 const NoteCard = React.memo(({ 
   note, 
@@ -183,31 +121,24 @@ const NoteCard = React.memo(({
   onProfileClick, 
   highlightText, 
   formatDate, 
-  cleanHtmlContent,
   showCreator = false,
   isPersonal = false
 }: {
   note: Note;
   viewMode: string;
   searchQuery: string;
-  onClick: (slug: string, type: string, isPersonal: boolean, creatorUsername?: string) => void;
+  onClick: (slug: string, isPersonal: boolean, creatorUsername?: string) => void;
   onProfileClick: (creatorName: string) => void;
   highlightText: (text: string, highlight: string) => string | JSX.Element;
   formatDate: (dateString: string, short?: boolean) => string;
-  cleanHtmlContent: (content: string) => string;
   showCreator?: boolean;
   isPersonal?: boolean;
 }) => {
   const thumbnailUrl = note.thumbnail || getYouTubeThumbnail(note.videoUrl);
   
-  // Determine Type Visuals
-  const noteType = note.type || 'note';
-  const typeConfig = CONTENT_TYPES.find(t => t.id === noteType) || CONTENT_TYPES[1];
-  const TypeIcon = typeConfig.icon;
-
   const handleCardClick = () => {
     const creatorUsername = note.creator?.username || (note.creator?.name ? formatCreatorNameForUrl(note.creator.name) : undefined);
-    onClick(note.slug, noteType, isPersonal, creatorUsername);
+    onClick(note.slug, isPersonal, creatorUsername);
   };
 
   const handleCreatorClick = (e: React.MouseEvent) => {
@@ -219,31 +150,19 @@ const NoteCard = React.memo(({
     }
   };
 
-  // Get display content
-  const getDisplayContent = () => {
-    if (noteType === 'flashcard') {
-      return `${note.flashcardsCount || 0} flashcards`;
-    } else if (noteType === 'quiz') {
-      return `${note.questionsCount || 0} questions`;
-    }
-    return '';
-  };
-
   return (
     <div
       onClick={handleCardClick}
-      className={`group cursor-pointer bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all duration-300 rounded-xl overflow-hidden flex flex-col relative
+      className={`group cursor-pointer bg-neutral-900/50 border border-white/5 hover:border-white/10 active:scale-95 transition-all duration-300 rounded-2xl overflow-hidden flex flex-col relative
         ${viewMode === "grid" 
-          ? "h-full hover:-translate-y-1 hover:shadow-xl hover:shadow-black/50" 
-          : "sm:flex-row h-auto hover:bg-zinc-800/50"
+          ? "h-full" 
+          : "flex-row h-24 sm:h-auto"
         }`}
     >
-      {/* Type Indicator Line */}
-      <div className={cn("absolute top-0 left-0 w-1 h-full z-10 opacity-0 group-hover:opacity-100 transition-opacity", typeConfig.color.replace('text-', 'bg-'))} />
-
       {/* Thumbnail Section */}
       <div className={`relative overflow-hidden bg-zinc-800 flex-shrink-0 
-        ${viewMode === "grid" ? "w-full aspect-video" : "w-full sm:w-48 h-32 sm:h-auto"}`}>
+        ${viewMode === "grid" ? "w-full aspect-video" : "w-32 sm:w-48 h-full"}`}>
+        
         {thumbnailUrl ? (
           <img 
             src={thumbnailUrl} 
@@ -253,102 +172,61 @@ const NoteCard = React.memo(({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-zinc-900">
-             <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-600">
-                <PlayCircle size={20} />
+             <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-600">
+                <PlayCircle size={16} />
              </div>
           </div>
         )}
         
-        {/* Type Badge */}
-        <div className={cn(
-          "absolute top-2 right-2 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border flex items-center gap-1 shadow-sm",
-          typeConfig.bg,
-          typeConfig.color.replace('text-', 'text-')
-        )}>
-           <TypeIcon size={12} />
-           {typeConfig.label}
-        </div>
-
-        {/* Content Count Badge */}
-        {(noteType === 'flashcard' && note.flashcardsCount) || (noteType === 'quiz' && note.questionsCount) ? (
-          <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/70 backdrop-blur-sm text-xs text-white font-medium">
-            {noteType === 'flashcard' ? `${note.flashcardsCount} cards` : `${note.questionsCount} questions`}
-          </div>
-        ) : null}
-
-        {/* Play Overlay */}
-        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-           <div className={cn("rounded-full p-3 shadow-lg transform scale-75 group-hover:scale-100 transition-transform bg-white text-black")}>
-             <TypeIcon size={20} fill="currentColor" className={typeConfig.color} />
+        {/* Desktop Hover Overlay (Hidden on Mobile) */}
+        <div className="hidden md:flex absolute inset-0 bg-black/40 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+           <div className="rounded-full p-2 bg-white/10 backdrop-blur-md text-white border border-white/20">
+             <FileText size={16} />
            </div>
         </div>
 
-        {/* Timestamp Badge */}
-        <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] text-zinc-400 font-medium flex items-center gap-1 backdrop-blur-sm border border-white/5">
-          <Clock size={10} />
-          {formatDate(note.updatedAt, true)} 
+        {/* Timestamp Badge (Compact) */}
+        <div className="absolute bottom-1.5 right-1.5 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-zinc-300 font-bold backdrop-blur-sm border border-white/5">
+          {formatDate(note.updatedAt || note.createdAt, true)} 
         </div>
       </div>
 
       {/* Content Section */}
-      <div className={`flex flex-col flex-1 ${viewMode === "grid" ? "p-3 sm:p-4" : "p-4"}`}>
+      <div className={`flex flex-col flex-1 ${viewMode === "grid" ? "p-3" : "p-3 sm:p-4"}`}>
         
         {/* Title */}
-        <h3 className={`font-bold text-zinc-100 mb-1.5 leading-snug group-hover:text-white transition-colors
-          ${viewMode === 'grid' ? 'text-sm sm:text-base line-clamp-2' : 'text-lg line-clamp-1'}`}>
+        <h3 className={`font-bold text-zinc-100 mb-1 leading-tight group-hover:text-white transition-colors
+          ${viewMode === 'grid' ? 'text-xs sm:text-sm line-clamp-2' : 'text-sm sm:text-base line-clamp-1'}`}>
           {searchQuery ? highlightText(note.title, searchQuery) : note.title}
         </h3>
 
-        {/* Description/Content */}
-        <p className={`text-zinc-400 text-xs sm:text-sm line-clamp-2 mb-3 flex-1 
-          ${viewMode === 'grid' ? 'hidden sm:block' : 'block'}`}>
-          {searchQuery ? highlightText(getDisplayContent(), searchQuery) : getDisplayContent()}
-        </p>
-
         {/* Footer Area */}
-        <div className="mt-auto pt-3 border-t border-zinc-800/50 flex items-center justify-between text-xs">
+        <div className="mt-auto pt-2 flex items-center justify-between text-[10px] sm:text-xs text-zinc-500">
            
-           {/* Left side: Creator Info or Personal Label */}
+           {/* Left: Creator/Type */}
            {showCreator ? (
-             <div 
-                className="flex items-center gap-2 max-w-[70%] group/creator cursor-pointer" 
-                onClick={handleCreatorClick}
-                title="View Profile"
-             >
-               <div className="w-5 h-5 rounded-full overflow-hidden bg-zinc-800 border border-zinc-700 flex-shrink-0 group-hover/creator:border-white transition-colors">
-                  {note.creator?.avatarUrl ? (
-                    <img src={note.creator.avatarUrl} alt={getCreatorName(note.creator)} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-zinc-400 bg-zinc-800">
-                      {getCreatorInitial(note.creator)}
-                    </div>
-                  )}
-               </div>
-               <span className="text-zinc-400 truncate group-hover/creator:text-white transition-colors underline-offset-2 group-hover/creator:underline">
-                 {getCreatorName(note.creator)}
-               </span>
+             <div className="flex items-center gap-1.5 max-w-[70%]" onClick={handleCreatorClick}>
+               {note.creator?.avatarUrl ? (
+                 <img src={note.creator.avatarUrl} alt="av" className="w-4 h-4 rounded-full border border-zinc-700" />
+               ) : (
+                 <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px]">
+                   {getCreatorInitial(note.creator)}
+                 </div>
+               )}
+               <span className="truncate">{getCreatorName(note.creator)}</span>
              </div>
            ) : (
-             <span className="text-zinc-500 font-medium flex items-center gap-1">
-               <User size={12} />
-               Personal
+             <span className="flex items-center gap-1">
+               <User size={10} /> Personal
              </span>
            )}
 
-           {/* Right side: Views or Hostname */}
-           {note.views !== undefined ? (
-             <span className="text-zinc-600 text-[10px] flex items-center gap-1">
-               👁️ {note.views || 0}
+           {/* Right: Views or Host */}
+           {note.views !== undefined && note.views > 0 && (
+             <span className="flex items-center gap-1">
+               {note.views} views
              </span>
-           ) : note.videoUrl ? (
-             <span className="text-zinc-600 text-[10px] truncate max-w-[60px] sm:max-w-[100px]">
-               {(() => {
-                 try {
-                   return new URL(note.videoUrl).hostname.replace('www.', '').replace('youtube.com', 'YouTube');
-                 } catch { return 'YouTube'; }
-               })()}
-             </span>
-           ) : null}
+           )}
         </div>
       </div>
     </div>
@@ -358,10 +236,9 @@ NoteCard.displayName = "NoteCard";
 
 export default function NotesWorkspace() {
   const [activeTab, setActiveTab] = useState("my-bag");
-  const [contentType, setContentType] = useState("all"); 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("lastEdit");
+  const [sortBy, setSortBy] = useState("updatedAt");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   
   // Data State
@@ -369,216 +246,121 @@ export default function NotesWorkspace() {
   const [hasMore, setHasMore] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [exploreItems, setExploreItems] = useState<Note[]>([]);
-  const [explorePagination, setExplorePagination] = useState<Pagination | null>(null);
-  const [personalPagination, setPersonalPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   
   const router = useRouter();
 
-  // Authentication check
+  // 1. Auth Check
   useEffect(() => {
     const authToken = localStorage.getItem('authToken');
     setIsAuthenticated(!!authToken);
     if (!authToken) setLoading(false);
   }, []);
 
-  // Fetch explore data
-  const fetchExploreData = useCallback(async (page = 1, append = false, search = '') => {
-    if (!isAuthenticated) return;
-
-    try {
-      if (!append) setLoading(true);
-      
-      const authToken = localStorage.getItem('authToken');
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '12',
-        sortBy: sortBy === 'lastEdit' ? 'updatedAt' : sortBy,
-        sortOrder: 'desc',
-        type: contentType === 'all' ? 'all' : contentType,
-        search: search || ''
-      });
-
-      const response = await api.get<ExploreResponse>(`/notes/explore?${params.toString()}`, {
-        headers: { 'Auth': authToken }
-      }); 
-      
-      if (response.data.success) {
-        const { items, pagination: paginationData } = response.data.data;
-        const normalizedItems = items.map(normalizeNote);
-        
-        if (append) {
-          setExploreItems(prev => [...prev, ...normalizedItems]);
-        } else {
-          setExploreItems(normalizedItems);
-        }
-        
-        setExplorePagination(paginationData);
-        setCurrentPage(paginationData.currentPage);
-        setHasMore(paginationData.hasNext);
-      }
-    } catch (error) {
-      console.error("Error fetching explore data:", error);
-      if (!append) {
-        setExploreItems([]);
-        setExplorePagination(null);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [isAuthenticated, sortBy, contentType]);
-
-  // Fetch personal notes
- // Fetch personal notes
+  // 2. Fetch Personal Notes
   const fetchPersonalNotes = useCallback(async (page = 1, append = false, search = '') => {
     if (!isAuthenticated) return;
-
     try {
       if (!append) setLoading(true);
-      
       const authToken = localStorage.getItem('authToken');
       const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '12',
-        sortBy: sortBy === 'lastEdit' ? 'updatedAt' : sortBy,
-        sortOrder: 'desc',
-        search: search || ''
+        page: page.toString(), limit: '12', sortBy, sortOrder: 'desc', search: search || ''
       });
-
-      const response = await api.get<PersonalNotesResponse>(`/notes/get-all-notes?${params.toString()}`, {
-        headers: { 'Auth': authToken }
-      }); 
+      const response = await api.get<PersonalNotesResponse>(`/notes/get-all-notes?${params.toString()}`, { headers: { 'Auth': authToken } }); 
       
       if (response.data.success) {
-        const fetchedNotes = response.data.data || [];
-        const paginationData = response.data.pagination;
-        const normalizedNotes = fetchedNotes.map(normalizeNote);
-        
-        if (append) {
-          setNotes(prev => [...prev, ...normalizedNotes]);
-        } else {
-          setNotes(normalizedNotes);
-        }
-        
-        setPersonalPagination(paginationData);
-
-        // Fix: Use a fallback for the optional 'page' property 
-        // and use that local variable for the 'hasMore' comparison
-        const currentPageNum = paginationData?.page ?? 1;
-        setCurrentPage(currentPageNum);
-        setHasMore(paginationData ? (currentPageNum < paginationData.totalPages) : false);
+        const { notes: fetchedNotes, pagination } = response.data.data;
+        setNotes(prev => append ? [...prev, ...fetchedNotes] : fetchedNotes);
+        setCurrentPage(pagination.currentPage);
+        setHasMore(pagination.hasNext);
+        return fetchedNotes.length; // Return count for logic
       }
     } catch (error) {
-      console.error("Error fetching personal notes:", error);
-      if (!append) {
-        setNotes([]);
-        setPersonalPagination(null);
-      }
+      console.error(error);
+      if (!append) setNotes([]);
     } finally {
       setLoading(false);
     }
   }, [isAuthenticated, sortBy]);
 
-  // Debounced search & filter trigger
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isAuthenticated) {
-        setCurrentPage(1);
-        if (activeTab === 'explore') {
-          fetchExploreData(1, false, searchQuery);
-        } else {
-          fetchPersonalNotes(1, false, searchQuery);
-        }
+  // 3. Fetch Explore Data
+  const fetchExploreData = useCallback(async (page = 1, append = false, search = '') => {
+    if (!isAuthenticated) return;
+    try {
+      if (!append) setLoading(true);
+      const authToken = localStorage.getItem('authToken');
+      const params = new URLSearchParams({
+        page: page.toString(), limit: '12', sortBy, sortOrder: 'desc', type: 'notes', search: search || ''
+      });
+      const response = await api.get<ExploreResponse>(`/notes/explore?${params.toString()}`, { headers: { 'Auth': authToken } }); 
+      
+      if (response.data.success) {
+        const { items, pagination } = response.data.data;
+        setExploreItems(prev => append ? [...prev, ...items] : items);
+        setCurrentPage(pagination.currentPage);
+        setHasMore(pagination.hasNext);
       }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery, activeTab, sortBy, isAuthenticated, contentType]);
-
-  // Switch tabs
-  useEffect(() => {
-    if (isAuthenticated) {
-      setCurrentPage(1);
-      if (activeTab === 'explore') {
-        fetchExploreData(1, false, searchQuery);
-      } else {
-        fetchPersonalNotes(1, false, searchQuery);
-      }
+    } catch (error) {
+      console.error(error);
+      if (!append) setExploreItems([]);
+    } finally {
+      setLoading(false);
     }
-  }, [activeTab, isAuthenticated]);
+  }, [isAuthenticated, sortBy]);
 
+  // 4. Initial Load Logic - Auto Switch to Explore if Personal is Empty
+  useEffect(() => {
+    const init = async () => {
+        if (isAuthenticated && !initialCheckDone) {
+            // First fetch personal
+            const count = await fetchPersonalNotes(1, false, "");
+            setInitialCheckDone(true);
+            
+            // Logic: If user has 0 personal notes, switch to explore
+            if (count === 0) {
+                setActiveTab("explore");
+            }
+        }
+    };
+    init();
+  }, [isAuthenticated, initialCheckDone, fetchPersonalNotes]);
+
+  // 5. Standard Tab Switching Fetch
+  useEffect(() => {
+    if (!initialCheckDone) return; // Skip if initializing
+    setCurrentPage(1);
+    if (activeTab === 'explore') fetchExploreData(1, false, searchQuery);
+    else fetchPersonalNotes(1, false, searchQuery);
+  }, [activeTab, searchQuery, sortBy, initialCheckDone]);
+
+  // Handlers
   const handleLoadMore = () => {
     if (hasMore && !loading) {
       const nextPage = currentPage + 1;
-      if (activeTab === 'explore') {
-        fetchExploreData(nextPage, true, searchQuery);
-      } else {
-        fetchPersonalNotes(nextPage, true, searchQuery);
-      }
+      activeTab === 'explore' ? fetchExploreData(nextPage, true, searchQuery) : fetchPersonalNotes(nextPage, true, searchQuery);
     }
   };
 
-  const handleCardClick = useCallback((slug: string, type: string, isPersonal: boolean = false, creatorUsername?: string) => {
-    if (isPersonal) {
-      // For personal notes: /notes/slug
-      const route = type === 'note' ? `/notes/${slug}` 
-                  : type === 'quiz' ? `/quiz/${slug}`
-                  : type === 'flashcard' ? `/flashcards/${slug}`
-                  : `/notes/${slug}`;
-      router.push(route);
-    } else {
-      // For explore notes: /note/username/slug
-      const username = creatorUsername || 'anonymous';
-      const route = type === 'note' ? `/note/${username}/${slug}` 
-                  : type === 'quiz' ? `/quiz/${username}/${slug}`
-                  : type === 'flashcard' ? `/flashcards/${username}/${slug}`
-                  : `/note/${username}/${slug}`;
-      router.push(route);
-    }
+  const handleCardClick = useCallback((slug: string, isPersonal: boolean, creatorUsername?: string) => {
+    router.push(isPersonal ? `/notes/${slug}` : `/note/${creatorUsername || 'anonymous'}/${slug}`);
   }, [router]);
 
-  const handleProfileClick = useCallback((creatorName: string) => {
-    const formattedName = formatCreatorNameForUrl(creatorName);
-    router.push(`/${formattedName}/profile`);
-  }, [router]);
-
-  // Utils
-  const highlightText = useCallback((text: string, highlight: string): string | JSX.Element => {
+  const highlightText = useCallback((text: string, highlight: string) => {
     if (!highlight.trim() || !text) return text;
-    try {
-      const parts = text.split(new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
-      return <>{parts.map((p, i) => p.toLowerCase() === highlight.toLowerCase() ? <mark key={i} className="bg-yellow-500/30 text-yellow-200 rounded px-0.5">{p}</mark> : p)}</>;
-    } catch { return text; }
+    const parts = text.split(new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+    return <>{parts.map((p, i) => p.toLowerCase() === highlight.toLowerCase() ? <mark key={i} className="bg-yellow-500/30 text-yellow-200">{p}</mark> : p)}</>;
   }, []);
 
-  const formatDate = (dateString: string, short = false): string => {
+  const formatDate = (dateString: string, short = false) => {
     try {
       const date = new Date(dateString);
-      if (short) return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (short) return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
       return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     } catch { return ""; }
   };
 
-  const cleanHtmlContent = (content: string): string => {
-    if (!content) return '';
-    const text = content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-    return text.length > 100 ? text.slice(0, 100) + '...' : text;
-  };
-
-  // Get current items based on active tab
   const currentItems = activeTab === 'explore' ? exploreItems : notes;
-  const currentPagination = activeTab === 'explore' ? explorePagination : personalPagination;
-
-  // Filter items by type (client-side for personal notes, server-side for explore)
-  const filteredItems = useMemo(() => {
-    if (activeTab === 'explore') {
-      // Explore already filtered server-side by contentType
-      return currentItems;
-    } else {
-      // Personal notes need client-side filtering
-      if (contentType === 'all') return currentItems;
-      return currentItems.filter(item => (item.type || 'note') === contentType);
-    }
-  }, [currentItems, contentType, activeTab]);
 
   if (isAuthenticated === false && loading === false) {
     return (
@@ -586,208 +368,172 @@ export default function NotesWorkspace() {
         <div className="text-center space-y-4">
           <Lock className="w-12 h-12 mx-auto text-zinc-600" />
           <p className="text-lg text-zinc-400">Please login to access your library</p>
-          <Button onClick={() => router.push('/login')} className="bg-white text-black hover:bg-zinc-200">Login</Button>
+          <Button onClick={() => router.push('/login')} className="bg-white text-black">Login</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-black text-white">
-      {/* Background Gradients */}
-      <div className="fixed inset-0 pointer-events-none">
-         <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-zinc-900/20 to-transparent" />
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        
-        {/* Top Header */}
-        <div className="flex flex-col gap-6 mb-8">
-           <div className="flex items-center justify-between">
-              <div>
-                 <h1 className="text-3xl font-bold tracking-tight text-white mb-1">Library</h1>
-                 <p className="text-zinc-400 text-sm">Manage your AI-generated knowledge base.</p>
-              </div>
-              <Button 
-                onClick={() => router.push('/')}
-                className="bg-white hover:bg-zinc-200 text-black rounded-full px-6 py-2 text-sm font-semibold shadow-lg transition-all duration-300"
-              >
-                + New Generation
-              </Button>
-           </div>
-        </div>
-
-        <Tabs defaultValue="my-bag" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          
-          {/* Controls Bar */}
-          <div className=" z-20 bg-black/80 backdrop-blur-xl border-b border-zinc-800 pb-4 mb-6 pt-2">
-            <div className="flex flex-col gap-4">
-              
-              <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-                {/* Main Tabs */}
-                <TabsList className="bg-zinc-900/80 p-1 rounded-xl border border-zinc-800 w-full sm:w-auto grid grid-cols-2 sm:flex h-auto">
-                  <TabsTrigger value="explore" className="rounded-lg px-6 py-2 data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 gap-2 transition-all">
-                    <Globe size={16} /> Community
-                  </TabsTrigger>
-                  <TabsTrigger value="my-bag" className="rounded-lg px-6 py-2 data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 gap-2 transition-all">
-                    <IconFolderCode size={16} /> Personal
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* Search & View Controls */}
-                <div className="flex w-full lg:w-auto gap-2">
-                  <div className="relative flex-1 lg:w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search title, content..."
-                      className="pl-9 bg-zinc-900/50 border-zinc-800 focus:border-zinc-700 focus:ring-0 rounded-xl h-10 text-sm"
-                    />
-                  </div>
-                  
-                  <div className="hidden sm:flex bg-zinc-900 border border-zinc-800 rounded-xl p-1">
-                    <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-white"}`}>
-                      <Grid size={16} />
-                    </button>
-                    <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-white"}`}>
-                      <List size={16} />
-                    </button>
-                  </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white px-3 h-10 rounded-xl gap-2">
-                         <span className="hidden sm:inline">Sort</span> <ChevronDown size={14} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800 text-white">
-                      <DropdownMenuItem onClick={() => setSortBy("lastEdit")}>Newest First</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy("dateCreated")}>Oldest First</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy("alphabetical")}>A-Z</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              {/* Secondary Filter (Type Pills) */}
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                 {CONTENT_TYPES.map(type => {
-                    const Icon = type.icon;
-                    const isActive = contentType === type.id;
-                    return (
-                       <button
-                          key={type.id}
-                          onClick={() => setContentType(type.id)}
-                          className={cn(
-                             "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap",
-                             isActive 
-                               ? `${type.bg} ${type.color.replace('text-', 'text-')} border-transparent`
-                               : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-                          )}
-                       >
-                          <Icon size={14} />
-                          {type.label}
-                       </button>
-                    )
-                 })}
-              </div>
-
+    <div className="min-h-screen w-full bg-black text-white font-sans selection:bg-zinc-800">
+      
+      {/* --- DESKTOP: Sticky Top Navbar --- */}
+      <div className="sticky top-0 z-40 w-full bg-black/80 backdrop-blur-xl border-b border-white/5">
+         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            
+            {/* Logo/Title */}
+            <div className="flex items-center gap-2">
+               <div className="md:hidden font-bold text-lg tracking-tight">Library</div>
+               <div className="hidden md:block">
+                  <h1 className="text-lg font-bold tracking-tight text-white">Library</h1>
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Workspace</p>
+               </div>
             </div>
-          </div>
 
-          {/* Content Area */}
-          <div className="min-h-[50vh]">
-            {loading && filteredItems.length === 0 ? (
-               <div className="flex flex-col items-center justify-center py-32 text-zinc-500">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-4" />
-                  <p>Fetching your content...</p>
-               </div>
-            ) : filteredItems.length > 0 ? (
-               <>
-                 <TabsContent value="explore" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4" : "flex flex-col gap-3"}>
-                      {filteredItems.map((note) => (
-                        <NoteCard 
-                          key={note._id} 
-                          note={note} 
-                          viewMode={viewMode} 
-                          searchQuery={searchQuery}
-                          onClick={handleCardClick}
-                          onProfileClick={handleProfileClick}
-                          highlightText={highlightText}
-                          formatDate={formatDate}
-                          cleanHtmlContent={cleanHtmlContent}
-                          showCreator={true}
-                          isPersonal={false}
-                        />
-                      ))}
-                    </div>
-                 </TabsContent>
+            {/* Desktop Tabs & Search */}
+            <div className="hidden md:flex flex-1 max-w-2xl gap-4">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+                    <TabsList className="bg-zinc-900/50 border border-white/5 h-9">
+                        <TabsTrigger value="explore" className="text-xs px-4">Community</TabsTrigger>
+                        <TabsTrigger value="my-bag" className="text-xs px-4">Personal</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+                <div className="relative flex-1 group">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-white transition-colors" size={14} />
+                   <input 
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                     placeholder="Search..."
+                     className="w-full bg-zinc-900/50 border border-white/5 rounded-lg h-9 pl-9 text-sm focus:outline-none focus:bg-zinc-900 focus:border-white/20 transition-all text-white placeholder:text-zinc-600"
+                   />
+                </div>
+            </div>
 
-                 <TabsContent value="my-bag" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4" : "flex flex-col gap-3"}>
-                      {filteredItems.map((note) => (
-                        <NoteCard 
-                          key={note._id} 
-                          note={note} 
-                          viewMode={viewMode} 
-                          searchQuery={searchQuery}
-                          onClick={handleCardClick}
-                          onProfileClick={handleProfileClick}
-                          highlightText={highlightText}
-                          formatDate={formatDate}
-                          cleanHtmlContent={cleanHtmlContent}
-                          showCreator={false}
-                          isPersonal={true}
-                        />
-                      ))}
-                    </div>
-                 </TabsContent>
-
-                 {hasMore && (
-                   <div className="flex justify-center mt-12 mb-8">
-                     <Button 
-                       variant="ghost" 
-                       onClick={handleLoadMore} 
-                       disabled={loading}
-                       className="text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all"
-                     >
-                       {loading ? "Loading..." : "Load More"}
+            {/* Actions: Sort & Create */}
+            <div className="flex items-center gap-2">
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                     <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white hover:bg-white/5 w-9 h-9">
+                        <List size={18} />
                      </Button>
-                   </div>
-                 )}
-               </>
-            ) : (
-               <div className="py-20 flex justify-center">
-                 <Empty className="max-w-md">
-                    <EmptyHeader>
-                      <div className="mx-auto w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center border border-zinc-800 mb-4 shadow-xl">
-                        {activeTab === 'explore' ? <Globe className="text-zinc-500" size={32} /> : <Sparkles className="text-zinc-500" size={32} />}
-                      </div>
-                      <EmptyTitle className="text-white text-xl font-bold">
-                        {activeTab === 'explore' ? 'No community content found' : 'Your library is empty'}
-                      </EmptyTitle>
-                      <EmptyDescription className="text-zinc-500 max-w-xs mx-auto mt-2">
-                        {activeTab === 'explore' 
-                          ? `Try adjusting your filters or check back later.` 
-                          : 'Paste a YouTube URL to generate your first Notes, Flashcards, or Quiz.'
-                        }
-                      </EmptyDescription>
-                    </EmptyHeader>
-                    {activeTab === 'my-bag' && (
-                      <EmptyContent className="mt-8 flex justify-center">
-                         <Button onClick={() => router.push('/')} className="bg-white text-black hover:bg-zinc-200 rounded-full px-8">
-                           Create Now
-                         </Button>
-                      </EmptyContent>
-                    )}
-                 </Empty>
-               </div>
-            )}
-          </div>
-        </Tabs>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-neutral-900 border-neutral-800 text-white">
+                      <DropdownMenuItem onClick={() => setSortBy("updatedAt")}>Newest First</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortBy("title")}>A-Z</DropdownMenuItem>
+                      <div className="h-px bg-white/10 my-1" />
+                      <DropdownMenuItem onClick={() => setViewMode("grid")}>Grid View</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setViewMode("list")}>List View</DropdownMenuItem>
+                  </DropdownMenuContent>
+               </DropdownMenu>
+
+               <Button 
+                  onClick={() => router.push('/')}
+                  className="hidden md:flex bg-white hover:bg-neutral-200 text-black rounded-lg h-9 text-xs font-bold px-4"
+               >
+                  <Plus size={14} className="mr-1.5" /> New Note
+               </Button>
+            </div>
+         </div>
       </div>
+
+      {/* --- MOBILE: Sub-Header (Search) --- */}
+      <div className="md:hidden px-4 py-2 sticky top-[57px] z-30 bg-black/95 backdrop-blur-md border-b border-white/5">
+        <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+            <input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search your notes..."
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl h-10 pl-9 text-sm focus:outline-none focus:border-zinc-700 text-white"
+            />
+        </div>
+      </div>
+
+      {/* --- CONTENT AREA --- */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-8 min-h-[60vh]">
+         {loading && currentItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-zinc-500 gap-3">
+               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
+               <p className="text-xs uppercase tracking-widest">Syncing Library...</p>
+            </div>
+         ) : currentItems.length > 0 ? (
+            <div className="animate-in fade-in duration-500">
+               <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4" : "flex flex-col gap-3"}>
+                  {currentItems.map((note) => (
+                    <NoteCard 
+                      key={note._id} 
+                      note={note} 
+                      viewMode={viewMode} 
+                      searchQuery={searchQuery}
+                      onClick={handleCardClick}
+                      onProfileClick={(name) => router.push(`/${formatCreatorNameForUrl(name)}/profile`)}
+                      highlightText={highlightText}
+                      formatDate={formatDate}
+                      showCreator={activeTab === 'explore'}
+                      isPersonal={activeTab === 'my-bag'}
+                    />
+                  ))}
+               </div>
+               
+               {hasMore && (
+                 <div className="flex justify-center mt-8">
+                   <Button variant="ghost" onClick={handleLoadMore} disabled={loading} className="text-xs text-zinc-500 hover:text-white">
+                      {loading ? "Loading..." : "Load More"}
+                   </Button>
+                 </div>
+               )}
+            </div>
+         ) : (
+            <div className="py-20 flex justify-center">
+              <Empty className="max-w-xs">
+                 <EmptyHeader>
+                   <div className="mx-auto w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center border border-zinc-800 mb-4">
+                     {activeTab === 'explore' ? <Globe className="text-zinc-500" size={24} /> : <IconFolderCode className="text-zinc-500" size={24} />}
+                   </div>
+                   <EmptyTitle className="text-white text-lg font-bold">
+                     {activeTab === 'explore' ? 'No results' : 'Library Empty'}
+                   </EmptyTitle>
+                   <EmptyDescription className="text-zinc-500 text-xs mt-1">
+                     {activeTab === 'explore' ? `Try a different search term.` : 'Create your first AI note to get started.'}
+                   </EmptyDescription>
+                 </EmptyHeader>
+              </Empty>
+            </div>
+         )}
+      </div>
+
+      {/* --- MOBILE: Sticky Bottom Navigation --- */}
+      <div className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-black/90 backdrop-blur-xl border-t border-white/5 pb-safe">
+         <div className="flex items-center justify-around h-16 px-2">
+            
+            {/* Tab: Personal */}
+            <button 
+               onClick={() => setActiveTab("my-bag")}
+               className={cn("flex flex-col items-center gap-1 p-2 rounded-xl transition-all w-16", activeTab === "my-bag" ? "text-white" : "text-zinc-600")}
+            >
+               <IconFolderCode size={20} stroke={activeTab === "my-bag" ? 2.5 : 2} />
+               <span className="text-[9px] font-medium">Personal</span>
+            </button>
+
+            {/* Floating Action Button (Center) */}
+            <button 
+               onClick={() => router.push('/')}
+               className="relative -top-5 bg-white text-black rounded-full w-14 h-14 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.2)] active:scale-95 transition-transform"
+            >
+               <Plus size={28} />
+            </button>
+
+            {/* Tab: Explore */}
+            <button 
+               onClick={() => setActiveTab("explore")}
+               className={cn("flex flex-col items-center gap-1 p-2 rounded-xl transition-all w-16", activeTab === "explore" ? "text-white" : "text-zinc-600")}
+            >
+               <Compass size={20} stroke={activeTab === "explore" ? 2.5 : 2} />
+               <span className="text-[9px] font-medium">Explore</span>
+            </button>
+         </div>
+      </div>
+
     </div>
   );
 }

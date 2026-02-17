@@ -2,6 +2,7 @@
 const User = require("../models/User");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const Transaction = require("../models/Transaction"); // Ensure this is imported
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -305,14 +306,7 @@ const saveTransactionInternal = async (transactionData) => {
       throw new Error('User not found');
     }
 
-    console.log("👤 User found:", {
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      hasTransactionsField: user.transactions !== undefined
-    });
-
-    // Check for duplicate successful transactions
+    // Check for duplicate successful transactions (Check Embedded)
     if (transactionData.status === "success" && transactionData.razorpay_payment_id) {
       const existingTransaction = user.transactions.find(
         txn => txn.razorpay_payment_id === transactionData.razorpay_payment_id && txn.status === "success"
@@ -330,6 +324,7 @@ const saveTransactionInternal = async (transactionData) => {
 
     // Build transaction record
     const transactionRecord = {
+      userId: user._id, // *** CRITICAL: Added userId so standalone Transaction has it
       paymentId: transactionData.razorpay_payment_id || `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       orderId: transactionData.razorpay_order_id || `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       signature: transactionData.razorpay_signature || "",
@@ -362,12 +357,13 @@ const saveTransactionInternal = async (transactionData) => {
       status: transactionRecord.status
     });
 
-    // Initialize transactions array if it doesn't exist
+    // 1. SAVE TO STANDALONE TRANSACTION MODEL (Fixes your issue)
+    await Transaction.create(transactionRecord);
+
+    // 2. SAVE TO USER EMBEDDED TRANSACTIONS (Keeps user history)
     if (!user.transactions) {
       user.transactions = [];
     }
-
-    // Add transaction to user's history
     user.transactions.push(transactionRecord);
 
     // Process successful payments
@@ -376,12 +372,10 @@ const saveTransactionInternal = async (transactionData) => {
         // Add tokens to user's balance
         user.token += tokensToAward;
         
-        // Initialize tokenTransactions array if it doesn't exist
         if (!user.tokenTransactions) {
           user.tokenTransactions = [];
         }
         
-        // Record token transaction
         user.tokenTransactions.push({
           name: `Token Purchase - ${transactionRecord.packageName}`,
           type: "token_purchase",
@@ -399,7 +393,6 @@ const saveTransactionInternal = async (transactionData) => {
           ? new Date(user.membership.expiresAt)
           : null;
         
-        // If user has active membership, extend from current expiry, otherwise from now
         const baseDate = currentExpiry && currentExpiry > now ? currentExpiry : now;
         const durationMs = (packageDetails.durationDays || 30) * 24 * 60 * 60 * 1000;
         const expiresAt = new Date(baseDate.getTime() + durationMs);
@@ -415,12 +408,10 @@ const saveTransactionInternal = async (transactionData) => {
           autoRenew: user.membership?.autoRenew || false,
         };
 
-        // Initialize tokenTransactions array if it doesn't exist
         if (!user.tokenTransactions) {
           user.tokenTransactions = [];
         }
 
-        // Record membership transaction
         user.tokenTransactions.push({
           name: `Membership - ${packageDetails.name} (${transactionData.billingPeriod})`,
           type: "membership_purchase",
@@ -433,12 +424,10 @@ const saveTransactionInternal = async (transactionData) => {
       }
     }
 
-
-
-    user.tokens = 999999;
     // Save user
     await user.save();
 
+    // Return the ID of the embedded transaction for response consistency
     const savedTransaction = user.transactions[user.transactions.length - 1];
     
     console.log("✅ Transaction saved successfully:", {
@@ -503,6 +492,9 @@ exports.getTransactions = async (req, res) => {
     const userId = req.user._id;
     const { limit = 50, page = 1, status, packageType, startDate, endDate } = req.query;
 
+    // Use Standalone Transaction Model for better query performance if needed, 
+    // OR keep using User embedded for user-specific history.
+    // For now, consistent with legacy, we fetch from User.
     const user = await User.findById(userId).select('transactions name email');
     if (!user) {
       return res.status(404).json({
@@ -511,7 +503,6 @@ exports.getTransactions = async (req, res) => {
       });
     }
 
-    // Initialize transactions if not present
     let transactions = user.transactions || [];
 
     // Apply filters
@@ -530,10 +521,8 @@ exports.getTransactions = async (req, res) => {
       transactions = transactions.filter(txn => new Date(txn.timestamp) <= end);
     }
 
-    // Sort by timestamp (newest first)
     transactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // Paginate
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
     const paginatedTransactions = transactions.slice(startIndex, endIndex);

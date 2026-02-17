@@ -15,7 +15,7 @@ router.post('/:userId/follow', authMiddleware, userController.followUser);
 router.get('/:userId/comments', authMiddleware, userController.getUserComments);
 router.put('/profile', authMiddleware, userController.updateProfile);
 router.get('/suggested', authMiddleware, userController.getSuggestedUsers);
-
+router.post('/:userId/report', authMiddleware, userController.reportUser);
 router.post('/update-streak', authMiddleware, userController.updateStreak);
 
 router.post('/get-groble-leaderboard', userController.getGrobleLeaderboard);

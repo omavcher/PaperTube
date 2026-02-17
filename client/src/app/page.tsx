@@ -27,18 +27,10 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-start py-2 bg-black text-white">
       <main className="flex flex-1 flex-col items-center justify-center w-full">
-
-     
-
         {/* Always visible section */}
         <HomeMain />
-
-
-
         {/* ✅ Show HomeWorkspace only if logged in */}
         {isAuthenticated && <HomeWorkspace />}
-
-
         <div className="w-full my-20">
        <ToolsGlimpse/>
 </div>

@@ -4,7 +4,7 @@ const User = require('../models/User');
 const Note = require('../models/Note');
 const Comment = require('../models/Comment');
 const FlashcardSet = require('../models/FlashcardSet');
-
+const Report = require("../models/Report"); // Import the model
 /**
  * Get user public profile
  * GET /api/users/:username/profile
@@ -784,3 +784,40 @@ exports.getGrobleLeaderboard = async (req, res) => {
   }
 };
 
+
+
+
+exports.reportUser = async (req, res) => {
+try {
+    const { userId } = req.params; // The ID of the user being reported
+    const { reason, description } = req.body;
+    const reporterId = req.user.id; // From authMiddleware
+
+    // 1. Prevent self-reporting
+    if (userId === reporterId) {
+      return res.status(400).json({ success: false, message: "You cannot report yourself." });
+    }
+
+    // 2. Check if user exists
+    const reportedUser = await User.findById(userId);
+    if (!reportedUser) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    // 3. Create Report
+    const newReport = new Report({
+      reporter: reporterId,
+      reportedUser: userId,
+      reason,
+      description
+    });
+
+    await newReport.save();
+
+    res.status(201).json({ success: true, message: "Report submitted successfully." });
+
+  } catch (error) {
+    console.error("Report Error:", error);
+    res.status(500).json({ success: false, message: "Server error processing report." });
+  }
+};

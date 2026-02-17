@@ -5,7 +5,7 @@ import {
   Menu as MenuIcon, X, ChevronDown, Cpu, Zap, 
   Home, Code, Compass, User, LogOut, ShieldCheck, 
   UserCircle, Crown, Calendar, Coins, PlusCircle,
-  Flame
+  Flame, Trophy, BarChart3
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import Link from "next/link";
@@ -16,9 +16,9 @@ import axios from "axios";
 
 // --- PLAN DEFINITIONS ---
 const PLANS = [
-    { id: "scholar", name: "Scholar", color: "text-blue-400", border: "border-blue-500" },
-    { id: "pro", name: "Pro Scholar", color: "text-yellow-500", border: "border-yellow-500" },
-    { id: "power", name: "Power Scholar", color: "text-cyan-400", border: "border-cyan-500" },
+    { id: "scholar", name: "Scholar", color: "text-blue-400", border: "border-blue-500", bg: "bg-blue-500/10" },
+    { id: "pro", name: "Pro Scholar", color: "text-yellow-500", border: "border-yellow-500", bg: "bg-yellow-500/10" },
+    { id: "power", name: "Power Scholar", color: "text-cyan-400", border: "border-cyan-500", bg: "bg-cyan-500/10" },
 ];
 
 export const Navbar = ({ 
@@ -71,7 +71,9 @@ export const Navbar = ({
               </div>
 
               <div className="flex items-center gap-4">
-                {isLoggedIn && <TokenBadge user={user} />}
+                {/* Logic: Only show tokens if user is NOT a subscriber */}
+                {isLoggedIn && !user?.membership?.isActive && <TokenBadge user={user} />}
+                
                 {isLoggedIn ? (
                   <UserHUD user={user} onLogout={handleLogout} />
                 ) : (
@@ -85,34 +87,35 @@ export const Navbar = ({
 
       {/* --- MOBILE: BOTTOM DOCK --- */}
       {!hideMobile && (
-        <div className="fixed bottom-0 inset-x-0 z-[120] lg:hidden bg-black/80 backdrop-blur-2xl border-t border-white/5 pb-safe-area shadow-[0_-10px_40px_rgba(0,0,0,1)]">
-          <div className="flex items-center justify-between px-4 h-16 max-w-md mx-auto">
-            <MobileTab href="/" icon={<Home size={20} />} label="Home" />
-            <MobileTab href="/explore" icon={<Compass size={20} />} label="Explore" />
+        <div className="fixed bottom-0 inset-x-0 z-[120] lg:hidden bg-black/90 backdrop-blur-2xl border-t border-white/10 pb-safe-area shadow-[0_-10px_40px_rgba(0,0,0,1)]">
+          <div className="flex items-center justify-between px-6 h-20 max-w-md mx-auto">
+            <MobileTab href="/" icon={<Home size={22} />} label="Home" />
+            <MobileTab href="/explore" icon={<Compass size={22} />} label="Explore" />
             
-            <Link href="/tools" className="relative -top-4">
-               <div className="bg-red-600 p-4 rounded-2xl shadow-[0_0_25px_rgba(220,38,38,0.5)] active:scale-90 transition-transform">
-                  <Zap size={24} className="text-white fill-current" />
+            <Link href="/tools" className="relative -top-6 group">
+               <div className="absolute inset-0 bg-red-600 blur-xl opacity-40 group-hover:opacity-60 transition-opacity"></div>
+               <div className="relative bg-gradient-to-br from-red-600 to-red-700 p-4 rounded-full shadow-xl border border-white/20 active:scale-90 transition-transform">
+                  <Zap size={26} className="text-white fill-current" />
                </div>
             </Link>
 
-            <MobileTab href="/pricing" icon={<Zap size={20} />} label="Access" />
+            <MobileTab href="/stack" icon={<Trophy size={22} />} label="Rank" />
             
             <button 
               onClick={() => setMobileOpen(true)} 
-              className="flex flex-col items-center gap-1 p-2 text-neutral-500 active:text-red-500 transition-colors"
+              className="flex flex-col items-center gap-1.5 p-2 text-neutral-500 active:text-white transition-colors"
             >
               {isLoggedIn ? (
                 <div className={cn(
-                    "h-6 w-6 rounded-full border-2 overflow-hidden bg-neutral-800",
+                    "h-7 w-7 rounded-full border-2 overflow-hidden bg-neutral-800",
                     user?.membership?.isActive ? "border-yellow-500" : "border-red-600"
                 )}>
                   <img src={user?.picture || "/avatar.png"} alt="u" className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <User size={20} />
+                <User size={22} />
               )}
-              <span className="text-[8px] font-black uppercase tracking-widest">Menu</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Profile</span>
             </button>
           </div>
         </div>
@@ -134,6 +137,7 @@ export const Navbar = ({
 /* --- Optimized Sub-Components --- */
 
 const TokenBadge = ({ user }: any) => {
+  // Double check protection (though parent handles it too)
   if (user?.membership?.isActive) return null;
   const tokens = user?.tokens || 0;
 
@@ -167,7 +171,10 @@ const UserHUD = ({ user, onLogout }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   const membership = user?.membership;
   const isActive = membership?.isActive === true;
-  const planInfo = PLANS.find(p => p.id === membership?.planId) || { name: "Standard", color: "text-red-500", border: "border-red-600" };
+  const planInfo = PLANS.find(p => p.id === membership?.planId) || { name: "Standard", color: "text-red-500", border: "border-red-600", bg: "bg-red-500/10" };
+  
+  const streakCount = user?.streak?.count || 0;
+  const lastVisit = user?.streak?.lastVisit ? new Date(user.streak.lastVisit).toLocaleDateString() : "Just Started";
 
   return (
     <div className="relative" onMouseEnter={() => setIsOpen(true)} onMouseLeave={() => setIsOpen(false)}>
@@ -176,7 +183,7 @@ const UserHUD = ({ user, onLogout }: any) => {
           <span className="text-[10px] font-black text-white uppercase italic tracking-tighter">{user?.name}</span>
           <span className={cn("text-[8px] font-black uppercase tracking-widest flex items-center gap-1", planInfo.color)}>
             {isActive && <Crown size={8} className="fill-current" />}
-            {isActive ? planInfo.name : "Free Sync"}
+            {isActive ? planInfo.name : "Free Tier"}
           </span>
         </div>
         <div className={cn(
@@ -189,77 +196,77 @@ const UserHUD = ({ user, onLogout }: any) => {
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-            className="absolute top-full right-0 mt-2 w-72 bg-[#0a0a0a] border border-white/10 rounded-[2rem] p-4 shadow-2xl backdrop-blur-xl z-[110] overflow-hidden"
+          <motion.div 
+            initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+            animate={{ opacity: 1, y: 0, scale: 1 }} 
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="absolute top-full right-0 mt-2 w-80 bg-[#0a0a0a] border border-white/10 rounded-[2rem] p-4 shadow-2xl backdrop-blur-xl z-[110] overflow-hidden"
           >
-            {/* --- Status Header --- */}
-            <div className="mb-4 p-4 bg-white/5 rounded-2xl border border-white/5 relative overflow-hidden">
-                <div className="flex justify-between items-start relative z-10">
-                    <div>
-                        <p className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">Profile Status</p>
-                        <p className={cn("text-xs font-black uppercase italic leading-tight", planInfo.color)}>{isActive ? planInfo.name : "Basic Access"}</p>
+            {/* --- User Header --- */}
+            <div className="mb-4 flex items-center gap-4 p-2">
+                 <div className={cn("h-12 w-12 rounded-full border-2 overflow-hidden", isActive ? planInfo.border : "border-neutral-700")}>
+                    <img src={user?.picture} className="w-full h-full object-cover" />
+                 </div>
+                 <div>
+                    <p className="text-sm font-black text-white uppercase italic tracking-tighter">{user?.name}</p>
+                    <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-black uppercase", planInfo.bg, planInfo.color)}>
+                        {isActive ? planInfo.name : "Free Account"}
                     </div>
-                    {isActive ? (
-                        <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[8px] font-black rounded-lg px-2">PRO</Badge>
-                    ) : (
-                        <div className="flex items-center gap-1 text-[10px] font-black text-white italic"><Coins size={10} className="text-yellow-500"/> {user?.tokens}</div>
-                    )}
+                 </div>
+            </div>
+
+            {/* --- Streak Widget --- */}
+            <div className="mb-2 p-4 bg-gradient-to-br from-neutral-900 to-black border border-white/10 rounded-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                    <Flame size={40} className={streakCount > 0 ? "text-orange-500" : "text-neutral-700"} />
+                </div>
+                
+                <div className="relative z-10 flex flex-col gap-1">
+                    <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Current Streak</span>
+                    <div className="flex items-baseline gap-1">
+                        <span className={cn("text-3xl font-black italic", streakCount > 0 ? "text-white" : "text-neutral-600")}>
+                           {streakCount}
+                        </span>
+                        <span className="text-xs font-bold text-neutral-500 uppercase">Days</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 text-[9px] font-medium text-neutral-400">
+                        <Calendar size={10} />
+                        Last Active: {lastVisit}
+                    </div>
                 </div>
             </div>
 
-           {/* --- Minimalist & Gentle Streak Widget --- */}
-<Link href="/quest">
-  <motion.div 
-    whileHover={{ y: -2 }}
-    whileTap={{ scale: 0.98 }}
-    className="mb-4 p-4 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 rounded-2xl flex items-center justify-between group cursor-pointer transition-all duration-300 backdrop-blur-sm"
-  >
-    <div className="flex items-center gap-4">
-      {/* Soft Glow Icon */}
-      <div className="relative flex items-center justify-center">
-        <div className="absolute inset-0 bg-red-500/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        <div className="h-10 w-10 rounded-full bg-neutral-900 border border-white/5 flex items-center justify-center">
-          <Flame 
-            size={18} 
-            className="text-red-500/80 transition-all duration-700 group-hover:text-red-500 group-hover:fill-red-500/10" 
-          />
-        </div>
-      </div>
+            {/* --- Leaderboard CTA --- */}
+            <Link href="/leaderboard" className="mb-4 block">
+                <div className="flex items-center justify-between p-3 bg-red-600/10 hover:bg-red-600/20 border border-red-600/20 rounded-xl transition-all group">
+                    <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-red-600 rounded-lg text-white group-hover:scale-110 transition-transform">
+                            <Trophy size={14} />
+                        </div>
+                        <span className="text-[10px] font-black text-red-500 uppercase italic tracking-wider">
+                            View Leaderboard
+                        </span>
+                    </div>
+                    <ChevronDown size={14} className="text-red-500 -rotate-90 group-hover:translate-x-1 transition-transform" />
+                </div>
+            </Link>
 
-      <div className="flex flex-col">
-        <span className="text-sm font-medium tracking-tight text-neutral-200">
-          5 Day Streak
-        </span>
-        <span className="text-[10px] text-neutral-500 font-medium tracking-wide uppercase opacity-80">
-          Keep the momentum going
-        </span>
-      </div>
-    </div>
-
-    {/* Subtle Status Indicator */}
-    <div className="flex items-center gap-3">
-      <div className="h-1 w-8 bg-neutral-800 rounded-full overflow-hidden">
-        <motion.div 
-          initial={{ width: 0 }}
-          animate={{ width: "70%" }}
-          className="h-full bg-red-500/40"
-        />
-      </div>
-      <ChevronDown size={14} className="text-neutral-600 -rotate-90 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-    </div>
-  </motion.div>
-</Link>
-
-            {/* --- Action Links --- */}
-            <div className="space-y-1">
-              <Link href="/profile" className="flex items-center gap-3 p-3.5 hover:bg-white/5 rounded-xl transition-all group">
-                <UserCircle size={16} className="text-red-500" />
-                <span className="text-[10px] font-black uppercase italic text-white group-hover:translate-x-1 transition-transform">Neural Dashboard</span>
+            {/* --- Menu Links --- */}
+            <div className="space-y-1 border-t border-white/5 pt-2">
+              <Link href="/profile" className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-all group">
+                <UserCircle size={16} className="text-neutral-400 group-hover:text-white" />
+                <span className="text-[10px] font-black uppercase italic text-neutral-400 group-hover:text-white transition-colors">Dashboard</span>
+              </Link>
+              
+              <Link href="/billing" className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-all group">
+                <Coins size={16} className="text-neutral-400 group-hover:text-white" />
+                <span className="text-[10px] font-black uppercase italic text-neutral-400 group-hover:text-white transition-colors">Billing & Plan</span>
               </Link>
 
-              <button onClick={onLogout} className="w-full flex items-center gap-3 p-3.5 hover:bg-red-600/10 rounded-xl transition-all group text-neutral-500 hover:text-red-500">
+              <button onClick={onLogout} className="w-full flex items-center gap-3 p-3 hover:bg-red-600/10 rounded-xl transition-all group text-neutral-500 hover:text-red-500">
                 <LogOut size={16} />
-                <span className="text-[10px] font-black uppercase italic group-hover:translate-x-1 transition-transform">Terminate Link</span>
+                <span className="text-[10px] font-black uppercase italic">Log Out</span>
               </button>
             </div>
           </motion.div>
@@ -269,78 +276,116 @@ const UserHUD = ({ user, onLogout }: any) => {
   );
 };
 
-const Badge = ({ children, className }: any) => (
-  <div className={cn("px-2 py-0.5 rounded uppercase tracking-widest border", className)}>{children}</div>
-);
-
 const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authLoading, onLogout }: any) => {
   const isActive = user?.membership?.isActive;
-  const planName = PLANS.find(p => p.id === user?.membership?.planId)?.name || "Standard";
+  const planInfo = PLANS.find(p => p.id === user?.membership?.planId) || { name: "Standard", color: "text-red-500" };
+  const streakCount = user?.streak?.count || 0;
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25 }}
-          className="fixed inset-0 z-[150] bg-black p-8 flex flex-col lg:hidden overflow-y-auto"
+        <motion.div 
+          initial={{ x: "100%" }} 
+          animate={{ x: 0 }} 
+          exit={{ x: "100%" }} 
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="fixed inset-0 z-[150] bg-black flex flex-col lg:hidden"
         >
-          <div className="flex justify-between items-center mb-10">
+          {/* Header */}
+          <div className="flex justify-between items-center p-6 border-b border-white/10 bg-neutral-900/50">
              <LogoSection />
-             <button onClick={onClose} className="p-3 bg-neutral-900 rounded-full text-white"><X /></button>
+             <button onClick={onClose} className="p-2 bg-neutral-800 rounded-full text-white active:scale-90 transition-transform"><X size={20} /></button>
           </div>
 
-          {isLoggedIn && (
-              <div className="mb-8 p-6 bg-neutral-900/50 rounded-[2.5rem] border border-white/5 flex flex-col gap-5">
-                  <div className="flex items-center gap-4">
-                    <div className={cn("h-16 w-16 rounded-2xl border-2 overflow-hidden shadow-2xl", isActive ? "border-yellow-500" : "border-red-600")}>
-                        <img src={user?.picture} alt="" className="w-full h-full object-cover" />
+          <div className="flex-1 overflow-y-auto p-6">
+            {isLoggedIn ? (
+                <div className="flex flex-col gap-6">
+                    {/* User Card */}
+                    <div className="flex items-center gap-4 p-4 bg-neutral-900/50 rounded-3xl border border-white/5">
+                        <div className={cn("h-16 w-16 rounded-2xl border-2 overflow-hidden", isActive ? "border-yellow-500" : "border-red-600")}>
+                            <img src={user?.picture} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                            <p className="text-lg font-black text-white italic uppercase tracking-tighter">{user?.name}</p>
+                            <p className={cn("text-[10px] font-black uppercase tracking-widest", planInfo.color)}>
+                                {isActive ? planInfo.name : "Free Account"}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                        {/* Streak Box */}
+                        <div className="p-4 bg-neutral-900/30 rounded-2xl border border-white/5 flex flex-col gap-2">
+                             <div className="flex items-center gap-2 text-neutral-500">
+                                 <Flame size={14} className={streakCount > 0 ? "text-orange-500" : ""} />
+                                 <span className="text-[8px] font-black uppercase tracking-widest">Streak</span>
+                             </div>
+                             <p className="text-xl font-black text-white italic">{streakCount} <span className="text-[10px] not-italic text-neutral-600">Days</span></p>
+                        </div>
+
+                        {/* Tokens Box (Only if NOT subscriber) */}
+                        {!isActive ? (
+                            <Link href="/get/free-token" onClick={onClose} className="p-4 bg-neutral-900/30 rounded-2xl border border-white/5 flex flex-col gap-2 active:bg-neutral-800 transition-colors">
+                                <div className="flex items-center gap-2 text-neutral-500">
+                                    <Coins size={14} className="text-yellow-500" />
+                                    <span className="text-[8px] font-black uppercase tracking-widest">Tokens</span>
+                                </div>
+                                <p className="text-xl font-black text-white italic">{user?.tokens || 0}</p>
+                            </Link>
+                        ) : (
+                            <div className="p-4 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 flex flex-col gap-2">
+                                <div className="flex items-center gap-2 text-yellow-500">
+                                    <Crown size={14} />
+                                    <span className="text-[8px] font-black uppercase tracking-widest">Status</span>
+                                </div>
+                                <p className="text-xl font-black text-yellow-500 italic">ACTIVE</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Leaderboard Link Mobile */}
+                    <Link href="/stack" onClick={onClose} className="flex items-center justify-between p-4 bg-red-600/10 rounded-2xl border border-red-600/20 active:scale-95 transition-transform">
+                        <div className="flex items-center gap-3">
+                            <Trophy size={18} className="text-red-500" />
+                            <span className="text-xs font-black text-red-500 uppercase italic tracking-wider">Leaderboard</span>
+                        </div>
+                        <ChevronDown size={16} className="text-red-500 -rotate-90" />
+                    </Link>
+
+                    {/* Nav Links */}
+                    <div className="flex flex-col gap-2 mt-2">
+                        <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-2 pl-1">Navigation</p>
+                        {SUPPORT_TOOLS.map((tool, i) => (
+                        <Link key={i} href={tool.href} onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900/30 rounded-2xl border border-white/5 active:bg-neutral-800">
+                            <div className="text-neutral-400">{tool.icon}</div>
+                            <span className="text-xs font-black uppercase text-white tracking-wider">{tool.title}</span>
+                        </Link>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center gap-6">
+                    <div className="h-20 w-20 bg-neutral-900 rounded-full flex items-center justify-center border border-white/10">
+                        <User size={32} className="text-neutral-500" />
                     </div>
                     <div>
-                        <p className="text-sm font-black text-white italic uppercase tracking-tighter leading-none mb-1">{user.name}</p>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest", isActive ? "text-yellow-500" : "text-neutral-500")}>
-                            {isActive ? planName : "Basic Access"}
-                        </p>
+                        <h3 className="text-xl font-black text-white italic uppercase">Guest Access</h3>
+                        <p className="text-xs text-neutral-500 mt-2 max-w-[200px] mx-auto">Login to sync your streak, save progress, and access pro features.</p>
                     </div>
-                  </div>
-                  
-                  {/* Mobile Streak */}
-                  <div className="flex items-center gap-3 p-3 bg-red-600/10 rounded-2xl border border-red-600/20">
-                     <Flame size={16} className="text-red-500 fill-current" />
-                     <span className="text-[10px] font-black uppercase italic text-white">5-Day Active Streak</span>
-                  </div>
-
-                  {!isActive && (
-                      <div className="flex items-center justify-between p-3 bg-black rounded-xl border border-white/5">
-                          <div className="flex items-center gap-2">
-                              <Coins size={14} className="text-yellow-500" />
-                              <span className="text-xs font-black text-white">{user?.tokens || 0}</span>
-                          </div>
-                          <Link href="/get/free-token" onClick={onClose} className="text-[10px] font-black text-red-500 uppercase tracking-wider">
-                              + Get More
-                          </Link>
-                      </div>
-                  )}
-              </div>
-          )}
-
-          <div className="flex flex-col gap-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600 border-b border-white/5 pb-2">Operational Hub</p>
-            {SUPPORT_TOOLS.map((tool, i) => (
-              <Link key={i} href={tool.href} onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900/50 rounded-2xl border border-white/5 active:scale-95 transition-transform">
-                  <div className="text-red-600">{tool.icon}</div>
-                  <div><p className="text-xs font-black uppercase text-white">{tool.title}</p><p className="text-[8px] text-neutral-600 font-bold uppercase">{tool.desc}</p></div>
-              </Link>
-            ))}
-          </div>
-
-          <div className="mt-auto pt-10">
-            {isLoggedIn ? (
-              <button onClick={onLogout} className="w-full flex items-center justify-center gap-3 p-5 bg-red-600/10 rounded-2xl text-red-500 font-black uppercase text-[10px] active:scale-95 transition-all">
-                <LogOut size={16} /> Terminate Connection
-              </button>
-            ) : (
-              <GoogleLoginBtn onSuccess={onLoginSuccess} loading={authLoading} />
+                    <GoogleLoginBtn onSuccess={onLoginSuccess} loading={authLoading} />
+                </div>
             )}
           </div>
+
+          {/* Logout Mobile */}
+          {isLoggedIn && (
+              <div className="p-6 border-t border-white/10 bg-neutral-900/50">
+                  <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 p-4 bg-red-600 text-white rounded-xl font-black uppercase text-xs italic tracking-wider shadow-lg shadow-red-900/20 active:scale-95 transition-transform">
+                      <LogOut size={16} /> Terminate Session
+                  </button>
+              </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
@@ -364,9 +409,9 @@ const LogoSection = () => (
 );
 
 const MobileTab = ({ href, icon, label }: any) => (
-    <Link href={href} className="flex flex-col items-center gap-1 p-2 text-neutral-500 active:text-red-500 transition-colors">
+    <Link href={href} className="flex flex-col items-center gap-1.5 p-2 text-neutral-500 hover:text-white transition-colors">
       {icon}
-      <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
+      <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
     </Link>
 );
 
