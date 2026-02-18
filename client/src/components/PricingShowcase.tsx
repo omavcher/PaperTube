@@ -180,19 +180,6 @@ export default function PricingShowcase() {
           ))}
         </div>
 
-        {/* --- Trust Indicators --- */}
-        <motion.div 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4 }}
-            className="mt-24 pt-10 border-t border-white/5 flex flex-wrap justify-center gap-x-12 gap-y-6"
-        >
-          <TrustBadge icon={ShieldCheck} text="256-bit Secure Encryption" />
-          <TrustBadge icon={Activity} text="99.9% Uptime Guarantee" />
-          <TrustBadge icon={Zap} text="Instant Account Activation" />
-        </motion.div>
-
       </div>
     </section>
   );

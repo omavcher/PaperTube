@@ -85,7 +85,6 @@ export default function Footer() {
               <FooterLink href="/tools" label="Engineering Tools" />
               <FooterLink href="/blog" label="Tech Blog" />
               <FooterLink href="/games" label="Neural Arcade" />
-              <FooterLink href="/roadmap" label="System Roadmap" />
             </FooterColumn>
 
             <FooterColumn title="Ecosystem">
@@ -96,10 +95,10 @@ export default function Footer() {
               <FooterLink href="/leaderboard" label="Global Rank" />
               <FooterLink href="/quest" label="Daily Quests" />
               <FooterLink href="/pricing" label="Pro Membership" badge="New" />
-              <FooterLink href="/api" label="Developer API" />
             </FooterColumn>
 
             <FooterColumn title="Support">
+     <FooterLink href="/about" label="About Founder" />
               <FooterLink href="/contact" label="Help Center" />
               <FooterLink href="/status" label="System Status" />
               <FooterLink href="/privacy" label="Privacy Protocol" />
