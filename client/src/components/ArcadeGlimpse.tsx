@@ -2,9 +2,19 @@
 
 import React from "react";
 import { 
-  Gamepad2, Binary, Terminal, Zap, 
-  ArrowRight, Cpu, Activity, Play, 
-  ShieldAlert, TrendingUp
+  Gamepad2, 
+  Binary, 
+  Terminal, 
+  Zap, 
+  ArrowRight, 
+  Cpu, 
+  Activity, 
+  Play, 
+  ShieldCheck, 
+  TrendingUp,
+  Brain,
+  Code2,
+  Lock
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -12,78 +22,100 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+// --- Configuration ---
 const PREVIEW_GAMES = [
   { 
     id: "binary-blitz", 
     title: "Binary Blitz", 
     category: "Logic", 
-    difficulty: "Med", 
-    color: "text-blue-500", 
+    difficulty: "Medium", 
+    color: "text-blue-400", 
     icon: <Binary size={20} />,
-    image: "./games_thumb/binary-blitz.webp"
+    image: "/games_thumb/binary-blitz.webp", // Replace with your image path
+    accent: "blue"
   },
   { 
     id: "complexity-dash", 
     title: "Complexity Dash", 
     category: "CS Core", 
     difficulty: "Expert", 
-    color: "text-red-500", 
+    color: "text-red-400", 
     icon: <Terminal size={20} />,
-    image: "./games_thumb/complexity-dash.webp"
+    image: "/games_thumb/complexity-dash.webp", // Replace with your image path
+    accent: "red"
   },
   { 
     id: "circuit-breaker", 
     title: "Circuit Breaker", 
     category: "Hardware", 
     difficulty: "Hard", 
-    color: "text-orange-500", 
+    color: "text-yellow-400", 
     icon: <Zap size={20} />,
-    image: "./games_thumb/circuit-breaker.webp"
+    image: "/games_thumb/circuit-breaker.webp", // Replace with your image path
+    accent: "yellow"
   },
 ];
 
 export default function ArcadeGlimpse() {
   return (
-    <section className="py-16 md:py-24 bg-[#000000] relative overflow-hidden border-t border-white/5">
+    <section className="py-24 bg-black relative overflow-hidden border-t border-white/5">
       
-      {/* Ambient Red Glow for Depth */}
-      <div className="absolute top-0 left-1/4 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-red-600/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none" />
+      {/* --- Background Atmosphere --- */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-900/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-900/10 blur-[120px] rounded-full pointer-events-none" />
       
-      <div className="container mx-auto px-4 relative z-10">
+      <div className="container mx-auto px-6 relative z-10 max-w-7xl">
         
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row items-end justify-between mb-10 md:mb-16 gap-6 md:gap-8">
-          <div className="space-y-4 max-w-2xl">
+        {/* --- Header Section --- */}
+        <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-8">
+          <div className="space-y-6 max-w-2xl">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/5 border border-red-600/20 text-red-500 text-[10px] font-black uppercase tracking-[0.2em]"
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[10px] font-medium uppercase tracking-widest text-neutral-400"
             >
-              <Gamepad2 size={12} /> Neural Training Lab
+              <Gamepad2 size={12} className="text-white" /> 
+              <span>Neural Training Lab</span>
             </motion.div>
-            <h2 className="text-4xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-[0.9]">
-              THE <span className="text-red-600 drop-shadow-[0_0_20px_rgba(220,38,38,0.4)]">ARCADE</span>
-            </h2>
-            <p className="text-neutral-500 font-medium text-sm md:text-lg leading-relaxed">
-              Stop studying, start playing. Build muscle memory for complex engineering concepts through high-speed arcade modules.
-            </p>
+            
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 leading-none"
+            >
+              The <span className="text-white">Arcade.</span>
+            </motion.h2>
+            
+            <motion.p 
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="text-lg text-neutral-400 font-light leading-relaxed max-w-lg"
+            >
+              Stop studying, start playing. Build muscle memory for complex engineering concepts through high-speed neural modules.
+            </motion.p>
           </div>
 
-          <Link href="/games" className="hidden md:block">
-            <Button className="h-14 px-8 bg-white text-black hover:bg-red-600 hover:text-white rounded-xl font-black uppercase italic transition-all shadow-2xl active:scale-95 group">
-              Enter The Void <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </Link>
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="hidden md:block"
+          >
+            <Link href="/games">
+              <Button className="group bg-white text-black hover:bg-neutral-200 rounded-2xl h-14 px-8 font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                Enter The Void <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </motion.div>
         </div>
 
-        {/* --- The Tactical Preview Grid (Horizontal Scroll on Mobile) --- */}
-        {/* Fixed: Replaced style tag with Tailwind arbitrary values for hiding scrollbar */}
-        <div className="
-            flex gap-4 overflow-x-auto snap-x snap-mandatory pb-8 -mx-4 px-4
-            md:grid md:grid-cols-3 md:gap-8 md:overflow-visible md:pb-0 md:mx-0 md:px-0
-            [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]
-        ">
+        {/* --- The Games Grid --- */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PREVIEW_GAMES.map((game, index) => (
             <motion.div
               key={game.id}
@@ -91,89 +123,101 @@ export default function ArcadeGlimpse() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               viewport={{ once: true }}
-              whileHover={{ y: -8 }}
-              className="
-                flex-shrink-0 w-[85vw] snap-center
-                md:w-auto md:flex-shrink-1
-                group relative bg-neutral-900/20 border border-white/5 rounded-[2rem] overflow-hidden transition-all duration-500 hover:border-red-600/40 shadow-2xl flex flex-col
-              "
+              whileHover={{ y: -5 }}
+              className="group relative bg-neutral-900/40 backdrop-blur-md border border-white/5 rounded-[2rem] overflow-hidden transition-all duration-300 hover:border-white/10 hover:bg-neutral-900/60 shadow-2xl flex flex-col"
             >
-              {/* Image Header */}
-              <div className="relative aspect-[16/9] w-full overflow-hidden bg-neutral-900 border-b border-white/5">
+              <Link href={`/games/${game.id}`} className="absolute inset-0 z-30" />
+
+              {/* Image Container (16:9 Aspect Ratio) */}
+              <div className="relative w-full aspect-video overflow-hidden bg-black border-b border-white/5">
+                <div className="absolute inset-0 bg-neutral-800 animate-pulse" /> {/* Placeholder while loading */}
                 <img 
                   src={game.image} 
                   alt={game.title}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
                 
-                {/* Badges */}
-                <div className="absolute top-4 right-4 z-20">
-                  <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-white/10 bg-black/60 backdrop-blur-md px-2 py-1 text-white">
-                    {game.difficulty}
-                  </Badge>
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                
+                {/* Floating Badges */}
+                <div className="absolute top-4 right-4 z-20 flex gap-2">
+                   <Badge variant="outline" className="border-white/10 bg-black/60 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1">
+                      {game.difficulty}
+                   </Badge>
                 </div>
 
-                <div className={cn(
-                  "absolute bottom-4 left-4 p-2.5 rounded-xl bg-black/80 border border-white/10 backdrop-blur-xl transition-all duration-500",
-                  game.color
-                )}>
-                  {game.icon}
+                {/* Icon Badge */}
+                <div className="absolute bottom-4 left-4 z-20">
+                   <div className={cn(
+                     "p-2.5 rounded-xl bg-black/60 backdrop-blur-xl border border-white/10 text-white shadow-lg",
+                     game.color
+                   )}>
+                      {game.icon}
+                   </div>
                 </div>
               </div>
 
               {/* Content Body */}
-              <div className="p-6 md:p-8 relative z-10 flex flex-col flex-grow bg-black/20 backdrop-blur-sm">
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-[0.03] pointer-events-none bg-[linear-gradient(to_bottom,transparent_50%,#dc2626_50%)] bg-[size:100%_4px]" />
-
-                <div className="space-y-1">
-                  <p className="text-[9px] font-black uppercase text-red-600/50 tracking-[0.2em]">{game.category}</p>
-                  <h3 className="text-2xl md:text-3xl font-black text-white uppercase italic tracking-tighter group-hover:text-red-500 transition-colors leading-tight">
+              <div className="p-6 relative z-10 flex flex-col flex-grow">
+                
+                <div className="space-y-1 mb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                     <span className="w-1.5 h-1.5 rounded-full bg-neutral-500 group-hover:bg-white transition-colors"></span>
+                     <p className="text-[10px] font-bold uppercase text-neutral-500 tracking-widest group-hover:text-neutral-400 transition-colors">{game.category}</p>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white tracking-tight group-hover:translate-x-1 transition-transform">
                     {game.title}
                   </h3>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Activity size={12} className="text-neutral-700 group-hover:text-red-500 transition-colors" />
-                    <span className="text-[9px] font-black uppercase text-neutral-800 group-hover:text-neutral-500 tracking-widest">Active Link</span>
+                <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <Activity size={14} className="text-green-500" />
+                    <span className="text-[10px] font-bold uppercase text-neutral-400 tracking-widest">Online</span>
                   </div>
-                  <div className="bg-white/5 p-2 rounded-full group-hover:bg-red-600 transition-colors">
-                     <Play size={14} className="text-white fill-current" />
+                  
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+                      <Play size={12} className="ml-0.5 fill-current" />
                   </div>
                 </div>
               </div>
 
-              <Link href={`/games/${game.id}`} className="absolute inset-0 z-30" />
             </motion.div>
           ))}
         </div>
 
         {/* Mobile Button */}
-        <div className="mt-6 md:hidden">
+        <div className="mt-8 md:hidden">
             <Link href="/games" className="block w-full">
-                <Button className="w-full h-12 bg-white text-black hover:bg-neutral-200 rounded-xl font-black uppercase italic">
-                   Explore All Games
+                <Button className="w-full h-14 bg-white text-black hover:bg-neutral-200 rounded-2xl font-bold uppercase tracking-widest text-xs">
+                   Enter The Void
                 </Button>
             </Link>
         </div>
 
         {/* --- Stats Footer --- */}
-        <div className="mt-12 md:mt-20 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-[9px] font-black text-neutral-800 uppercase tracking-[0.2em] md:tracking-[0.4em]">
-          <div className="flex items-center gap-2">
-            <Cpu size={12} className="text-red-600/20" />
-            <span>9 Modules</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <TrendingUp size={12} className="text-red-600/20" />
-            <span>1.4k Players</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <ShieldAlert size={12} className="text-red-600/20" />
-            <span>0.8ms Latency</span>
-          </div>
-        </div>
+        <motion.div 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="mt-20 border-t border-white/5 pt-10 flex flex-wrap items-center justify-center gap-x-12 gap-y-6"
+        >
+          <StatItem icon={Cpu} label="9 Simulation Modules" />
+          <StatItem icon={TrendingUp} label="1.4k Active Players" />
+          <StatItem icon={ShieldCheck} label="0.8ms Latency" />
+        </motion.div>
+
       </div>
     </section>
   );
 }
+
+// Helper for Footer Stats
+const StatItem = ({ icon: Icon, label }: { icon: any, label: string }) => (
+  <div className="flex items-center gap-3 text-neutral-500 group cursor-default hover:text-white transition-colors">
+    <Icon size={14} className="text-neutral-600 group-hover:text-white transition-colors" />
+    <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{label}</span>
+  </div>
+);

@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,7 +16,7 @@ import {
   Loader2, Send, Terminal, FileCode, Database, GitCompare, 
   ShieldAlert, Github, BookOpen, InspectionPanel, TableRowsSplitIcon, 
   BinaryIcon, CalculatorIcon, KeyRoundIcon, FileText, QrCode, FileSignature,
-  Home, Grid, Settings, ArrowRightLeft, Keyboard
+  Home, Grid, Settings, ArrowRightLeft, Keyboard, Wrench, Code2, Layers
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -117,39 +115,38 @@ export default function MobileOptimizedTools() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-red-600/30 flex flex-col font-sans">
+    <div className="min-h-screen bg-black text-white selection:bg-red-900/50 flex flex-col font-sans overflow-x-hidden">
       
       {/* --- Ambient Background Glow --- */}
-      <div className="fixed top-0 left-0 w-full h-[50vh] bg-red-600/5 blur-[120px] pointer-events-none" />
+      <div className="fixed top-0 left-0 w-full h-[50vh] bg-red-900/10 blur-[120px] pointer-events-none" />
+      <div className="fixed inset-0 z-0 opacity-20 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
       {/* --- HEADER SECTION --- */}
-      <header className="pt-16 pb-2 px-6 relative z-10 md:pt-20">
-         <div className="container mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
+      <header className="pt-20 pb-4 px-6 relative z-10">
+         <div className="container mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <div className="space-y-4">
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} 
-                   className="flex items-center gap-2 mb-2">
-                   <span className="flex h-2 w-2 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
-                   </span>
-                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">
+                   className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-600/20">
+                   <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" />
+                   <span className="text-[10px] font-bold uppercase tracking-widest text-red-500">
                      PaperTube Engine v2.0
                    </span>
                 </motion.div>
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-[0.85]">
-                  Tools<span className="text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]">Matrix</span>
+                
+                <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 leading-none">
+                  Tools <span className="text-red-500">Matrix.</span>
                 </h1>
             </div>
 
             {/* Search Bar */}
             <div className="w-full md:w-auto relative group">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600/50 to-neutral-800/50 rounded-xl blur opacity-20 group-focus-within:opacity-100 transition duration-500" />
-                <div className="relative flex items-center bg-black border border-white/10 rounded-xl px-4 py-2.5 w-full md:w-[300px]">
-                   <Search className="h-4 w-4 text-neutral-500 mr-3" />
+                <div className="absolute -inset-0.5 bg-red-600/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
+                <div className="relative flex items-center bg-neutral-900/80 border border-white/10 rounded-xl px-4 py-3 w-full md:w-[320px] backdrop-blur-md">
+                   <Search className="h-4 w-4 text-neutral-500 mr-3 group-focus-within:text-red-500 transition-colors" />
                    <input 
                       type="text" 
                       placeholder="SEARCH MODULES..." 
-                      className="bg-transparent border-none focus:ring-0 p-0 text-xs font-black uppercase tracking-wider text-white w-full placeholder:text-neutral-700"
+                      className="bg-transparent border-none focus:ring-0 p-0 text-xs font-bold uppercase tracking-wider text-white w-full placeholder:text-neutral-600 outline-none"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                    />
@@ -159,18 +156,18 @@ export default function MobileOptimizedTools() {
       </header>
 
       {/* --- FILTER TAB BAR --- */}
-      <nav className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/5 py-3">
-        <div className="container mx-auto px-4">
-           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+      <nav className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-y border-white/5 py-4 mb-8">
+        <div className="container mx-auto px-6">
+           <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
               {categories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
                   className={cn(
-                    "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0 border",
+                    "px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0 border",
                     selectedCategory === cat.id 
-                      ? "bg-red-600 text-white border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.4)]" 
-                      : "bg-neutral-900/50 text-neutral-500 border-white/5 hover:border-white/20 hover:text-white"
+                      ? "bg-red-600 text-white border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.4)]" 
+                      : "bg-neutral-900/40 text-neutral-400 border-white/5 hover:border-white/20 hover:text-white"
                   )}
                 >
                   {cat.name}
@@ -181,8 +178,8 @@ export default function MobileOptimizedTools() {
       </nav>
 
       {/* --- TOOLS GRID --- */}
-      <main className="container mx-auto px-4 py-6 flex-1 pb-32 md:pb-12">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-5">
+      <main className="container mx-auto px-6 flex-1 pb-32 md:pb-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           <AnimatePresence mode="popLayout">
             {filteredTools.map((tool) => (
               <motion.div
@@ -197,37 +194,37 @@ export default function MobileOptimizedTools() {
                   className="group relative block h-full"
                   onClick={() => handleToolClick(tool)} 
                 >
-                  <div className="absolute inset-0 bg-red-600/0 group-hover:bg-red-600/5 rounded-[1.5rem] transition-colors duration-300" />
-                  
-                  <Card className="h-full bg-neutral-900/40 border-white/5 group-hover:border-red-600/30 transition-all duration-300 rounded-[1.5rem] overflow-hidden backdrop-blur-sm flex flex-col justify-between relative z-10">
-                    <CardHeader className="p-4 pb-2">
-                      <div className="flex justify-between items-start mb-3">
+                  <Card className="h-full bg-neutral-900/30 border-white/5 group-hover:border-red-600/30 transition-all duration-300 rounded-3xl overflow-hidden backdrop-blur-sm flex flex-col justify-between relative z-10 hover:bg-neutral-900/50">
+                    
+                    {/* Header Section */}
+                    <div className="p-6 pb-2">
+                      <div className="flex justify-between items-start mb-4">
                         <div className={cn(
-                            "h-8 w-8 md:h-10 md:w-10 rounded-lg flex items-center justify-center bg-black border border-white/10 group-hover:scale-110 transition-transform duration-300 shadow-lg", 
+                            "h-12 w-12 rounded-2xl flex items-center justify-center bg-black border border-white/10 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-red-900/20", 
                             tool.color
                         )}>
-                          <div className="scale-75 md:scale-90">{tool.icon}</div>
+                          <div className="scale-110">{tool.icon}</div>
                         </div>
                         {tool.isNew && (
-                          <div className="px-1.5 py-0.5 bg-red-600 rounded text-[7px] font-black text-white uppercase tracking-tighter shadow-lg shadow-red-900/50">
+                          <Badge className="bg-red-600 text-white border-none text-[8px] font-black uppercase tracking-widest px-2 py-0.5">
                             NEW
-                          </div>
+                          </Badge>
                         )}
                       </div>
                       
-                      <CardTitle className="text-[10px] md:text-sm font-black italic uppercase tracking-tighter text-white group-hover:text-red-500 transition-colors leading-tight line-clamp-1">
+                      <CardTitle className="text-lg font-bold text-white tracking-tight group-hover:text-red-400 transition-colors leading-tight mb-2">
                         {tool.title}
                       </CardTitle>
                       
-                      <p className="text-[8px] md:text-[10px] font-bold text-neutral-600 leading-tight mt-1 line-clamp-2 uppercase tracking-wide">
+                      <p className="text-xs text-neutral-500 font-medium leading-relaxed line-clamp-2">
                         {tool.description}
                       </p>
-                    </CardHeader>
+                    </div>
                     
-                    <div className="p-4 pt-0 mt-1 flex justify-end">
-                        <div className="h-5 w-5 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-red-600 transition-colors">
-                            <ArrowRight size={10} className="text-neutral-500 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300" />
-                        </div>
+                    {/* Footer Section */}
+                    <div className="p-6 pt-0 mt-2 flex justify-between items-center border-t border-white/5 pt-4 opacity-60 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[9px] font-mono text-neutral-600 uppercase tracking-widest">{tool.category}</span>
+                        <ArrowRight size={14} className="text-neutral-500 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300" />
                     </div>
                   </Card>
                 </Link>
@@ -237,15 +234,15 @@ export default function MobileOptimizedTools() {
         </div>
       </main>
 
-      {/* --- FLOATING ACTION BUTTON (MOBILE) / SECTION (DESKTOP) --- */}
-      <div className="fixed bottom-20 right-4 z-40 md:hidden">
+      {/* --- FLOATING ACTION BUTTON (MOBILE) --- */}
+      <div className="fixed bottom-24 right-6 z-40 md:hidden">
          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
                 <motion.button 
                     whileTap={{ scale: 0.9 }}
-                    className="h-14 w-14 bg-red-600 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.6)] flex items-center justify-center text-white border border-white/20"
+                    className="h-14 w-14 bg-red-600 rounded-full shadow-[0_0_30px_rgba(220,38,38,0.5)] flex items-center justify-center text-white border border-white/20"
                 >
-                    <MousePointer2 size={24} />
+                    <Wrench size={24} />
                 </motion.button>
             </DialogTrigger>
             <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem] p-6 w-[90vw] max-w-sm">
@@ -258,39 +255,42 @@ export default function MobileOptimizedTools() {
          </Dialog>
       </div>
 
-      <section className="hidden md:block py-12 border-t border-white/5 bg-neutral-950/50">
-         <div className="container mx-auto px-4 text-center">
-             <div className="inline-block p-[1px] rounded-3xl bg-gradient-to-br from-white/10 to-transparent mb-6">
-                 <div className="bg-black rounded-[23px] px-10 py-8 relative overflow-hidden">
-                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50" />
-                     <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-4">Missing a Tool?</h2>
-                     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-white text-black hover:bg-neutral-200 rounded-xl font-black uppercase italic tracking-wider">
-                                Request Build <MousePointer2 className="ml-2 h-4 w-4" />
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem] p-8 max-w-md">
-                            <RequestForm 
-                                toolName={toolName} setToolName={setToolName}
-                                toolDesc={toolDesc} setToolDesc={setToolDesc}
-                                isSuggesting={isSuggesting} handleSuggestTool={handleSuggestTool}
-                            />
-                        </DialogContent>
-                     </Dialog>
-                 </div>
+      {/* --- DESKTOP REQUEST SECTION --- */}
+      <section className="hidden md:block py-16 border-t border-white/5 bg-neutral-900/20 backdrop-blur-sm">
+         <div className="container mx-auto px-6 text-center">
+             <div className="max-w-2xl mx-auto bg-black border border-white/10 rounded-[2.5rem] p-10 relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50" />
+                 
+                 <h2 className="text-3xl font-bold text-white tracking-tight mb-4">Missing a Module?</h2>
+                 <p className="text-neutral-400 text-sm mb-8 max-w-md mx-auto">
+                    Submit a request for a new engineering tool. Our dev team reviews the priority queue daily.
+                 </p>
+
+                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="h-12 px-8 bg-white text-black hover:bg-neutral-200 rounded-xl font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                            Request Build <Code2 className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem] p-8 max-w-md">
+                        <RequestForm 
+                            toolName={toolName} setToolName={setToolName}
+                            toolDesc={toolDesc} setToolDesc={setToolDesc}
+                            isSuggesting={isSuggesting} handleSuggestTool={handleSuggestTool}
+                        />
+                    </DialogContent>
+                 </Dialog>
              </div>
          </div>
       </section>
 
       {/* --- MOBILE DOCK --- */}
-      <div className="fixed bottom-0 left-0 w-full z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-xl border-t border-white/10" />
-          <div className="relative flex justify-between items-center px-8 h-20">
-             <MobileNavItem href="/" icon={<Home size={20} />} label="Home" />
-             <MobileNavItem href="/tools" icon={<Grid size={20} />} label="Tools" active />
-             <MobileNavItem href="/settings" icon={<Settings size={20} />} label="Config" />
-          </div>
+      <div className="fixed bottom-0 left-0 w-full z-50 md:hidden bg-black/90 backdrop-blur-xl border-t border-white/10 pb-safe">
+         <div className="flex justify-around items-center h-16 px-6">
+            <MobileNavItem href="/" icon={<Home size={20} />} label="Home" />
+            <MobileNavItem href="/tools" icon={<Grid size={20} />} label="Tools" active />
+            <MobileNavItem href="/settings" icon={<Settings size={20} />} label="Config" />
+         </div>
       </div>
 
     </div>
@@ -302,37 +302,37 @@ export default function MobileOptimizedTools() {
 function RequestForm({ toolName, setToolName, toolDesc, setToolDesc, isSuggesting, handleSuggestTool }: any) {
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-red-600/10 rounded-xl border border-red-600/20">
-                    <Terminal className="text-red-600 h-6 w-6" />
+            <div className="flex items-center gap-4 mb-2">
+                <div className="p-3 bg-red-600/10 rounded-2xl border border-red-600/20">
+                    <Terminal className="text-red-500 h-6 w-6" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-black italic uppercase tracking-tighter">System Request</h3>
-                    <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Submit Specifications</p>
+                    <h3 className="text-xl font-bold text-white tracking-tight">System Request</h3>
+                    <p className="text-xs text-neutral-500 font-medium">Submit Specifications</p>
                 </div>
             </div>
+            
             <form onSubmit={handleSuggestTool} className="space-y-4">
                 <div className="space-y-2">
-                    <label className="text-[9px] font-black uppercase text-neutral-500 tracking-widest pl-1">Module Name</label>
+                    <label className="text-[10px] font-bold uppercase text-neutral-500 tracking-widest pl-1">Module Name</label>
                     <Input 
                         value={toolName} 
                         onChange={(e) => setToolName(e.target.value)} 
-                        className="bg-white/5 border-white/10 h-12 rounded-xl focus:border-red-600/50 transition-colors font-medium" 
+                        className="bg-neutral-900/50 border-white/10 h-12 rounded-xl focus:border-red-600/50 transition-colors text-white placeholder:text-neutral-700 font-medium" 
                         placeholder="E.G. HEX_DECODER" 
                     />
                 </div>
                 <div className="space-y-2">
-                    <label className="text-[9px] font-black uppercase text-neutral-500 tracking-widest pl-1">Logic Specs</label>
+                    <label className="text-[10px] font-bold uppercase text-neutral-500 tracking-widest pl-1">Logic Specs</label>
                     <Textarea 
                         value={toolDesc} 
                         onChange={(e) => setToolDesc(e.target.value)} 
-                        className="bg-white/5 border-white/10 min-h-[100px] rounded-xl focus:border-red-600/50 transition-colors font-medium resize-none" 
+                        className="bg-neutral-900/50 border-white/10 min-h-[120px] rounded-xl focus:border-red-600/50 transition-colors text-white placeholder:text-neutral-700 font-medium resize-none" 
                         placeholder="Describe the desired input/output logic..." 
                     />
                 </div>
-                <Button type="submit" disabled={isSuggesting} className="w-full h-12 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase italic tracking-wider shadow-[0_0_20px_rgba(220,38,38,0.3)]">
-                    {isSuggesting ? <Loader2 className="animate-spin" /> : <Send size={16} className="mr-2" />} 
-                    Initialize Request
+                <Button type="submit" disabled={isSuggesting} className="w-full h-12 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-red-900/20">
+                    {isSuggesting ? <Loader2 className="animate-spin" /> : <><Send size={16} className="mr-2" /> Initialize Request</>} 
                 </Button>
             </form>
         </div>
@@ -341,11 +341,12 @@ function RequestForm({ toolName, setToolName, toolDesc, setToolDesc, isSuggestin
 
 function MobileNavItem({ href, icon, label, active }: any) {
     return (
-        <Link href={href} className={cn("flex flex-col items-center gap-1 transition-colors", active ? "text-red-500" : "text-neutral-500 hover:text-white")}>
-            <div className={cn("p-1.5 rounded-lg transition-all", active && "bg-red-600/10")}>
+        <Link href={href} className={cn("flex flex-col items-center gap-1 transition-colors relative", active ? "text-red-500" : "text-neutral-500 hover:text-white")}>
+            {active && <div className="absolute -top-3 w-8 h-1 bg-red-600 rounded-b-full shadow-[0_0_10px_#dc2626]" />}
+            <div className={cn("p-1 transition-all", active && "scale-110")}>
                 {icon}
             </div>
-            <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest">{label}</span>
         </Link>
     )
 }

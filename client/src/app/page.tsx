@@ -31,7 +31,7 @@ export default function Home() {
         <HomeMain />
         {/* ✅ Show HomeWorkspace only if logged in */}
         {isAuthenticated && <HomeWorkspace />}
-        <div className="w-full my-20">
+        <div className="w-full">
        <ToolsGlimpse/>
 </div>
     
@@ -39,27 +39,24 @@ export default function Home() {
         <PricingShowcase/>
       </div>
 
-<div className="w-full my-20">
+<div className="w-full">
        <ArcadeGlimpse/>
 </div>
 
-      <section className="py-5 sm:py-8 bg-black ">
+      <section className="w-full">
        <FeatureHomeSection/>
       </section>
 
    
-        <div className="w-full my-20">
+        {/* <div className="w-full my-20">
        <HomeFeatureX/>
-</div>
+</div> */}
       
 
       <div className="w-full">
         <HomeLine/>
       </div>
 
-      <div className="w-full">
-        <FeebackDailogBox/>
-      </div>
 
 
       </main>

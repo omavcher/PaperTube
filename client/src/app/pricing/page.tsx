@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Smartphone, Tag, Zap, User, Loader2, IndianRupee, 
-  ShieldCheck, Activity, Terminal, CheckCircle2, XCircle, 
-  CreditCard, TicketPercent, Sparkles, X, ArrowRight, Timer, Users, Flame,
-  ExternalLink, Coins, Database, Cpu
+  ShieldCheck, Activity, CheckCircle2, CreditCard, 
+  TicketPercent, X, ArrowRight, Timer, Flame,
+  Coins, Database, Cpu, Lock, Sparkles, Terminal
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -86,20 +86,25 @@ function NeuralModal({ isOpen, onClose, children }: { isOpen: boolean, onClose: 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/90 backdrop-blur-2xl"
+            className="absolute inset-0 bg-black/90 backdrop-blur-md"
           />
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 40 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="relative w-full max-w-5xl bg-[#080808] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[3rem] shadow-[0_0_100px_rgba(220,38,38,0.2)] overflow-hidden max-h-[100vh] md:max-h-[90vh] flex flex-col"
+            className="relative w-full max-w-5xl bg-[#0a0a0a] border border-white/10 rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden max-h-[100vh] md:max-h-[90vh] flex flex-col"
           >
-            <div className="absolute top-6 right-6 z-[210]">
-              <button onClick={onClose} className="p-2.5 rounded-full bg-white/5 hover:bg-red-600 transition-colors text-white border border-white/5">
-                <X size={20} />
-              </button>
+            {/* Modal Header Bar */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/40">
+                <div className="flex items-center gap-2 text-xs font-mono text-neutral-500 uppercase tracking-widest">
+                    <Terminal size={12} /> Secure Gateway
+                </div>
+                <button onClick={onClose} className="p-2 rounded-full bg-white/5 hover:bg-red-500/10 hover:text-red-500 transition-colors text-neutral-400">
+                    <X size={18} />
+                </button>
             </div>
+            
             <div className="overflow-y-auto flex-1 custom-scrollbar">
               {children}
             </div>
@@ -127,48 +132,49 @@ function SuccessModal({ isOpen, onClose, transactionData }: { isOpen: boolean, o
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-md bg-gradient-to-br from-[#080808] to-[#0a0a0a] border border-emerald-500/30 rounded-3xl p-8 shadow-2xl shadow-emerald-900/20"
+            className="relative w-full max-w-md bg-neutral-900 border border-emerald-500/20 rounded-3xl p-8 shadow-2xl overflow-hidden"
           >
-            <div className="text-center space-y-6">
-              <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+            {/* Ambient Background */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-emerald-500/10 blur-[60px] pointer-events-none" />
+
+            <div className="text-center space-y-6 relative z-10">
+              <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500" />
               </div>
               
               <div>
-                <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-2">Payment Successful!</h3>
-                <p className="text-sm text-emerald-400/80">Transaction ID: <span className="font-mono">{transactionData?.paymentId?.slice(0, 12)}...</span></p>
+                <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">Payment Successful</h3>
+                <p className="text-xs text-neutral-500 font-mono uppercase tracking-widest">
+                    ID: {transactionData?.paymentId?.slice(0, 16)}...
+                </p>
               </div>
 
-              <div className="space-y-4">
-                <div className="p-4 bg-white/[0.02] rounded-2xl border border-white/5">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-xs font-black uppercase text-neutral-500">Package</span>
-                    <span className="text-white font-bold">{transactionData?.packageName}</span>
+              <div className="space-y-3">
+                <div className="p-4 bg-black/40 rounded-xl border border-white/5">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-neutral-400 font-medium">Package</span>
+                    <span className="text-sm text-white font-bold">{transactionData?.packageName}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-black uppercase text-neutral-500">Amount Paid</span>
-                    <span className="text-2xl font-black text-emerald-500">₹{transactionData?.amount}</span>
+                    <span className="text-xs text-neutral-400 font-medium">Amount</span>
+                    <span className="text-xl font-bold text-emerald-400">₹{transactionData?.amount}</span>
                   </div>
                 </div>
 
                 {transactionData?.tokensAwarded > 0 && (
-                  <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/20">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-black uppercase text-emerald-400">Tokens Added</span>
-                      <span className="text-xl font-black text-emerald-500">+{transactionData?.tokensAwarded}</span>
-                    </div>
+                  <div className="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/10 flex justify-between items-center">
+                    <span className="text-xs font-bold uppercase text-emerald-500/80">Tokens Added</span>
+                    <span className="text-lg font-bold text-emerald-400">+{transactionData?.tokensAwarded}</span>
                   </div>
                 )}
               </div>
 
               <button
                 onClick={onClose}
-                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase italic rounded-2xl text-lg transition-all"
+                className="w-full py-3.5 bg-white text-black font-bold uppercase tracking-wide text-xs rounded-xl hover:bg-neutral-200 transition-colors"
               >
-                Continue to Dashboard
+                Return to Dashboard
               </button>
-
-              <p className="text-xs text-neutral-600">Transaction details have been sent to your email</p>
             </div>
           </motion.div>
         </div>
@@ -247,178 +253,170 @@ function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpda
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full">
-      {/* Left Section */}
-      <div className="lg:col-span-7 p-8 md:p-12 space-y-10 border-b lg:border-b-0 lg:border-r border-white/5">
+    <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full font-sans">
+      {/* Left Section: Details */}
+      <div className="lg:col-span-7 p-6 md:p-10 space-y-8 border-b lg:border-b-0 lg:border-r border-white/5 bg-[#0a0a0a]">
+        
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-red-600/10 border border-red-600/20 flex items-center justify-center">
-              <CreditCard className="text-red-500" />
+            <div className="h-10 w-10 rounded-xl bg-neutral-900 border border-white/10 flex items-center justify-center">
+              <CreditCard size={18} className="text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Acquisition Node</h2>
-              <p className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">Gateway Locked</p>
+              <h2 className="text-lg font-bold text-white tracking-tight">Checkout</h2>
+              <p className="text-[10px] text-neutral-500 font-medium uppercase tracking-wider">Secure Payment Node</p>
             </div>
           </div>
-          <div className="bg-red-600/10 border border-red-600/20 px-4 py-2 rounded-2xl flex items-center gap-3">
-            <Timer size={16} className="text-red-500 animate-pulse" />
-            <span className="font-mono text-lg font-black text-red-500">{formatTime(timeLeft)}</span>
+          <div className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2">
+            <Timer size={14} className="text-red-500 animate-pulse" />
+            <span className="font-mono text-sm font-bold text-red-500">{formatTime(timeLeft)}</span>
           </div>
         </div>
 
         {/* User Info */}
-        <section className="space-y-4">
-          <label className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500 flex items-center gap-2">
-            <User size={14}/> Personnel Identity
+        <section className="space-y-3">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 flex items-center gap-2">
+            <User size={12}/> Account Identity
           </label>
-          <div className="p-5 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center gap-5 group hover:bg-white/[0.04] transition-all">
-            <div className="h-16 w-16 rounded-2xl bg-neutral-900 border border-white/10 flex items-center justify-center overflow-hidden">
+          <div className="p-4 bg-neutral-900/40 border border-white/5 rounded-2xl flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-black border border-white/10 flex items-center justify-center overflow-hidden">
               {user?.picture ? (
                 <img src={user.picture} alt={user.name} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-red-600 font-black italic text-2xl uppercase">{user?.name?.charAt(0) || "U"}</span>
+                <span className="text-neutral-400 font-bold text-lg uppercase">{user?.name?.charAt(0) || "U"}</span>
               )}
             </div>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <p className="font-black uppercase tracking-tighter text-lg text-white leading-none">{user?.name}</p>
+                <p className="font-bold text-white text-sm">{user?.name}</p>
                 {user?.membership?.isActive && (
-                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                    <ShieldCheck size={10} /> {user.membership.planName}
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-none text-[9px] px-1.5 py-0">
+                    {user.membership.planName}
                   </Badge>
                 )}
               </div>
-              <p className="text-[10px] text-neutral-600 font-mono tracking-widest uppercase leading-none">{user?.email}</p>
+              <p className="text-xs text-neutral-500 font-mono">{user?.email}</p>
             </div>
           </div>
         </section>
 
         {/* Mobile Input */}
-        <section className="space-y-4">
-          <label className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-600 flex items-center gap-2">
-            <Smartphone size={14}/> Contact Link
+        <section className="space-y-3">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 flex items-center gap-2">
+            <Smartphone size={12}/> Verification Contact
           </label>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-600 font-black text-xs border-r border-white/5 pr-3">+91</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-sm border-r border-white/10 pr-3">+91</span>
               <input 
                 value={mobile}
                 onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0,10))}
                 disabled={!isMobileEditable}
-                className="w-full bg-black border border-white/10 h-14 rounded-2xl pl-16 font-mono text-lg text-white focus:border-red-600/50 outline-none transition-all"
-                placeholder="0000000000"
+                className="w-full bg-neutral-900/40 border border-white/10 h-12 rounded-xl pl-14 font-mono text-sm text-white focus:border-white/20 focus:ring-0 outline-none transition-all placeholder:text-neutral-700"
+                placeholder="9876543210"
               />
             </div>
             <button 
               onClick={() => isMobileEditable ? onUpdateMobile(mobile).then(() => setIsMobileEditable(false)) : setIsMobileEditable(true)}
-              className={cn("h-14 px-8 rounded-2xl font-black uppercase italic transition-all", 
-                isMobileEditable ? "bg-red-600 text-white shadow-lg shadow-red-900/20" : "bg-neutral-900 text-neutral-400 border border-white/5")}
+              className={cn("h-12 px-6 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all", 
+                isMobileEditable ? "bg-white text-black hover:bg-neutral-200" : "bg-neutral-900 text-neutral-400 border border-white/5 hover:border-white/20")}
             >
-              {isMobileEditable ? "Sync" : "Edit"}
+              {isMobileEditable ? "Save" : "Change"}
             </button>
           </div>
         </section>
 
         {/* Coupons */}
-        <section className="space-y-4">
-          <label className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-600 flex items-center gap-2">
-            <Tag size={14}/> Applied Protocols
+        <section className="space-y-3">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 flex items-center gap-2">
+            <Tag size={12}/> Promo Protocols
           </label>
-          <div className="flex gap-3">
+          <div className="flex gap-2 mb-3">
             <input 
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              className="flex-1 bg-black border text-white border-white/10 h-12 rounded-xl px-5 font-mono text-sm uppercase outline-none focus:border-red-600/50"
-              placeholder="MANUAL_ENTRY"
+              className="flex-1 bg-neutral-900/40 border border-white/10 h-10 rounded-lg px-4 font-mono text-xs uppercase outline-none focus:border-white/20 text-white placeholder:text-neutral-700"
+              placeholder="ENTER CODE"
             />
             <button 
               onClick={() => applyCode(couponCode)}
-              className="px-8 h-12 bg-transparent border border-red-600 text-red-500 rounded-xl font-black uppercase italic hover:bg-red-600 hover:text-white transition-all text-xs"
+              className="px-6 h-10 bg-white/5 border border-white/10 text-white rounded-lg font-bold uppercase text-[10px] hover:bg-white hover:text-black transition-all"
             >
-              Verify
+              Apply
             </button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="flex flex-wrap gap-2">
             {AVAILABLE_COUPONS.map(c => (
               <button 
                 key={c.id}
                 onClick={() => applyCode(c.code)}
-                className="p-3 bg-white/[0.01] border border-dashed border-white/5 rounded-xl hover:border-red-600/50 hover:bg-red-600/[0.03] transition-all text-left group"
+                className="px-3 py-2 bg-neutral-900/60 border border-white/5 rounded-lg hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all text-left group flex items-center gap-2"
               >
-                <p className="text-[10px] font-black text-white group-hover:text-red-500 mb-1">{c.code}</p>
-                <p className="text-[9px] font-black text-emerald-500 uppercase">
-                  {c.type === 'percent' ? `-${c.value}%` : `₹${c.value} OFF`}
-                </p>
+                <span className="text-[10px] font-mono font-bold text-neutral-400 group-hover:text-emerald-400">{c.code}</span>
+                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                  {c.type === 'percent' ? `-${c.value}%` : `₹${c.value}`}
+                </span>
               </button>
             ))}
           </div>
         </section>
       </div>
 
-      {/* Right Section */}
-      <div className="lg:col-span-5 bg-neutral-900/30 p-8 md:p-12 flex flex-col justify-between">
-        <div className="space-y-8">
-          <div className="pb-8 border-b border-white/5">
-            <Badge className="bg-red-600 text-white border-none px-3 text-[8px] font-black uppercase tracking-[0.4em] mb-2 animate-bounce">
-              LIMITED_TIME_OFFER
-            </Badge>
-            <h3 className="text-4xl font-black italic uppercase tracking-tighter text-white">{packageData?.name}</h3>
+      {/* Right Section: Summary */}
+      <div className="lg:col-span-5 bg-neutral-900/20 p-6 md:p-10 flex flex-col justify-between h-full">
+        <div className="space-y-6">
+          <div className="pb-6 border-b border-white/5">
+            <div className="flex items-center gap-2 mb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500">Selected Plan</span>
+            </div>
+            <h3 className="text-3xl font-bold text-white tracking-tight">{packageData?.name}</h3>
             
-            {!isTokenPackage ? (
-              <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mt-2">
-                Cost effective logic: ₹{(totalAmount / (billingPeriod === 'monthly' ? 30 : 365)).toFixed(2)} / Day
-              </p>
-            ) : (
-               <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mt-2">
-                One-time purchase • Valid Forever
-              </p>
-            )}
+            <p className="text-xs text-neutral-500 mt-2 font-medium">
+               {isTokenPackage ? "Lifetime Validity • One-time Payment" : `Billed ${billingPeriod === 'monthly' ? 'Monthly' : 'Annually'} • Cancel Anytime`}
+            </p>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex justify-between text-xs font-bold uppercase text-neutral-500 tracking-widest">
-              <span>Base Tier</span>
-              <span className="text-white">₹{baseAmount.toFixed(2)}</span>
+          <div className="space-y-3">
+            <div className="flex justify-between text-xs font-medium text-neutral-400">
+              <span>Subtotal</span>
+              <span className="text-white font-mono">₹{baseAmount.toFixed(2)}</span>
             </div>
             <AnimatePresence>
               {totalDiscount > 0 && (
-                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex justify-between text-xs font-black uppercase text-emerald-500 tracking-widest">
-                  <span className="flex items-center gap-1"><TicketPercent size={14}/> Total Savings</span>
-                  <span>- ₹{totalDiscount.toFixed(2)}</span>
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex justify-between text-xs font-bold text-emerald-500">
+                  <span className="flex items-center gap-1"><TicketPercent size={12}/> Discount</span>
+                  <span className="font-mono">- ₹{totalDiscount.toFixed(2)}</span>
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="flex justify-between text-xs font-bold uppercase text-neutral-500 tracking-widest">
-              <span>Tax (GST 18%)</span>
-              <span className="text-white">₹{gstAmount.toFixed(2)}</span>
+            <div className="flex justify-between text-xs font-medium text-neutral-400">
+              <span>GST (18%)</span>
+              <span className="text-white font-mono">₹{gstAmount.toFixed(2)}</span>
             </div>
           </div>
         </div>
 
-        <div className="space-y-6 mt-12">
-          <div className="bg-black p-8 rounded-[2.5rem] border border-white/5 shadow-inner">
+        <div className="space-y-6 mt-8">
+          <div className="bg-black/40 p-6 rounded-2xl border border-white/5">
             <div className="flex justify-between items-end">
-              <span className="text-[10px] font-black uppercase text-red-500 mb-1 italic">Net Amount</span>
-              <span className="text-6xl font-black italic tracking-tighter text-white">₹{Math.round(totalAmount)}</span>
+              <span className="text-[10px] font-bold uppercase text-neutral-500 mb-1">Total Payable</span>
+              <span className="text-4xl font-bold text-white tracking-tighter">₹{Math.round(totalAmount)}</span>
             </div>
           </div>
 
           <button 
             onClick={handlePurchase}
             disabled={isProcessing || mobile.length !== 10}
-            className="w-full h-16 bg-red-600 hover:bg-red-700 text-white font-black uppercase italic rounded-2xl text-xl shadow-2xl shadow-red-900/40 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+            className="w-full h-14 bg-white hover:bg-neutral-200 text-black font-bold uppercase tracking-wide text-sm rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isProcessing ? <Loader2 className="animate-spin" /> : <><Zap fill="white" size={20}/> Execute Sync</>}
+            {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <><Lock size={16}/> Pay Securely</>}
           </button>
 
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 text-[8px] font-black text-emerald-500 uppercase tracking-widest">
-              <ShieldCheck size={12}/> Secure Payment • No Hidden Charges
-            </div>
-            <div className="flex justify-center gap-6 text-[8px] font-black text-neutral-700 uppercase tracking-widest opacity-50">
-              <span className="flex items-center gap-1">256-BIT SSL</span>
-              <span className="flex items-center gap-1">RAZORPAY SECURE</span>
-            </div>
+          <div className="flex justify-center gap-4 text-[9px] font-bold text-neutral-600 uppercase tracking-widest">
+             <span className="flex items-center gap-1"><ShieldCheck size={10}/> SSL Encrypted</span>
+             <span className="flex items-center gap-1"><Zap size={10}/> Instant Access</span>
           </div>
         </div>
       </div>
@@ -447,10 +445,10 @@ export default function PricingSection() {
       name: "Scholar", 
       monthlyPrice: 149, 
       yearlyPrice: 1490, 
-      description: "Don't fall behind. The essential toolkit for survival.", 
+      description: "Essential toolkit for survival.", 
       features: ["Access to All Premium Models", "Unlimited AI Quiz", "6hr Video Processing/Day", "Basic Game Access", "Standard Tools"], 
-      cta: "Join the Protocol", 
-      slots: "Only 14 Slots Left"
+      cta: "Start Protocol", 
+      slots: "High Demand"
     },
     { 
       id: "pro", 
@@ -458,12 +456,12 @@ export default function PricingSection() {
       name: "Pro Scholar", 
       monthlyPrice: 299, 
       yearlyPrice: 2990, 
-      description: "The Choice of Toppers. 92% of users sync here.", 
+      description: "The choice of toppers.", 
       popular: true, 
       highlight: true, 
       features: ["Everything in Scholar", "Priority 'Fast-Lane' Speed", "Verified Scholar Badge", "Zero Ads", "12hr Video Processing/Day", "Beta Tools Access"], 
-      cta: "Claim Pro Access", 
-      slots: "97% Capacity Reached" 
+      cta: "Upgrade to Pro", 
+      slots: "97% Capacity" 
     },
     { 
       id: "power", 
@@ -471,10 +469,10 @@ export default function PricingSection() {
       name: "Power Scholar", 
       monthlyPrice: 599, 
       yearlyPrice: 5990, 
-      description: "God-mode for Engineers. Unlimited power.", 
+      description: "God-mode for Engineers.", 
       features: ["Everything in Pro", "Unlimited Processing", "Instant Image Gen", "Bulk Documentation", "Career Roadmap", "VIP Support"], 
-      cta: "Unlock God-Mode", 
-      slots: "Limited to 50 Users" 
+      cta: "Unlock God Mode", 
+      slots: "Limited Access" 
     },
   ];
 
@@ -485,7 +483,7 @@ export default function PricingSection() {
       name: "Basic Chip",
       tokens: 100,
       price: 99,
-      description: "Emergency supply for quick tasks.",
+      description: "Emergency supply.",
       features: ["100 Neural Tokens", "Valid Forever", "Instant Credit", "Access Basic Models"],
       cta: "Inject Tokens",
       icon: Database
@@ -496,7 +494,7 @@ export default function PricingSection() {
       name: "Standard Core",
       tokens: 500,
       price: 399,
-      description: "Standard supply for week-long projects.",
+      description: "Standard supply for projects.",
       popular: true,
       highlight: true,
       features: ["500 Neural Tokens", "Valid Forever", "Instant Credit", "Access All Models", "Priority Queue"],
@@ -591,7 +589,6 @@ export default function PricingSection() {
     setIsProcessing(true);
     
     try {
-      // Step 1: Create Razorpay order
       toast.loading("Creating payment order...");
       const orderData = await createRazorpayOrder(paymentData);
       
@@ -603,7 +600,6 @@ export default function PricingSection() {
       toast.dismiss();
       toast.success("Payment gateway opened");
 
-      // Step 2: Initialize Razorpay checkout
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.order.amount,
@@ -616,7 +612,6 @@ export default function PricingSection() {
           setIsProcessing(true);
           toast.loading("Verifying payment...");
           
-          // Step 3: Verify payment with backend
           const verifyData = {
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_order_id: response.razorpay_order_id,
@@ -634,7 +629,6 @@ export default function PricingSection() {
             toast.dismiss();
             toast.success("Payment Successful!");
             
-            // Store transaction result for success modal
             setTransactionResult({
               ...verifyResult.data,
               paymentId: response.razorpay_payment_id,
@@ -642,11 +636,9 @@ export default function PricingSection() {
               packageName: paymentData.packageName
             });
             
-            // Close purchase modal and open success modal
             setModalOpen(false);
             setSuccessModalOpen(true);
             
-            // Update user data
             const token = localStorage.getItem("authToken");
             const res = await api.get("/auth/get-profile", { headers: { 'Auth': token } });
             if (res.data.success) setUser(res.data.user);
@@ -655,7 +647,6 @@ export default function PricingSection() {
             toast.dismiss();
             toast.error("Payment verification failed");
             
-            // Save failed transaction
             await api.post("/payment/save-transaction", {
               ...verifyData,
               status: "failed",
@@ -677,14 +668,13 @@ export default function PricingSection() {
           userId: user?._id
         },
         theme: {
-          color: "#DC2626"
+          color: "#000000"
         },
         modal: {
           ondismiss: () => {
             toast.info("Payment cancelled");
             setIsProcessing(false);
             
-            // Save cancelled transaction
             api.post("/payment/save-transaction", {
               ...paymentData,
               status: "failed",
@@ -737,41 +727,39 @@ export default function PricingSection() {
         transactionData={transactionResult}
       />
 
-      <section className="relative min-h-screen bg-[#050505] text-white py-24 px-4 font-sans overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 z-0 opacity-10 [background-image:linear-gradient(to_right,#333_1px,transparent_1px),linear-gradient(to_bottom,#333_1px,transparent_1px)] [background-size:40px_40px]" />
+      <section className="relative min-h-screen bg-black text-white py-24 px-4 font-sans overflow-hidden selection:bg-neutral-800 selection:text-white">
+        {/* Background Atmosphere */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-neutral-900/20 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute inset-0 z-0 opacity-20 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
         
         {/* Live Counter */}
         <div className="relative z-20 flex justify-center mb-10">
-          <div className="bg-emerald-500/5 border border-emerald-500/20 px-6 py-2 rounded-full flex items-center gap-3 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">
-              {activeSyncs.toLocaleString()} Engineers Currently Sync'd
-            </p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[10px] font-medium uppercase tracking-widest text-neutral-400">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+            {activeSyncs.toLocaleString()} Active Nodes
           </div>
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto">
-          <div className="text-center mb-12 space-y-6">
-            <Badge className="bg-red-600/10 text-red-500 border-red-600/20 px-4 py-1.5 uppercase font-black tracking-[0.3em] text-[10px]">
-              Transmission Node
-            </Badge>
-            <h1 className="text-6xl md:text-9xl font-black italic uppercase tracking-tighter leading-[0.8] mb-4">
-              SYNC <span className="text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.5)]">TIER</span>
+          
+          {/* Header */}
+          <div className="text-center mb-16 space-y-6">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 leading-none">
+              Sync <span className="text-white">Tier.</span>
             </h1>
-            <p className="text-neutral-500 uppercase font-black text-xs tracking-[0.4em]">
-              Upgrade to eliminate process latency
+            <p className="text-lg text-neutral-400 font-light max-w-lg mx-auto leading-relaxed">
+              Upgrade your cognitive throughput. Select a subscription tier to eliminate process latency.
             </p>
           </div>
 
-          {/* Type Switcher (Memberships vs Tokens) */}
-          <div className="flex justify-center mb-8">
-             <div className="bg-neutral-900/50 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl flex gap-2">
+          {/* Type Switcher */}
+          <div className="flex justify-center mb-12">
+             <div className="p-1 rounded-2xl bg-neutral-900/40 border border-white/5 backdrop-blur-xl flex gap-1">
                 <button 
                   onClick={() => setViewMode("subscription")} 
                   className={cn(
-                    "px-6 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all flex items-center gap-2",
-                    viewMode === "subscription" ? "bg-red-600 text-white shadow-lg" : "text-neutral-500 hover:text-white"
+                    "px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2",
+                    viewMode === "subscription" ? "bg-white text-black shadow-lg" : "text-neutral-500 hover:text-white"
                   )}
                 >
                   <ShieldCheck size={14} /> Protocol Memberships
@@ -779,8 +767,8 @@ export default function PricingSection() {
                 <button 
                    onClick={() => setViewMode("token")} 
                    className={cn(
-                    "px-6 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all flex items-center gap-2",
-                    viewMode === "token" ? "bg-red-600 text-white shadow-lg" : "text-neutral-500 hover:text-white"
+                    "px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2",
+                    viewMode === "token" ? "bg-white text-black shadow-lg" : "text-neutral-500 hover:text-white"
                   )}
                 >
                   <Coins size={14} /> Token Injectors
@@ -788,7 +776,7 @@ export default function PricingSection() {
              </div>
           </div>
 
-          {/* Billing Switcher (Only for Subscriptions) */}
+          {/* Billing Switcher */}
           <AnimatePresence mode="wait">
             {viewMode === "subscription" && (
               <motion.div 
@@ -797,28 +785,20 @@ export default function PricingSection() {
                 exit={{ opacity: 0, height: 0 }}
                 className="flex justify-center mb-16"
               >
-                <div className="relative flex bg-neutral-900/50 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl">
-                  <button 
-                    onClick={() => setBillingPeriod("monthly")} 
-                    className={cn("px-10 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all z-10", 
-                      billingPeriod === 'monthly' ? "text-white" : "text-neutral-600")}
-                  >
-                    Monthly
-                  </button>
-                  <button 
-                    onClick={() => setBillingPeriod("yearly")} 
-                    className={cn("px-10 py-3 rounded-xl text-[10px] font-black uppercase italic transition-all z-10 relative", 
-                      billingPeriod === 'yearly' ? "text-white" : "text-neutral-600")}
-                  >
-                    Yearly 
-                    <Badge className="absolute -top-3 -right-2 bg-emerald-600 text-[8px] px-2 py-0.5 border-none shadow-lg">
-                      SAVE 16%
-                    </Badge>
-                  </button>
-                  <motion.div 
-                    animate={{ x: billingPeriod === 'monthly' ? 0 : '100%' }} 
-                    className="absolute top-1.5 left-1.5 bottom-1.5 w-[calc(50%-6px)] bg-red-600 rounded-xl shadow-lg" 
-                  />
+                <div className="flex items-center gap-4">
+                    <span className={cn("text-xs font-medium cursor-pointer transition-colors", billingPeriod === 'monthly' ? 'text-white' : 'text-neutral-600')} onClick={() => setBillingPeriod('monthly')}>Monthly</span>
+                    <button 
+                        onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
+                        className="w-12 h-6 rounded-full bg-neutral-900 border border-white/10 relative px-1 transition-colors"
+                    >
+                        <motion.div 
+                            animate={{ x: billingPeriod === 'yearly' ? 24 : 0 }}
+                            className="w-4 h-4 rounded-full bg-white shadow-md"
+                        />
+                    </button>
+                    <span className={cn("text-xs font-medium cursor-pointer transition-colors flex items-center gap-2", billingPeriod === 'yearly' ? 'text-white' : 'text-neutral-600')} onClick={() => setBillingPeriod('yearly')}>
+                        Yearly <Badge className="bg-white text-black border-none text-[9px] px-1.5 py-0">SAVE 16%</Badge>
+                    </span>
                 </div>
               </motion.div>
             )}
@@ -830,63 +810,74 @@ export default function PricingSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"
           >
             {(viewMode === "subscription" ? subscriptionPlans : tokenPackages).map((plan: any) => (
-              <div key={plan.id} className={cn("relative p-10 rounded-[3.5rem] border border-white/5 bg-neutral-950 flex flex-col group transition-all duration-500 hover:-translate-y-2", 
-                plan.highlight && "border-red-600/40 shadow-2xl bg-[#080808]")}
+              <div key={plan.id} className={cn(
+                  "relative p-8 rounded-[2.5rem] border flex flex-col transition-all duration-500 hover:-translate-y-2", 
+                  plan.highlight 
+                    ? "bg-neutral-900/30 backdrop-blur-xl border-white/10 shadow-2xl z-10" 
+                    : "bg-black/40 border-white/5"
+                )}
               >
                 {plan.popular && (
-                  <Badge className="absolute top-10 right-10 bg-red-600 text-white font-black italic uppercase text-[8px] px-3 py-1 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">
-                    {viewMode === "subscription" ? "Elite Class" : "Most Popular"}
-                  </Badge>
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-white text-black text-[10px] font-bold uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+                    Most Popular
+                  </div>
                 )}
                 
-                {viewMode === "subscription" ? (
-                    <div className="mb-4 flex items-center gap-2">
-                        <Flame size={12} className="text-orange-500" />
-                        <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">
-                        {plan.slots}
-                        </span>
+                {/* Header */}
+                <div className="mb-8 space-y-4">
+                    <div className="flex items-center justify-between">
+                        {viewMode === 'token' ? (
+                            <div className="p-2.5 bg-neutral-900 rounded-xl border border-white/5">
+                                <plan.icon size={18} className="text-white" />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+                                <Flame size={12} className={cn(plan.highlight ? "text-orange-500" : "text-neutral-600")} />
+                                {plan.slots}
+                            </div>
+                        )}
                     </div>
-                ) : (
-                    <div className="mb-4 flex items-center gap-2">
-                         <div className="p-2 bg-neutral-900 rounded-lg">
-                             <plan.icon size={16} className="text-red-500" />
-                         </div>
+                    
+                    <div>
+                        <h3 className="text-2xl font-bold text-white tracking-tight">{plan.name}</h3>
+                        <p className="text-xs text-neutral-500 mt-2 font-medium leading-relaxed">{plan.description}</p>
                     </div>
-                )}
-
-                <h3 className="text-4xl font-black italic uppercase tracking-tighter mb-8 group-hover:text-red-500 transition-colors">
-                  {plan.name}
-                </h3>
+                </div>
                 
-                <div className="mb-10">
-                  <div className="flex items-end">
-                    <span className="text-6xl font-black italic tracking-tighter text-white">
+                {/* Price */}
+                <div className="mb-8 pb-8 border-b border-white/5">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-5xl font-bold text-white tracking-tighter">
                       ₹{viewMode === "subscription" ? (billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice) : plan.price}
                     </span>
                     {viewMode === "subscription" && (
-                        <span className="text-neutral-700 text-xs font-bold uppercase tracking-widest ml-2 mb-2">
-                        / {billingPeriod === 'monthly' ? 'mo' : 'yr'}
-                        </span>
+                        <span className="text-neutral-500 text-sm font-medium">/ {billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
                     )}
                   </div>
-                  {viewMode === "subscription" ? (
-                      <p className="text-[10px] font-bold text-neutral-600 uppercase mt-2 italic tracking-tighter">
-                        Approx. ₹{((billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice) / (billingPeriod === 'monthly' ? 30 : 365)).toFixed(2)} per day
-                      </p>
-                  ) : (
-                      <p className="text-[10px] font-bold text-neutral-600 uppercase mt-2 italic tracking-tighter">
-                          Single Purchase • {plan.tokens.toLocaleString()} Tokens
-                      </p>
-                  )}
+                  <div className="mt-2 text-[10px] font-mono text-neutral-600">
+                    {viewMode === "subscription" 
+                        ? `≈ ₹${((billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice) / (billingPeriod === 'monthly' ? 30 : 365)).toFixed(2)} / day`
+                        : `${plan.tokens.toLocaleString()} Tokens`
+                    }
+                  </div>
                 </div>
 
-                <div className="space-y-4 mb-12 flex-1">
+                {/* Features */}
+                <div className="space-y-4 mb-10 flex-1">
                   {plan.features.map((f: string, i: number) => (
-                    <div key={i} className="flex items-center gap-3 text-xs font-bold uppercase tracking-tight text-neutral-400">
-                      <CheckCircle2 size={16} className="text-red-600" /> {f}
+                    <div key={i} className="flex items-start gap-3">
+                      <div className={cn(
+                          "mt-0.5 p-0.5 rounded-full flex items-center justify-center shrink-0",
+                          plan.highlight ? "bg-white text-black" : "bg-neutral-800 text-neutral-400"
+                      )}>
+                          <CheckCircle2 size={10} strokeWidth={4} />
+                      </div>
+                      <span className={cn("text-xs font-medium leading-tight", plan.highlight ? "text-neutral-200" : "text-neutral-500")}>
+                          {f}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -896,26 +887,24 @@ export default function PricingSection() {
                     setSelectedPackage(plan); 
                     setModalOpen(true); 
                   }}
-                  className={cn("h-16 rounded-2xl font-black uppercase italic tracking-widest text-lg shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3", 
-                    plan.highlight ? "bg-red-600 text-white hover:bg-red-700" : "bg-neutral-900 text-neutral-400 hover:bg-white hover:text-black")}
+                  className={cn(
+                    "w-full h-14 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-95",
+                    plan.highlight 
+                      ? "bg-white text-black hover:bg-neutral-200 shadow-[0_0_20px_rgba(255,255,255,0.1)]" 
+                      : "bg-neutral-900 text-white border border-white/5 hover:bg-neutral-800"
+                  )}
                 >
-                  {plan.cta} <ArrowRight size={18} />
+                  {plan.cta} <ArrowRight size={14} />
                 </button>
               </div>
             ))}
           </motion.div>
           
           {/* Trust Footer */}
-          <div className="mt-20 flex flex-wrap justify-center gap-10 opacity-30 grayscale hover:grayscale-0 transition-all duration-700">
-            <div className="flex items-center gap-2 font-black italic text-xs">
-              <ShieldCheck size={16}/> 256-BIT ENCRYPTION
-            </div>
-            <div className="flex items-center gap-2 font-black italic text-xs">
-              <Activity size={16}/> 99.9% UPTIME NODE
-            </div>
-            <div className="flex items-center gap-2 font-black italic text-xs">
-              <IndianRupee size={16}/> SECURE RAZORPAY
-            </div>
+          <div className="mt-20 pt-10 border-t border-white/5 flex flex-wrap justify-center gap-x-12 gap-y-6">
+            <TrustItem icon={ShieldCheck} text="256-Bit SSL Encryption" />
+            <TrustItem icon={Activity} text="99.9% System Uptime" />
+            <TrustItem icon={IndianRupee} text="Secure Razorpay Gateway" />
           </div>
         </div>
       </section>
@@ -923,3 +912,10 @@ export default function PricingSection() {
     </>
   );
 }
+
+const TrustItem = ({ icon: Icon, text }: { icon: any, text: string }) => (
+    <div className="flex items-center gap-3 text-neutral-500 group hover:text-white transition-colors cursor-default">
+        <Icon size={14} className="text-neutral-600 group-hover:text-white transition-colors" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.15em]">{text}</span>
+    </div>
+);
