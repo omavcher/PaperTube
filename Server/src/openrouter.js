@@ -1,4 +1,5 @@
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
+const OPENROUTER_API_KEY = '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';
+
 
 // Model priority queue - higher priority first
 let modelQueue = [
@@ -12,6 +13,8 @@ let modelQueue = [
 let failedModels = new Set();
 
 async function ask(prompt) {
+
+
   // Rebuild queue: put failed models at the end
   const workingModels = modelQueue.filter(m => !failedModels.has(m));
   const failedModelsList = modelQueue.filter(m => failedModels.has(m));
@@ -27,7 +30,9 @@ async function ask(prompt) {
         method: "POST",
         headers: { 
           Authorization: `Bearer ${OPENROUTER_API_KEY}`, 
-          "Content-Type": "application/json" 
+          "Content-Type": "application/json" ,
+          "HTTP-Referer": "https://papertub.in", // Your site URL
+            "X-Title": "PaperTube Server"
         },
         body: JSON.stringify({ 
           model: model, 
