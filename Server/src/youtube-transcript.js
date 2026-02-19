@@ -1,7 +1,6 @@
 // youtube-transcript.js
 async function getTranscript(videoId) {
     const { fetchTranscript } = await import('youtube-transcript-plus');
-    console.log("js js js js js js js js js js js js js js js js js js")
 
     const transcript = await fetchTranscript(videoId);
 
@@ -12,5 +11,7 @@ async function getTranscript(videoId) {
 
     return formattedTranscript;
 }
+
+getTranscript('dQw4w9WgXcQ').then(console.log);
 
 module.exports = { getTranscript };

@@ -34,12 +34,15 @@
     "puppeteer": "^24.25.0",
     "razorpay": "^2.9.6",
     "sharp": "^0.34.5",
+    "xml2js": "^0.6.2",
+    "youtube-caption-extractor": "^1.9.1",
     "youtube-captions-scraper": "^2.0.3",
     "youtube-dl-exec": "^3.1.1",
     "youtube-transcript": "^1.2.1",
     "youtube-transcript-api": "^3.0.6",
     "youtube-transcript-plus": "^1.1.2",
     "youtubei.js": "^16.0.1",
+    "yt-transcript": "^0.0.2",
     "ytdl-core": "^4.11.5"
   },
   "devDependencies": {
