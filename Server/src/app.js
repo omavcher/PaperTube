@@ -9,7 +9,6 @@ const noteRoutes = require("./routes/noteRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const authRoutes = require("./routes/authRoutes");
 const authPayment = require("./routes/paymentRoutes");
-const chartRoutes = require("./routes/chartRoutes");
 const tokenResetService = require("./services/tokenResetService"); // Add this
 const pdfRoutes = require("./routes/pdfRoutes");
 const errorHandler = require("./middleware/errorHandler");
@@ -27,7 +26,6 @@ app.use("/api/notes", noteRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/payment", authPayment);
-app.use("/api/chart", chartRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use("/api/users", require("./routes/userRoutes"));
 // app.use("/api/tools", require("./routes/toolRoutes"));

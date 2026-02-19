@@ -121,59 +121,298 @@ exports.getUserProfile = async (req, res) => {
  * Follow/Unfollow user
  * POST /api/users/:userId/follow
  */
+// controllers/userController.js
+
+/**
+ * Follow/Unfollow a user
+ * POST /api/users/:userId/follow
+ */
 exports.followUser = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const currentUserId = req.user._id;
+    const currentUserId = req.user?.id || req.user?._id;
+    const { userId } = req.params; // User to follow/unfollow
 
-    if (userId === currentUserId.toString()) {
+    if (!currentUserId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Unauthorized" 
+      });
+    }
+
+    // Check if trying to follow self
+    if (currentUserId.toString() === userId.toString()) {
       return res.status(400).json({ 
         success: false, 
         message: "You cannot follow yourself" 
       });
     }
 
-    const userToFollow = await User.findById(userId);
-    
-    if (!userToFollow) {
+    // Find both users
+    const currentUser = await User.findById(currentUserId);
+    const targetUser = await User.findById(userId);
+
+    if (!currentUser || !targetUser) {
       return res.status(404).json({ 
         success: false, 
         message: "User not found" 
       });
     }
 
-    // Since your schema doesn't have followers, we'll store it in a separate collection
-    // For now, we'll return a success response but won't actually store the relationship
-    // You can implement this later with a Follow model
-    
-    // Simulate follow/unfollow logic
-    const isFollowing = Math.random() > 0.5; // Simulated for now
+    // Check if already following
+    const isFollowing = currentUser.followingUsers?.includes(userId);
 
     if (isFollowing) {
-      // Simulate unfollow
+      // UNFOLLOW: Remove from both arrays
+      currentUser.followingUsers = currentUser.followingUsers.filter(
+        id => id.toString() !== userId.toString()
+      );
+      
+      targetUser.followerUsers = targetUser.followerUsers.filter(
+        id => id.toString() !== currentUserId.toString()
+      );
+
+      await Promise.all([currentUser.save(), targetUser.save()]);
+
       return res.status(200).json({
         success: true,
         message: "Unfollowed successfully",
-        isFollowing: false
+        isFollowing: false,
+        followerCount: targetUser.followerUsers.length,
+        followingCount: currentUser.followingUsers.length
       });
     } else {
-      // Simulate follow
+      // FOLLOW: Add to both arrays
+      currentUser.followingUsers = currentUser.followingUsers || [];
+      targetUser.followerUsers = targetUser.followerUsers || [];
+
+      currentUser.followingUsers.push(userId);
+      targetUser.followerUsers.push(currentUserId);
+
+      await Promise.all([currentUser.save(), targetUser.save()]);
+
+      // Create notification for the target user (optional)
+      try {
+        // You can add notification logic here if you have a notification system
+        console.log(`🔔 ${currentUser.name} started following ${targetUser.name}`);
+      } catch (notifError) {
+        console.error("Failed to create notification:", notifError);
+      }
+
       return res.status(200).json({
         success: true,
         message: "Followed successfully",
-        isFollowing: true
+        isFollowing: true,
+        followerCount: targetUser.followerUsers.length,
+        followingCount: currentUser.followingUsers.length
       });
     }
   } catch (error) {
     console.error("❌ Follow User Error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to follow user",
+      message: "Failed to process follow request",
       error: error.message
     });
   }
 };
 
+/**
+ * Get followers list for a user
+ * GET /api/users/:userId/followers
+ */
+exports.getFollowers = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    const user = await User.findById(userId)
+      .populate({
+        path: 'followerUsers',
+        select: 'name email username picture bio isPremium',
+        options: {
+          limit: parseInt(limit),
+          skip: (parseInt(page) - 1) * parseInt(limit)
+        }
+      });
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    const totalFollowers = user.followerUsers.length;
+
+    return res.status(200).json({
+      success: true,
+      followers: user.followerUsers,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalFollowers,
+        pages: Math.ceil(totalFollowers / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error("❌ Get Followers Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch followers",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get following list for a user
+ * GET /api/users/:userId/following
+ */
+exports.getFollowing = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    const user = await User.findById(userId)
+      .populate({
+        path: 'followingUsers',
+        select: 'name email username picture bio isPremium',
+        options: {
+          limit: parseInt(limit),
+          skip: (parseInt(page) - 1) * parseInt(limit)
+        }
+      });
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    const totalFollowing = user.followingUsers.length;
+
+    return res.status(200).json({
+      success: true,
+      following: user.followingUsers,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalFollowing,
+        pages: Math.ceil(totalFollowing / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error("❌ Get Following Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch following",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Check follow status for multiple users
+ * POST /api/users/follow-status
+ */
+exports.checkFollowStatus = async (req, res) => {
+  try {
+    const currentUserId = req.user?.id || req.user?._id;
+    const { userIds } = req.body; // Array of user IDs to check
+
+    if (!currentUserId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Unauthorized" 
+      });
+    }
+
+    const currentUser = await User.findById(currentUserId).select('followingUsers');
+
+    if (!currentUser) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    const followingSet = new Set(
+      currentUser.followingUsers?.map(id => id.toString()) || []
+    );
+
+    const followStatus = userIds.reduce((acc, id) => {
+      acc[id] = followingSet.has(id.toString());
+      return acc;
+    }, {});
+
+    return res.status(200).json({
+      success: true,
+      followStatus
+    });
+  } catch (error) {
+    console.error("❌ Check Follow Status Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to check follow status",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get mutual followers
+ * GET /api/users/:userId/mutual-followers
+ */
+exports.getMutualFollowers = async (req, res) => {
+  try {
+    const currentUserId = req.user?.id || req.user?._id;
+    const { userId } = req.params;
+
+    if (!currentUserId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Unauthorized" 
+      });
+    }
+
+    const currentUser = await User.findById(currentUserId)
+      .populate('followingUsers', '_id');
+    
+    const targetUser = await User.findById(userId)
+      .populate('followerUsers', '_id');
+
+    if (!currentUser || !targetUser) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Get IDs of users that current user is following
+    const currentUserFollowingIds = new Set(
+      currentUser.followingUsers?.map(u => u._id.toString()) || []
+    );
+
+    // Get mutual followers (target's followers that current user also follows)
+    const mutualFollowers = targetUser.followerUsers?.filter(follower => 
+      currentUserFollowingIds.has(follower._id.toString())
+    ) || [];
+
+    return res.status(200).json({
+      success: true,
+      count: mutualFollowers.length,
+      mutualFollowers: mutualFollowers.map(u => u._id)
+    });
+  } catch (error) {
+    console.error("❌ Get Mutual Followers Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch mutual followers",
+      error: error.message
+    });
+  }
+};
 /**
  * Get user's notes with pagination
  * GET /api/users/:userId/notes
@@ -819,5 +1058,293 @@ try {
   } catch (error) {
     console.error("Report Error:", error);
     res.status(500).json({ success: false, message: "Server error processing report." });
+  }
+};
+
+
+const TOKEN_COST_PER_GENERATION = 5;
+
+exports.getTokenBalance = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const user = await User.findById(userId).select('tokens membership tokenUsageHistory');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const isSubscribed = user.membership?.isActive === true;
+    
+    // Calculate if user can generate
+    const canGenerate = isSubscribed || user.tokens >= TOKEN_COST_PER_GENERATION;
+    
+    // Create appropriate message
+    let message;
+    if (isSubscribed) {
+      message = "You have unlimited access as a subscriber";
+    } else {
+      message = `You have ${user.tokens} tokens. Each generation costs ${TOKEN_COST_PER_GENERATION} tokens.`;
+    }
+
+    res.json({
+      success: true,
+      tokens: user.tokens,
+      isSubscribed,
+      tokenCostPerGeneration: TOKEN_COST_PER_GENERATION,
+      canGenerate,
+      message
+    });
+  } catch (error) {
+    console.error('Error fetching token balance:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch token balance",
+      error: error.message
+    });
+  }
+};
+
+
+
+
+// controllers/publicProfileController.js
+
+/**
+ * Get public profile for unauthenticated users
+ * GET /api/public/profile/:username
+ */
+exports.getPublicProfile = async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Find user by username
+    const user = await User.findOne({ username }).select(
+      'name email picture membership joinedAt followerUsers followingUsers'
+    );
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Get ONLY public notes (no private/unlisted for unauthenticated users)
+    const notes = await Note.find({ 
+      owner: user._id,
+      visibility: 'public'
+    })
+    .sort({ createdAt: -1 })
+    .select(
+      'title slug thumbnail videoUrl videoId pdf_data views createdAt generationDetails.status likes'
+    )
+    .limit(50);
+
+    // Calculate stats from public notes only
+    const totalViews = notes.reduce((sum, note) => sum + (note.views || 0), 0);
+    const totalLikes = notes.reduce((sum, note) => sum + (note.likes || 0), 0);
+    const totalPremiumNotes = notes.filter(note => 
+      note.generationDetails?.type === 'premium'
+    ).length;
+
+    // Generate username from email for display
+    const generatedUsername = user.email.split('@')[0];
+    
+    // Get followers and following counts
+    const followingCount = user.followingUsers ? user.followingUsers.length : 0;
+    const followersCount = user.followerUsers ? user.followerUsers.length : 0;
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        picture: user.picture || '',
+        username: generatedUsername,
+        joinDate: user.joinedAt,
+        isPremium: user.membership?.isActive || false,
+        membershipPlan: user.membership?.planName || 'Free',
+        followersCount,
+        followingCount
+      },
+      notes: notes.map(note => ({
+        _id: note._id,
+        title: note.title,
+        slug: note.slug,
+        thumbnail: note.thumbnail || `https://img.youtube.com/vi/${note.videoId}/hqdefault.jpg`,
+        videoId: note.videoId,
+        pdfThumbnail: note.pdf_data?.thumbnailLink,
+        views: note.views || 0,
+        likes: note.likes || 0,
+        createdAt: note.createdAt,
+        isPremium: note.generationDetails?.type === 'premium',
+        status: note.status,
+        // For unauthenticated users, hide like status
+        isLikedByViewer: false
+      })),
+      stats: {
+        totalNotes: notes.length,
+        totalViews,
+        totalLikes,
+        totalPremiumNotes,
+        followersCount,
+        followingCount
+      },
+      viewerStatus: {
+        isAuthenticated: false,
+        isFollowing: false,
+        canViewPrivate: false
+      }
+    });
+  } catch (error) {
+    console.error("❌ Get Public Profile Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch profile",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get profile for authenticated users (with current user context)
+ * GET /api/profile/:username
+ */
+exports.getAuthenticatedProfile = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const currentUserId = req.user?.id || req.user?._id;
+
+    if (!currentUserId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Authentication required" 
+      });
+    }
+
+    // Find the profile user
+    const profileUser = await User.findOne({ username }).select(
+      'name email picture membership joinedAt followerUsers followingUsers'
+    );
+
+    if (!profileUser) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Check if current user is following this profile
+    const isFollowing = profileUser.followerUsers?.some(
+      followerId => followerId.toString() === currentUserId.toString()
+    );
+
+    // Get notes with visibility based on relationship
+    let notesQuery = { owner: profileUser._id };
+    
+    // If viewing own profile, show all notes
+    if (profileUser._id.toString() === currentUserId.toString()) {
+      // Show all notes (public, private, unlisted)
+      console.log("👤 Viewing own profile - showing all notes");
+    } else {
+      // For other users, show public notes + unlisted (but not private)
+      notesQuery = {
+        owner: profileUser._id,
+        visibility: { $in: ['public', 'unlisted'] }
+      };
+    }
+
+    const notes = await Note.find(notesQuery)
+      .sort({ createdAt: -1 })
+      .select(
+        'title slug thumbnail videoUrl videoId pdf_data views createdAt generationDetails.status likes likedBy visibility'
+      )
+      .limit(50);
+
+    // Calculate stats
+    const totalViews = notes.reduce((sum, note) => sum + (note.views || 0), 0);
+    const totalLikes = notes.reduce((sum, note) => sum + (note.likes || 0), 0);
+    const totalPremiumNotes = notes.filter(note => 
+      note.generationDetails?.type === 'premium'
+    ).length;
+
+    // Get followers and following counts
+    const followingCount = profileUser.followingUsers ? profileUser.followingUsers.length : 0;
+    const followersCount = profileUser.followerUsers ? profileUser.followerUsers.length : 0;
+
+    // Get mutual followers (users that both follow each other)
+    const mutualFollowers = profileUser.followerUsers?.filter(followerId => 
+      profileUser.followingUsers?.some(followingId => 
+        followingId.toString() === followerId.toString()
+      )
+    ) || [];
+
+    // Generate username from email for display
+    const generatedUsername = profileUser.email.split('@')[0];
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: profileUser._id,
+        name: profileUser.name,
+        email: profileUser.email,
+        picture: profileUser.picture || '',
+        username: generatedUsername,
+        joinDate: profileUser.joinedAt,
+        isPremium: profileUser.membership?.isActive || false,
+        membershipPlan: profileUser.membership?.planName || 'Free',
+        followersCount,
+        followingCount,
+        mutualFollowersCount: mutualFollowers.length
+      },
+      notes: notes.map(note => ({
+        _id: note._id,
+        title: note.title,
+        slug: note.slug,
+        thumbnail: note.thumbnail || `https://img.youtube.com/vi/${note.videoId}/hqdefault.jpg`,
+        videoId: note.videoId,
+        pdfThumbnail: note.pdf_data?.thumbnailLink,
+        views: note.views || 0,
+        likes: note.likes || 0,
+        createdAt: note.createdAt,
+        isPremium: note.generationDetails?.type === 'premium',
+        status: note.status,
+        visibility: note.visibility,
+        // Check if current user has liked this note
+        isLikedByViewer: note.likedBy?.some(
+          likeId => likeId.toString() === currentUserId.toString()
+        ) || false
+      })),
+      stats: {
+        totalNotes: notes.length,
+        totalViews,
+        totalLikes,
+        totalPremiumNotes,
+        followersCount,
+        followingCount
+      },
+      relationship: {
+        isOwnProfile: profileUser._id.toString() === currentUserId.toString(),
+        isFollowing,
+        canViewPrivate: profileUser._id.toString() === currentUserId.toString()
+      },
+      viewerStatus: {
+        isAuthenticated: true,
+        userId: currentUserId,
+        isFollowing
+      }
+    });
+  } catch (error) {
+    console.error("❌ Get Authenticated Profile Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch profile",
+      error: error.message
+    });
   }
 };

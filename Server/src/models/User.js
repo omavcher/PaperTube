@@ -59,19 +59,20 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
     },
-    followerUsers: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User"
-    }],
+   
 
   xp: { type: Number, default: 0 },
   rank: { type: String, default: "basic" },
   totalGamesPlayed: { type: Number, default: 0 },
-  
-    followingUsers: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User"
-    }],
+   // In your UserSchema
+followerUsers: [{
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User"
+}],
+followingUsers: [{
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User"
+}],
     mobile: {
       type: String,
       required: false,
@@ -127,28 +128,7 @@ const UserSchema = new mongoose.Schema(
       lastPaymentId: { type: String },
       autoRenew: { type: Boolean, default: false },
     },
-
-    
-    flashcardSets: [{
-    setId: { type: mongoose.Schema.Types.ObjectId, ref: 'FlashcardSet' },
-    addedAt: { type: Date, default: Date.now }
-  }],
   
-  flashcardCreationHistory: [{
-    setId: { type: mongoose.Schema.Types.ObjectId, ref: 'FlashcardSet' },
-    model: String,
-    createdAt: { type: Date, default: Date.now },
-    videoTitle: String,
-    cardCount: Number
-  }],
-  
-  flashcardStats: {
-    totalCardsStudied: { type: Number, default: 0 },
-    totalStudyTime: { type: Number, default: 0 }, // minutes
-    streak: { type: Number, default: 0 },
-    lastStudyDate: { type: Date },
-    masteryRate: { type: Number, default: 0 } // percentage
-  }
   },
   { timestamps: true }
 );

@@ -31,9 +31,38 @@ router.patch('/blog/update/:id',adminAuth, adminController.updatePost);
 router.delete('/blog/delete/:id',adminAuth, adminController.deletePost);
 
 
-router.get('/content-analytics', adminController.getContentAnalytics);
+router.get('/content-analytics',adminAuth, adminController.getContentAnalytics);
 
 router.get("/analytics/tools", adminAuth, adminController.getToolAnalytics);
 router.put('/note/:noteId/visibility',adminAuth, adminController.chnageNoteVisibility );
 router.delete('/note/:noteId', adminAuth, adminController.deleteNote);
+
+router.get('/reports/',adminAuth, adminController.getAllReports);
+router.get('/reports/analytics',adminAuth, adminController.getReportsAnalytics);
+router.get('/reports/user/:userId',adminAuth, adminController.getUserReports);
+router.get('/reports/:id',adminAuth, adminController.getReportById);
+router.patch('/reports/:id',adminAuth, adminController.updateReportStatus);
+router.delete('/reports/:id',adminAuth, adminController.deleteReport);
+router.get('/reports/analytics/top-reported', adminAuth, adminController.getTopReportedUsers);
+
+
+
+router.get('/comments/analytics',adminAuth , adminController.getCommentAnalytics);
+
+// Main CRUD routes
+router.get('/comments/',adminAuth , adminController.getAllComments);
+router.get('/comments/note/:noteId',adminAuth , adminController.getNoteComments);
+router.get('/comments/:id',adminAuth , adminController.getCommentById);
+router.patch('/comments/:id',adminAuth , adminController.updateComment);
+router.delete('/comments/:id',adminAuth , adminController.deleteComment);
+
+// Reply routes
+router.patch('/comments/:commentId/replies/:replyId',adminAuth , adminController.updateReply);
+router.delete('/comments/:commentId/replies/:replyId',adminAuth , adminController.deleteReply);
+
+// Bulk operations
+router.post('/comments/bulk-delete',adminAuth , adminController.bulkDeleteComments);
+
+
+
 module.exports = router;

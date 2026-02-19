@@ -75,7 +75,7 @@ export const Navbar = ({
   <NavEntry href="/" icon={<Home size={14} />} label="Home" />
   <NavDropdown label="Modules" items={SUPPORT_TOOLS} />
   <NavEntry href="/explore" icon={<Compass size={14} />} label="Explore" />
-  <NavEntry href="/pricing" icon={<Zap size={14} />} label={user?.membership?.isActive ? "My Plan" : "Access"} />
+  <NavEntry href="/pricing" icon={<Zap size={14} />} label={user?.membership?.isActive ? "My Plan" : "Pricing"} />
 </div>
 
               {/* Right Actions */}
@@ -244,7 +244,7 @@ const UserHUD = ({ user, onLogout }: any) => {
             <div className="space-y-1 p-1">
               <HUDLink href="/profile" icon={<UserCircle size={16} />} label="Dashboard" />
               <HUDLink href="/leaderboard" icon={<Trophy size={16} />} label="Leaderboard" />
-              <HUDLink href="/billing" icon={<Coins size={16} />} label="Billing" />
+              <HUDLink href="/pricing" icon={<Zap size={16} />} label="Pricing" />
               
               <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors mt-2">
                 <LogOut size={16} /> Log Out

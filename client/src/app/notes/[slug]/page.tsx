@@ -228,7 +228,7 @@ const MobileBottomNav: React.FC<{
       >
         <div className={`absolute top-3 right-3 w-2 h-2 rounded-full ${activeTab === 'chat' ? 'bg-red-500' : 'bg-transparent'}`} />
         <MessageSquare className="h-5 w-5 mb-1" />
-        <span className="text-[10px] font-medium">AI Chat</span>
+        <span className="text-[10px] font-medium">PaperChat</span>
       </button>
     </div>
   );
@@ -259,6 +259,9 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [hasPermission, setHasPermission] = useState(true);
   
+  // Subscription State
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
   // Editor State
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isDirty, setIsDirty] = useState(false);
@@ -282,11 +285,23 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     return () => { document.head.removeChild(styleElement); };
   }, []);
 
-  // Fetch Data
+  // Fetch Data and Check Subscription
   const loadNoteData = useCallback(async () => {
     try {
       setLoading(true);
       const authToken = getAuthToken();
+      
+      // Check Subscription Status from LocalStorage
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        try {
+          const userObj = JSON.parse(userStr);
+          setIsSubscribed(!!userObj.membership?.isActive);
+        } catch (e) {
+          console.error("Error parsing user data", e);
+        }
+      }
+
       const res = await api.get(`/notes/slug/${slug}`, { headers: { 'Auth': authToken } });
       setData(res.data);
       setMarkdownContent(res.data.content);
@@ -296,7 +311,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         const msgRes = await api.get<ApiMessagesResponse>(`/chat/getMessages/${res.data._id}`, { headers: { 'Auth': authToken } });
         setMessages(msgRes.data.messages);
       } catch (e) {
-        setMessages([{ _id: "welcome", role: "assistant", content: "Hello! I can help you with this note.", timestamp: new Date().toISOString() }]);
+        setMessages([{ _id: "welcome", role: "assistant", content: "Hello! I am PaperChat. How can I help you with this note?", timestamp: new Date().toISOString() }]);
       }
 
       // Check PDF
@@ -348,7 +363,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isThinking) return;
+    if (!input.trim() || isThinking || !isSubscribed) return;
     
     const userMsg = { _id: Date.now().toString(), role: "user", content: input, timestamp: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
@@ -486,70 +501,88 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                  <AvatarFallback className="bg-red-600 text-xs">AI</AvatarFallback>
                </Avatar>
                <div>
-                 <h3 className="text-sm font-semibold text-white">Assistant</h3>
+                 <h3 className="text-sm font-semibold text-white">PaperChat</h3>
                  <p className="text-[10px] text-green-400 flex items-center"><span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"/>Online</p>
                </div>
              </div>
           </div>
 
-          {/* Chat Messages - with direct ref for scroll control */}
-          <div 
-            ref={chatScrollRef}
-            className="flex-1 overflow-y-auto p-4 pb-20 lg:pb-4 custom-scrollbar"
-          >
-             <div className="space-y-4">
-               {messages.map((msg, idx) => (
-                 <motion.div 
-                   initial={{ opacity: 0, y: 10 }} 
-                   animate={{ opacity: 1, y: 0 }} 
-                   key={idx} 
-                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                 >
-                    <div className={`max-w-[85%] rounded-2xl p-3 text-sm shadow-sm ${
-                      msg.role === 'user' 
-                        ? 'bg-red-600 text-white rounded-br-none' 
-                        : 'bg-neutral-800 border border-neutral-700 text-neutral-200 rounded-bl-none'
-                    }`}>
-                       <div className="prose prose-invert prose-sm max-w-none">
-                         <ReactMarkdown>{msg.content}</ReactMarkdown>
-                       </div>
-                       {msg.videoLink && (
-                         <a href={msg.videoLink} target="_blank" className="mt-2 block p-2 bg-black/20 rounded flex items-center gap-2 hover:bg-black/40 transition">
-                            <ExternalLink className="h-3 w-3 text-red-400"/>
-                            <span className="text-xs text-red-300">Watch Related Video</span>
-                         </a>
-                       )}
-                       <div className="mt-1 text-[10px] opacity-50 text-right">{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                    </div>
-                 </motion.div>
-               ))}
-               {isThinking && (
-                 <div className="flex items-center gap-2 text-neutral-500 text-xs ml-2">
-                   <Loader2 className="h-3 w-3 animate-spin"/> Thinking...
-                 </div>
-               )}
-               <div ref={messagesEndRef} />
-             </div>
-          </div>
-
-          {/* Input Area - Sticky above bottom nav on mobile */}
-          <div className="p-3 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur shrink-0 mb-16 lg:mb-0">
-             <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
-                <Input 
-                  value={input} 
-                  onChange={(e) => setInput(e.target.value)} 
-                  placeholder="Ask a question..." 
-                  className="bg-neutral-900 border-neutral-700 text-white rounded-full pl-4 pr-12 focus-visible:ring-red-500"
-                />
-                <Button 
-                  type="submit" 
-                  size="icon" 
-                  disabled={!input.trim() || isThinking}
-                  className="absolute right-1 top-1 bottom-1 h-8 w-8 rounded-full bg-red-600 hover:bg-red-700 text-white"
-                >
-                  {isThinking ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4"/>}
+          <div className="relative flex-1 flex flex-col min-h-0">
+            
+            {/* Premium Lock Overlay */}
+            {!isSubscribed && (
+              <div className="absolute inset-0 z-20 bg-black/70 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-16 h-16 bg-red-600/10 rounded-2xl flex items-center justify-center mb-4 border border-red-600/20 shadow-[0_0_30px_rgba(220,38,38,0.2)]">
+                  <Lock className="h-8 w-8 text-red-500" />
+                </div>
+                <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-2">PaperChat Locked</h3>
+                <p className="text-sm text-neutral-400 mb-6 font-medium">Upgrade to Pro to interact dynamically with your generated notes using our advanced neural assistant.</p>
+                <Button onClick={() => router.push('/pricing')} className="bg-white text-black hover:bg-neutral-200 font-bold uppercase tracking-widest text-xs px-8 h-12 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                   Unlock Premium <Sparkles className="ml-2 h-4 w-4" />
                 </Button>
-             </form>
+              </div>
+            )}
+
+            {/* Chat Messages */}
+            <div 
+              ref={chatScrollRef}
+              className="flex-1 overflow-y-auto p-4 pb-20 lg:pb-4 custom-scrollbar"
+            >
+               <div className="space-y-4">
+                 {messages.map((msg, idx) => (
+                   <motion.div 
+                     initial={{ opacity: 0, y: 10 }} 
+                     animate={{ opacity: 1, y: 0 }} 
+                     key={idx} 
+                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                   >
+                      <div className={`max-w-[85%] rounded-2xl p-3 text-sm shadow-sm ${
+                        msg.role === 'user' 
+                          ? 'bg-red-600 text-white rounded-br-none' 
+                          : 'bg-neutral-800 border border-neutral-700 text-neutral-200 rounded-bl-none'
+                      }`}>
+                         <div className="prose prose-invert prose-sm max-w-none">
+                           <ReactMarkdown>{msg.content}</ReactMarkdown>
+                         </div>
+                         {msg.videoLink && (
+                           <a href={msg.videoLink} target="_blank" className="mt-2 block p-2 bg-black/20 rounded flex items-center gap-2 hover:bg-black/40 transition">
+                              <ExternalLink className="h-3 w-3 text-red-400"/>
+                              <span className="text-xs text-red-300">Watch Related Video</span>
+                           </a>
+                         )}
+                         <div className="mt-1 text-[10px] opacity-50 text-right">{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                      </div>
+                   </motion.div>
+                 ))}
+                 {isThinking && (
+                   <div className="flex items-center gap-2 text-neutral-500 text-xs ml-2">
+                     <Loader2 className="h-3 w-3 animate-spin"/> Thinking...
+                   </div>
+                 )}
+                 <div ref={messagesEndRef} />
+               </div>
+            </div>
+
+            {/* Input Area - Sticky above bottom nav on mobile */}
+            <div className="p-3 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur shrink-0 mb-16 lg:mb-0 relative z-10">
+               <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
+                  <Input 
+                    value={input} 
+                    onChange={(e) => setInput(e.target.value)} 
+                    placeholder="Ask a question..." 
+                    disabled={!isSubscribed}
+                    className="bg-neutral-900 border-neutral-700 text-white rounded-full pl-4 pr-12 focus-visible:ring-red-500 disabled:opacity-50"
+                  />
+                  <Button 
+                    type="submit" 
+                    size="icon" 
+                    disabled={!input.trim() || isThinking || !isSubscribed}
+                    className="absolute right-1 top-1 bottom-1 h-8 w-8 rounded-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                  >
+                    {isThinking ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4"/>}
+                  </Button>
+               </form>
+            </div>
           </div>
         </div>
 

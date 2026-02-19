@@ -247,12 +247,6 @@ export default function ProfilePage() {
                       <ProfileInfoRow icon={Smartphone} label="Mobile" value={user.mobile || "N/A"} />
                       <ProfileInfoRow icon={Calendar} label="Joined" value={formatDate(user.createdAt)} />
                    </div>
-
-                   <div className="w-full mt-6 pt-6 border-t border-white/5">
-                      <Button variant="outline" className="w-full bg-transparent border-white/10 hover:bg-white/5 text-xs h-9 rounded-xl font-medium">
-                         <Settings size={14} className="mr-2" /> Settings
-                      </Button>
-                   </div>
                 </div>
 
                 {/* Desktop Navigation */}
@@ -327,9 +321,7 @@ export default function ProfilePage() {
                                   {user.membership?.expiresAt ? `Renews on ${formatDate(user.membership.expiresAt)}` : "Upgrade to unlock premium features."}
                                </p>
                             </div>
-                            <Button className="bg-white text-black hover:bg-neutral-200 font-bold px-6 h-12 rounded-xl text-xs uppercase tracking-wide">
-                               Manage Plan
-                            </Button>
+                           
                          </div>
                       </div>
 

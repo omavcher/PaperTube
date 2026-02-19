@@ -18,8 +18,8 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FcFeedback } from "react-icons/fc";
-import { Icon2fa, IconAnalyze, IconBrandStorybook } from "@tabler/icons-react";
+import { FcComments, FcFeedback } from "react-icons/fc";
+import { Icon2fa, IconAnalyze, IconBrandStorybook, IconReport } from "@tabler/icons-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -257,6 +257,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               icon={<FileText size={isMobile ? 20 : 18} />} 
               label="Content" 
               active={pathname.includes("/content")} 
+              expanded={isSidebarOpen} 
+              mobile={isMobile}
+            />
+             <AdminNavLink 
+              href="/admin/reports" 
+              icon={<IconReport size={isMobile ? 20 : 18} />} 
+              label="Reports" 
+              active={pathname.includes("/reports")} 
+              expanded={isSidebarOpen} 
+              mobile={isMobile}
+            />
+            <AdminNavLink 
+              href="/admin/comments" 
+              icon={<FcComments size={isMobile ? 20 : 18} />} 
+              label="Comments" 
+              active={pathname.includes("/comments")} 
               expanded={isSidebarOpen} 
               mobile={isMobile}
             />
