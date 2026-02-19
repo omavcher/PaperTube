@@ -106,8 +106,8 @@ export default function FounderPage() {
         {/* --- Stats / Stack Grid --- */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-24">
            <StatCard label="Experience" value="3+ Years" icon={<Award className="text-yellow-500" />} />
-           <StatCard label="Projects Shipped" value="20+" icon={<Zap className="text-red-500" />} />
-           <StatCard label="Users Served" value="8.2k+" icon={<Globe className="text-blue-500" />} />
+           <StatCard label="Projects Shipped" value="10+" icon={<Zap className="text-red-500" />} />
+           <StatCard label="Users Served" value="320k+" icon={<Globe className="text-blue-500" />} />
            <StatCard label="Tech Stack" value="MERN + AI" icon={<Cpu className="text-emerald-500" />} />
         </div>
 

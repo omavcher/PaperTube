@@ -93,14 +93,12 @@ export default function Footer() {
                   HeartEcho
               </a>
               <FooterLink href="/leaderboard" label="Global Rank" />
-              <FooterLink href="/quest" label="Daily Quests" />
               <FooterLink href="/pricing" label="Pro Membership" badge="New" />
             </FooterColumn>
 
             <FooterColumn title="Support">
      <FooterLink href="/about" label="About Founder" />
               <FooterLink href="/contact" label="Help Center" />
-              <FooterLink href="/status" label="System Status" />
               <FooterLink href="/privacy" label="Privacy Protocol" />
               <FooterLink href="/terms" label="Terms of Service" />
               <div className="pt-4">

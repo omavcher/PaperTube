@@ -5,7 +5,10 @@ import {
   Menu as MenuIcon, X, ChevronDown, Cpu, Zap, 
   Home, Code, Compass, User, LogOut, ShieldCheck, 
   UserCircle, Crown, Calendar, Coins, PlusCircle,
-  Flame, Trophy, BarChart3, Command, Terminal
+  Flame, Trophy, BarChart3, Command, Terminal,
+  ToolCase,
+  Gamepad,
+  NotebookTabsIcon
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import Link from "next/link";
@@ -13,6 +16,7 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { FcGoogle } from "react-icons/fc";
 import api from "@/config/api";
 import axios from "axios";
+import { IconSquareLetterB } from "@tabler/icons-react";
 
 // --- PLAN DEFINITIONS ---
 const PLANS = [
@@ -73,9 +77,9 @@ export const Navbar = ({
               {/* Center Nav */}
               <div className="flex items-center gap-1 bg-black/20 p-1 rounded-2xl border border-white/5 backdrop-blur-md mx-5">
   <NavEntry href="/" icon={<Home size={14} />} label="Home" />
-  <NavDropdown label="Modules" items={SUPPORT_TOOLS} />
+  <NavDropdown label="Backpack" items={SUPPORT_TOOLS} />
   <NavEntry href="/explore" icon={<Compass size={14} />} label="Explore" />
-  <NavEntry href="/pricing" icon={<Zap size={14} />} label={user?.membership?.isActive ? "My Plan" : "Pricing"} />
+  <NavEntry href="/pricing" icon={<Zap size={14} />} label={user?.membership?.isActive ? "My Plan" : "Access"} />
 </div>
 
               {/* Right Actions */}
@@ -244,7 +248,7 @@ const UserHUD = ({ user, onLogout }: any) => {
             <div className="space-y-1 p-1">
               <HUDLink href="/profile" icon={<UserCircle size={16} />} label="Dashboard" />
               <HUDLink href="/leaderboard" icon={<Trophy size={16} />} label="Leaderboard" />
-              <HUDLink href="/pricing" icon={<Zap size={16} />} label="Pricing" />
+              <HUDLink href="/billing" icon={<Coins size={16} />} label="Billing" />
               
               <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors mt-2">
                 <LogOut size={16} /> Log Out
@@ -342,9 +346,10 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
 /* --- Global Utilities & Navigation Items --- */
 
 const SUPPORT_TOOLS = [
-    { title: "Snippets", desc: "Code Generation.", href: "/tools/code-to-image", icon: <Code size={18} /> },
-    { title: "AI Sentinel", desc: "Plagiarism Check.", href: "/tools/sentinel", icon: <ShieldCheck size={18} /> },
-    { title: "Logic Lab", desc: "Boolean Logic.", href: "/tools/logic-gate-lab", icon: <Cpu size={18} /> },
+    { title: "Tools", desc: "Papertub Tools.", href: "/tools", icon: <ToolCase size={18} /> },
+    { title: "Games", desc: "Educational Games.", href: "/games", icon: <Gamepad size={18} /> },
+    { title: "Success Stories", desc: "Inspiring Students Stories.", href: "/success-stories", icon: <NotebookTabsIcon size={18} /> },
+    { title: "Blogs", desc: "Papertub Blogs.", href: "/blog", icon: <IconSquareLetterB size={18} /> },
 ];
 
 const MobileTab = ({ href, icon, label }: any) => (
