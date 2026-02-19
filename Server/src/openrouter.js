@@ -1,4 +1,4 @@
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 
 // Model priority queue - higher priority first
 let modelQueue = [
