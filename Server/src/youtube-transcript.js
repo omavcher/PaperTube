@@ -12,6 +12,6 @@ async function getTranscript(videoId) {
     return formattedTranscript;
 }
 
-getTranscript('Xe18e9NVR1U').then(console.log);
+getTranscript('BmYv8XGl-YU').then(console.log);
 
 module.exports = { getTranscript };
