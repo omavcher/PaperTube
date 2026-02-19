@@ -6,7 +6,7 @@ const { getTranscript } = require('../youtube-transcript');
 const FREE_MODELS = ['sankshipta', 'bhashasetu'];
 const MAX_FREE_VIDEO_LENGTH = 90 * 60; // 90 minutes in seconds
 
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 // OpenRouter model priority queue - higher priority first
 let openRouterModelQueue = [
