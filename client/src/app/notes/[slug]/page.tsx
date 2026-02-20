@@ -10,6 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import { useGoogleLogin } from "@react-oauth/google";
+import axios from "axios";
 
 import {
   Download,
@@ -36,7 +38,8 @@ import {
   ArrowLeft,
   ExternalLink,
   MessageSquare,
-  Home
+  Home,
+  RefreshCw
 } from "lucide-react";
 
 import api from "@/config/api";
@@ -44,6 +47,7 @@ import { LoaderX } from "@/components/LoaderX";
 import { LoginDialog } from "@/components/LoginDialog";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // --- AUTH HELPERS ---
 const getAuthToken = () => {
@@ -53,7 +57,7 @@ const getAuthToken = () => {
   return null;
 };
 
-const googleAccessToken = () => {
+const getGoogleToken = () => {
   if (typeof window !== 'undefined') {
     return localStorage.getItem("googleAccessToken");
   }
@@ -244,6 +248,67 @@ const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack
   </div>
 );
 
+// 4. Google Re-login Modal
+const GoogleReLoginModal = ({ isOpen, onClose, onLogin }: any) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+      >
+        <div className="flex items-center gap-3 text-red-500 mb-4">
+          <AlertCircle size={24} />
+          <h3 className="text-lg font-bold text-white">Google Session Expired</h3>
+        </div>
+        
+        <p className="text-neutral-400 mb-6">
+          Your Google session has expired. To continue using features like PDF generation with images, please login again.
+        </p>
+        
+        <div className="flex gap-3">
+          <Button 
+            variant="ghost" 
+            onClick={onClose}
+            className="flex-1 hover:bg-neutral-800 text-neutral-400"
+          >
+            Later
+          </Button>
+          <Button 
+            onClick={onLogin}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+          >
+            <RefreshCw size={16} className="mr-2" />
+            Login Again
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// 5. Token Expired Banner
+const TokenExpiredBanner = ({ onLogin }: any) => {
+  return (
+    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <AlertCircle size={16} className="text-red-500" />
+        <p className="text-xs text-red-500">Google access expired. PDF generation requires login.</p>
+      </div>
+      <Button 
+        size="sm" 
+        onClick={onLogin}
+        className="h-7 bg-red-600 hover:bg-red-700 text-white text-xs"
+      >
+        Login
+      </Button>
+    </div>
+  );
+};
+
 // --- MAIN PAGE COMPONENT ---
 export default function NotePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -262,6 +327,11 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   // Subscription State
   const [isSubscribed, setIsSubscribed] = useState(false);
 
+  // Google Token State
+  const [showGoogleReLogin, setShowGoogleReLogin] = useState(false);
+  const [googleTokenExpired, setGoogleTokenExpired] = useState(false);
+  const [pendingPDFGeneration, setPendingPDFGeneration] = useState(false);
+
   // Editor State
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isDirty, setIsDirty] = useState(false);
@@ -277,6 +347,86 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const [pdfPreviewData, setPdfPreviewData] = useState<PDFPreviewData | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
+  // Google Login Hook for re-authentication
+  const handleGoogleReLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        toast.loading("Re-authenticating...");
+        
+        // Get user info from Google
+        const { data: userInfo } = await axios.get(
+          "https://www.googleapis.com/oauth2/v3/userinfo",
+          { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } }
+        );
+        
+        // Send to your backend
+        const res = await api.post("/auth/google", {
+          googleAccessToken: tokenResponse.access_token,
+          authType: 'access_token'
+        });
+        
+        if (res.data.success) {
+          // Store new tokens
+          localStorage.setItem("authToken", res.data.data.token);
+          localStorage.setItem("googleAccessToken", tokenResponse.access_token);
+          localStorage.setItem("user", JSON.stringify(res.data.data.user));
+          
+          // Update state
+          setShowGoogleReLogin(false);
+          setGoogleTokenExpired(false);
+          
+          toast.dismiss();
+          toast.success("Re-authentication successful");
+          
+          // If there was a pending PDF generation, trigger it
+          if (pendingPDFGeneration) {
+            setPendingPDFGeneration(false);
+            generatePDF();
+          }
+        }
+      } catch (error) {
+        console.error("Re-login failed:", error);
+        toast.error("Re-authentication failed. Please try again.");
+      }
+    },
+    onError: (error) => {
+      console.error("Google login error:", error);
+      toast.error("Google login failed");
+    },
+    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+    flow: 'implicit',
+  });
+
+  // Check Google token validity
+  const checkGoogleToken = useCallback(async () => {
+    const token = getGoogleToken();
+    
+    if (!token) {
+      setGoogleTokenExpired(true);
+      return false;
+    }
+
+    try {
+      // Simple check if token might be expired (you can enhance this)
+      const tokenParts = token.split('.');
+      if (tokenParts.length === 3) {
+        const payload = JSON.parse(atob(tokenParts[1]));
+        const exp = payload.exp * 1000; // Convert to milliseconds
+        
+        if (Date.now() >= exp) {
+          console.log("Google token expired");
+          setGoogleTokenExpired(true);
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Token check error:", error);
+      return true; // Assume valid if check fails
+    }
+  }, []);
+
   // Initialize Styles
   useEffect(() => {
     const styleElement = document.createElement('style');
@@ -290,7 +440,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     try {
       setLoading(true);
       const authToken = getAuthToken();
-      
+
       // Check Subscription Status from LocalStorage
       const userStr = localStorage.getItem("user");
       if (userStr) {
@@ -306,6 +456,9 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       setData(res.data);
       setMarkdownContent(res.data.content);
       
+      // Check Google token
+      await checkGoogleToken();
+      
       // Load Messages
       try {
         const msgRes = await api.get<ApiMessagesResponse>(`/chat/getMessages/${res.data._id}`, { headers: { 'Auth': authToken } });
@@ -316,11 +469,18 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
       // Check PDF
       try {
-        const pdfRes = await api.get(`/notes/generate/pdf?noteId=${res.data._id}`, { headers: { 'Auth': authToken } });
+        const pdfRes = await api.get(`/notes/generate/pdf?noteId=${res.data._id}`, { 
+          headers: { 
+            'Auth': authToken,
+            'x-google-access-token': getGoogleToken() || ''
+          } 
+        });
         if (pdfRes.data.success && pdfRes.data.data) {
           setPdfPreviewData(pdfRes.data.data.pdf_data || pdfRes.data.data);
         }
-      } catch (e) { console.log("No existing PDF"); }
+      } catch (e) { 
+        console.log("No existing PDF");
+      }
 
     } catch (error: any) {
       if (error.response?.status === 403 || error.response?.status === 401) {
@@ -330,21 +490,17 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     } finally {
       setLoading(false);
     }
-  }, [slug]);
+  }, [slug, checkGoogleToken]);
 
   useEffect(() => { loadNoteData(); }, [loadNoteData]);
   
-  // Improved auto-scroll effect
+  // Auto-scroll effect
   useEffect(() => {
-    // Only scroll if we're on the chat tab
     if (mobileView === 'chat' || window.innerWidth >= 1024) {
-      // Use setTimeout to ensure DOM has updated
       const timer = setTimeout(() => {
         if (chatScrollRef.current) {
-          // Scroll the container to bottom
           chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
         }
-        // Fallback: scroll the ref element into view
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
       }, 100);
       
@@ -358,7 +514,10 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     try {
       await api.put(`/notes/update/${data._id}`, { content: markdownContent }, { headers: { 'Auth': getAuthToken() } });
       setIsDirty(false);
-    } catch (e) { alert("Save failed"); }
+      toast.success("Note saved successfully");
+    } catch (e) { 
+      toast.error("Save failed");
+    }
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -387,23 +546,88 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
+  // Generate PDF with token check
   const generatePDF = async () => {
     if (!data?._id) return;
+    
+    // Check if Google token is valid
+    const tokenValid = await checkGoogleToken();
+    
+    if (!tokenValid) {
+      setShowGoogleReLogin(true);
+      setPendingPDFGeneration(true);
+      return;
+    }
+    
     setIsGeneratingPDF(true);
     try {
-      const res = await api.get(`/notes/generate/pdf?noteId=${data._id}`, { headers: { 'Auth': getAuthToken() } });
+      const res = await api.get(`/notes/generate/pdf?noteId=${data._id}`, { 
+        headers: { 
+          'Auth': getAuthToken(),
+          'x-google-access-token': getGoogleToken() || ''
+        } 
+      });
+      
       if (res.data.success) {
-        setPdfPreviewData(res.data.data.pdf_data || res.data.data);
+        if (res.data.data.pdf) {
+          // If PDF is returned as base64, download it
+          const pdfData = res.data.data.pdf;
+          const byteCharacters = atob(pdfData);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/pdf' });
+          const url = window.URL.createObjectURL(blob);
+          window.open(url, '_blank');
+        } else {
+          // If Drive link is available, use that
+          setPdfPreviewData(res.data.data.pdf_data || res.data.data);
+        }
+        
+        toast.success(`PDF generated with ${res.data.data.imagesEmbedded || 0} images`);
       }
-    } catch (e) { alert("PDF Generation Failed"); }
-    finally { setIsGeneratingPDF(false); }
+    } catch (error: any) {
+      console.error("PDF Generation Failed:", error);
+      
+      // Check if error is due to token expiration
+      if (error.response?.status === 401 || 
+          error.response?.data?.error === 'token_expired' ||
+          error.response?.data?.message?.includes('token')) {
+        setShowGoogleReLogin(true);
+        setPendingPDFGeneration(true);
+      } else {
+        toast.error(error.response?.data?.message || "Failed to generate PDF");
+      }
+    } finally { 
+      setIsGeneratingPDF(false); 
+    }
   };
 
   if (loading) return <LoaderX />;
-  if (!hasPermission) return <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-4"><Lock className="h-12 w-12 text-red-500 mb-4"/><h2 className="text-xl font-bold">Access Restricted</h2><Button onClick={() => setShowLoginDialog(true)} className="mt-4 bg-red-600">Login</Button><LoginDialog isOpen={showLoginDialog} onClose={() => router.push('/')} onSuccess={() => {setShowLoginDialog(false); loadNoteData();}} /></div>;
+  if (!hasPermission) return (
+    <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+      <Lock className="h-12 w-12 text-red-500 mb-4"/>
+      <h2 className="text-xl font-bold">Access Restricted</h2>
+      <Button onClick={() => setShowLoginDialog(true)} className="mt-4 bg-red-600">Login</Button>
+      <LoginDialog isOpen={showLoginDialog} onClose={() => router.push('/')} onSuccess={() => {setShowLoginDialog(false); loadNoteData();}} />
+    </div>
+  );
 
   return (
     <div className="h-dvh-screen w-screen bg-black flex flex-col overflow-hidden text-neutral-200">
+      
+      {/* Re-login Modal */}
+      <GoogleReLoginModal 
+        isOpen={showGoogleReLogin}
+        onClose={() => {
+          setShowGoogleReLogin(false);
+          setPendingPDFGeneration(false);
+        }}
+        onLogin={handleGoogleReLogin}
+      />
+      
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-red-900/10 rounded-full blur-[120px]" />
@@ -418,10 +642,10 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           <Header title={data?.title || "Note"} onBack={() => router.push('/')} />
         </div>
 
-        {/* LEFT PANEL: Editor & Preview (Desktop: Always Visible, Mobile: Conditional) */}
+        {/* LEFT PANEL: Editor & Preview */}
         <div className={`flex-1 flex flex-col min-h-0 lg:border-r border-neutral-800 ${mobileView === 'chat' ? 'hidden lg:flex' : 'flex'}`}>
           
-          {/* Desktop Tabs / Mobile Hidden */}
+          {/* Desktop Tabs */}
           <div className="hidden lg:flex p-2 border-b border-neutral-800 gap-2 items-center justify-between bg-neutral-900/50">
              <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={() => router.push('/')}><ArrowLeft className="h-4 w-4 mr-1"/> Home</Button>
@@ -435,6 +659,13 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
           {/* Content Area */}
           <div className="flex-1 overflow-hidden relative mobile-safe-bottom">
+            
+            {/* Token Expired Banner (shown when needed) */}
+            {googleTokenExpired && mobileView === 'preview' && (
+              <div className="absolute top-0 left-0 right-0 z-20 p-3">
+                <TokenExpiredBanner onLogin={() => setShowGoogleReLogin(true)} />
+              </div>
+            )}
             
             {/* VIEW: PREVIEW */}
             <div className={`absolute inset-0 p-3 lg:p-6 transition-opacity duration-300 ${mobileView === 'preview' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}`}>
@@ -488,11 +719,10 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                 />
               </div>
             </div>
-
           </div>
         </div>
 
-        {/* RIGHT PANEL: Chat (Desktop: Side Panel, Mobile: Full View) */}
+        {/* RIGHT PANEL: Chat */}
         <div className={`flex-1 lg:flex-[0_0_400px] xl:flex-[0_0_450px] bg-neutral-900/50 flex flex-col min-h-0 ${mobileView === 'chat' ? 'flex' : 'hidden lg:flex'}`}>
           <div className="p-3 border-b border-neutral-800 bg-neutral-950/50 backdrop-blur shrink-0 flex justify-between items-center">
              <div className="flex items-center gap-2">
@@ -563,7 +793,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                </div>
             </div>
 
-            {/* Input Area - Sticky above bottom nav on mobile */}
+            {/* Input Area */}
             <div className="p-3 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur shrink-0 mb-16 lg:mb-0 relative z-10">
                <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
                   <Input 
@@ -585,7 +815,6 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Mobile Bottom Nav */}

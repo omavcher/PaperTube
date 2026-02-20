@@ -7,6 +7,7 @@ const {GoogleGenAI} = require("@google/genai");
 const { google } = require("googleapis");
 const html_to_pdf = require("html-pdf-node");
 dotenv = require("dotenv");
+const axios = require('axios');
 
 
 const GoogleDriveService = require('../services/googleDriveService');
@@ -1118,124 +1119,314 @@ exports.getUserNotes = async (req, res) => {
 
 
 // Update your generatePDF function in noteController.js
+// In your noteController.js, update the generatePDF function:
+
+// In your noteController.js, update the generatePDF function:
+
+
 exports.generatePDF = async (req, res) => {
   try {
     const { noteId } = req.query;
     const userAccessToken = req.headers['x-google-access-token'];
     
-    if (!noteId) return res.status(400).json({ success: false, message: "Note ID is required" });
-    if (!userAccessToken) return res.status(401).json({ success: false, message: "Google access token required" });
+    console.log("📄 PDF Generation Request for note:", noteId);
+
+    if (!noteId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Note ID is required" 
+      });
+    }
+
+    if (!userAccessToken) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Google access token required. Please login again." 
+      });
+    }
 
     const note = await Note.findById(noteId);
-    if (!note) return res.status(404).json({ success: false, message: "Note not found" });
+    if (!note) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Note not found" 
+      });
+    }
 
-    // Check if PDF already exists
-    if (note.pdf_data?.downloadLink) {
+    console.log("✅ Found note:", note.title);
+
+    // Check if PDF already exists and is accessible
+    if (note.pdf_data?.fileId && note.pdf_data?.downloadLink) {
       try {
-      
+        const fileCheck = await axios.get(
+          `https://www.googleapis.com/drive/v3/files/${note.pdf_data.fileId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${userAccessToken}`
+            }
+          }
+        );
+        
+        console.log("✅ Existing PDF found and accessible");
+        
         return res.status(200).json({
           success: true,
           message: "PDF already generated",
           data: {
-            ...note.pdf_data
+            ...note.pdf_data.toObject(),
+            noteTitle: note.title
           }
         });
-      } catch (error) {
-        // If file not found in Drive, regenerate it
-        console.log('Existing PDF not found, regenerating...');
+      } catch (fileError) {
+        console.log('⚠️ Existing PDF not accessible, regenerating...');
       }
     }
 
-    console.log("✅ Generating PDF for note:", note.title);
+    console.log("🔄 Generating new PDF with images...");
 
+    // Process content to embed images
+    let processedContent = note.content || '';
+    
+    // Extract all image URLs from the content
+    const imgRegex = /<img[^>]+src="([^">]+)"/g;
+    const imgUrls = [];
+    let match;
+    
+    while ((match = imgRegex.exec(processedContent)) !== null) {
+      imgUrls.push(match[1]);
+    }
+    
+    console.log(`📸 Found ${imgUrls.length} images in content`);
+
+    // Download and convert images to base64
+    for (let i = 0; i < imgUrls.length; i++) {
+      const imgUrl = imgUrls[i];
+      try {
+        console.log(`🔄 Downloading image ${i + 1}/${imgUrls.length}:`, imgUrl.substring(0, 50) + '...');
+        
+        // Download image with proper headers
+        const imageResponse = await axios.get(imgUrl, {
+          responseType: 'arraybuffer',
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+        
+        // Convert to base64
+        const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
+        
+        // Determine content type
+        const contentType = imageResponse.headers['content-type'] || 'image/jpeg';
+        
+        // Create data URL
+        const dataUrl = `data:${contentType};base64,${base64Image}`;
+        
+        // Replace the URL in content with data URL
+        processedContent = processedContent.replace(imgUrl, dataUrl);
+        
+        console.log(`✅ Image ${i + 1} embedded successfully`);
+      } catch (imgError) {
+        console.error(`❌ Failed to download image ${imgUrl}:`, imgError.message);
+        
+        // Replace with a placeholder or remove the img tag
+        processedContent = processedContent.replace(
+          `<img src="${imgUrl}"`,
+          `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-family='Arial' font-size='16'%3EImage failed to load%3C/text%3E%3C/svg%3E"`,
+          processedContent
+        );
+      }
+    }
+
+    // Also process img_with_url if present
+    if (note.img_with_url && note.img_with_url.length > 0) {
+      for (let i = 0; i < note.img_with_url.length; i++) {
+        const imgItem = note.img_with_url[i];
+        if (imgItem.img_url && !processedContent.includes(imgItem.img_url)) {
+          try {
+            console.log(`🔄 Downloading additional image:`, imgItem.img_url);
+            
+            const imageResponse = await axios.get(imgItem.img_url, {
+              responseType: 'arraybuffer',
+              timeout: 10000
+            });
+            
+            const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
+            const contentType = imageResponse.headers['content-type'] || 'image/jpeg';
+            const dataUrl = `data:${contentType};base64,${base64Image}`;
+            
+            // Add to content if not already there
+            if (!processedContent.includes(dataUrl)) {
+              processedContent += `<div style="margin: 20px 0;"><img src="${dataUrl}" alt="${imgItem.title || 'Image'}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" /></div>`;
+            }
+          } catch (imgError) {
+            console.error(`❌ Failed to download additional image:`, imgError.message);
+          }
+        }
+      }
+    }
+
+    // Create HTML with embedded images
     const completeHTML = `
+      <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${note.title}</title>
         <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
           body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            color: #333; 
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; 
+            color: #1a1a1a; 
             padding: 40px;
             line-height: 1.6;
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
             background: white;
           }
           h1 { 
-            color: #27AE60; 
-            border-bottom: 3px solid #27AE60;
-            padding-bottom: 10px;
-            margin-bottom: 30px;
+            color: #2563eb; 
+            font-size: 28px;
+            font-weight: 700;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
           }
-          h2 { color: #2C3E50; margin-top: 30px; }
-          h3 { color: #34495E; }
-          p { margin-bottom: 15px; }
-          .content { margin-top: 20px; }
+          h2 { 
+            color: #1f2937; 
+            font-size: 22px;
+            font-weight: 600;
+            margin-top: 28px;
+            margin-bottom: 16px;
+          }
+          h3 { 
+            color: #374151; 
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 12px;
+          }
+          p { 
+            margin-bottom: 16px;
+            font-size: 14px;
+          }
+          img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            display: block;
+          }
+          .content {
+            margin-top: 20px;
+          }
           .footer {
-            margin-top: 50px;
+            margin-top: 60px;
             padding-top: 20px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid #e5e7eb;
             font-size: 12px;
-            color: #777;
+            color: #6b7280;
             text-align: center;
           }
           code {
-            background-color: #f8f8f8;
+            background-color: #f3f4f6;
             padding: 2px 6px;
             border-radius: 4px;
             font-family: 'Courier New', monospace;
+            font-size: 13px;
           }
           pre {
-            background-color: #f8f8f8;
-            padding: 15px;
-            border-radius: 5px;
+            background-color: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
             overflow-x: auto;
-            border-left: 4px solid #27AE60;
+            border-left: 4px solid #2563eb;
+            margin: 16px 0;
           }
           blockquote {
-            border-left: 4px solid #ddd;
+            border-left: 4px solid #d1d5db;
             padding-left: 20px;
-            margin-left: 0;
-            color: #666;
+            margin: 16px 0;
+            color: #4b5563;
             font-style: italic;
           }
-          img { max-width: 100%; height: auto; }
           table {
             border-collapse: collapse;
             width: 100%;
             margin: 20px 0;
+            font-size: 14px;
           }
           th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            border: 1px solid #e5e7eb;
+            padding: 10px;
             text-align: left;
           }
           th {
-            background-color: #f2f2f2;
+            background-color: #f9fafb;
+            font-weight: 600;
+          }
+          ul, ol {
+            margin: 16px 0;
+            padding-left: 24px;
+          }
+          li {
+            margin-bottom: 8px;
+            font-size: 14px;
+          }
+          .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+          }
+          .image-grid img {
+            margin: 0;
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+          }
+          @media print {
+            body {
+              padding: 20px;
+            }
+            img {
+              max-width: 100% !important;
+              page-break-inside: avoid;
+            }
           }
         </style>
       </head>
       <body>
         <header>
           <h1>${note.title}</h1>
-          <div style="color: #666; font-size: 14px; margin-bottom: 20px;">
-            Created on ${new Date(note.createdAt).toLocaleDateString('en-US', {
+          <div style="color: #6b7280; font-size: 13px; margin-bottom: 24px; display: flex; gap: 20px;">
+            <span>Created: ${new Date(note.createdAt).toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'long',
               day: 'numeric'
-            })}
+            })}</span>
+            ${note.videoUrl ? `<span>Source: YouTube Video</span>` : ''}
           </div>
         </header>
+        
         <main class="content">
-          ${note.content || ''}
+          ${processedContent}
         </main>
+        
         <div class="footer">
           <p>Generated by PaperTube • ${new Date().toLocaleDateString()}</p>
         </div>
       </body>
       </html>
     `;
+
+    console.log("✅ HTML generated with embedded images");
 
     const options = {
       format: 'A4',
@@ -1246,69 +1437,86 @@ exports.generatePDF = async (req, res) => {
         left: '40px'
       },
       printBackground: true,
-      preferCSSPageSize: true
+      preferCSSPageSize: true,
+      timeout: 30000, // 30 second timeout for large PDFs
+      waitUntil: 'networkidle0' // Wait for all resources to load
     };
 
     const file = { content: completeHTML };
     const pdfBuffer = await html_to_pdf.generatePdf(file, options);
 
-    console.log("✅ PDF generated, uploading to Google Drive...");
+    console.log("✅ PDF generated, size:", (pdfBuffer.length / 1024 / 1024).toFixed(2), "MB");
 
     // Upload to Google Drive
-    const fileName = `${note.title.replace(/[^\w\s.-]/gi, '_').substring(0, 100)}_${Date.now()}.pdf`;
-    const uploadResult = await GoogleDriveService.uploadPDF(
-      pdfBuffer,
-      fileName,
-      'application/pdf',
-      userAccessToken
-    );
+    const fileName = `${note.title.replace(/[^\w\s.-]/gi, '_').substring(0, 80)}_${Date.now()}.pdf`;
+    
+    try {
+      const uploadResult = await GoogleDriveService.uploadPDF(
+        pdfBuffer,
+        fileName,
+        'application/pdf',
+        userAccessToken
+      );
 
-    console.log("✅ File uploaded to Google Drive:", uploadResult.fileId);
+      console.log("✅ File uploaded to Google Drive:", uploadResult.fileId);
 
-    // Save PDF metadata to note WITHOUT triggering validation for generationDetails
-    // Use findByIdAndUpdate to bypass validation for the required field
-    await Note.findByIdAndUpdate(noteId, {
-      $set: {
-        pdf_data: {
+      // Save PDF metadata
+      await Note.findByIdAndUpdate(noteId, {
+        $set: {
+          pdf_data: {
+            fileId: uploadResult.fileId,
+            fileName: uploadResult.fileName,
+            viewLink: uploadResult.viewLink,
+            downloadLink: uploadResult.downloadLink,
+            thumbnailLink: uploadResult.thumbnailLink,
+            fileSize: uploadResult.fileSize,
+            uploadedAt: new Date()
+          }
+        }
+      });
+
+      const updatedNote = await Note.findById(noteId);
+
+      res.status(200).json({
+        success: true,
+        message: "PDF generated with images successfully",
+        data: {
           fileId: uploadResult.fileId,
-          fileName: uploadResult.fileName,
           viewLink: uploadResult.viewLink,
           downloadLink: uploadResult.downloadLink,
           thumbnailLink: uploadResult.thumbnailLink,
+          fileName: uploadResult.fileName,
           fileSize: uploadResult.fileSize,
-          uploadedAt: new Date()
+          generatedAt: new Date(),
+          noteTitle: note.title,
+          imagesEmbedded: imgUrls.length,
+          pdf_data: updatedNote.pdf_data
         }
-      }
-    }, { 
-      new: true,
-      runValidators: false // Disable validators to bypass required field check
-    });
-
-    // Fetch the updated note
-    const updatedNote = await Note.findById(noteId);
-
-    res.status(200).json({
-      success: true,
-      message: "PDF generated and uploaded to Google Drive successfully",
-      data: {
-        fileId: uploadResult.fileId,
-        viewLink: uploadResult.viewLink,
-        downloadLink: uploadResult.downloadLink,
-        thumbnailLink: uploadResult.thumbnailLink,
-        fileName: uploadResult.fileName,
-        fileSize: uploadResult.fileSize,
-        generatedAt: new Date(),
-        noteTitle: note.title,
-        pdf_data: updatedNote.pdf_data
-      }
-    });
+      });
+    } catch (uploadError) {
+      console.error("❌ Google Drive upload error:", uploadError);
+      
+      // If upload fails, return the PDF as base64 as fallback
+      const base64PDF = pdfBuffer.toString('base64');
+      
+      res.status(200).json({
+        success: true,
+        message: "PDF generated but Drive upload failed",
+        data: {
+          pdf: base64PDF,
+          fileName: fileName,
+          generatedAt: new Date(),
+          noteTitle: note.title,
+          imagesEmbedded: imgUrls.length
+        }
+      });
+    }
   } catch (error) {
     console.error("❌ Error generating PDF:", error);
     res.status(500).json({ 
       success: false, 
       message: "PDF generation failed", 
-      error: error.message,
-      stack: error.stack
+      error: error.message
     });
   }
 };

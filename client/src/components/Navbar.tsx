@@ -393,20 +393,45 @@ const NavDropdown = ({ label, items }: any) => {
     );
 };
 
+// In your Navbar component, update the GoogleLoginBtn function:
+
 function GoogleLoginBtn({ onSuccess, loading }: any) {
     const login = useGoogleLogin({
-      onSuccess: async (tokenResponse) => {
-        const { data: userInfo } = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-        });
-        const res = await api.post("/auth/google", { googleAccessToken: tokenResponse.access_token, authType: 'access_token' });
-        onSuccess(tokenResponse.access_token, userInfo, res.data);
-      },
+        onSuccess: async (tokenResponse) => {
+            console.log("✅ Google login successful, token received");
+            
+            // Get user info from Google
+            const { data: userInfo } = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+            });
+            
+            console.log("👤 User info:", userInfo);
+            
+            // Send to backend
+            const res = await api.post("/auth/google", { 
+                googleAccessToken: tokenResponse.access_token, 
+                authType: 'access_token' 
+            });
+            
+            // Store tokens in localStorage
+            localStorage.setItem("authToken", res.data.data.token);
+            localStorage.setItem("googleAccessToken", tokenResponse.access_token);
+            localStorage.setItem("user", JSON.stringify(res.data.data.user));
+            
+            onSuccess(tokenResponse.access_token, userInfo, res.data);
+        },
+        onError: (error) => {
+            console.error("❌ Google login error:", error);
+            toast.error("Google login failed. Please try again.");
+        },
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email', // Request Drive scope
+        flow: 'implicit', // Use implicit flow for access token
     });
+    
     return (
-      <button onClick={() => login()} disabled={loading} className="flex items-center gap-2 px-5 py-2 text-xs font-bold uppercase tracking-wide bg-white text-black rounded-xl hover:bg-neutral-200 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-white/5">
-        {loading ? <div className="h-3 w-3 border-2 border-t-transparent border-black rounded-full animate-spin" /> : <FcGoogle size={16} />}
-        Sign In
-      </button>
+        <button onClick={() => login()} disabled={loading} className="flex items-center gap-2 px-5 py-2 text-xs font-bold uppercase tracking-wide bg-white text-black rounded-xl hover:bg-neutral-200 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-white/5">
+            {loading ? <div className="h-3 w-3 border-2 border-t-transparent border-black rounded-full animate-spin" /> : <FcGoogle size={16} />}
+            Sign In
+        </button>
     );
-};
+}
