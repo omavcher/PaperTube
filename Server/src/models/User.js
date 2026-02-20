@@ -92,7 +92,7 @@ followingUsers: [{
   },
     tokens: {
       type: Number,
-      default: 3,
+      default: 20,
     },
     tokenUsageHistory: [TokenUsageSchema],
     lastTokenReset: {
