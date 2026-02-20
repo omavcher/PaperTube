@@ -21,7 +21,9 @@ import {
   Sparkles,
   FileText,
   Plus,
-  Compass
+  Compass,
+  Database,
+  Loader2
 } from "lucide-react";
 import { IconFolderCode } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -153,78 +155,85 @@ const NoteCard = React.memo(({
   return (
     <div
       onClick={handleCardClick}
-      className={`group cursor-pointer bg-neutral-900/50 border border-white/5 hover:border-white/10 active:scale-95 transition-all duration-300 rounded-2xl overflow-hidden flex flex-col relative
+      className={`group cursor-pointer bg-neutral-900/40 border border-white/5 hover:border-red-600/30 hover:bg-neutral-900/60 active:scale-95 transition-all duration-300 rounded-2xl md:rounded-[1.5rem] overflow-hidden flex flex-col relative
         ${viewMode === "grid" 
           ? "h-full" 
           : "flex-row h-24 sm:h-auto"
         }`}
     >
       {/* Thumbnail Section */}
-      <div className={`relative overflow-hidden bg-zinc-800 flex-shrink-0 
-        ${viewMode === "grid" ? "w-full aspect-video" : "w-32 sm:w-48 h-full"}`}>
+      <div className={`relative overflow-hidden bg-neutral-900 flex-shrink-0 
+        ${viewMode === "grid" ? "w-full aspect-video border-b border-white/5" : "w-32 sm:w-48 h-full border-r border-white/5"}`}>
         
+        {/* Subtle Background Glow */}
+        <div className="absolute inset-0 bg-red-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10 pointer-events-none mix-blend-overlay" />
+
         {thumbnailUrl ? (
           <img 
             src={thumbnailUrl} 
             alt={note.title} 
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-zinc-900">
-             <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-600">
-                <PlayCircle size={16} />
+          <div className="w-full h-full flex items-center justify-center bg-black">
+             <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center text-neutral-500">
+                <PlayCircle size={20} />
              </div>
           </div>
         )}
         
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+
         {/* Desktop Hover Overlay (Hidden on Mobile) */}
-        <div className="hidden md:flex absolute inset-0 bg-black/40 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-           <div className="rounded-full p-2 bg-white/10 backdrop-blur-md text-white border border-white/20">
-             <FileText size={16} />
+        <div className="hidden md:flex absolute inset-0 bg-black/40 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+           <div className="rounded-full p-3 bg-red-600/20 backdrop-blur-md text-red-500 border border-red-600/30 scale-90 group-hover:scale-100 transition-transform duration-300 shadow-lg">
+             <FileText size={18} />
            </div>
         </div>
 
         {/* Timestamp Badge (Compact) */}
-        <div className="absolute bottom-1.5 right-1.5 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-zinc-300 font-bold backdrop-blur-sm border border-white/5">
+        <div className="absolute top-2 right-2 md:top-3 md:right-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg text-[8px] md:text-[9px] text-white font-bold uppercase tracking-widest border border-white/10 z-20">
           {formatDate(note.updatedAt || note.createdAt, true)} 
         </div>
       </div>
 
       {/* Content Section */}
-      <div className={`flex flex-col flex-1 ${viewMode === "grid" ? "p-3" : "p-3 sm:p-4"}`}>
+      <div className={`flex flex-col flex-1 ${viewMode === "grid" ? "p-3 md:p-5" : "p-3 sm:p-5"}`}>
         
         {/* Title */}
-        <h3 className={`font-bold text-zinc-100 mb-1 leading-tight group-hover:text-white transition-colors
-          ${viewMode === 'grid' ? 'text-xs sm:text-sm line-clamp-2' : 'text-sm sm:text-base line-clamp-1'}`}>
+        <h3 className={`font-bold text-white mb-2 leading-tight group-hover:text-red-400 transition-colors
+          ${viewMode === 'grid' ? 'text-xs md:text-sm line-clamp-2' : 'text-sm md:text-base line-clamp-1'}`}>
           {searchQuery ? highlightText(note.title, searchQuery) : note.title}
         </h3>
 
         {/* Footer Area */}
-        <div className="mt-auto pt-2 flex items-center justify-between text-[10px] sm:text-xs text-zinc-500">
+        <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-[9px] md:text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
            
            {/* Left: Creator/Type */}
            {showCreator ? (
-             <div className="flex items-center gap-1.5 max-w-[70%]" onClick={handleCreatorClick}>
+             <div className="flex items-center gap-2 max-w-[70%] hover:text-white transition-colors" onClick={handleCreatorClick}>
                {note.creator?.avatarUrl ? (
-                 <img src={note.creator.avatarUrl} alt="av" className="w-4 h-4 rounded-full border border-zinc-700" />
+                 <img src={note.creator.avatarUrl} alt="av" className="w-5 h-5 rounded-md border border-white/10" />
                ) : (
-                 <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px]">
+                 <div className="w-5 h-5 rounded-md bg-neutral-800 flex items-center justify-center text-white border border-white/10">
                    {getCreatorInitial(note.creator)}
                  </div>
                )}
                <span className="truncate">{getCreatorName(note.creator)}</span>
              </div>
            ) : (
-             <span className="flex items-center gap-1">
-               <User size={10} /> Personal
+             <span className="flex items-center gap-1.5">
+               <User size={12} className="text-red-500" /> Personal
              </span>
            )}
 
-           {/* Right: Views or Host */}
+           {/* Right: Views */}
            {note.views !== undefined && note.views > 0 && (
-             <span className="flex items-center gap-1">
-               {note.views} views
+             <span className="flex items-center gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
+               <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+               {note.views}
              </span>
            )}
         </div>
@@ -349,7 +358,7 @@ export default function NotesWorkspace() {
   const highlightText = useCallback((text: string, highlight: string) => {
     if (!highlight.trim() || !text) return text;
     const parts = text.split(new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
-    return <>{parts.map((p, i) => p.toLowerCase() === highlight.toLowerCase() ? <mark key={i} className="bg-yellow-500/30 text-yellow-200">{p}</mark> : p)}</>;
+    return <>{parts.map((p, i) => p.toLowerCase() === highlight.toLowerCase() ? <mark key={i} className="bg-red-500/30 text-red-200 rounded px-0.5">{p}</mark> : p)}</>;
   }, []);
 
   const formatDate = (dateString: string, short = false) => {
@@ -364,101 +373,127 @@ export default function NotesWorkspace() {
 
   if (isAuthenticated === false && loading === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <div className="text-center space-y-4">
-          <Lock className="w-12 h-12 mx-auto text-zinc-600" />
-          <p className="text-lg text-zinc-400">Please login to access your library</p>
-          <Button onClick={() => router.push('/login')} className="bg-white text-black">Login</Button>
+      <div className="min-h-screen flex items-center justify-center bg-black text-white font-sans selection:bg-red-900/50">
+        <div className="text-center space-y-6 max-w-sm p-8 bg-neutral-900/40 border border-white/10 rounded-3xl backdrop-blur-md">
+          <div className="w-16 h-16 bg-red-600/10 rounded-2xl mx-auto flex items-center justify-center border border-red-600/20 shadow-[0_0_30px_rgba(220,38,38,0.2)]">
+             <Lock className="w-8 h-8 text-red-500" />
+          </div>
+          <div className="space-y-2">
+             <h2 className="text-2xl font-bold tracking-tight">Access Restricted</h2>
+             <p className="text-sm text-neutral-400 font-medium">Please initialize a session to access the neural library.</p>
+          </div>
+          <Button onClick={() => router.push('/login')} className="w-full bg-white text-black hover:bg-neutral-200 font-bold uppercase tracking-widest text-xs h-12 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+             Establish Link
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-black text-white font-sans selection:bg-zinc-800">
+    <div className="min-h-screen w-full bg-black text-white font-sans selection:bg-red-900/50">
       
-      {/* --- DESKTOP: Sticky Top Navbar --- */}
+      {/* --- DESKTOP & MOBILE Sticky Top Navbar --- */}
       <div className="sticky top-0 z-40 w-full bg-black/80 backdrop-blur-xl border-b border-white/5">
-         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 md:py-4 flex items-center justify-between gap-4">
             
             {/* Logo/Title */}
-            <div className="flex items-center gap-2">
-               <div className="md:hidden font-bold text-lg tracking-tight">Library</div>
-               <div className="hidden md:block">
-                  <h1 className="text-lg font-bold tracking-tight text-white">Library</h1>
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Workspace</p>
+            <div className="flex items-center gap-3">
+               <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-xl flex items-center justify-center text-black shrink-0">
+                  <Database size={18} className="md:w-5 md:h-5" />
+               </div>
+               <div>
+                  <h1 className="text-lg md:text-xl font-bold tracking-tight text-white leading-tight">Data Library</h1>
+                  <p className="text-[9px] md:text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Personal Workspace</p>
                </div>
             </div>
 
             {/* Desktop Tabs & Search */}
-            <div className="hidden md:flex flex-1 max-w-2xl gap-4">
+            <div className="hidden md:flex flex-1 max-w-2xl gap-4 ml-8">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-                    <TabsList className="bg-zinc-900/50 border border-white/5 h-9">
-                        <TabsTrigger value="explore" className="text-xs px-4">Community</TabsTrigger>
-                        <TabsTrigger value="my-bag" className="text-xs px-4">Personal</TabsTrigger>
+                    <TabsList className="bg-neutral-900/50 border border-white/10 h-11 p-1 rounded-xl">
+                        <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider px-6 rounded-lg data-[state=active]:bg-white data-[state=active]:text-black transition-all">Community</TabsTrigger>
+                        <TabsTrigger value="my-bag" className="text-xs font-bold uppercase tracking-wider px-6 rounded-lg data-[state=active]:bg-white data-[state=active]:text-black transition-all">Personal</TabsTrigger>
                     </TabsList>
                 </Tabs>
                 <div className="relative flex-1 group">
-                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-white transition-colors" size={14} />
-                   <input 
-                     value={searchQuery}
-                     onChange={(e) => setSearchQuery(e.target.value)}
-                     placeholder="Search..."
-                     className="w-full bg-zinc-900/50 border border-white/5 rounded-lg h-9 pl-9 text-sm focus:outline-none focus:bg-zinc-900 focus:border-white/20 transition-all text-white placeholder:text-zinc-600"
-                   />
+                   <div className="absolute -inset-0.5 bg-red-600/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
+                   <div className="relative flex items-center bg-black border border-white/10 rounded-xl h-11 px-4">
+                      <Search className="text-neutral-500 mr-2 group-focus-within:text-red-500 transition-colors" size={16} />
+                      <input 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search databases..."
+                        className="w-full bg-transparent border-none focus:outline-none text-xs font-bold uppercase tracking-wider text-white placeholder:text-neutral-600"
+                      />
+                   </div>
                 </div>
             </div>
 
             {/* Actions: Sort & Create */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 md:gap-3">
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                     <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white hover:bg-white/5 w-9 h-9">
-                        <List size={18} />
+                     <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white hover:bg-white/10 w-10 h-10 rounded-xl border border-white/5 bg-neutral-900/50">
+                        <List size={16} />
                      </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-neutral-900 border-neutral-800 text-white">
-                      <DropdownMenuItem onClick={() => setSortBy("updatedAt")}>Newest First</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy("title")}>A-Z</DropdownMenuItem>
-                      <div className="h-px bg-white/10 my-1" />
-                      <DropdownMenuItem onClick={() => setViewMode("grid")}>Grid View</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setViewMode("list")}>List View</DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="bg-[#0a0a0a] border-white/10 text-white rounded-2xl p-2 w-48 shadow-2xl">
+                      <div className="px-2 pb-2 mb-2 border-b border-white/5">
+                         <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">View Options</span>
+                      </div>
+                      <DropdownMenuItem onClick={() => setSortBy("updatedAt")} className="text-xs font-medium focus:bg-white/10 rounded-lg cursor-pointer">Newest First</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortBy("title")} className="text-xs font-medium focus:bg-white/10 rounded-lg cursor-pointer">A-Z Alphabetical</DropdownMenuItem>
+                      <div className="h-px bg-white/5 my-2" />
+                      <DropdownMenuItem onClick={() => setViewMode("grid")} className="text-xs font-medium focus:bg-white/10 rounded-lg cursor-pointer">Grid View</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setViewMode("list")} className="text-xs font-medium focus:bg-white/10 rounded-lg cursor-pointer">List View</DropdownMenuItem>
                   </DropdownMenuContent>
                </DropdownMenu>
 
                <Button 
                   onClick={() => router.push('/')}
-                  className="hidden md:flex bg-white hover:bg-neutral-200 text-black rounded-lg h-9 text-xs font-bold px-4"
+                  className="hidden md:flex bg-red-600 hover:bg-red-700 text-white rounded-xl h-10 text-xs font-bold uppercase tracking-widest px-6 shadow-[0_0_15px_rgba(220,38,38,0.4)] transition-all"
                >
-                  <Plus size={14} className="mr-1.5" /> New Note
+                  <Plus size={16} className="mr-2" /> Init Note
                </Button>
             </div>
          </div>
       </div>
 
-      {/* --- MOBILE: Sub-Header (Search) --- */}
-      <div className="md:hidden px-4 py-2 sticky top-[57px] z-30 bg-black/95 backdrop-blur-md border-b border-white/5">
-        <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
-            <input 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search your notes..."
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl h-10 pl-9 text-sm focus:outline-none focus:border-zinc-700 text-white"
-            />
-        </div>
+      {/* --- MOBILE ONLY: Sub-Header (Tabs & Search) --- */}
+      <div className="md:hidden px-4 py-3 sticky top-[65px] z-30 bg-black/95 backdrop-blur-md border-b border-white/5 space-y-3">
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="bg-neutral-900 border border-white/10 h-10 p-1 rounded-xl w-full grid grid-cols-2">
+                <TabsTrigger value="explore" className="text-[10px] font-bold uppercase tracking-widest rounded-lg data-[state=active]:bg-white data-[state=active]:text-black transition-all">Community</TabsTrigger>
+                <TabsTrigger value="my-bag" className="text-[10px] font-bold uppercase tracking-widest rounded-lg data-[state=active]:bg-white data-[state=active]:text-black transition-all">Personal</TabsTrigger>
+            </TabsList>
+         </Tabs>
+         
+         <div className="relative group">
+            <div className="absolute -inset-0.5 bg-red-600/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
+            <div className="relative flex items-center bg-black border border-white/10 rounded-xl h-10 px-3">
+                <Search className="text-neutral-500 mr-2 group-focus-within:text-red-500 transition-colors" size={14} />
+                <input 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search databases..."
+                  className="w-full bg-transparent border-none focus:outline-none text-[10px] font-bold uppercase tracking-wider text-white placeholder:text-neutral-600"
+                />
+            </div>
+         </div>
       </div>
 
       {/* --- CONTENT AREA --- */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-8 min-h-[60vh]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 min-h-[60vh]">
          {loading && currentItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-zinc-500 gap-3">
-               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
-               <p className="text-xs uppercase tracking-widest">Syncing Library...</p>
+            <div className="flex flex-col items-center justify-center py-32 text-neutral-500 gap-4">
+               <Loader2 className="animate-spin text-red-500" size={32} />
+               <p className="text-[10px] font-bold uppercase tracking-widest animate-pulse">Syncing Database...</p>
             </div>
          ) : currentItems.length > 0 ? (
             <div className="animate-in fade-in duration-500">
-               <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4" : "flex flex-col gap-3"}>
+               {/* Fixed Grid for Mobile to show 2 items per row */}
+               <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5" : "flex flex-col gap-3 md:gap-4"}>
                   {currentItems.map((note) => (
                     <NoteCard 
                       key={note._id} 
@@ -476,62 +511,31 @@ export default function NotesWorkspace() {
                </div>
                
                {hasMore && (
-                 <div className="flex justify-center mt-8">
-                   <Button variant="ghost" onClick={handleLoadMore} disabled={loading} className="text-xs text-zinc-500 hover:text-white">
-                      {loading ? "Loading..." : "Load More"}
+                 <div className="flex justify-center mt-12 mb-8">
+                   <Button variant="outline" onClick={handleLoadMore} disabled={loading} className="bg-transparent border-white/10 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:text-white hover:bg-white/5 rounded-xl h-12 px-8 transition-colors">
+                      {loading ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : null}
+                      {loading ? "Extracting..." : "Load More Nodes"}
                    </Button>
                  </div>
                )}
             </div>
          ) : (
-            <div className="py-20 flex justify-center">
-              <Empty className="max-w-xs">
+            <div className="py-32 flex justify-center">
+              <Empty className="max-w-sm border border-white/5 bg-neutral-900/30 rounded-[2rem] p-8 backdrop-blur-sm">
                  <EmptyHeader>
-                   <div className="mx-auto w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center border border-zinc-800 mb-4">
-                     {activeTab === 'explore' ? <Globe className="text-zinc-500" size={24} /> : <IconFolderCode className="text-zinc-500" size={24} />}
+                   <div className="mx-auto w-16 h-16 bg-black rounded-2xl flex items-center justify-center border border-white/10 mb-6 shadow-xl">
+                     {activeTab === 'explore' ? <Globe className="text-neutral-500" size={28} /> : <IconFolderCode className="text-neutral-500" size={28} />}
                    </div>
-                   <EmptyTitle className="text-white text-lg font-bold">
-                     {activeTab === 'explore' ? 'No results' : 'Library Empty'}
+                   <EmptyTitle className="text-white text-xl font-bold tracking-tight">
+                     {activeTab === 'explore' ? 'No Signals Found' : 'Empty Directory'}
                    </EmptyTitle>
-                   <EmptyDescription className="text-zinc-500 text-xs mt-1">
-                     {activeTab === 'explore' ? `Try a different search term.` : 'Create your first AI note to get started.'}
+                   <EmptyDescription className="text-neutral-400 text-sm mt-2 font-medium">
+                     {activeTab === 'explore' ? `Adjust search parameters to locate files.` : 'Initialize your first AI note sequence.'}
                    </EmptyDescription>
                  </EmptyHeader>
               </Empty>
             </div>
          )}
-      </div>
-
-      {/* --- MOBILE: Sticky Bottom Navigation --- */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-black/90 backdrop-blur-xl border-t border-white/5 pb-safe">
-         <div className="flex items-center justify-around h-16 px-2">
-            
-            {/* Tab: Personal */}
-            <button 
-               onClick={() => setActiveTab("my-bag")}
-               className={cn("flex flex-col items-center gap-1 p-2 rounded-xl transition-all w-16", activeTab === "my-bag" ? "text-white" : "text-zinc-600")}
-            >
-               <IconFolderCode size={20} stroke={activeTab === "my-bag" ? 2.5 : 2} />
-               <span className="text-[9px] font-medium">Personal</span>
-            </button>
-
-            {/* Floating Action Button (Center) */}
-            <button 
-               onClick={() => router.push('/')}
-               className="relative -top-5 bg-white text-black rounded-full w-14 h-14 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.2)] active:scale-95 transition-transform"
-            >
-               <Plus size={28} />
-            </button>
-
-            {/* Tab: Explore */}
-            <button 
-               onClick={() => setActiveTab("explore")}
-               className={cn("flex flex-col items-center gap-1 p-2 rounded-xl transition-all w-16", activeTab === "explore" ? "text-white" : "text-zinc-600")}
-            >
-               <Compass size={20} stroke={activeTab === "explore" ? 2.5 : 2} />
-               <span className="text-[9px] font-medium">Explore</span>
-            </button>
-         </div>
       </div>
 
     </div>

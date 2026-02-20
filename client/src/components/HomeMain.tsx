@@ -406,12 +406,6 @@ export default function HomeMain() {
                 </div>
               </div>
 
-              {/* Minimal Footer */}
-              <div className="flex gap-6 text-[10px] font-bold text-neutral-600 uppercase tracking-widest">
-                <span>Core V4.2</span>
-                <span>•</span>
-                <span>AES-256 Encrypted</span>
-              </div>
             </motion.div>
           ) : (
             /* ================= LOADING STATE ================= */
