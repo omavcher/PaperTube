@@ -262,16 +262,29 @@ export default function HomeMain() {
               transition={{ duration: 0.5, ease: "easeOut" }}
               className="flex flex-col items-center space-y-10"
             >
-               {/* Branding */}
-               <div className="text-center space-y-4">
-                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                   Neural Generation Engine
-                 </div>
-                 <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500">
-                   PaperTube.
-                 </h1>
-               </div>
+             {/* Branding */}
+              <div className="text-center space-y-5 md:space-y-6 mb-6 md:mb-10">
+                
+                {/* Status Badge (Brand name moved here) */}
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/50 border border-white/10 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400 backdrop-blur-md shadow-lg"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"></div>
+                  PaperTube Engine Active
+                </motion.div>
+                
+                {/* Main Title & Subtitle */}
+                <div className="space-y-4 md:space-y-5">
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-400 leading-[1.1] pb-2">
+                    Turn YouTube into <br className="hidden sm:block" />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]">
+                      Beautiful Notes.
+                    </span>
+                  </h1>
+                </div>
+              </div>
 
               {/* Main Interaction Card */}
               <div className="w-full max-w-3xl bg-neutral-900/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-2 relative">
