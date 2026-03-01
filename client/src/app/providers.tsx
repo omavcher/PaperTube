@@ -36,16 +36,25 @@ export function Providers({ children }: { children: React.ReactNode }) {
   ].some(path => pathname?.startsWith(path));
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    const userData = localStorage.getItem("user");
-    if (token && userData) {
-      setIsLoggedIn(true);
-      try {
-        setUser(JSON.parse(userData));
-      } catch (e) {
-        console.error("Failed to parse user data", e);
+    const syncAuthState = () => {
+      const token = localStorage.getItem("authToken");
+      const userData = localStorage.getItem("user");
+      if (token && userData) {
+        setIsLoggedIn(true);
+        try {
+          setUser(JSON.parse(userData));
+        } catch (e) {
+          console.error("Failed to parse user data", e);
+        }
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
       }
-    }
+    };
+
+    syncAuthState();
+    window.addEventListener("auth-change", syncAuthState);
+    return () => window.removeEventListener("auth-change", syncAuthState);
   }, []);
 
    useEffect(() => {
@@ -76,17 +85,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const handleLoginSuccess = async (googleAccessToken: string, userInfo: any, backendResponse?: any) => {
     try {
       setAuthLoading(true);
-      if (backendResponse?.success) {
-        const { token, user: backendUser, googleAccessToken: gToken, expiresIn } = backendResponse.data;
+      if (backendResponse?.success && backendResponse?.data) {
+        const { token, user: backendUser } = backendResponse.data;
 
         localStorage.setItem("authToken", token);
-        localStorage.setItem("googleAccessToken", gToken);
         localStorage.setItem("user", JSON.stringify(backendUser));
-        localStorage.setItem("expiresIn", expiresIn.toString());
 
         setUser(backendUser);
         setIsLoggedIn(true);
-        toast.success(`Identity Verified: ${backendUser.name}`);
+        toast.success(`Welcome, ${backendUser.name}!`);
+        window.dispatchEvent(new Event("auth-change"));
       }
     } catch {
       toast.error("Auth Handshake Failed");

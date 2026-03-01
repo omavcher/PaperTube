@@ -386,27 +386,7 @@ const getPremiumModelPrompt = (model, transcript, userPrompt, images_json, video
   - Video URL for linking: ${videoUrl}
   `;
 
-  // --- 2. MANDATORY FOOTER (Copy this HTML exactly at the end) ---
-  const commonFooter = `
-  <div style="margin-top: 40px; padding: 20px 30px; border-top: 2px solid #f1f5f9; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: table; width: 100%; box-sizing: border-box; background-color: #fafaf9; page-break-inside: avoid;">
-    <div style="display: table-cell; vertical-align: middle; text-align: left;">
-        <a href="https://papertube.in" style="text-decoration: none;">
-            <span style="font-size: 18px; font-weight: 900; font-style: italic; letter-spacing: -0.5px; text-transform: uppercase; color: #0a0a0a;">
-                Paper<span style="color: #dc2626;">Tube</span>
-            </span>
-        </a>
-        <div style="font-size: 9px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">
-            AI Knowledge Synthesis
-        </div>
-    </div>
-    <div style="display: table-cell; vertical-align: middle; text-align: right;">
-        <a href="https://papertube.in" style="color: #475569; font-size: 11px; text-decoration: none; font-weight: 500;">
-            Convert any YouTube Video to PDF <span style="color: #dc2626; font-weight: 900; margin-left: 4px;">&rarr;</span>
-        </a>
-    </div>
-  </div>`;
-
-  // --- 3. MODEL SPECIFIC PROMPTS ---
+  // --- 2. MODEL SPECIFIC PROMPTS ---
 
   // =========================================================
   // 🔥 MODEL: PARIKSHA-SARTHI (Exam-Focused Q&A)
@@ -438,9 +418,7 @@ const getPremiumModelPrompt = (model, transcript, userPrompt, images_json, video
 - Aggressively convert paragraphs into Question/Answer flashcards.
 - Identify the 3 most crucial takeaways and wrap them in the "Important Callout" HTML.
 - Inject images from ${images_json} above the relevant flashcard grids if it aids active recall.
-
-**MANDATORY FOOTER (Copy exactly at the end):**
-${commonFooter}`;
+`;
   }
 
   // =========================================================
@@ -475,9 +453,7 @@ ${commonFooter}`;
 - Create a Table of Contents right after the title.
 - Embed images from ${images_json} inside formal "Figure 1.1" style captions centered on the page.
 - Ensure the document reads like a published research paper or textbook chapter.
-
-**MANDATORY FOOTER (Copy exactly at the end):**
-${commonFooter}`;
+`;
   }
 
   // Fallback to base prompt if no match

@@ -6,7 +6,8 @@ import {
   Flame, Shield, Settings, LogOut, 
   ChevronRight, Calendar, Smartphone, 
   Mail, Award, Coins, FileText, Layers,
-  Download, Loader2, AlertCircle, ShieldCheck
+  Download, Loader2, AlertCircle, ShieldCheck,
+  MessageCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/config/api"; 
+import SupportTab from "./SupportTab";
 
 // --- PDF Generation Libraries ---
 import jsPDF from "jspdf";
@@ -55,7 +57,7 @@ const numToWords = (n: number) => {
 };
 
 export default function ProfilePage() {
-  const [activeTab, setActiveTab] = useState<"overview" | "history" | "billing">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "history" | "billing" | "support">("overview");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -254,6 +256,7 @@ export default function ProfilePage() {
                    <NavButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<User size={16} />} label="Overview" />
                    <NavButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<History size={16} />} label="Activity History" />
                    <NavButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={<CreditCard size={16} />} label="Billing & Plan" />
+                   <NavButton active={activeTab === 'support'} onClick={() => setActiveTab('support')} icon={<MessageCircle size={16} className="text-blue-500" />} label="Support Center" />
                    
                    <div className="pt-4 mt-4 border-t border-white/5">
                       <button className="flex items-center gap-3 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-500/10 rounded-xl w-full transition-colors uppercase tracking-wide">
@@ -263,13 +266,13 @@ export default function ProfilePage() {
                 </nav>
 
                 {/* Mobile Tabs */}
-                <div className="md:hidden bg-neutral-900/50 p-1 rounded-xl border border-white/5 flex">
-                   {(['overview', 'history', 'billing'] as const).map((tab) => (
+                <div className="md:hidden bg-neutral-900/50 p-1 rounded-xl border border-white/5 flex flex-wrap gap-1">
+                   {(['overview', 'history', 'billing', 'support'] as const).map((tab) => (
                       <button
                          key={tab}
                          onClick={() => setActiveTab(tab)}
                          className={cn(
-                            "flex-1 py-2 text-xs font-bold uppercase tracking-wide rounded-lg transition-all",
+                            "flex-1 min-w-[30%] py-2 text-[10px] font-bold uppercase tracking-wide rounded-lg transition-all",
                             activeTab === tab ? "bg-white text-black" : "text-neutral-500 hover:text-white"
                          )}
                       >
@@ -432,8 +435,22 @@ export default function ProfilePage() {
                    </motion.div>
                 )}
 
-             </AnimatePresence>
-          </div>
+                 {/* --- TAB: SUPPORT --- */}
+                 {activeTab === "support" && (
+                   <motion.div 
+                      key="support"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-6"
+                   >
+                     <SupportTab user={user} />
+                   </motion.div>
+                 )}
+
+              </AnimatePresence>
+           </div>
         </div>
       </div>
     </div>

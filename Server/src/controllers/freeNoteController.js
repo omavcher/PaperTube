@@ -647,7 +647,7 @@ const getModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, se
   ${userInstructions}
   `;
 
-  // --- LEVEL 1: SANKSHIPTA (Clean Minimalist with Footer) ---
+  // --- LEVEL 1: SANKSHIPTA (Clean Minimalist) ---
   const sankshiptaPrompt = `${basePrompt}
 
   **MODE: SANKSHIPTA (Clean Minimalist Notes)**
@@ -661,37 +661,14 @@ const getModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, se
   1. **Header:** Title with bottom border.
   2. **Summary:** Boxed summary section.
   3. **Content:** Clear <h2> headings and <ul> lists.
-  
-  **MANDATORY FOOTER (Copy this HTML exactly at the end):**
-  <div style="margin-top: 40px; padding: 20px 30px; border-top: 2px solid #f1f5f9; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: table; width: 100%; box-sizing: border-box; background-color: #fafaf9; page-break-inside: avoid;">
-  
-  <div style="display: table-cell; vertical-align: middle; text-align: left;">
-      <a href="https://papertube.in" style="text-decoration: none;">
-          <span style="font-size: 18px; font-weight: 900; font-style: italic; letter-spacing: -0.5px; text-transform: uppercase; color: #0a0a0a;">
-              Paper<span style="color: #dc2626;">Tube</span>
-          </span>
-      </a>
-      <div style="font-size: 9px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">
-          AI Knowledge Synthesis
-      </div>
-  </div>
-
-  <div style="display: table-cell; vertical-align: middle; text-align: right;">
-      <a href="https://papertube.in" style="color: #475569; font-size: 11px; text-decoration: none; font-weight: 500;">
-          Convert any YouTube Video to PDF <span style="color: #dc2626; font-weight: 900; margin-left: 4px;">&rarr;</span>
-      </a>
-  </div>
-
-</div>
 
   **Execution:**
   - Process this transcript: "${transcript}"
   - Create a clean document.
   - NO IMAGES.
-  - **Don't forget the footer.**
   `;
 
-  // --- LEVEL 2: BHASHASETU (Premium Visual with Footer) ---
+  // --- LEVEL 2: BHASHASETU (Premium Visual) ---
   const bhashasetuPrompt = `${basePrompt}
 
   **MODE: BHASHASETU (Premium Visual Study Guide)**
@@ -709,33 +686,10 @@ const getModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, se
   2. **Cards:** <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px;">
   3. **Timestamps:** <a href="${videoUrl}&t=Xs" style="background:#e0f2fe; color:#0284c7; padding:2px 8px; border-radius:12px; text-decoration:none; font-size:12px;">▶ Watch</a>
 
-  **MANDATORY FOOTER (Copy this HTML exactly at the end):**
-  <div style="margin-top: 40px; padding: 20px 30px; border-top: 2px solid #f1f5f9; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: table; width: 100%; box-sizing: border-box; background-color: #fafaf9; page-break-inside: avoid;">
-  
-  <div style="display: table-cell; vertical-align: middle; text-align: left;">
-      <a href="https://papertube.in" style="text-decoration: none;">
-          <span style="font-size: 18px; font-weight: 900; font-style: italic; letter-spacing: -0.5px; text-transform: uppercase; color: #0a0a0a;">
-              Paper<span style="color: #dc2626;">Tube</span>
-          </span>
-      </a>
-      <div style="font-size: 9px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">
-          AI Knowledge Synthesis
-      </div>
-  </div>
-
-  <div style="display: table-cell; vertical-align: middle; text-align: right;">
-      <a href="https://papertube.in" style="color: #475569; font-size: 11px; text-decoration: none; font-weight: 500;">
-          Convert any YouTube Video to PDF <span style="color: #dc2626; font-weight: 900; margin-left: 4px;">&rarr;</span>
-      </a>
-  </div>
-
-</div>
-
   **Execution:**
   - Process this transcript: "${transcript}"
   - Create a beautiful, magazine-quality HTML document.
   - Integrate images.
-  - **Ensure the branded footer is the very last element.**
   `;
 
   return model === 'sankshipta' ? sankshiptaPrompt : bhashasetuPrompt;

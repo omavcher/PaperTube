@@ -78,12 +78,12 @@ exports.googleAuth = async (req, res) => {
     console.log("👤 User info:", { email, name, picture: !!picture, googleId });
     
     // Handle user creation/update
-    const user = await handleUserAuth({ email, name, picture, googleId, accessToken });
+    const user = await handleUserAuth({ email, name, picture, googleId });
     
     console.log("✅ User processed:", user.email, user._id);
     
     // Send success response
-    return sendAuthResponse(res, user, accessToken);
+    return sendAuthResponse(res, user);
     
   } catch (error) {
     console.error("❌ Google Auth Error:", error);
@@ -175,7 +175,7 @@ async function handleUserAuth(userInfo) {
   console.log("🔄 Processing user in database...");
   
   try {
-    const { email, name, picture, googleId, accessToken } = userInfo;
+    const { email, name, picture, googleId } = userInfo;
     
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -192,7 +192,6 @@ async function handleUserAuth(userInfo) {
         email,
         username,
         picture,
-        googleAccessToken: accessToken,
         isVerified: true
       });
       
@@ -202,13 +201,8 @@ async function handleUserAuth(userInfo) {
       
       // Build update object
       const updateData = {};
-      
-      // Only update if not already set
       if (googleId && !user.googleId) updateData.googleId = googleId;
       if (picture) updateData.picture = picture;
-      
-      // Always update these fields
-      updateData.googleAccessToken = accessToken;
       updateData.lastLogin = new Date();
       
       // Use findByIdAndUpdate to avoid validation issues with existing fields
@@ -274,7 +268,7 @@ function generateUsername(email) {
 }
 
 // Helper function to send response
-function sendAuthResponse(res, user, accessToken) {
+function sendAuthResponse(res, user) {
   // Create JWT session token
   const token = jwt.sign(
     { 
@@ -282,7 +276,7 @@ function sendAuthResponse(res, user, accessToken) {
       email: user.email,
       name: user.name 
     },
-    process.env.JWT_SECRET || process.env.SESSION_SECRET, // Use JWT_SECRET as fallback
+    process.env.JWT_SECRET || process.env.SESSION_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
   );
 
@@ -301,12 +295,9 @@ function sendAuthResponse(res, user, accessToken) {
         username: user.username,
         googleId: user.googleId
       },
-      googleAccessToken: accessToken, // Send back to frontend for Drive operations
       expiresIn: 604800 // 7 days in seconds
     }
   };
-  
-  console.log("📤 Response being sent:", JSON.stringify(response, null, 2));
   
   return res.status(200).json(response);
 }

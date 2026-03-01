@@ -14,6 +14,7 @@ import api from "@/config/api";
 import Script from "next/script";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
+import { AuthLoginModal } from "@/components/AuthGuard";
 
 // --- Types ---
 interface Coupon {
@@ -436,6 +437,7 @@ export default function PricingSection() {
   const [activeSyncs] = useState(8420);
   const [transactionResult, setTransactionResult] = useState<any>(null);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // --- Data Definition ---
   const subscriptionPlans = [
@@ -708,6 +710,17 @@ export default function PricingSection() {
         onLoad={() => setRazorpayLoaded(true)}
       />
       
+      {/* Auth Modal */}
+      <AuthLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        message="Sign in to purchase a plan"
+        onSuccess={() => {
+          // After login, re-open the payment modal
+          if (selectedPackage) setModalOpen(true);
+        }}
+      />
+
       <NeuralModal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
         <PurchaseInterface 
           packageData={selectedPackage} 
@@ -884,6 +897,12 @@ export default function PricingSection() {
 
                 <button 
                   onClick={() => { 
+                    const token = localStorage.getItem('authToken');
+                    if (!token) {
+                      setSelectedPackage(plan);
+                      setShowLoginModal(true);
+                      return;
+                    }
                     setSelectedPackage(plan); 
                     setModalOpen(true); 
                   }}

@@ -10,8 +10,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGoogleLogin } from "@react-oauth/google";
-import axios from "axios";
 
 import {
   Download,
@@ -39,8 +37,8 @@ import {
   ExternalLink,
   MessageSquare,
   Home,
-  RefreshCw
 } from "lucide-react";
+
 
 import api from "@/config/api";
 import { LoaderX } from "@/components/LoaderX";
@@ -57,28 +55,9 @@ const getAuthToken = () => {
   return null;
 };
 
-const getGoogleToken = () => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem("googleAccessToken");
-  }
-  return null;
-};
-
 const isAuthenticated = () => !!getAuthToken();
 
 // --- TYPES ---
-interface PDFPreviewData {
-  fileId: string;
-  fileName: string;
-  viewLink: string;
-  downloadLink: string;
-  thumbnailLink: string;
-  fileSize: number | string;
-  uploadedAt: string;
-  generatedAt?: string;
-  noteTitle?: string;
-}
-
 interface ApiMessage { _id: string; role: string; content: string; timestamp: string; videoLink?: string; feedback?: "good" | "bad" | null; }
 interface ApiMessagesResponse { messages: ApiMessage[]; }
 interface NoteData { _id: string; title: string; content: string; thumbnail?: string; }
@@ -121,45 +100,13 @@ const iphoneStyles = `
 // 1. PDF Preview
 const PDFPreviewWithThumbnail: React.FC<{ 
   content: string; 
-  pdfData?: PDFPreviewData | null;
   isGenerating?: boolean;
   onGeneratePDF?: () => void;
-  onViewInTab?: () => void;
-}> = ({ content, pdfData, isGenerating = false, onGeneratePDF, onViewInTab }) => {
+}> = ({ content, isGenerating = false, onGeneratePDF }) => {
   const [showFullPreview, setShowFullPreview] = useState(false);
 
   return (
     <div className="w-full h-full border border-neutral-800 shadow-2xl overflow-hidden rounded-lg bg-white relative group animate-scale-in flex flex-col">
-      {/* Header */}
-      {(pdfData || isGenerating) && (
-        <div className="bg-neutral-900/95 p-3 border-b border-neutral-700 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3 overflow-hidden">
-            {pdfData?.thumbnailLink && (
-              <div className="relative w-8 h-10 rounded overflow-hidden border border-neutral-700 shrink-0">
-                <Image src={pdfData.thumbnailLink} alt="PDF" fill className="object-cover" />
-              </div>
-            )}
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-white truncate">{pdfData?.fileName || "Generating..."}</h3>
-              {pdfData?.fileSize && <p className="text-xs text-neutral-400">{typeof pdfData.fileSize === 'string' ? pdfData.fileSize : "PDF Ready"}</p>}
-            </div>
-          </div>
-          <div className="flex gap-2 shrink-0">
-             {!pdfData && onGeneratePDF && (
-              <Button size="sm" className="h-8 bg-red-600 hover:bg-red-700 text-white text-xs" onClick={onGeneratePDF} disabled={isGenerating}>
-                {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3 mr-1" />}
-                {isGenerating ? "..." : "Generate"}
-              </Button>
-            )}
-            {pdfData?.viewLink && (
-              <Button size="sm" variant="outline" className="h-8 border-neutral-600 text-white hover:bg-neutral-800" onClick={() => window.open(pdfData.viewLink, '_blank')}>
-                <ExternalLink className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Content */}
       <div className="flex-1 overflow-auto bg-white p-4 custom-scrollbar">
         {isGenerating ? (
@@ -176,19 +123,19 @@ const PDFPreviewWithThumbnail: React.FC<{
         )}
       </div>
 
-      <Button variant="ghost" size="icon" className="absolute bottom-4 right-4 bg-black/70 hover:bg-black/90 text-white rounded-full h-10 w-10 z-10" onClick={() => setShowFullPreview(true)}>
+      <button className="absolute bottom-4 right-4 bg-black/70 hover:bg-black/90 text-white rounded-full h-10 w-10 z-10 flex items-center justify-center" onClick={() => setShowFullPreview(true)}>
         <Eye className="h-5 w-5" />
-      </Button>
+      </button>
 
       {/* Fullscreen Modal */}
       {showFullPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
           <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col relative animate-scale-in">
-             <Button variant="ghost" size="icon" className="absolute top-2 right-2 bg-black/10 hover:bg-black/20 rounded-full text-black z-20" onClick={() => setShowFullPreview(false)}>
+            <button className="absolute top-2 right-2 bg-black/10 hover:bg-black/20 rounded-full p-2 text-black z-20" onClick={() => setShowFullPreview(false)}>
               <X className="h-5 w-5" />
-            </Button>
+            </button>
             <div className="flex-1 overflow-auto p-8 custom-scrollbar">
-               <div dangerouslySetInnerHTML={{ __html: content }} style={{ fontFamily: "'Times New Roman', serif", fontSize: '16px', lineHeight: '1.6', maxWidth: '800px', margin: '0 auto', color: 'black' }} />
+              <div dangerouslySetInnerHTML={{ __html: content }} style={{ fontFamily: "'Times New Roman', serif", fontSize: '16px', lineHeight: '1.6', maxWidth: '800px', margin: '0 auto', color: 'black' }} />
             </div>
           </div>
         </div>
@@ -327,11 +274,6 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   // Subscription State
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // Google Token State
-  const [showGoogleReLogin, setShowGoogleReLogin] = useState(false);
-  const [googleTokenExpired, setGoogleTokenExpired] = useState(false);
-  const [pendingPDFGeneration, setPendingPDFGeneration] = useState(false);
-
   // Editor State
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isDirty, setIsDirty] = useState(false);
@@ -344,88 +286,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // PDF State
-  const [pdfPreviewData, setPdfPreviewData] = useState<PDFPreviewData | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-
-  // Google Login Hook for re-authentication
-  const handleGoogleReLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        toast.loading("Re-authenticating...");
-        
-        // Get user info from Google
-        const { data: userInfo } = await axios.get(
-          "https://www.googleapis.com/oauth2/v3/userinfo",
-          { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } }
-        );
-        
-        // Send to your backend
-        const res = await api.post("/auth/google", {
-          googleAccessToken: tokenResponse.access_token,
-          authType: 'access_token'
-        });
-        
-        if (res.data.success) {
-          // Store new tokens
-          localStorage.setItem("authToken", res.data.data.token);
-          localStorage.setItem("googleAccessToken", tokenResponse.access_token);
-          localStorage.setItem("user", JSON.stringify(res.data.data.user));
-          
-          // Update state
-          setShowGoogleReLogin(false);
-          setGoogleTokenExpired(false);
-          
-          toast.dismiss();
-          toast.success("Re-authentication successful");
-          
-          // If there was a pending PDF generation, trigger it
-          if (pendingPDFGeneration) {
-            setPendingPDFGeneration(false);
-            generatePDF();
-          }
-        }
-      } catch (error) {
-        console.error("Re-login failed:", error);
-        toast.error("Re-authentication failed. Please try again.");
-      }
-    },
-    onError: (error) => {
-      console.error("Google login error:", error);
-      toast.error("Google login failed");
-    },
-    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
-    flow: 'implicit',
-  });
-
-  // Check Google token validity
-  const checkGoogleToken = useCallback(async () => {
-    const token = getGoogleToken();
-    
-    if (!token) {
-      setGoogleTokenExpired(true);
-      return false;
-    }
-
-    try {
-      // Simple check if token might be expired (you can enhance this)
-      const tokenParts = token.split('.');
-      if (tokenParts.length === 3) {
-        const payload = JSON.parse(atob(tokenParts[1]));
-        const exp = payload.exp * 1000; // Convert to milliseconds
-        
-        if (Date.now() >= exp) {
-          console.log("Google token expired");
-          setGoogleTokenExpired(true);
-          return false;
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Token check error:", error);
-      return true; // Assume valid if check fails
-    }
-  }, []);
 
   // Initialize Styles
   useEffect(() => {
@@ -456,30 +317,12 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       setData(res.data);
       setMarkdownContent(res.data.content);
       
-      // Check Google token
-      await checkGoogleToken();
-      
       // Load Messages
       try {
         const msgRes = await api.get<ApiMessagesResponse>(`/chat/getMessages/${res.data._id}`, { headers: { 'Auth': authToken } });
         setMessages(msgRes.data.messages);
       } catch (e) {
         setMessages([{ _id: "welcome", role: "assistant", content: "Hello! I am PaperChat. How can I help you with this note?", timestamp: new Date().toISOString() }]);
-      }
-
-      // Check PDF
-      try {
-        const pdfRes = await api.get(`/notes/generate/pdf?noteId=${res.data._id}`, { 
-          headers: { 
-            'Auth': authToken,
-            'x-google-access-token': getGoogleToken() || ''
-          } 
-        });
-        if (pdfRes.data.success && pdfRes.data.data) {
-          setPdfPreviewData(pdfRes.data.data.pdf_data || pdfRes.data.data);
-        }
-      } catch (e) { 
-        console.log("No existing PDF");
       }
 
     } catch (error: any) {
@@ -490,7 +333,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     } finally {
       setLoading(false);
     }
-  }, [slug, checkGoogleToken]);
+  }, [slug]);
 
   useEffect(() => { loadNoteData(); }, [loadNoteData]);
   
@@ -546,31 +389,21 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
-  // Generate PDF with token check
+  // Generate PDF and instantly download
   const generatePDF = async () => {
     if (!data?._id) return;
-    
-    // Check if Google token is valid
-    const tokenValid = await checkGoogleToken();
-    
-    if (!tokenValid) {
-      setShowGoogleReLogin(true);
-      setPendingPDFGeneration(true);
-      return;
-    }
     
     setIsGeneratingPDF(true);
     try {
       const res = await api.get(`/notes/generate/pdf?noteId=${data._id}`, { 
         headers: { 
-          'Auth': getAuthToken(),
-          'x-google-access-token': getGoogleToken() || ''
+          'Auth': getAuthToken()
         } 
       });
       
       if (res.data.success) {
         if (res.data.data.pdf) {
-          // If PDF is returned as base64, download it
+          // If PDF is returned as base64, download it directly
           const pdfData = res.data.data.pdf;
           const byteCharacters = atob(pdfData);
           const byteNumbers = new Array(byteCharacters.length);
@@ -580,26 +413,22 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           const byteArray = new Uint8Array(byteNumbers);
           const blob = new Blob([byteArray], { type: 'application/pdf' });
           const url = window.URL.createObjectURL(blob);
-          window.open(url, '_blank');
-        } else {
-          // If Drive link is available, use that
-          setPdfPreviewData(res.data.data.pdf_data || res.data.data);
+          
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = res.data.data.fileName || 'PaperTube-Note.pdf';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
         }
         
         toast.success(`PDF generated with ${res.data.data.imagesEmbedded || 0} images`);
       }
     } catch (error: any) {
       console.error("PDF Generation Failed:", error);
-      
-      // Check if error is due to token expiration
-      if (error.response?.status === 401 || 
-          error.response?.data?.error === 'token_expired' ||
-          error.response?.data?.message?.includes('token')) {
-        setShowGoogleReLogin(true);
-        setPendingPDFGeneration(true);
-      } else {
-        toast.error(error.response?.data?.message || "Failed to generate PDF");
-      }
+      toast.error(error.response?.data?.message || "Failed to generate PDF");
     } finally { 
       setIsGeneratingPDF(false); 
     }
@@ -617,16 +446,6 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
   return (
     <div className="h-dvh-screen w-screen bg-black flex flex-col overflow-hidden text-neutral-200">
-      
-      {/* Re-login Modal */}
-      <GoogleReLoginModal 
-        isOpen={showGoogleReLogin}
-        onClose={() => {
-          setShowGoogleReLogin(false);
-          setPendingPDFGeneration(false);
-        }}
-        onLogin={handleGoogleReLogin}
-      />
       
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -660,13 +479,6 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           {/* Content Area */}
           <div className="flex-1 overflow-hidden relative mobile-safe-bottom">
             
-            {/* Token Expired Banner (shown when needed) */}
-            {googleTokenExpired && mobileView === 'preview' && (
-              <div className="absolute top-0 left-0 right-0 z-20 p-3">
-                <TokenExpiredBanner onLogin={() => setShowGoogleReLogin(true)} />
-              </div>
-            )}
-            
             {/* VIEW: PREVIEW */}
             <div className={`absolute inset-0 p-3 lg:p-6 transition-opacity duration-300 ${mobileView === 'preview' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}`}>
                <div className="h-full w-full max-w-4xl mx-auto flex flex-col">
@@ -680,7 +492,6 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                  <div className="flex-1 min-h-0">
                     <PDFPreviewWithThumbnail 
                       content={markdownContent} 
-                      pdfData={pdfPreviewData} 
                       isGenerating={isGeneratingPDF}
                       onGeneratePDF={generatePDF}
                     />

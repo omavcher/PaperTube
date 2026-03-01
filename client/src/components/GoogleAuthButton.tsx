@@ -54,8 +54,7 @@ const handleGoogleSuccess = async (response: { access_token: string; }) => {
       console.error('Google OAuth failed');
       alert('Google authentication failed. Please try again.');
     },
-      scope: 'https://www.googleapis.com/auth/drive.file', // Add Drive permission
-
+    scope: 'openid email profile',
   });
 
   return (

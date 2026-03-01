@@ -24,6 +24,7 @@ import SubscriptionDialog from "@/components/SubscriptionDialog";
 import AdDialog from './AdDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AuthLoginModal, PremiumUpgradeModal } from '@/components/AuthGuard';
 
 // --- Constants & Config ---
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
@@ -71,6 +72,8 @@ export default function HomeMain() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAdDialog, setShowAdDialog] = useState(false);
   const [tokenErrorData, setTokenErrorData] = useState<any>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   // --- Fetch Token Data ---
   useEffect(() => {
@@ -130,7 +133,16 @@ export default function HomeMain() {
 
   const handleGenerateProcess = async () => {
     const authToken = localStorage.getItem('authToken');
-    if (!authToken) { alert("Please login first"); return; }
+    if (!authToken) {
+      setShowLoginModal(true);
+      return;
+    }
+    
+    // Premium model check
+    if (selectedModel.accessTier === 'Premium' && !hasPremiumAccess) {
+      setShowPremiumModal(true);
+      return;
+    }
     
     setIsGenerating(true);
     setTokenErrorData(null); 
@@ -191,6 +203,18 @@ export default function HomeMain() {
       {/* Subtle Background Atmosphere */}
       <div className="fixed inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-black to-black opacity-80" />
       <div className="fixed inset-0 z-0 opacity-20 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+
+      {/* Auth Modals */}
+      <AuthLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        message="Sign in to generate notes"
+      />
+      <PremiumUpgradeModal
+        isOpen={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        featureName={selectedModel.name}
+      />
 
       {/* External Modals */}
       <SubscriptionDialog open={showPaywall} onOpenChange={setShowPaywall} />
@@ -361,7 +385,15 @@ export default function HomeMain() {
                              <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Select Engine</p>
                           </div>
                           {AI_MODELS.map(m => (
-                            <DropdownMenuItem key={m.id} onClick={() => setSelectedModel(m)} className="focus:bg-white/10 focus:text-white cursor-pointer rounded-xl p-3">
+                            <DropdownMenuItem key={m.id} onClick={() => {
+                              if (m.accessTier === 'Premium' && !hasPremiumAccess) {
+                                const token = localStorage.getItem('authToken');
+                                if (!token) { setShowLoginModal(true); return; }
+                                setShowPremiumModal(true);
+                                return;
+                              }
+                              setSelectedModel(m);
+                            }} className="focus:bg-white/10 focus:text-white cursor-pointer rounded-xl p-3">
                               <span className="font-bold text-sm">{m.name}</span> 
                               {m.accessTier === 'Premium' && <span className="ml-auto text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded uppercase">PRO</span>}
                             </DropdownMenuItem>

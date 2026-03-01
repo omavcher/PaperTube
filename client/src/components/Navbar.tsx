@@ -16,6 +16,7 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { FcGoogle } from "react-icons/fc";
 import api from "@/config/api";
 import axios from "axios";
+import { toast } from "sonner";
 import { IconSquareLetterB } from "@tabler/icons-react";
 
 // --- PLAN DEFINITIONS ---
@@ -393,39 +394,43 @@ const NavDropdown = ({ label, items }: any) => {
     );
 };
 
-// In your Navbar component, update the GoogleLoginBtn function:
-
 function GoogleLoginBtn({ onSuccess, loading }: any) {
     const login = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
-            console.log("✅ Google login successful, token received");
-            
-            // Get user info from Google
-            const { data: userInfo } = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
-                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-            });
-            
-            console.log("👤 User info:", userInfo);
-            
-            // Send to backend
-            const res = await api.post("/auth/google", { 
-                googleAccessToken: tokenResponse.access_token, 
-                authType: 'access_token' 
-            });
-            
-            // Store tokens in localStorage
-            localStorage.setItem("authToken", res.data.data.token);
-            localStorage.setItem("googleAccessToken", tokenResponse.access_token);
-            localStorage.setItem("user", JSON.stringify(res.data.data.user));
-            
-            onSuccess(tokenResponse.access_token, userInfo, res.data);
+            try {
+                const accessToken = tokenResponse.access_token;
+
+                // Get user info from Google
+                const { data: userInfo } = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+
+                // Send to backend
+                const res = await api.post("/auth/google", { 
+                    googleAccessToken: accessToken, 
+                    authType: 'access_token' 
+                });
+
+                if (!res.data.success || !res.data.data) {
+                    throw new Error(res.data.message || "Authentication failed");
+                }
+
+                // Store auth data in localStorage
+                localStorage.setItem("authToken", res.data.data.token);
+                localStorage.setItem("user", JSON.stringify(res.data.data.user));
+
+                onSuccess(accessToken, userInfo, res.data);
+            } catch (error: any) {
+                console.error("Google login error:", error);
+                toast.error(error.response?.data?.message || "Google login failed. Please try again.");
+            }
         },
         onError: (error) => {
-            console.error("❌ Google login error:", error);
+            console.error("Google OAuth error:", error);
             toast.error("Google login failed. Please try again.");
         },
-        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email', // Request Drive scope
-        flow: 'implicit', // Use implicit flow for access token
+        scope: 'openid email profile',
+        flow: 'implicit',
     });
     
     return (

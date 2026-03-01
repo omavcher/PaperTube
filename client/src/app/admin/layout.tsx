@@ -292,6 +292,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               expanded={isSidebarOpen} 
               mobile={isMobile}
             />
+            <AdminNavLink 
+              href="/admin/support" 
+              icon={<Terminal size={isMobile ? 20 : 18} />} 
+              label="Support Tickets" 
+              active={pathname.includes("/support")} 
+              expanded={isSidebarOpen} 
+              mobile={isMobile}
+            />
           </div>
 
 
