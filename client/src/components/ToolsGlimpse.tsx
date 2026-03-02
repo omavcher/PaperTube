@@ -56,8 +56,8 @@ export default function ToolsGlimpse() {
     <section className="bg-black relative overflow-hidden  md:py-24">
       
       {/* --- Background Atmosphere --- */}
-      <div className="absolute top-0 right-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-800/20 via-black to-black blur-[80px] md:blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/10 via-black to-black blur-[80px] md:blur-[100px] pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-800/10 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent pointer-events-none" />
       
       <div className="container mx-auto px-4 sm:px-6 relative z-10 max-w-7xl">
         
