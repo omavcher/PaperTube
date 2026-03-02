@@ -40,8 +40,8 @@ const handleGoogleSuccess = async (response: { access_token: string; }) => {
     // Store Google access token for Drive operations
     localStorage.setItem('googleAccessToken', response.access_token);
 
-    // Redirect to dashboard or home page
-    router.push('/dashboard');
+    // Reload the current page
+    window.location.reload();
   } catch (error) {
     console.error('Google auth failed:', error);
     alert('Authentication failed. Please try again.');

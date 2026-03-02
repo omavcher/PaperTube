@@ -32,6 +32,7 @@ import api from "@/config/api";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import Footer from "@/components/Footer";
+import { LoginDialog } from "@/components/LoginDialog";
 
 // --- MAIN COMPONENT ---
 export default function UserProfilePage() {
@@ -58,6 +59,7 @@ export default function UserProfilePage() {
   const [isFollowersOpen, setIsFollowersOpen] = useState(false);
   const [isFollowingOpen, setIsFollowingOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [selectedList, setSelectedList] = useState<any[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [listPage, setListPage] = useState(1);
@@ -175,8 +177,8 @@ export default function UserProfilePage() {
     if (!isAuthenticated) {
       toast.error("Authentication Required", {
         description: "Please login to follow creators.",
-        action: { label: "Login", onClick: () => router.push('/login') },
       });
+      setIsLoginModalOpen(true);
       return;
     }
 
@@ -219,6 +221,12 @@ export default function UserProfilePage() {
     <div className="min-h-screen bg-black text-neutral-200 font-sans selection:bg-red-500/20 selection:text-red-200">
       
       {/* Modals */}
+      <LoginDialog 
+        isOpen={isLoginModalOpen} 
+        onClose={() => setIsLoginModalOpen(false)} 
+        onSuccess={() => setIsLoginModalOpen(false)} 
+      />
+
       <ReportModal 
         isOpen={isReportOpen} 
         onClose={() => setIsReportOpen(false)} 

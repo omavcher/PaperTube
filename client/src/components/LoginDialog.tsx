@@ -83,7 +83,7 @@ export function LoginDialog({
         }
         
         onClose();
-        window.location.href = "/";
+        window.location.reload();
         
       } catch (err: any) {
         console.error("Google login error:", err);

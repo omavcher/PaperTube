@@ -94,7 +94,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setUser(backendUser);
         setIsLoggedIn(true);
         toast.success(`Welcome, ${backendUser.name}!`);
-        window.dispatchEvent(new Event("auth-change"));
+        
+        // Full website reload to rehydrate data but stay on the current route
+        window.location.reload();
       }
     } catch {
       toast.error("Auth Handshake Failed");

@@ -80,7 +80,7 @@ export const Navbar = ({
   <NavEntry href="/" icon={<Home size={14} />} label="Home" />
   <NavDropdown label="Backpack" items={SUPPORT_TOOLS} />
   <NavEntry href="/explore" icon={<Compass size={14} />} label="Explore" />
-  <NavEntry href="/pricing" icon={<Zap size={14} />} label={user?.membership?.isActive ? "My Plan" : "Access"} />
+  <NavEntry href="/pricing" icon={<Zap size={14} />} label={user?.membership?.isActive ? "My Plan" : "Pricing"} />
 </div>
 
               {/* Right Actions */}

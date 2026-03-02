@@ -1562,6 +1562,28 @@ exports.explore = async (req, res) => {
     const limitNum = Math.max(1, parseInt(limit));
     const skip = (pageNum - 1) * limitNum;
 
+    // 0. Extract User Id if present for custom Algorithm Feed
+    const jwt = require("jsonwebtoken");
+    const User = require("../models/User");
+    let userId = null;
+    let followingList = [];
+    
+    const authHeader = req.header('Auth') || req.header('Authorization');
+    if (authHeader) {
+      try {
+        const token = authHeader.replace(/^Bearer\s+/, "");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.id;
+        
+        const userDoc = await User.findById(userId).select('followingUsers').lean();
+        if (userDoc && userDoc.followingUsers) {
+          followingList = userDoc.followingUsers;
+        }
+      } catch (e) {
+        // Continue unauthenticated
+      }
+    }
+
     // 1. Build Query (Only for Notes)
     const query = { visibility: "public" };
     
@@ -1583,17 +1605,66 @@ exports.explore = async (req, res) => {
         sortOptions[field] = sortOrder === 'desc' ? -1 : 1;
     }
 
-    // 3. Fetch Data (Directly from Note collection)
-    const notes = await Note.find(query)
-      .populate('owner', 'name picture username') 
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(limitNum)
-      .select('-__v -transcript -content -img_with_url -pdf_data') // Exclude heavy fields
-      .lean();
+    // Determine if we should use algorithmic recommendation feed
+    const isAlgoFeed = !search.trim() && (sortBy === 'updatedAt' || !sortBy);
+    let notes = [];
+    let totalNotes = 0;
 
-    // 4. Get Total Count
-    const totalNotes = await Note.countDocuments(query);
+    if (isAlgoFeed) {
+      // 3a. Algorithmic Fetch
+      const pipeline = [
+        { $match: query },
+        { 
+          $addFields: {
+            algorithmScore: {
+              $add: [
+                { $multiply: [{ $ifNull: ["$views", 0] }, 1] },
+                { $multiply: [{ $ifNull: ["$likes", 0] }, 5] },
+                { 
+                  $multiply: [
+                    { $cond: [{ $in: ["$owner", followingList] }, 1, 0] },
+                    1000 // Boost if following the creator
+                  ] 
+                },
+                // Add minor pseudo-random noise to make feeds a bit unique based on time generated
+                { $mod: [{ $toLong: "$createdAt" }, 23] }
+              ]
+            }
+          }
+        },
+        { $sort: { algorithmScore: -1, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limitNum },
+        {
+          $lookup: {
+            from: "users",
+            localField: "owner",
+            foreignField: "_id",
+            as: "ownerDetails"
+          }
+        },
+        { $unwind: { path: "$ownerDetails", preserveNullAndEmptyArrays: true } }
+      ];
+
+      const aggResult = await Note.aggregate(pipeline);
+      notes = aggResult.map(n => ({
+        ...n,
+        owner: n.ownerDetails
+      }));
+      totalNotes = await Note.countDocuments(query);
+
+    } else {
+      // 3b. Standard Search / Sort
+      notes = await Note.find(query)
+        .populate('owner', 'name picture username') 
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limitNum)
+        .select('-__v -transcript -content -img_with_url -pdf_data')
+        .lean();
+      totalNotes = await Note.countDocuments(query);
+    }
+
     const totalPages = Math.ceil(totalNotes / limitNum);
 
     // 5. Transform Data

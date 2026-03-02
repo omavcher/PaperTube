@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   Search, Globe, Zap, Eye, Heart, 
-  TrendingUp, Play, Flame, Clock, 
+  TrendingUp, FileText, Flame, Clock, 
   Share2, Bookmark, Loader2, RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -259,7 +259,7 @@ export default function ExploreClient({
              <p className="text-xs uppercase tracking-widest">Decrypting Data...</p>
            </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6">
             <AnimatePresence mode="popLayout">
               {filteredItems.map((note, i) => (
                 <motion.div
@@ -325,9 +325,9 @@ const DiscoveryCard = ({ note, router }: { note: Note; router: any }) => {
              loading="lazy"
            />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center text-neutral-600 group-hover:text-white transition-colors">
-              <Play size={20} fill="currentColor" />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-900">
+            <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center text-neutral-500 group-hover:text-white transition-colors shadow-inner border border-white/5">
+              <FileText size={20} />
             </div>
           </div>
         )}
@@ -342,10 +342,10 @@ const DiscoveryCard = ({ note, router }: { note: Note; router: any }) => {
           </Badge>
         </div>
 
-        {/* Play Icon (Hover) */}
+        {/* Icon Overlay (Hover) */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-           <div className="w-12 h-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center text-white">
-              <Play size={18} fill="currentColor" className="ml-0.5" />
+           <div className="w-12 h-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center text-white shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+              <FileText size={18} />
            </div>
         </div>
       </div>

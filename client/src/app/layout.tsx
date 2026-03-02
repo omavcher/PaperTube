@@ -142,6 +142,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <meta name="google-adsense-account" content="ca-pub-8343501385468147"></meta>
       </head>
       <body className="antialiased bg-black text-white selection:bg-red-900/50">
         <Providers>{children}</Providers>
