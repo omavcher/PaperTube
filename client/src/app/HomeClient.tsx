@@ -34,9 +34,7 @@ export default function HomeClient() {
         <section className="w-full">
           <FeatureHomeSection/>
         </section>
-        <div className="w-full">
-          <HomeLine/>
-        </div>
+       
       </main>
       <Footer/>
     </div>

@@ -27,7 +27,6 @@ import { IconCalculatorFilled } from "@tabler/icons-react";
 
 // --- Tool Data ---
 const pdfTools = [
-  { id: "previous-year-papers", title: "EXAM PAPERS", description: "Competitive exam repository.", icon: <BookOpen />, category: "Workflows", path: "/exams", color: "text-pink-400", isNew: false },
   { id: "merge-pdf", title: "MERGE PDF", description: "Combine multiple PDFs.", icon: <Merge />, category: "Organize PDF", path: "/tools/merge", color: "text-red-400", isNew: true },
   { id: "split-pdf", title: "SPLIT PDF", description: "Extract or split pages.", icon: <Split />, category: "Organize PDF", path: "/tools/split", color: "text-green-400", isNew: false },
   { id: "json-formatter", title: "JSON FIX", description: "Beautify & validate JSON.", icon: <BinaryIcon />, category: "Engineering Tools", path: "/tools/json-formatter", color: "text-blue-400", isNew: true },

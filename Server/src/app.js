@@ -20,7 +20,8 @@ const app = express();
 
 // Middlewares
 app.use(cors(
-    { origin: process.env.CLIENT, credentials: true }
+    { origin: ["https://paperxify.com", "https://www.paperxify.com", "http://localhost:3000"]
+      , credentials: true }
 ));
 app.use(express.json());
 
