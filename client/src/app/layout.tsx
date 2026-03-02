@@ -1,6 +1,7 @@
 ﻿import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import "./globals.css";
+import Script from "next/script";
 
 // Separate viewport export (Next.js 14+ standard)
 export const viewport: Viewport = {
@@ -143,6 +144,12 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <meta name="google-adsense-account" content="ca-pub-8343501385468147"></meta>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8343501385468147"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
       </head>
       <body className="antialiased bg-black text-white selection:bg-red-900/50">
         <Providers>{children}</Providers>
