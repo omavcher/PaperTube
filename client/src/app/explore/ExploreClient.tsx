@@ -74,15 +74,27 @@ const formatTimeAgo = (dateString: string) => {
 
 const CATEGORIES = ["All", "Tech", "Dev", "AI", "Finance", "Science"];
 
-export default function ExploreClient() {
+interface ExploreClientProps {
+  initialItems?: Note[];
+  initialPagination?: {
+    currentPage: number;
+    totalPages: number;
+    hasNext: boolean;
+  };
+}
+
+export default function ExploreClient({ 
+  initialItems = [], 
+  initialPagination = { currentPage: 1, totalPages: 1, hasNext: false } 
+}: ExploreClientProps = {}) {
   const router = useRouter();
   
   // Logic State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [items, setItems] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [items, setItems] = useState<Note[]>(initialItems);
+  const [loading, setLoading] = useState(initialItems.length === 0);
+  const [page, setPage] = useState(initialPagination.currentPage);
+  const [hasMore, setHasMore] = useState(initialPagination.hasNext);
   
   // UI/Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,19 +113,11 @@ export default function ExploreClient() {
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     setIsAuthenticated(!!token);
-    // If you want to allow public viewing without auth, remove the strict check below
-    if (!token) {
-        // Option A: Redirect to login
-        // router.push('/login');
-        // Option B: Allow limited public view (requires API support)
-        setLoading(false); 
-    }
-  }, [router]);
+  }, []);
 
   // 2. Fetch Data
   const fetchExploreData = useCallback(async (pageNum: number, append = false, search = '') => {
     const token = localStorage.getItem('authToken');
-    if (!token) return; // Or handle public API logic
 
     try {
       if (!append) setLoading(true);
@@ -127,8 +131,13 @@ export default function ExploreClient() {
         search: search
       });
 
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Auth'] = token;
+      }
+
       const response = await api.get<ExploreResponse>(`/notes/explore?${params.toString()}`, {
-        headers: { 'Auth': token }
+        headers
       });
 
       if (response.data.success) {
@@ -147,12 +156,17 @@ export default function ExploreClient() {
   // Initial Fetch & Search Debounce
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (isAuthenticated) {
+      // Don't fetch on initial mount if we already have initial items and no search query
+      if (initialItems.length > 0 && searchQuery === '' && page === 1 && !loading) {
+        return;
+      }
+      // Fetch data regardless of whether user is authenticated or not
+      if (isAuthenticated !== null) {
         fetchExploreData(1, false, searchQuery);
       }
     }, 500); // 500ms debounce
     return () => clearTimeout(timer);
-  }, [searchQuery, isAuthenticated, fetchExploreData]);
+  }, [searchQuery, isAuthenticated, fetchExploreData, initialItems.length]); // Added initialItems.length dependency
 
   // Handle Category Filter (Client-side filtering for visual effect, ideally API based)
   const filteredItems = useMemo(() => {
