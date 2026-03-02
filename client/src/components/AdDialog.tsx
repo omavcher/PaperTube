@@ -52,6 +52,8 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    let adTimeout: NodeJS.Timeout;
+
     if (open) {
       const randomAd = MANUAL_ADS[Math.floor(Math.random() * MANUAL_ADS.length)];
       setSelectedAd(randomAd);
@@ -70,8 +72,24 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
           return prev - 1;
         });
       }, 1000);
+
+      // Initialize Google AdSense dynamically whenever the popup opens
+      adTimeout = setTimeout(() => {
+        try {
+          if (typeof window !== 'undefined') {
+            // @ts-ignore
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          }
+        } catch (err) {
+          console.error('AdSense initialization error:', err);
+        }
+      }, 200);
     }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    
+    return () => { 
+      if (timerRef.current) clearInterval(timerRef.current); 
+      if (adTimeout) clearTimeout(adTimeout);
+    };
   }, [open]);
 
   const handleAction = () => {
@@ -89,45 +107,22 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
       */}
       <DialogContent className="z-[200] w-[90vw] md:max-w-3xl bg-[#0a0a0a] border border-white/10 text-white rounded-[2rem] p-0 overflow-hidden shadow-2xl outline-none font-sans flex flex-col md:flex-row h-auto md:h-[450px]">
         
-        {/* --- LEFT SIDE: IMAGE (Takes 45% width on Desktop) --- */}
-        <div className="relative w-full h-[250px] md:h-full md:w-[45%] bg-neutral-900 overflow-hidden group">
-            <a 
-              href={selectedAd.link} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="block h-full w-full"
-            >
-                {/* Images switch based on screen size for best fit */}
-                <img 
-                  src={selectedAd.portraitImg} 
-                  alt="" 
-                  className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 md:hidden" 
-                />
-                <img 
-                  src={selectedAd.landscapeImg} 
-                  alt="" 
-                  className="hidden md:block w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" 
-                />
-                
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent md:bg-gradient-to-r" />
-                
-                {/* Mobile Text Overlay (Hidden on Desktop) */}
-                <div className="absolute bottom-0 left-0 right-0 p-5 md:hidden">
-                    <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-1 drop-shadow-lg">
-                        {selectedAd.title}
-                    </h3>
-                    <p className="text-xs text-neutral-300 font-medium leading-tight opacity-90 line-clamp-1">
-                        {selectedAd.desc}
-                    </p>
-                </div>
+        {/* --- LEFT SIDE: GOOGLE ADSENSE (Takes 45% width on Desktop) --- */}
+        <div className="relative w-full h-[250px] md:h-full md:w-[45%] bg-neutral-900 overflow-hidden flex items-center justify-center p-2">
+            {/* Paperxify Ads Dailog box */}
+            <ins className="adsbygoogle"
+                 style={{ display: "block", minHeight: "250px", width: "100%", height: "100%" }}
+                 data-ad-client="ca-pub-8343501385468147"
+                 data-ad-slot="8986679518"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
 
-                {/* Badge */}
-                <div className="absolute top-4 left-4">
-                   <Badge className="bg-white/10 backdrop-blur-md text-white border-white/10 text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 shadow-lg">
-                      Sponsored
-                   </Badge>
-                </div>
-            </a>
+            {/* Badge */}
+            <div className="absolute top-4 left-4 z-10 pointer-events-none">
+               <Badge className="bg-black/50 backdrop-blur-md text-white border-white/10 text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 shadow-lg">
+                  Advertisement
+               </Badge>
+            </div>
         </div>
 
         {/* --- RIGHT SIDE: CONTROLS (Takes 55% width on Desktop) --- */}
@@ -166,17 +161,14 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
             {/* Desktop Ad Details (Hidden on Mobile) */}
             <div className="hidden md:flex flex-col justify-center px-8 flex-1 space-y-3">
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-blue-500 tracking-widest">
-                    <ScanLine size={12} /> System Message
+                    <ScanLine size={12} /> Support Paperxify
                 </div>
                 <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white">
-                    {selectedAd.title}
+                    SPONSORED AD
                 </h3>
                 <p className="text-sm text-neutral-400 font-medium leading-relaxed">
-                    {selectedAd.desc}
+                    Viewing this ad helps keep Paperxify running. Please wait for the timer to complete to unlock your download.
                 </p>
-                <a href={selectedAd.link} target="_blank" className="text-xs font-bold text-white flex items-center gap-1 hover:underline decoration-white/30 underline-offset-4">
-                    Open Link <ExternalLink size={10} />
-                </a>
             </div>
 
             {/* Footer / Actions */}
