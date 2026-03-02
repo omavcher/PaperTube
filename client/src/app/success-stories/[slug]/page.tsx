@@ -1,4 +1,4 @@
-import type { Metadata, ResolvingMetadata } from "next";
+﻿import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import SuccessStoryClient from "./SuccessStoryClient";
 
@@ -75,7 +75,7 @@ export async function generateMetadata(
   const story = await getStory(slug);
 
   if (!story) {
-    return { title: "Story Not Found | PaperTube" };
+    return { title: "Story Not Found | Paperxify" };
   }
 
   const previousImages = (await parent).openGraph?.images || [];
@@ -86,8 +86,8 @@ export async function generateMetadata(
     openGraph: {
       title: `How ${story.name} Cracked ${story.exam} (AIR ${story.rank})`,
       description: story.heroTitle,
-      url: `https://papertube.in/success-stories/${story.slug}`,
-      siteName: "PaperTube",
+      url: `https://paperxify.com/success-stories/${story.slug}`,
+      siteName: "Paperxify",
       images: [
         {
           url: story.avatar,
@@ -126,17 +126,17 @@ export default async function SuccessStoryPage({ params }: Props) {
     },
     "publisher": {
       "@type": "Organization",
-      "name": "PaperTube",
+      "name": "Paperxify",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://papertube.in/logo.png"
+        "url": "https://paperxify.com/logo.png"
       }
     },
     "datePublished": story.date,
     "description": story.summary,
     "mainEntityOfPage": {
         "@type": "WebPage",
-        "@id": `https://papertube.in/success-stories/${story.slug}`
+        "@id": `https://paperxify.com/success-stories/${story.slug}`
     }
   };
 

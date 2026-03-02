@@ -1,4 +1,4 @@
-import type { Metadata, ResolvingMetadata } from "next";
+﻿import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import NoteClient from "./NoteClient";
 
@@ -74,7 +74,7 @@ export async function generateMetadata(
   const note = await getNote(slug);
 
   if (!note) {
-    return { title: "Note Not Found | PaperTube" };
+    return { title: "Note Not Found | Paperxify" };
   }
 
   // Strip HTML tags for description (simple regex)
@@ -82,13 +82,13 @@ export async function generateMetadata(
   const previousImages = (await parent).openGraph?.images || [];
 
   return {
-    title: `${note.title} by @${note.creator.username} | PaperTube Notes`,
+    title: `${note.title} by @${note.creator.username} | Paperxify Notes`,
     description: plainTextDescription,
     openGraph: {
       title: note.title,
       description: plainTextDescription,
-      url: `https://papertube.in/note/${note.creator.username}/${note.slug}`,
-      siteName: "PaperTube",
+      url: `https://paperxify.com/note/${note.creator.username}/${note.slug}`,
+      siteName: "Paperxify",
       type: "article",
       publishedTime: note.createdAt,
       authors: [note.creator.name],
@@ -129,7 +129,7 @@ export default async function NotePage({ params }: { params: Promise<{ name: str
     "author": {
       "@type": "Person",
       "name": note.creator.name,
-      "url": `https://papertube.in/${note.creator.username}/profile`
+      "url": `https://paperxify.com/${note.creator.username}/profile`
     },
     "datePublished": note.createdAt,
     "description": note.content.replace(/<[^>]+>/g, '').slice(0, 200),

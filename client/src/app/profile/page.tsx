@@ -110,11 +110,11 @@ export default function ProfilePage() {
 
     // --- Header ---
     doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
-    doc.text("PeprTub", 14, 22);
+    doc.text("Paperxify", 14, 22);
     
     doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
     doc.text("Nagpur, Maharashtra, India - 440034", 14, 29);
-    doc.text("Email: papertub.support@gmail.com", 14, 34);
+    doc.text("Email: paperxify@gmail.com", 14, 34);
     doc.text("GSTIN: 27AAAAA0000A1Z5", 14, 39); 
 
     // --- Invoice Meta ---
@@ -179,7 +179,7 @@ export default function ProfilePage() {
     doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
     doc.text("This is a computer generated invoice and does not require a physical signature.", 14, pageHeight - 30);
     doc.setFont("helvetica", "bold");
-    doc.text("PeprTub - Empowering Knowledge", 14, pageHeight - 24);
+    doc.text("Paperxify - Empowering Knowledge", 14, pageHeight - 24);
 
     doc.save(`Invoice_${invoiceNo}.pdf`);
     setDownloadingId(null);

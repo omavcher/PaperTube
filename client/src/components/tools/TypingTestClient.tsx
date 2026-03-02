@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { 
@@ -130,7 +130,7 @@ export default function TypingTestClient() {
     try {
       const dataUrl = await toPng(reportRef.current, { pixelRatio: 3, backgroundColor: '#000' });
       const link = document.createElement("a");
-      link.download = `PaperTube-Velocity-${metrics.wpm}WPM.png`;
+      link.download = `Paperxify-Velocity-${metrics.wpm}WPM.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Artifact Exported", { id: loadingToast });

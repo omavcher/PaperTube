@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { 
@@ -20,7 +20,7 @@ import { useToolAnalytics } from "@/hooks/useToolAnalytics";
 import CorePromo from "@/components/CorePromo"; // Assuming exists
 
 export default function CodeToImageClient() {
-  const [code, setCode] = useState(`// Protocol: PaperTube Neural Foundry
+  const [code, setCode] = useState(`// Protocol: Paperxify Neural Foundry
 const initializeArtifact = () => {
   return "System Hardened";
 };`);
@@ -55,7 +55,7 @@ const initializeArtifact = () => {
         cacheBust: true 
       });
       const link = document.createElement("a");
-      link.download = `PaperTube-${title.replace(/\.[^/.]+$/, "")}.png`;
+      link.download = `Paperxify-${title.replace(/\.[^/.]+$/, "")}.png`;
       link.href = dataUrl;
       link.click();
       toast.success("ARTIFACT EXPORTED", { id: loadingToast });

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
@@ -62,7 +62,7 @@ export default function SuccessStoryClient({ story }: { story: StoryDetail }) {
   const handleShare = async () => {
     const shareData = {
         title: story.heroTitle,
-        text: `Read how ${story.name} cracked ${story.exam} with PaperTube!`,
+        text: `Read how ${story.name} cracked ${story.exam} with Paperxify!`,
         url: window.location.href,
     };
 

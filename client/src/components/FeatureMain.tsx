@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
@@ -11,7 +11,7 @@ export default function FeatureMain() {
   return (
     <div className="w-full h-full py-20">
       <h2 className="max-w-7xl pl-4 mx-auto text-xl md:text-5xl font-bold text-neutral-200 font-sans">
-        Explore What Makes <span className="text-[#da3023]">PaperTube</span> Special
+        Explore What Makes <span className="text-[#da3023]">Paperxify</span> Special
       </h2>
       <Carousel items={cards} />
     </div>
@@ -25,7 +25,7 @@ const FeatureOne = () => (
       <span className="font-bold text-neutral-100">
         Turn YouTube Lectures into Smart Notes.
       </span>{" "}
-      Paste any YouTube video link and let PaperTube extract key moments, timestamps, and summaries — 
+      Paste any YouTube video link and let Paperxify extract key moments, timestamps, and summaries — 
       all beautifully organized into a clickable, colorful PDF. Perfect for students, creators, or anyone learning online.
     </p>
     <img
@@ -63,7 +63,7 @@ const FeatureThree = () => (
       <span className="font-bold text-neutral-100">
         Beautiful PDF Exports.
       </span>{" "}
-      Notes are not just functional — they're aesthetic. PaperTube designs your notes in vibrant themes and clean layouts, 
+      Notes are not just functional — they're aesthetic. Paperxify designs your notes in vibrant themes and clean layouts, 
       ready to print or share instantly. Perfect for those who love organized, eye-catching study material.
     </p>
     <img
@@ -101,7 +101,7 @@ const FeatureFive = () => (
       <span className="font-bold text-neutral-100">
         Multi-Language Support.
       </span>{" "}
-      PaperTube understands lectures in Hindi, English, Marathi, and more. Learn in your comfort language, 
+      Paperxify understands lectures in Hindi, English, Marathi, and more. Learn in your comfort language, 
       and still get clean notes — perfectly translated and formatted.
     </p>
     <img

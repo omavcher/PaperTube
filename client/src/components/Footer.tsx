@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from 'react';
 import { 
@@ -38,13 +38,13 @@ export default function Footer() {
             <div className="space-y-4">
               <Link href="/" className="group block">
                     <h2 className="text-3xl md:text-4xl font-black text-white italic tracking-tighter uppercase leading-none">
-                      Paper<span className="text-red-600 group-hover:text-red-500 transition-colors">Tube</span>
+                      Paper<span className="text-red-600 group-hover:text-red-500 transition-colors">XIFY</span>
                     </h2>
                   </Link>
               
               <p className="text-neutral-400 text-sm leading-relaxed max-w-sm font-light">
                 The advanced interface for engineering intelligence. 
-                Transform raw video data into structured knowledge nodes using our proprietary <span className="text-white font-medium">PaperTube</span>.
+                Transform raw video data into structured knowledge nodes using our proprietary <span className="text-white font-medium">Paperxify</span>.
               </p>
             </div>
 
@@ -117,7 +117,7 @@ export default function Footer() {
           
           <div className="flex flex-col md:flex-row items-center gap-6">
             <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">
-              © {currentYear} PaperTube Inc.
+              © {currentYear} Paperxify Inc.
             </span>
             
             {/* System Status Indicators */}

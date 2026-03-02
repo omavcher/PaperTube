@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -73,7 +73,7 @@ export default function SupportPage() {
       icon: <Video className="h-5 w-5" />
     },
     {
-        question: "What video lengths does PaperTube support?",
+        question: "What video lengths does Paperxify support?",
         answer: "Free tier supports up to 90 minutes. Premium protocols extend this to 8 hours for deep-dive technical lectures.",
         category: 'features',
         icon: <Clock className="h-5 w-5" />
@@ -91,8 +91,8 @@ export default function SupportPage() {
         icon: <CreditCard className="h-5 w-5" />
       },
       {
-        question: "Is PaperTube available on mobile?",
-        answer: "Affirmative. PaperTube is optimized for all mobile viewports and can be installed as a Progressive Web App.",
+        question: "Is Paperxify available on mobile?",
+        answer: "Affirmative. Paperxify is optimized for all mobile viewports and can be installed as a Progressive Web App.",
         category: 'technical',
         icon: <Smartphone className="h-5 w-5" />
       },
@@ -266,7 +266,7 @@ export default function SupportPage() {
                </div>
                
                <div className="space-y-4">
-                  <ContactCard icon={<Mail className="text-red-500"/>} title="Email" val="support@papertube.ai" />
+                  <ContactCard icon={<Mail className="text-red-500"/>} title="Email" val="paperxify@gmail.com" />
                   <ContactCard icon={<MessageSquare className="text-emerald-500"/>} title="Live Chat" val="Awaiting Peer..." />
                </div>
             </div>

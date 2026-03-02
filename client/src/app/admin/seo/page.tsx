@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { 
@@ -16,8 +16,8 @@ import { Card } from "@/components/ui/card";
 
 // --- Mock SEO Data ---
 const SEO_ARTIFACTS = [
-  { id: "NT_101", title: "Quantum Physics: Wave-Particle Duality", views: 1240, clicks: 180, ctr: "14.5%", indexed: true, position: 3.2, domain: "papertub.in" },
-  { id: "NT_104", title: "Next.js 15 Server Components Guide", views: 2100, clicks: 420, ctr: "20.0%", indexed: true, position: 1.8, domain: "papertub.in" },
+  { id: "NT_101", title: "Quantum Physics: Wave-Particle Duality", views: 1240, clicks: 180, ctr: "14.5%", indexed: true, position: 3.2, domain: "paperxify.com" },
+  { id: "NT_104", title: "Next.js 15 Server Components Guide", views: 2100, clicks: 420, ctr: "20.0%", indexed: true, position: 1.8, domain: "paperxify.com" },
   { id: "NT_108", title: "Compiler Design: LALR Parsing", views: 450, clicks: 12, ctr: "2.6%", indexed: false, position: 45.0, domain: "gatecse.in" },
   { id: "NT_110", title: "Node.js Event Loop Deep Dive", views: 890, clicks: 110, ctr: "12.3%", indexed: true, position: 8.5, domain: "heartecho.in" },
 ];
@@ -78,7 +78,7 @@ export default function SEOTracker() {
          </div>
          
          <div className="flex bg-black border border-white/5 rounded-3xl p-1.5 gap-1">
-            {["All Domains", "papertub.in", "heartecho.in", "gatecse.in"].map((domain) => (
+            {["All Domains", "paperxify.com", "heartecho.in", "gatecse.in"].map((domain) => (
               <button
                 key={domain}
                 onClick={() => setActiveDomain(domain)}
@@ -166,7 +166,7 @@ export default function SEOTracker() {
                <Zap size={14} className="text-red-500" /> Index_Injection_Protocol
             </h3>
             <p className="text-[9px] text-neutral-500 uppercase font-bold leading-relaxed mb-8">
-               Force Google to crawl specific URLs from your PaperTube node. Use this for newly generated notes that aren't showing up.
+               Force Google to crawl specific URLs from your Paperxify node. Use this for newly generated notes that aren't showing up.
             </p>
             <div className="flex gap-4">
                <input 
@@ -185,7 +185,7 @@ export default function SEOTracker() {
                <Activity size={14} className="text-blue-500" /> Site_Map_Status
             </h3>
             <div className="space-y-4">
-               <SitemapStatus domain="papertub.in" status="Synced" date="1h ago" />
+               <SitemapStatus domain="paperxify.com" status="Synced" date="1h ago" />
                <SitemapStatus domain="heartecho.in" status="Synced" date="12h ago" />
                <SitemapStatus domain="gatecse.in" status="Warning" date="2d ago" />
             </div>

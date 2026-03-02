@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useCallback } from "react";
 import { 
@@ -85,7 +85,7 @@ export default function AIDetectorClient() {
     try {
       const dataUrl = await toPng(reportRef.current, { pixelRatio: 3, backgroundColor: '#000' });
       const link = document.createElement("a");
-      link.download = `PaperTube-Forensic-Report.png`;
+      link.download = `Paperxify-Forensic-Report.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Report Saved", { id: loadingToast });

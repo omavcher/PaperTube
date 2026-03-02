@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import SuccessStoriesClient from "./SuccessStoriesClient";
 
 // --- 1. Define Types ---
@@ -44,23 +44,23 @@ async function getSuccessStories(): Promise<Story[]> {
 
 // --- 3. Dynamic Metadata ---
 export const metadata: Metadata = {
-  title: "Success Stories: GATE, UPSC & Engineering Toppers | PaperTube",
-  description: "Read inspiring journeys of students who cracked GATE, UPSC, and Coding interviews using PaperTube notes. Real stories, real results.",
+  title: "Success Stories: GATE, UPSC & Engineering Toppers | Paperxify",
+  description: "Read inspiring journeys of students who cracked GATE, UPSC, and Coding interviews using Paperxify notes. Real stories, real results.",
   alternates: {
-    canonical: "https://papertube.in/success-stories",
+    canonical: "https://paperxify.com/success-stories",
   },
   openGraph: {
     title: "Student Success Stories",
     description: "See how thousands of engineers are acing their exams.",
-    url: "https://papertube.in/success-stories",
-    siteName: "PaperTube",
+    url: "https://paperxify.com/success-stories",
+    siteName: "Paperxify",
     type: "website",
     images: [
       {
-        url: "https://papertube.in/og-success.jpg", // Add a real image URL
+        url: "https://paperxify.com/og-success.jpg", // Add a real image URL
         width: 1200,
         height: 630,
-        alt: "PaperTube Success Stories",
+        alt: "Paperxify Success Stories",
       },
     ],
   },
@@ -81,7 +81,7 @@ export default async function SuccessStoriesPage() {
       "itemListElement": stories.map((story, index) => ({
         "@type": "ListItem",
         "position": index + 1,
-        "url": `https://papertube.in/success-stories/${story.slug}`,
+        "url": `https://paperxify.com/success-stories/${story.slug}`,
         "name": `${story.name} - ${story.exam} Rank ${story.rank}`,
       }))
     }

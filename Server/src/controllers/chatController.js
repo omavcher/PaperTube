@@ -1,4 +1,4 @@
-const Note = require("../models/Note");
+﻿const Note = require("../models/Note");
 const AiChat = require("../models/AiChat");
 const Groq = require("groq-sdk");
 
@@ -366,18 +366,18 @@ exports.handleMessage = async (req, res) => {
     // Prepare chat history as a string
     const chatHistoryStr =
       aiChat.messages
-        .map((m) => `${m.role === "user" ? "User" : "YT2PDF Ai guide"}: ${m.content}`)
+        .map((m) => `${m.role === "user" ? "User" : "Paperxify Ai guide"}: ${m.content}`)
         .join("\n") || "No previous chat history.";
 
     // Smart context selection - only include recent chat history
     const recentChatHistory = aiChat.messages
       .slice(-4) // Last 2 exchanges (4 messages)
-      .map((m) => `${m.role === "user" ? "User" : "YT2PDF Ai guide"}: ${m.content}`)
+      .map((m) => `${m.role === "user" ? "User" : "Paperxify Ai guide"}: ${m.content}`)
       .join("\n") || "No recent chat history.";
 
     // Build AI prompt with optimized context
     const prompt = `
-You are the **YT2PDF Ai guide**, a dedicated study assistant created by Om Awchar. Your primary function is to help the user study and review their created PDF notes. Your tone is **supportive, knowledgeable, and academically focused**.
+You are the **Paperxify Ai guide**, a dedicated study assistant created by Om Awchar. Your primary function is to help the user study and review their created PDF notes. Your tone is **supportive, knowledgeable, and academically focused**.
 
 **CRITICAL RULE:** Do not engage in casual conversation or answer questions unrelated to the study material provided in the 'Available Data' section below. If the user asks a question not covered by the data, politely state that the information isn't available in the current notes/transcript.
 
@@ -402,7 +402,7 @@ ${message}
 ---
 
 ## Instructions for Response
-1.  **Persona:** Respond as the **YT2PDF Ai guide**.
+1.  **Persona:** Respond as the **Paperxify Ai guide**.
 2.  **Focus:** Use the **Note Content** and **Transcript** as the *only* source of truth.
 3.  **Structure:** Use **Markdown** with appropriate subheadings and bullet points.
 4.  **Explanation Style:** Create a **short, educational guide** explaining the topic.

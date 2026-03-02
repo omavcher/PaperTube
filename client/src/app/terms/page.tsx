@@ -1,17 +1,17 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import TermsClient from "./TermsClient";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | PaperTube",
-  description: "Read the rules and regulations for using PaperTube's AI tools, games, and note-generation services.",
+  title: "Terms of Service | Paperxify",
+  description: "Read the rules and regulations for using Paperxify's AI tools, games, and note-generation services.",
   alternates: {
-    canonical: "https://papertube.in/terms",
+    canonical: "https://paperxify.com/terms",
   },
   openGraph: {
     title: "Terms of Service",
-    description: "Usage policies for PaperTube AI.",
-    url: "https://papertube.in/terms",
-    siteName: "PaperTube",
+    description: "Usage policies for Paperxify AI.",
+    url: "https://paperxify.com/terms",
+    siteName: "Paperxify",
     type: "website",
   },
 };
@@ -22,11 +22,11 @@ export default function TermsPage() {
     "@context": "https://schema.org",
     "@type": "WebPage",
     "name": "Terms of Service",
-    "description": "Legal terms for using PaperTube.",
+    "description": "Legal terms for using Paperxify.",
     "publisher": {
       "@type": "Organization",
-      "name": "PaperTube",
-      "url": "https://papertube.in"
+      "name": "Paperxify",
+      "url": "https://paperxify.com"
     }
   };
 

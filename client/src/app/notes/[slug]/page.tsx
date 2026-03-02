@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useEffect, useCallback, use } from "react";
 import { Editor } from "@tinymce/tinymce-react";
@@ -417,7 +417,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           const a = document.createElement('a');
           a.style.display = 'none';
           a.href = url;
-          a.download = res.data.data.fileName || 'PaperTube-Note.pdf';
+          a.download = res.data.data.fileName || 'Paperxify-Note.pdf';
           document.body.appendChild(a);
           a.click();
           window.URL.revokeObjectURL(url);

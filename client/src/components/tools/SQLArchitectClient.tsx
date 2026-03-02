@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { 
@@ -65,7 +65,7 @@ ORDER BY o.date DESC;`);
         cacheBust: true 
       });
       const link = document.createElement("a");
-      link.download = `PaperTube-SQL-Architect.png`;
+      link.download = `Paperxify-SQL-Architect.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Blueprint Exported to Foundry", { id: loadingToast });

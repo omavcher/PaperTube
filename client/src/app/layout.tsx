@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -11,67 +11,68 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  // BASE URL: Change this to your actual production domain
-  metadataBase: new URL("https://yt2pdf.in"), 
+  metadataBase: new URL("https://paperxify.com"), 
   
   title: {
-    default: "PaperTube | Turn YouTube Videos into Beautiful Notes",
-    // This makes child pages automatically format as: "Pricing | PaperTube"
-    template: "%s | PaperTube", 
+    default: "Paperxify | Best YouTube Video to Notes Converter AI",
+    template: "%s | Paperxify - YouTube to Notes Converter", 
   },
   
   description:
-    "Stop pausing and typing. Paste a YouTube link and let PaperTube's AI extract intelligence, summarize concepts, and generate structured study guides and PDFs instantly.",
+    "Convert any YouTube video link to PDF notes instantly using Paperxify AI. Stop pausing and typing—let our advanced AI extract intelligence, summarize concepts, and generate structured study guides, assignments, and transcripts.",
   
   keywords: [
     "YouTube to PDF",
     "YouTube to notes",
+    "YouTube video link to notes converter",
+    "convert youtube video to notes",
+    "youtube transcript to notes",
     "AI note taker",
     "video summarizer",
     "AI study guide",
     "student tools",
-    "video to text",
-    "PaperTube",
-    "study tracker"
+    "video to text converter",
+    "Paperxify",
+    "best youtube notes ai"
   ],
   
-  authors: [{ name: "Om Awchar" }],
+  authors: [{ name: "Om Awchar", url: "https://paperxify.com/about" }],
   creator: "Om Awchar",
-  publisher: "PaperTube",
+  publisher: "Paperxify",
+  category: "Education & Productivity",
+  applicationName: "Paperxify",
   
-  // Open Graph (How your site looks when shared on WhatsApp, LinkedIn, Discord, etc.)
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://yt2pdf.in",
-    title: "PaperTube | AI YouTube Note Generator",
+    url: "https://paperxify.com",
+    title: "Paperxify | Best YouTube Video to Notes Converter AI",
     description:
-      "Transform raw YouTube signals into high-fidelity, structured study notes. Generate PDFs and study guides instantly.",
-    siteName: "PaperTube",
+      "Paste a YouTube video link and instantly convert it into structured study notes, flashcards, and PDFs using advanced AI.",
+    siteName: "Paperxify",
     images: [
       {
-        url: "/og-image.jpg", // You need to put an image named og-image.jpg in your public folder!
+        url: "/og-image.jpg", 
         width: 1200,
         height: 630,
-        alt: "PaperTube - YouTube to Notes AI",
+        alt: "Paperxify - YouTube to Notes AI Converter",
       },
     ],
   },
   
-  // Twitter Cards (How your site looks when shared on X/Twitter)
   twitter: {
     card: "summary_large_image",
-    title: "PaperTube | Turn YouTube into Notes",
+    title: "Paperxify | Best YouTube Video to Notes AI",
     description:
-      "Paste a link and let AI extract intelligence to generate structured study guides instantly.",
+      "Transform any YouTube video into beautiful PDF notes instantly. Let AI summarize and extract concepts for you.",
     images: ["/og-image.jpg"],
-    creator: "@omawchar", // Change to your actual Twitter handle if you have one
+    creator: "@omawchar",
   },
   
-  // Instruct search engines to index your site
   robots: {
     index: true,
     follow: true,
+    nocache: false,
     googleBot: {
       index: true,
       follow: true,
@@ -81,9 +82,15 @@ export const metadata: Metadata = {
     },
   },
   
-  // Canonical URL prevents duplicate content penalties from Google
   alternates: {
-    canonical: "https://yt2pdf.in",
+    canonical: "https://paperxify.com",
+    languages: {
+      'en-US': 'https://paperxify.com',
+    },
+  },
+  
+  verification: {
+    google: "yoursiteverification", // Can be replaced later with actual Google site verification code
   },
 };
 
@@ -92,8 +99,50 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://paperxify.com/#website",
+        "url": "https://paperxify.com",
+        "name": "Paperxify",
+        "description": "Convert YouTube Videos to Notes & PDF instantly.",
+        "publisher": {
+          "@id": "https://paperxify.com/#organization"
+        },
+        "potentialAction": [{
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://paperxify.com/explore?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }]
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://paperxify.com/#organization",
+        "name": "Paperxify",
+        "url": "https://paperxify.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://paperxify.com/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      }
+    ]
+  };
+
   return (
     <html lang="en" className="dark">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="antialiased bg-black text-white selection:bg-red-900/50">
         <Providers>{children}</Providers>
       </body>

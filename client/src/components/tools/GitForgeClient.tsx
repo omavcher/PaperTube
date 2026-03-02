@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { 
@@ -70,7 +70,7 @@ export default function GitForgeClient() {
         backgroundColor: '#000' 
       });
       const link = document.createElement("a");
-      link.download = `PaperTube-Git-Flow.png`;
+      link.download = `Paperxify-Git-Flow.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Blueprint Generated", { id: loadingToast });

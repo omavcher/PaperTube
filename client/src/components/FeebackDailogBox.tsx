@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React from "react";
 import { MessageSquarePlus, Bug, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ function FeebackDailogBox() {
           </h2>
           
           <p className="text-neutral-400 text-sm md:text-lg max-w-xl leading-relaxed">
-            PaperTube is evolving rapidly. Your feedback helps us calibrate the neural engine. 
+            Paperxify is evolving rapidly. Your feedback helps us calibrate the neural engine. 
             Report bugs or request features directly to the core team.
           </p>
 

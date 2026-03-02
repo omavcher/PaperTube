@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import BlogResourcesClient from "./BlogResourcesClient";
 
 // --- Types ---
@@ -50,20 +50,20 @@ async function getBlogPosts(): Promise<BlogPost[]> {
 
 // --- 2. Metadata ---
 export const metadata: Metadata = {
-  title: "Engineering Blog & Study Resources | PaperTube",
+  title: "Engineering Blog & Study Resources | Paperxify",
   description: "Read the latest tech news, exam preparation tips, success stories, and engineering guides. Curated for students and developers.",
   openGraph: {
-    title: "PaperTube Engineering Blog",
+    title: "Paperxify Engineering Blog",
     description: "Intelligence for Engineers: Study Tips, Tech News & More.",
-    url: "https://papertube.in/blog",
-    siteName: "PaperTube",
+    url: "https://paperxify.com/blog",
+    siteName: "Paperxify",
     type: "website",
     images: [
       {
-        url: "https://papertube.in/og-blog.jpg", // Add a real OG image
+        url: "https://paperxify.com/og-blog.jpg", // Add a real OG image
         width: 1200,
         height: 630,
-        alt: "PaperTube Blog",
+        alt: "Paperxify Blog",
       },
     ],
   },
@@ -77,7 +77,7 @@ export default async function BlogPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",
-    "name": "PaperTube Engineering Blog",
+    "name": "Paperxify Engineering Blog",
     "description": "Resources for engineering students.",
     "blogPost": posts.map((post) => ({
       "@type": "BlogPosting",
@@ -85,10 +85,10 @@ export default async function BlogPage() {
       "description": post.subtitle,
       "image": post.coverImage,
       "datePublished": post.date, // Ensure date format is ISO 8601 if possible
-      "url": `https://papertube.in/blog/${post.slug}`,
+      "url": `https://paperxify.com/blog/${post.slug}`,
       "author": {
         "@type": "Organization",
-        "name": "PaperTube Team"
+        "name": "Paperxify Team"
       }
     }))
   };

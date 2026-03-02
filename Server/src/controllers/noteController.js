@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+﻿const mongoose = require("mongoose");
 const Note = require("../models/Note");
 const User = require("../models/User");
 const Comment = require("../models/Comment");
@@ -1385,13 +1385,13 @@ exports.generatePDF = async (req, res) => {
         
         <div style="margin-top: 40px; padding: 20px 30px; border-top: 2px solid #f1f5f9; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; background-color: #fafafa; page-break-inside: avoid;">
           <div>
-            <a href="https://papertube.in" style="text-decoration: none;">
-              <span style="font-size: 18px; font-weight: 900; font-style: italic; letter-spacing: -0.5px; text-transform: uppercase; color: #0a0a0a;">Paper<span style="color: #dc2626;">Tube</span></span>
+            <a href="https://paperxify.com" style="text-decoration: none;">
+              <span style="font-size: 18px; font-weight: 900; font-style: italic; letter-spacing: -0.5px; text-transform: uppercase; color: #0a0a0a;">Paper<span style="color: #dc2626;">Xify</span></span>
             </a>
             <div style="font-size: 9px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">AI Knowledge Synthesis</div>
           </div>
           <div>
-            <a href="https://papertube.in" style="color: #475569; font-size: 11px; text-decoration: none; font-weight: 500;">
+            <a href="https://paperxify.com" style="color: #475569; font-size: 11px; text-decoration: none; font-weight: 500;">
               Convert any YouTube Video to PDF <span style="color: #dc2626; font-weight: 900; margin-left: 4px;">&#8594;</span>
             </a>
           </div>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import LeaderboardClient from "./LeaderboardClient";
 
 // --- Types ---
@@ -82,13 +82,13 @@ async function getLeaderboardData(): Promise<LeaderboardUser[]> {
 
 // --- 2. Metadata ---
 export const metadata: Metadata = {
-  title: "Global Leaderboard | Top Engineering Students | PaperTube",
-  description: "Check the top-ranking engineering students on PaperTube. Earn XP, unlock badges, and compete globally.",
+  title: "Global Leaderboard | Top Engineering Students | Paperxify",
+  description: "Check the top-ranking engineering students on Paperxify. Earn XP, unlock badges, and compete globally.",
   openGraph: {
-    title: "PaperTube Global Rankings",
+    title: "Paperxify Global Rankings",
     description: "Who is #1? Compete with thousands of students.",
-    url: "https://papertube.in/leaderboard",
-    siteName: "PaperTube",
+    url: "https://paperxify.com/leaderboard",
+    siteName: "Paperxify",
     type: "website",
   },
 };

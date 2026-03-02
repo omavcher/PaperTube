@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '@/config/api';
@@ -296,7 +296,7 @@ export default function HomeMain() {
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/50 border border-white/10 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400 backdrop-blur-md shadow-lg"
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"></div>
-                  PaperTube Engine Active
+                  Paperxify Engine Active
                 </motion.div>
                 
                 {/* Main Title & Subtitle */}

@@ -71,7 +71,7 @@ export const Navbar = ({
             >
               <Link href="/" className="group flex items-center shrink-0">
       <span className="text-xl font-black italic tracking-tighter uppercase text-white">
-        Paper<span className="text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]">Tube</span>
+        Paper<span className="text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]">xify</span>
       </span>
     </Link>
 
@@ -347,10 +347,10 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
 /* --- Global Utilities & Navigation Items --- */
 
 const SUPPORT_TOOLS = [
-    { title: "Tools", desc: "Papertub Tools.", href: "/tools", icon: <ToolCase size={18} /> },
+    { title: "Tools", desc: "Paperxify Tools.", href: "/tools", icon: <ToolCase size={18} /> },
     { title: "Games", desc: "Educational Games.", href: "/games", icon: <Gamepad size={18} /> },
     { title: "Success Stories", desc: "Inspiring Students Stories.", href: "/success-stories", icon: <NotebookTabsIcon size={18} /> },
-    { title: "Blogs", desc: "Papertub Blogs.", href: "/blog", icon: <IconSquareLetterB size={18} /> },
+    { title: "Blogs", desc: "Paperxify Blogs.", href: "/blog", icon: <IconSquareLetterB size={18} /> },
 ];
 
 const MobileTab = ({ href, icon, label }: any) => (

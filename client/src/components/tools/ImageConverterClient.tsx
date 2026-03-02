@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef } from "react";
 import { 
@@ -90,7 +90,7 @@ export default function ImageConverterClient() {
     }
     ctx.drawImage(img, 0, 0);
 
-    // 2. Add PaperTube Watermark
+    // 2. Add Paperxify Watermark
     const fontSize = Math.max(24, canvas.width * 0.03); // Dynamic scaling
     ctx.font = `900 italic ${fontSize}px Inter, sans-serif`;
     ctx.textAlign = "right";
@@ -98,7 +98,7 @@ export default function ImageConverterClient() {
     // Watermark Shadow/Outline for readability
     ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.lineWidth = fontSize / 8;
-    ctx.strokeText("PaperTube", canvas.width - (fontSize), canvas.height - (fontSize));
+    ctx.strokeText("Paperxify", canvas.width - (fontSize), canvas.height - (fontSize));
 
     // Watermark Fill
     ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
@@ -115,7 +115,7 @@ export default function ImageConverterClient() {
     const originalName = sourceInfo.file.name.substring(0, sourceInfo.file.name.lastIndexOf('.'));
     
     const link = document.createElement("a");
-    link.download = `PaperTube-${originalName}.${extensionMap[targetFormat]}`;
+    link.download = `Paperxify-${originalName}.${extensionMap[targetFormat]}`;
     link.href = dataUrl;
     link.click();
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { 
@@ -83,7 +83,7 @@ export default function FounderPage() {
               className="text-neutral-400 leading-relaxed text-sm md:text-base font-light max-w-2xl mx-auto md:mx-0"
             >
               I am a Computer Science Engineer with a passion for building scalable, high-performance systems. 
-              Currently architecting <span className="text-white font-medium">PaperTube</span> to revolutionize how we consume information.
+              Currently architecting <span className="text-white font-medium">Paperxify</span> to revolutionize how we consume information.
               <br /><br />
               My philosophy is simple: <span className="text-white italic">Code until it compiles, ship until it scales.</span>
             </motion.p>
@@ -98,7 +98,7 @@ export default function FounderPage() {
                <SocialLink href="https://github.com/omavchar" icon={<Github size={18} />} label="GitHub" />
                <SocialLink href="https://x.com/omawchar07" icon={<Twitter size={18} />} label="Twitter" />
                <SocialLink href="https://www.linkedin.com/in/omawchar" icon={<Linkedin size={18} />} label="LinkedIn" />
-               <SocialLink href="mailto:hello@omawchar07.com" icon={<Mail size={18} />} label="Contact" />
+               <SocialLink href="mailto:paperxify@gmail.com" icon={<Mail size={18} />} label="Contact" />
             </motion.div>
           </div>
         </div>
@@ -118,13 +118,13 @@ export default function FounderPage() {
            <div className="relative z-10 flex flex-col md:flex-row items-start justify-between gap-12">
               <div className="max-w-2xl space-y-6">
                  <h2 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter text-white">
-                    Why I Built <span className="text-red-600">PaperTube?</span>
+                    Why I Built <span className="text-red-600">Paperxify?</span>
                  </h2>
                  <p className="text-neutral-400 leading-relaxed font-light">
                     As a student, I realized the inefficiency of manually taking notes from hours of video content. 
                     I wanted a tool that could <span className="text-white">synthesize intelligence</span> directly from the source signal.
                     <br/><br/>
-                    PaperTube is not just an app; it's an extension of my own workflow—designed for speed, precision, and clarity.
+                    Paperxify is not just an app; it's an extension of my own workflow—designed for speed, precision, and clarity.
                  </p>
                  <div className="pt-4">
                     <img src="/sign.png" alt="Signature" className="h-12" /> 

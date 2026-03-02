@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { 
@@ -423,7 +423,7 @@ export default function BlogClient({ post }: { post: BlogPost }) {
                 <h4 className="text-lg font-black text-white uppercase italic">Written by {post.author.name}</h4>
                 <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-3">{post.author.role}</p>
                 <p className="text-sm text-neutral-400 leading-relaxed max-w-xl">
-                  Expert contributor at PaperTube. Sharing insights on engineering, AI systems, and student success.
+                  Expert contributor at Paperxify. Sharing insights on engineering, AI systems, and student success.
                 </p>
               </div>
             </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import createGlobe from "cobe";
@@ -68,7 +68,7 @@ export function HomeFeatureX() {
         </h4>
 
         <p className="text-sm lg:text-lg max-w-2xl my-6 mx-auto text-neutral-400 text-center font-light leading-relaxed">
-          PaperTube transforms raw video data into colorful, timestamped knowledge nodes. 
+          Paperxify transforms raw video data into colorful, timestamped knowledge nodes. 
           Clean, readable, and designed for high-retention learning.
         </p>
       </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,7 +130,7 @@ export default function MobileOptimizedTools() {
                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-600/20">
                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" />
                    <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-red-500">
-                     PaperTube Engine v2.0
+                     Paperxify Engine v2.0
                    </span>
                 </motion.div>
                 

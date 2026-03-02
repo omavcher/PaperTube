@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -41,7 +41,7 @@ export default function CorePromo({ className }: { className?: string }) {
             </h3>
             
             <p className="text-xs font-bold text-neutral-400 uppercase tracking-wide max-w-md mx-auto md:mx-0">
-              Transform any YouTube video into formatted study notes, and summaries instantly with PaperTube AI.
+              Transform any YouTube video into formatted study notes, and summaries instantly with Paperxify AI.
             </p>
           </div>
 

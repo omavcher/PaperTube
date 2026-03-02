@@ -1,66 +1,70 @@
-"use client";
-import { useState, useEffect } from "react";
-import HomeMain from "@/components/HomeMain";
-import HomeWorkspace from "@/components/HomeWorkspace";
-import { HomeFeatureX } from "@/components/HomeFeatureX";
-import { HomeCompare } from "@/components/HomeCompare";
-import HomeLine from "@/components/HomeLine";
-import Testimonials from "@/components/Testimonials";
-import FeebackDailogBox from "@/components/FeebackDailogBox";
-import Footer from "@/components/Footer";
-import { IconLanguage, IconRobot } from "@tabler/icons-react";
-import { FileText, ShieldCheck } from "lucide-react";
-import FeatureHomeSection from "@/components/FeatureHomeSection";
-import ToolsGlimpse from "@/components/ToolsGlimpse";
-import ArcadeGlimpse from "@/components/ArcadeGlimpse";
-import PricingShowcase from "@/components/PricingShowcase";
+import type { Metadata } from "next";
+import HomeClient from "./HomeClient";
 
-export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+// Specific, high-impact SEO for the core feature: YouTube Video Link to Notes Converter.
+export const metadata: Metadata = {
+  title: "Best YouTube Video to Notes Converter & PDF Extractor | Paperxify",
+  description: "Convert any YouTube video link to PDF notes INSTANTLY. The #1 AI YouTube to Notes Converter. Extract summaries, flashcards, and transcripts seamlessly.",
+  keywords: [
+    "YouTube to PDF",
+    "youtube video link to notes converter",
+    "convert youtube video to notes",
+    "YouTube to notes",
+    "AI note taker",
+    "video summarizer ai",
+    "AI study guide maker",
+    "video to text",
+    "Paperxify app",
+    "youtube transcript to notes",
+    "auto generate notes from youtube"
+  ],
+  alternates: {
+    canonical: "https://paperxify.com",
+  },
+  openGraph: {
+    title: "Best YouTube Video to Notes Converter | Paperxify",
+    description: "Paste a YouTube video link and convert it to structured PDF notes using Paperxify AI. Free, fast, and highly accurate.",
+    url: "https://paperxify.com",
+    siteName: "Paperxify",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "YouTube Video Link to Notes Converter AI",
+      },
+    ],
+  },
+};
 
-  // ✅ Check auth status on mount
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    setIsAuthenticated(!!token);
-  }, []);
+export default function Page() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Paperxify YouTube to Notes Converter",
+    "operatingSystem": "All",
+    "applicationCategory": "EducationalApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "INR"
+    },
+    "description": "Convert YouTube videos to comprehensive study notes, flashcards, and PDFs using advanced AI. Paste the video link and get notes instantly.",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.9",
+      "ratingCount": "8420"
+    }
+  };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-start py-2 bg-black text-white">
-      <main className="flex flex-1 flex-col items-center justify-center w-full">
-        {/* Always visible section */}
-        <HomeMain />
-        {/* ✅ Show HomeWorkspace only if logged in */}
-        {isAuthenticated && <HomeWorkspace />}
-        <div className="w-full">
-       <ToolsGlimpse/>
-</div>
-    
-    <div className="w-full">
-        <PricingShowcase/>
-      </div>
-
-<div className="w-full">
-       <ArcadeGlimpse/>
-</div>
-
-      <section className="w-full">
-       <FeatureHomeSection/>
-      </section>
-
-   
-        {/* <div className="w-full my-20">
-       <HomeFeatureX/>
-</div> */}
-      
-
-      <div className="w-full">
-        <HomeLine/>
-      </div>
-
-
-
-      </main>
-      <Footer/>
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <HomeClient />
+    </>
   );
 }

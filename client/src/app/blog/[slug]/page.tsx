@@ -1,4 +1,4 @@
-import type { Metadata, ResolvingMetadata } from "next";
+﻿import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import BlogClient from "./BlogClient";
 
@@ -72,19 +72,19 @@ export async function generateMetadata(
   const post = await getBlogPost(slug);
 
   if (!post) {
-    return { title: "Article Not Found | PaperTube" };
+    return { title: "Article Not Found | Paperxify" };
   }
 
   const previousImages = (await parent).openGraph?.images || [];
 
   return {
-    title: `${post.title} | PaperTube Blog`,
+    title: `${post.title} | Paperxify Blog`,
     description: post.subtitle || "Engineering insights and resources.",
     openGraph: {
       title: post.title,
       description: post.subtitle,
-      url: `https://papertube.in/blog/${post.slug}`,
-      siteName: "PaperTube",
+      url: `https://paperxify.com/blog/${post.slug}`,
+      siteName: "Paperxify",
       type: "article",
       publishedTime: post.meta.date, // Ensure API sends ISO format if possible
       authors: [post.author.name],
@@ -130,16 +130,16 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
     },
     "publisher": {
       "@type": "Organization",
-      "name": "PaperTube",
+      "name": "Paperxify",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://papertube.in/logo.png"
+        "url": "https://paperxify.com/logo.png"
       }
     },
     "datePublished": post.meta.date,
     "mainEntityOfPage": {
         "@type": "WebPage",
-        "@id": `https://papertube.in/blog/${post.slug}`
+        "@id": `https://paperxify.com/blog/${post.slug}`
     }
   };
 

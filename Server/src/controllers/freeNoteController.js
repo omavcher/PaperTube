@@ -1,4 +1,4 @@
-// controllers/freeNoteController.js
+﻿// controllers/freeNoteController.js
 const User = require('../models/User');
 const Note = require('../models/Note');
 const crypto = require('crypto');
@@ -100,8 +100,8 @@ async function premiumOpenRouterChatCompletion(messages, options = {}) {
         headers: { 
           "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://yt2pdf.in",
-          "X-Title": "YT2PDF"
+          "HTTP-Referer": "https://paperxify.com",
+          "X-Title": "Paperxify"
         },
         body: JSON.stringify({ 
           model: model,
@@ -192,8 +192,8 @@ async function openRouterChatCompletion(messages, options = {}) {
         headers: { 
           "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://yt2pdf.in",
-          "X-Title": "YT2PDF"
+          "HTTP-Referer": "https://paperxify.com",
+          "X-Title": "Paperxify"
         },
         body: JSON.stringify({ 
           model: model,

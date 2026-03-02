@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import ExploreClient from "./ExploreClient";
 
 // --- 1. Define Types to Match Your API ---
@@ -76,21 +76,21 @@ async function getExploreNotes(): Promise<ApiResponse | null> {
 
 // --- 3. Advanced SEO Metadata ---
 export const metadata: Metadata = {
-  title: "Explore Engineering Notes & AI Summaries | PaperTube",
+  title: "Explore Engineering Notes & AI Summaries | Paperxify",
   description: "Browse thousands of AI-generated study notes from YouTube videos. Topics include Coding, GATE, Finance, and Tech.",
   keywords: ["AI notes", "engineering study", "tech summaries", "developer community", "learning resources"],
   alternates: {
-    canonical: "https://papertube.in/explore",
+    canonical: "https://paperxify.com/explore",
   },
   openGraph: {
-    title: "Explore Community Notes | PaperTube",
+    title: "Explore Community Notes | Paperxify",
     description: "Read high-quality AI notes generated from video content.",
-    url: "https://papertube.in/explore",
-    siteName: "PaperTube",
+    url: "https://paperxify.com/explore",
+    siteName: "Paperxify",
     type: "website",
     images: [
       {
-        url: "https://papertube.in/og-explore.jpg", // Replace with your actual OG image URL
+        url: "https://paperxify.com/og-explore.jpg", // Replace with your actual OG image URL
         width: 1200,
         height: 630,
         alt: "Explore Community Notes",
@@ -127,13 +127,13 @@ export default async function ExplorePage() {
     "@type": "CollectionPage",
     "name": "Explore Notes",
     "description": "Curated list of video-to-text notes.",
-    "url": "https://papertube.in/explore",
+    "url": "https://paperxify.com/explore",
     "mainEntity": {
       "@type": "ItemList",
       "itemListElement": initialItems.map((note, index) => ({
         "@type": "ListItem",
         "position": index + 1,
-        "url": `https://papertube.in/note/${note.creator?.username || 'user'}/${note.slug}`,
+        "url": `https://paperxify.com/note/${note.creator?.username || 'user'}/${note.slug}`,
         "name": note.title,
         "author": {
           "@type": "Person",

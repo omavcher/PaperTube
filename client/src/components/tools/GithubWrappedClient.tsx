@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useCallback } from "react";
 import { 
@@ -90,7 +90,7 @@ export default function GithubWrappedClient() {
     try {
       const dataUrl = await toPng(exportRef.current, { pixelRatio: 3, backgroundColor: '#000' });
       const link = document.createElement("a");
-      link.download = `PaperTube-Wrapped-${userData.login}.png`;
+      link.download = `Paperxify-Wrapped-${userData.login}.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Blueprint Saved", { id: loadingToast });
