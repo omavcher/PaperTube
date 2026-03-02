@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+  <title>Paperxify – AI PDF Tools, YouTube to Notes, Study Smarter | Coming Soon</title>
+  <meta name="description" content="Paperxify is reimagining how students learn. AI-powered YouTube to PDF, smart note generator, study guide creator, and PDF tools — all in one platform. Coming soon to paperxify.com." />
+  <meta name="keywords" content="Paperxify, paperxify.com, YouTube to PDF, YouTube to notes, AI note generator, AI study guide, PDF tools, AI PDF summarizer, video to notes, AI for students, study tools, smart notes, YouTube summarizer, PDF converter, note taking app, AI flashcards, study smarter, e-learning tools, academic AI, student productivity, PDF annotation, video summarization, AI text extractor, online study tools, note generator AI, PDF reader, AI tutor, study aid, knowledge extraction, YouTube transcript, YouTube chapters, video to text, AI research tool, document AI, PDF management, online notes app, best student apps 2025, smart study app India" />
+  <meta name="author" content="Om Awchar" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="canonical" href="https://paperxify.com" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://paperxify.com" />
+  <meta property="og:title" content="Paperxify – AI PDF & Study Tools | Coming Soon" />
+  <meta property="og:description" content="The next generation AI platform for students. YouTube to PDF, AI notes, smart study guides — all in one place. paperxify.com — Launching Soon." />
+  <meta property="og:site_name" content="Paperxify" />
+  <meta property="og:locale" content="en_US" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@omawchar" />
+  <meta name="twitter:creator" content="@omawchar" />
+  <meta name="twitter:title" content="Paperxify – AI Study Tools | Coming Soon" />
+  <meta name="twitter:description" content="YouTube to notes, AI PDF tools, smart study guides — all in one platform. Launching at paperxify.com." />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Paperxify",
+    "url": "https://paperxify.com",
+    "description": "AI-powered platform for students — YouTube to PDF, smart notes, AI study guides, and PDF tools.",
+    "author": {
+      "@type": "Person",
+      "name": "Om Awchar"
+    },
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://paperxify.com/explore?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,800;1,900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <style>
+    /* ═══════════════════════ RESET & ROOT ═══════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black: #000000;
+      --black-mid: #0a0a0a;
+      --neutral-900: #171717;
+      --neutral-800: #262626;
+      --neutral-600: #525252;
+      --neutral-500: #737373;
+      --neutral-400: #a3a3a3;
+      --neutral-300: #d4d4d4;
+      --white: #ffffff;
+      --red: #dc2626;
+      --red-dark: #991b1b;
+      --red-glow: rgba(220, 38, 38, 0.3);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.15);
+      --glass-bg: rgba(23, 23, 23, 0.4);
+      --font-brand: 'Montserrat', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--black);
+      color: var(--white);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    ::selection { background: rgba(220, 38, 38, 0.3); color: white; }
+
+    /* ═══════════════════════ SCROLLBAR ═══════════════════════ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1f2937; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+    /* ═══════════════════════ BACKGROUND LAYERS ═══════════════════════ */
+    .bg-atmosphere {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .bg-radial {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top, rgba(30,30,30,0.4) 0%, transparent 60%),
+                  radial-gradient(ellipse at bottom-right, rgba(220,38,38,0.06) 0%, transparent 50%);
+    }
+
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      opacity: 0.12;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .bg-glow-red {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(220,38,38,0.08) 0%, transparent 65%);
+      border-radius: 50%;
+      animation: pulseGlow 6s ease-in-out infinite;
+    }
+
+    .bg-glow-corner {
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      bottom: 0;
+      right: -100px;
+      background: radial-gradient(circle, rgba(220,38,38,0.04) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+      50% { opacity: 1; transform: translateX(-50%) scale(1.15); }
+    }
+
+    /* ═══════════════════════ FLOATING PARTICLES ═══════════════════════ */
+    .particles-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ═══════════════════════ LAYOUT ═══════════════════════ */
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px 80px;
+    }
+
+    /* ═══════════════════════ NAVBAR ═══════════════════════ */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      background: transparent;
+      transition: all 0.4s ease;
+    }
+
+    .navbar.scrolled {
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 40px;
+    }
+
+    .logo {
+      font-family: var(--font-brand);
+      font-size: 1.5rem;
+      font-weight: 900;
+      font-style: italic;
+      text-transform: uppercase;
+      letter-spacing: -0.04em;
+      color: var(--white);
+      text-decoration: none;
+      user-select: none;
+    }
+
+    .logo span {
+      color: var(--red);
+      text-shadow: 0 0 20px var(--red-glow);
+    }
+
+    .nav-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(23,23,23,0.5);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--neutral-400);
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
+      animation: dotPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    /* ═══════════════════════ HERO SECTION ═══════════════════════ */
+    .hero {
+      max-width: 900px;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      margin-top: 80px;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px 6px 10px;
+      border-radius: 999px;
+      background: rgba(23,23,23,0.6);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--neutral-400);
+      opacity: 0;
+    }
+
+    .hero-eyebrow .icon-wrap {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      background: rgba(220,38,38,0.12);
+      border: 1px solid rgba(220,38,38,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+
+    .hero-title {
+      font-family: var(--font-brand);
+      font-size: clamp(3rem, 10vw, 7rem);
+      font-weight: 900;
+      font-style: italic;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+      line-height: 1;
+      color: var(--white);
+      opacity: 0;
+    }
+
+    .hero-title .brand-x {
+      color: transparent;
+      -webkit-text-stroke: 2px var(--red);
+      text-shadow: 0 0 40px var(--red-glow);
+      display: inline-block;
+    }
+
+    .hero-title .brand-red {
+      color: var(--red);
+      text-shadow: 0 0 30px var(--red-glow);
+      display: inline-block;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      font-weight: 400;
+      color: var(--neutral-400);
+      line-height: 1.6;
+      max-width: 560px;
+      opacity: 0;
+    }
+
+    .hero-subtitle strong {
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    /* ═══════════════════════ COUNTDOWN TIMER ═══════════════════════ */
+    .countdown-section {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0;
+    }
+
+    .countdown-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 80px;
+    }
+
+    .countdown-num {
+      font-family: var(--font-brand);
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      color: var(--white);
+      line-height: 1;
+      background: linear-gradient(180deg, #fff 0%, #a3a3a3 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.04em;
+    }
+
+    .countdown-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--neutral-600);
+      margin-top: 4px;
+    }
+
+    .countdown-sep {
+      font-family: var(--font-brand);
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--neutral-800);
+      margin-bottom: 18px;
+      opacity: 0.6;
+    }
+
+    /* ═══════════════════════ EMAIL FORM ═══════════════════════ */
+    .notify-form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 460px;
+      opacity: 0;
+    }
+
+    .form-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--neutral-600);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      padding: 6px 6px 6px 20px;
+      background: rgba(23,23,23,0.6);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+      transition: border-color 0.3s;
+    }
+
+    .input-row:focus-within {
+      border-color: var(--border-strong);
+    }
+
+    .email-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--white);
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .email-input::placeholder { color: var(--neutral-600); }
+
+    .notify-btn {
+      padding: 10px 24px;
+      background: var(--white);
+      color: var(--black);
+      border: none;
+      border-radius: 12px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .notify-btn:hover {
+      background: var(--neutral-300);
+      transform: scale(0.97);
+    }
+
+    .notify-btn:active { transform: scale(0.95); }
+
+    .notify-btn.success {
+      background: #10b981;
+      color: white;
+    }
+
+    /* ═══════════════════════ FEATURE PILLS ═══════════════════════ */
+    .feature-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      max-width: 700px;
+      opacity: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: rgba(23,23,23,0.5);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--neutral-400);
+      backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+      cursor: default;
+    }
+
+    .pill:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: var(--border-strong);
+      color: var(--white);
+      transform: translateY(-2px);
+    }
+
+    .pill-icon {
+      font-size: 14px;
+    }
+
+    /* ═══════════════════════ STATS ROW ═══════════════════════ */
+    .stats-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(10,10,10,0.8);
+      backdrop-filter: blur(20px);
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 36px;
+      border-right: 1px solid var(--border);
+      gap: 4px;
+    }
+
+    .stat-item:last-child { border-right: none; }
+
+    .stat-num {
+      font-family: var(--font-brand);
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--white);
+      letter-spacing: -0.04em;
+    }
+
+    .stat-num span {
+      color: var(--red);
+    }
+
+    .stat-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--neutral-600);
+    }
+
+    /* ═══════════════════════ DOMAIN CARD ═══════════════════════ */
+    .domain-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: rgba(23,23,23,0.5);
+      border: 1px solid rgba(220,38,38,0.15);
+      border-radius: 14px;
+      backdrop-filter: blur(16px);
+      opacity: 0;
+    }
+
+    .domain-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 10px var(--red-glow);
+      animation: dotPulse 2s ease-in-out infinite;
+    }
+
+    .domain-text {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--neutral-400);
+      letter-spacing: 0.02em;
+    }
+
+    .domain-text strong {
+      color: var(--white);
+    }
+
+    /* ═══════════════════════ FOOTER ═══════════════════════ */
+    .footer {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      text-align: center;
+      padding: 32px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .footer-logo {
+      font-family: var(--font-brand);
+      font-size: 1.2rem;
+      font-weight: 900;
+      font-style: italic;
+      text-transform: uppercase;
+      letter-spacing: -0.04em;
+      color: var(--neutral-600);
+    }
+
+    .footer-logo span { color: var(--red); opacity: 0.5; }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--neutral-600);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--white); }
+
+    .footer-copy {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--neutral-800);
+    }
+
+    /* ═══════════════════════ PROGRESS BAR ═══════════════════════ */
+    .progress-section {
+      width: 100%;
+      max-width: 460px;
+      opacity: 0;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .progress-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--neutral-600);
+    }
+
+    .progress-pct {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--neutral-400);
+    }
+
+    .progress-track {
+      height: 3px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--red-dark), var(--red));
+      border-radius: 99px;
+      box-shadow: 0 0 8px var(--red-glow);
+      transition: width 0.1s;
+    }
+
+    /* ═══════════════════════ ANIMATED BG LINES ═══════════════════════ */
+    .scan-line {
+      position: fixed;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(220,38,38,0.15), transparent);
+      pointer-events: none;
+      z-index: 0;
+      animation: scanDown 8s linear infinite;
+    }
+
+    @keyframes scanDown {
+      0% { top: -2px; opacity: 0; }
+      5% { opacity: 1; }
+      95% { opacity: 1; }
+      100% { top: 100vh; opacity: 0; }
+    }
+
+    /* ═══════════════════════ RESPONSIVE ═══════════════════════ */
+    @media (max-width: 640px) {
+      .navbar { padding: 16px 24px; }
+      .navbar.scrolled { padding: 12px 24px; }
+      .stats-row { flex-direction: column; }
+      .stat-item { border-right: none; border-bottom: 1px solid var(--border); width: 100%; }
+      .stat-item:last-child { border-bottom: none; }
+      .countdown-item { min-width: 60px; }
+      .feature-pills { gap: 8px; }
+    }
+
+    /* ═══════════════════════ TRANSITION HELPER ═══════════════════════ */
+    .gsap-hidden { opacity: 0; }
+  </style>
+</head>
+
+<body>
+  <div class="scan-line"></div>
+
+  <div class="bg-atmosphere">
+    <div class="bg-grid"></div>
+    <div class="bg-radial"></div>
+    <div class="bg-glow-red" id="bgGlowRed"></div>
+    <div class="bg-glow-corner"></div>
+  </div>
+
+  <canvas class="particles-canvas" id="particleCanvas"></canvas>
+
+  <nav class="navbar" id="navbar" role="navigation" aria-label="Main navigation">
+    <a href="https://paperxify.com" class="logo" aria-label="Paperxify Home">
+      Paper<span>xify</span>
+    </a>
+    <div class="nav-badge" id="navBadge">
+      <div class="pulse-dot"></div>
+      Launching Soon
+    </div>
+  </nav>
+
+  <main class="page-wrapper" role="main">
+    <section class="hero" aria-labelledby="hero-title">
+
+      <div class="hero-eyebrow" id="heroEyebrow" role="status" aria-live="polite">
+        <div class="icon-wrap" aria-hidden="true">🚀</div>
+        New Domain · New Identity · Same Mission
+      </div>
+
+      <h1 class="hero-title" id="heroTitle">
+        Paper<span class="brand-red">xify</span><br/>
+        <span class="brand-x">.com</span>
+      </h1>
+
+      <p class="hero-subtitle" id="heroSubtitle">
+        The AI platform that turns <strong>YouTube videos into smart notes</strong>, generates <strong>PDF study guides</strong>, and supercharges your learning — now under a new name. The same powerful tools. A sharper identity.
+      </p>
+
+      <div class="domain-card" id="domainCard" role="status" aria-label="Website domain information">
+        <div class="domain-indicator" aria-hidden="true"></div>
+        <p class="domain-text">Our new home: <strong>paperxify.com</strong> · Launching soon</p>
+      </div>
+
+      <div class="countdown-section" id="countdownSection" aria-label="Countdown timer">
+        <div class="countdown-item">
+          <div class="countdown-num" id="cdDays">00</div>
+          <div class="countdown-label">Days</div>
+        </div>
+        <div class="countdown-sep" aria-hidden="true">:</div>
+        <div class="countdown-item">
+          <div class="countdown-num" id="cdHours">00</div>
+          <div class="countdown-label">Hours</div>
+        </div>
+        <div class="countdown-sep" aria-hidden="true">:</div>
+        <div class="countdown-item">
+          <div class="countdown-num" id="cdMins">00</div>
+          <div class="countdown-label">Minutes</div>
+        </div>
+        <div class="countdown-sep" aria-hidden="true">:</div>
+        <div class="countdown-item">
+          <div class="countdown-num" id="cdSecs">00</div>
+          <div class="countdown-label">Seconds</div>
+        </div>
+      </div>
+
+      <div class="progress-section" id="progressSection">
+        <div class="progress-header">
+          <span class="progress-label">Migration Progress</span>
+          <span class="progress-pct" id="progressPct">0%</span>
+        </div>
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="78" aria-label="Site migration progress">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <form class="notify-form" id="notifyForm" onsubmit="handleSubmit(event)" aria-label="Email notification signup">
+        <p class="form-label">⚡ Get notified when we launch</p>
+        <div class="input-row">
+          <input
+            class="email-input"
+            id="emailInput"
+            name="email"
+            type="email"
+            placeholder="your@email.com"
+            autocomplete="email"
+            required
+            aria-label="Email address for launch notification"
+          />
+          <button class="notify-btn" type="submit" id="notifyBtn" aria-label="Subscribe for launch notification">
+            Notify Me
+          </button>
+        </div>
+      </form>
+
+      <div class="feature-pills" id="featurePills" role="list" aria-label="Platform features">
+        <div class="pill" role="listitem">
+          <span class="pill-icon" aria-hidden="true">🎬</span>YouTube → PDF
+        </div>
+        <div class="pill" role="listitem">
+          <span class="pill-icon" aria-hidden="true">🤖</span>AI Note Generator
+        </div>
+        <div class="pill" role="listitem">
+          <span class="pill-icon" aria-hidden="true">📄</span>PDF Tools
+        </div>
+        <div class="pill" role="listitem">
+          <span class="pill-icon" aria-hidden="true">📚</span>Study Guides
+        </div>
+        <div class="pill" role="listitem">
+          <span class="pill-icon" aria-hidden="true">🧠</span>AI Flashcards
+        </div>
+        <div class="pill" role="listitem">
+          <span class="pill-icon" aria-hidden="true">⚡</span>Smart Summaries
+        </div>
+        <div class="pill" role="listitem">
+          <span class="pill-icon" aria-hidden="true">🏆</span>Leaderboards
+        </div>
+        <div class="pill" role="listitem">
+          <span class="pill-icon" aria-hidden="true">🌐</span>7 Languages
+        </div>
+      </div>
+
+      <div class="stats-row" id="statsRow" aria-label="Platform statistics">
+        <div class="stat-item">
+          <div class="stat-num" id="statUsers">0<span>+</span></div>
+          <div class="stat-label">Active Users</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statNotes">0<span>K+</span></div>
+          <div class="stat-label">Notes Generated</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statModels">0<span>+</span></div>
+          <div class="stat-label">AI Models</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statRating"><span>★</span> 0</div>
+          <div class="stat-label">Avg Rating</div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="footer-logo" aria-label="Paperxify">Paper<span>xify</span></div>
+    <p class="footer-copy">© <span id="footerYear">2026</span> Paperxify · Built by Om Awchar</p>
+  </footer>
+
+  <script>
+    // ─── Footer year ─────────────────────────────────────────
+    document.getElementById('footerYear').textContent = new Date().getFullYear();
+
+    // ─── Navbar scroll behavior ───────────────────────────────
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      navbar.classList.toggle('scrolled', window.scrollY > 60);
+    }, { passive: true });
+
+    // ─── Countdown Timer ──────────────────────────────────────
+    // Target: 30 days from now
+    const launchDate = new Date();
+    launchDate.setDate(launchDate.getDate() + 7);
+    launchDate.setHours(0, 0, 0, 0);
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function updateCountdown() {
+      const now = new Date();
+      const diff = Math.max(0, launchDate - now);
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+
+      document.getElementById('cdDays').textContent  = pad(d);
+      document.getElementById('cdHours').textContent = pad(h);
+      document.getElementById('cdMins').textContent  = pad(m);
+      document.getElementById('cdSecs').textContent  = pad(s);
+
+      requestAnimationFrame(() => {
+        // Pulse the seconds digit via GSAP
+        gsap.fromTo('#cdSecs', { scale: 1.15 }, { scale: 1, duration: 0.3, ease: 'power2.out' });
+      });
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+
+    // ─── Email Form with Formspree Integration ─────────────────
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('notifyBtn');
+      const input = document.getElementById('emailInput');
+      const email = input.value;
+
+      if (!email) return;
+
+      // Change button text while sending
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch("https://formspree.io/f/mpqjevzp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({ email: email })
+        });
+
+        if (response.ok) {
+          // Success state & animation
+          btn.textContent = '✓ You\'re on the list!';
+          btn.classList.add('success');
+          input.disabled = true;
+
+          gsap.fromTo('#notifyForm',
+            { y: 0 },
+            { y: -4, yoyo: true, repeat: 1, duration: 0.15 }
+          );
+        } else {
+          // If something goes wrong
+          btn.textContent = 'Error. Try Again.';
+          btn.disabled = false;
+        }
+      } catch (error) {
+        btn.textContent = 'Error. Try Again.';
+        btn.disabled = false;
+      }
+    }
+
+    // ─── Particle System ─────────────────────────────────────
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let W, H;
+
+    function resizeCanvas() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas, { passive: true });
+
+    function randomBetween(a, b) { return a + Math.random() * (b - a); }
+
+    function createParticle() {
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: randomBetween(0.5, 2),
+        vx: randomBetween(-0.2, 0.2),
+        vy: randomBetween(-0.4, -0.1),
+        alpha: randomBetween(0.1, 0.5),
+        color: Math.random() < 0.15 ? '#dc2626' : '#ffffff',
+        life: 1,
+        decay: randomBetween(0.002, 0.005),
+      };
+    }
+
+    for (let i = 0; i < 80; i++) {
+      particles.push(createParticle());
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, W, H);
+      particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        if (p.life <= 0 || p.y < -10) {
+          particles[i] = createParticle();
+          particles[i].y = H + 5;
+        }
+        ctx.globalAlpha = p.alpha * p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // ─── GSAP Entrance Animations ────────────────────────────
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+    // Initial states
+    gsap.set([
+      '#heroEyebrow', '#heroTitle', '#heroSubtitle', '#domainCard',
+      '#countdownSection', '#progressSection', '#notifyForm',
+      '#featurePills', '#statsRow', '#navBadge'
+    ], { opacity: 0, y: 24 });
+
+    gsap.set('#navBadge', { opacity: 0, x: 10 });
+
+    // Staggered reveal
+    tl.to('#navBadge',        { opacity: 1, x: 0, duration: 0.6 }, 0.2)
+      .to('#heroEyebrow',     { opacity: 1, y: 0, duration: 0.7 }, 0.3)
+      .to('#heroTitle',       { opacity: 1, y: 0, duration: 0.9 }, 0.5)
+      .to('#heroSubtitle',    { opacity: 1, y: 0, duration: 0.7 }, 0.75)
+      .to('#domainCard',      { opacity: 1, y: 0, duration: 0.6 }, 0.9)
+      .to('#countdownSection',{ opacity: 1, y: 0, duration: 0.7 }, 1.05)
+      .to('#progressSection', { opacity: 1, y: 0, duration: 0.6 }, 1.2)
+      .to('#notifyForm',      { opacity: 1, y: 0, duration: 0.6 }, 1.35)
+      .to('#featurePills',    { opacity: 1, y: 0, duration: 0.6 }, 1.5)
+      .to('#statsRow',        { opacity: 1, y: 0, duration: 0.7 }, 1.65);
+
+    // ─── Progress bar animate to 78% ────────────────────────
+    setTimeout(() => {
+      gsap.to('#progressFill', {
+        width: '78%',
+        duration: 2.5,
+        ease: 'power2.out',
+        onUpdate: function() {
+          const w = parseFloat(document.getElementById('progressFill').style.width) || 0;
+          document.getElementById('progressPct').textContent = Math.round(w) + '%';
+        }
+      });
+    }, 1600);
+
+    // ─── Counter animations ──────────────────────────────────
+    function animateCount(id, end, suffix, prefix) {
+      let obj = { val: 0 };
+      gsap.to(obj, {
+        val: end,
+        duration: 2,
+        ease: 'power2.out',
+        delay: 1.8,
+        onUpdate: function() {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const val = Math.round(obj.val);
+          el.innerHTML = (prefix || '') + val + '<span>' + (suffix || '') + '</span>';
+        }
+      });
+    }
+
+    animateCount('statUsers', 8400, '+');
+    animateCount('statNotes', 42, 'K+');
+    animateCount('statModels', 5, '+');
+
+    // Rating counter
+    let ratingObj = { val: 0 };
+    gsap.to(ratingObj, {
+      val: 4.8,
+      duration: 2,
+      ease: 'power2.out',
+      delay: 1.8,
+      onUpdate: function() {
+        const el = document.getElementById('statRating');
+        if (el) el.innerHTML = '<span>★</span> ' + ratingObj.val.toFixed(1);
+      }
+    });
+
+    // ─── Pill hover parallax ─────────────────────────────────
+    document.querySelectorAll('.pill').forEach(pill => {
+      pill.addEventListener('mouseenter', () => {
+        gsap.to(pill, { y: -4, scale: 1.04, duration: 0.25, ease: 'power2.out' });
+      });
+      pill.addEventListener('mouseleave', () => {
+        gsap.to(pill, { y: 0, scale: 1, duration: 0.3, ease: 'power2.out' });
+      });
+    });
+
+    // ─── Cursor glow effect ──────────────────────────────────
+    const glow = document.getElementById('bgGlowRed');
+    document.addEventListener('mousemove', (e) => {
+      gsap.to(glow, {
+        x: (e.clientX / window.innerWidth - 0.5) * 100,
+        duration: 1.5,
+        ease: 'power2.out'
+      });
+    }, { passive: true });
+
+    // ─── Logo letter hover ───────────────────────────────────
+    document.querySelectorAll('.logo').forEach(logo => {
+      logo.addEventListener('mouseenter', () => {
+        gsap.to(logo, { scale: 1.04, duration: 0.2, ease: 'back.out(2)' });
+      });
+      logo.addEventListener('mouseleave', () => {
+        gsap.to(logo, { scale: 1, duration: 0.3 });
+      });
+    });
+
+    // ─── Floating animation on hero title ───────────────────
+    gsap.to('#heroTitle', {
+      y: -8,
+      duration: 3,
+      ease: 'sine.inOut',
+      repeat: -1,
+      yoyo: true,
+      delay: 2
+    });
+
+    // ─── Stats row entrance glow ─────────────────────────────
+    gsap.to('#statsRow', {
+      boxShadow: '0 0 40px rgba(220,38,38,0.05)',
+      duration: 2,
+      repeat: -1,
+      yoyo: true,
+      delay: 3
+    });
+  </script>
+</body>
+</html>
