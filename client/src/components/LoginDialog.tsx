@@ -59,7 +59,6 @@ export function LoginDialog({
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
 
-        // Send to backend
         const response = await api.post<BackendResponse>("/auth/google", {
           googleAccessToken: accessToken,
           authType: 'access_token'
