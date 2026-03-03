@@ -302,9 +302,9 @@ export default function HomeMain() {
                 {/* Main Title & Subtitle */}
                 <div className="space-y-4 md:space-y-5">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-400 leading-[1.1] pb-2">
-                    Turn YouTube into <br className="hidden sm:block" />
+                    Best YT Link to <br className="hidden sm:block" />
                     <span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]">
-                      Beautiful Notes.
+                      Notes AI.
                     </span>
                   </h1>
                 </div>

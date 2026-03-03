@@ -15,12 +15,12 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://paperxify.com"), 
   
   title: {
-    default: "Paperxify | Best YouTube Video to Notes Converter AI",
-    template: "%s | Paperxify - YouTube to Notes Converter", 
+    default: "Paperxify | YouTube Video to Notes Converter & PDF Extractor",
+    template: "Paperxify | %s", 
   },
   
   description:
-    "Convert any YouTube video link to PDF notes instantly using Paperxify AI. Stop pausing and typing—let our advanced AI extract intelligence, summarize concepts, and generate structured study guides, assignments, and transcripts.",
+    "Convert YouTube videos to structured notes instantly. Paperxify is the best free AI tool for students, developers, and researchers. Try it now!",
   
   keywords: [
     "YouTube to PDF",
@@ -132,6 +132,16 @@ export default function RootLayout({
           "width": 512,
           "height": 512
         }
+      },
+      {
+        "@type": "ItemList",
+        "name": "Site Navigation",
+        "itemListElement": [
+          { "@type": "SiteNavigationElement", "position": 1, "name": "Explore", "url": "https://paperxify.com/explore" },
+          { "@type": "SiteNavigationElement", "position": 2, "name": "Pricing", "url": "https://paperxify.com/pricing" },
+          { "@type": "SiteNavigationElement", "position": 3, "name": "About", "url": "https://paperxify.com/about" },
+          { "@type": "SiteNavigationElement", "position": 4, "name": "Contact", "url": "https://paperxify.com/contact" }
+        ]
       }
     ]
   };
