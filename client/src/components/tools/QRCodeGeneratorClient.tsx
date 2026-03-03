@@ -59,8 +59,8 @@ interface ContentType {
 }
 
 export default function QRCodeGeneratorClient() {
-  const [qrContent, setQrContent] = useState<string>('https://example.com');
-  const [qrTitle, setQrTitle] = useState<string>('My QR Code');
+  const [qrContent, setQrContent] = useState<string>('https://paperxify.com');
+  const [qrTitle, setQrTitle] = useState<string>('Paperxify');
   const [selectedType, setSelectedType] = useState<string>('url');
   const [showSettings, setShowSettings] = useState(true);
   const [history, setHistory] = useState<QRCodeData[]>([]);
@@ -90,7 +90,7 @@ export default function QRCodeGeneratorClient() {
       icon: <Globe className="h-4 w-4" />,
       color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/50',
       placeholder: 'https://example.com',
-      example: 'https://yourwebsite.com'
+      example: 'https://paperxify.com'
     },
     {
       id: 'text',
@@ -308,8 +308,6 @@ export default function QRCodeGeneratorClient() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-indigo-500/30 font-sans flex flex-col">
       
-      {/* Ambient Background */}
-      <div className="fixed top-0 left-0 w-full h-[40vh] bg-indigo-600/5 blur-[100px] pointer-events-none" />
 
       {/* --- Desktop Navbar --- */}
       <header className="hidden md:flex border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-50">

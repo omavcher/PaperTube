@@ -33,9 +33,9 @@ const TEMPLATES = Array.from({ length: 9 }).map((_, i) => ({
 
 export default function InternshipGeneratorClient() {
   const [data, setData] = useState({
-    userName: "Om Avchar",
-    companyName: "Nexus Dynamics Ltd",
-    role: "Full Stack Developer Intern",
+    userName: "Elon Musk",
+    companyName: "SpaceX",
+    role: "Chief Executive Officer",
     startDate: "2025-06-01",
     endDate: "2025-12-01",
   });
@@ -137,10 +137,7 @@ export default function InternshipGeneratorClient() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-yellow-500/30 flex flex-col font-sans">
-      
-      {/* Ambient Background */}
-      <div className="fixed top-0 left-0 w-full h-[40vh] bg-yellow-600/5 blur-[100px] pointer-events-none" />
-
+    
   
 
       {/* --- Mobile Header --- */}

@@ -210,9 +210,7 @@ export default function MergePDFPage() {
   return (
     <div className="min-h-screen bg-black text-white selection:bg-red-600/30 flex flex-col font-sans">
       
-      {/* --- Ambient Background --- */}
-      <div className="fixed top-0 left-0 w-full h-[40vh] bg-red-600/5 blur-[100px] pointer-events-none" />
-
+    
     
 
       {/* --- Mobile Header --- */}

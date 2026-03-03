@@ -291,8 +291,7 @@ export default function UnitConverterClient() {
   return (
     <div className="min-h-screen bg-[#000000] text-white selection:bg-purple-500/30 font-sans flex flex-col">
       
-      {/* Ambient Background */}
-      <div className="fixed top-0 left-0 w-full h-[40vh] bg-purple-600/5 blur-[100px] pointer-events-none" />
+     
 
       {/* --- Desktop Navbar --- */}
       <nav className="hidden md:flex items-center justify-between px-8 py-6 border-b border-white/5 bg-black/50 backdrop-blur-xl fixed top-0 w-full z-50">

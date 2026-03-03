@@ -564,9 +564,7 @@ Wrap up your post with a strong conclusion.
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-emerald-500/30 font-sans flex flex-col">
       
-      {/* Ambient Background */}
-      <div className="fixed top-0 left-0 w-full h-[40vh] bg-emerald-600/5 blur-[100px] pointer-events-none" />
-
+      
       {/* Desktop Header */}
       <header className="hidden md:flex border-b border-white/5 bg-black/40 backdrop-blur-md top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">

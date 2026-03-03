@@ -105,9 +105,7 @@ export default function SyllabusTrackerClient() {
   return (
     <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 flex flex-col font-sans">
       
-      {/* Ambient Background */}
-      <div className="fixed top-0 left-0 w-full h-[40vh] bg-cyan-600/5 blur-[100px] pointer-events-none" />
-
+    
       {/* --- Mobile Header --- */}
       <div className="md:hidden flex items-center justify-between px-4 py-4 border-b border-white/5 bg-black sticky top-0 z-40">
         <div className="flex items-center gap-2">
