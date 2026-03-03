@@ -2,6 +2,9 @@
 const User = require("../models/User");
 const cron = require("node-cron");
 
+// ── Constants ──────────────────────────────────────────────────
+const FREE_DAILY_TOKENS = 10;  // tokens free users get every day at midnight
+
 class TokenResetService {
   constructor() {
     this.dailyResetJob = null;
@@ -12,15 +15,16 @@ class TokenResetService {
    * Start all cron jobs
    */
   startDailyReset() {
-    // Run daily at midnight (00:00)
+    // ── Run at midnight every day (00:00 IST = 18:30 UTC if needed, but use local) ──
     this.dailyResetJob = cron.schedule("0 0 * * *", async () => {
-      console.log("🔄 Running daily token reset for free users...");
-      await this.resetFreeUserTokens();
+      console.log("🌙 Midnight cron: starting daily stack reset...");
+      await this.grantDailyTokensToFreeUsers();
+      await this.resetMissedStreaks();
     });
 
-    // Check for expired subscriptions every hour
+    // ── Check for expired subscriptions every hour ──
     this.subscriptionCheckJob = cron.schedule("0 * * * *", async () => {
-      console.log("🔄 Checking for expired subscriptions...");
+      console.log("🔄 Hourly check: expired subscriptions...");
       await this.handleExpiredSubscriptions();
     });
 
@@ -28,200 +32,170 @@ class TokenResetService {
   }
 
   /**
-   * Reset tokens for free users who used tokens yesterday
+   * Grant FREE_DAILY_TOKENS to ALL free users at midnight.
+   * This happens regardless of whether they used tokens yesterday.
+   * Their `lastTokenReset` gate (in authController) prevents double-granting
+   * within the same calendar day.
    */
-  async resetFreeUserTokens() {
+  async grantDailyTokensToFreeUsers() {
     try {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
-      
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
+      console.log(`🎁 Granting ${FREE_DAILY_TOKENS} daily tokens to all free users...`);
 
-      // Find all free users (non-premium)
-      const freeUsers = await User.find({ 
-        'membership.isActive': false 
-      });
-
-      console.log(`📊 Found ${freeUsers.length} free users to check`);
-
-      let resetCount = 0;
-      let skippedCount = 0;
-
-      for (const user of freeUsers) {
-        // Check if user used tokens yesterday
-        const usedTokensYesterday = user.tokenUsageHistory?.some(usage => {
-          const usageDate = new Date(usage.date);
-          return usageDate >= yesterday && usageDate < today;
-        });
-
-        if (usedTokensYesterday) {
-          // User used tokens yesterday, reset to 5
-          user.tokens = 5;
-          user.lastTokenReset = new Date();
-          await user.save();
-          resetCount++;
-          console.log(`✅ Reset tokens for user: ${user.email} (used tokens yesterday)`);
-        } else {
-          // User didn't use tokens yesterday, keep current tokens
-          console.log(`⏭️ Skipped user: ${user.email} (no token usage yesterday)`);
-          skippedCount++;
+      const result = await User.updateMany(
+        { "membership.isActive": false },
+        {
+          $set: {
+            tokens: FREE_DAILY_TOKENS,
+            lastTokenReset: now,
+          },
         }
-      }
+      );
 
-      console.log(`📊 Daily token reset complete - Reset: ${resetCount}, Skipped: ${skippedCount}`);
-      
-      // Log summary
-      if (resetCount > 0 || skippedCount > 0) {
-        console.log(`📈 Summary: ${resetCount} users got 5 tokens, ${skippedCount} users kept their tokens`);
-      }
-
+      console.log(`✅ Daily token grant complete — updated ${result.modifiedCount} free users.`);
     } catch (error) {
-      console.error("❌ Error in daily token reset:", error);
+      console.error("❌ Error in grantDailyTokensToFreeUsers:", error);
     }
   }
 
   /**
-   * Handle expired subscriptions
-   * Convert expired premium users back to free users with 5 tokens
+   * At midnight, reset streak to 0 for any user whose lastVisit
+   * was NOT today (they already logged in) — i.e. users who missed yesterday.
+   * We check lastVisit < "yesterday" meaning they skipped at least one day.
+   */
+  async resetMissedStreaks() {
+    try {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      // Users whose last visit was before yesterday — streak should reset
+      const result = await User.updateMany(
+        {
+          $or: [
+            { "streak.lastVisit": { $lt: yesterday } },
+            { "streak.lastVisit": { $exists: false } },
+          ],
+          "streak.count": { $gt: 0 },
+        },
+        {
+          $set: { "streak.count": 0 },
+        }
+      );
+
+      console.log(`🔄 Streak reset for ${result.modifiedCount} users who missed a day.`);
+    } catch (error) {
+      console.error("❌ Error in resetMissedStreaks:", error);
+    }
+  }
+
+  /**
+   * Handle expired subscriptions.
+   * Converts expired premium users back to free with daily tokens.
    */
   async handleExpiredSubscriptions() {
     try {
       const now = new Date();
 
-      // Find users with expired subscriptions
       const expiredUsers = await User.find({
-        'membership.isActive': true,
-        'membership.expiresAt': { $lt: now }
+        "membership.isActive": true,
+        "membership.expiresAt": { $lt: now },
       });
+
+      if (expiredUsers.length === 0) return;
 
       console.log(`📊 Found ${expiredUsers.length} users with expired subscriptions`);
 
       let convertedCount = 0;
 
       for (const user of expiredUsers) {
-        // Convert to free user
         user.membership.isActive = false;
-        user.membership.planName = 'Free';
+        user.membership.planName = "Free";
         user.membership.billingPeriod = undefined;
         user.membership.expiresAt = undefined;
-        
-        // Reset tokens to free user limit (5)
-        user.tokens = 5;
-        user.lastTokenReset = new Date();
-        
-        // Add to token usage history for tracking
+
+        // Grant them today's daily token allocation
+        user.tokens = FREE_DAILY_TOKENS;
+        user.lastTokenReset = now;
+
+        // History entry
         user.tokenUsageHistory.push({
-          name: 'Subscription expired - converted to free',
+          name: "Subscription expired — converted to free plan",
           tokens: 0,
-          date: new Date()
+          date: now,
         });
 
-        await user.save();
+        await user.save({ validateBeforeSave: false });
         convertedCount++;
-        
-        console.log(`✅ Converted expired premium user to free: ${user.email}`);
-        console.log(`   - Previous plan: ${user.membership.planName}`);
-        console.log(`   - Tokens reset to: 5`);
+        console.log(`✅ Expired subscription downgraded: ${user.email} → Free (${FREE_DAILY_TOKENS} tokens)`);
       }
 
-      if (convertedCount > 0) {
-        console.log(`📊 Subscription check complete - Converted ${convertedCount} expired users to free`);
-      }
-
+      console.log(`📊 Subscription check complete — downgraded ${convertedCount} users.`);
     } catch (error) {
       console.error("❌ Error handling expired subscriptions:", error);
     }
   }
 
   /**
-   * Manually reset tokens for a specific user
-   * @param {string} userId - User ID
+   * Manually reset tokens for a specific user (admin use).
    */
   async manualResetForUser(userId) {
     try {
       const user = await User.findById(userId);
-      
-      if (!user) {
-        throw new Error("User not found");
-      }
 
-      // Check if user is premium
+      if (!user) throw new Error("User not found");
+
       if (user.membership?.isActive) {
-        console.log(`⏭️ User ${user.email} is premium, skipping token reset`);
-        return {
-          success: false,
-          message: "Premium users don't need token resets"
-        };
+        return { success: false, message: "Premium users don't use the free daily token system" };
       }
 
-      // Reset to 5 tokens
-      user.tokens = 5;
+      user.tokens = FREE_DAILY_TOKENS;
       user.lastTokenReset = new Date();
-      
-      await user.save();
+      await user.save({ validateBeforeSave: false });
 
-      console.log(`✅ Manually reset tokens for user: ${user.email}`);
-      
+      console.log(`✅ Manual token reset for: ${user.email}`);
+
       return {
         success: true,
         message: "Tokens reset successfully",
-        user: {
-          email: user.email,
-          tokens: user.tokens
-        }
+        user: { email: user.email, tokens: user.tokens },
       };
-
     } catch (error) {
-      console.error("❌ Error in manual reset:", error);
-      return {
-        success: false,
-        message: error.message
-      };
+      console.error("❌ Error in manualResetForUser:", error);
+      return { success: false, message: error.message };
     }
   }
 
   /**
-   * Get token reset statistics
+   * Get current daily stack stats (for admin dashboard).
    */
   async getResetStats() {
     try {
       const now = new Date();
-      const today = new Date(now.setHours(0, 0, 0, 0));
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
 
-      // Users who used tokens yesterday
-      const usersWhoUsedTokens = await User.find({
-        'membership.isActive': false,
-        tokenUsageHistory: {
-          $elemMatch: {
-            date: { $gte: yesterday, $lt: today }
-          }
-        }
+      const totalFreeUsers = await User.countDocuments({ "membership.isActive": false });
+      const totalPremiumUsers = await User.countDocuments({ "membership.isActive": true });
+
+      // Users whose tokens were reset today
+      const tokensGrantedToday = await User.countDocuments({
+        "membership.isActive": false,
+        lastTokenReset: { $gte: todayStart },
       });
 
-      // Total free users
-      const totalFreeUsers = await User.countDocuments({
-        'membership.isActive': false
-      });
-
-      // Total premium users
-      const totalPremiumUsers = await User.countDocuments({
-        'membership.isActive': true
-      });
-
-      // Users with expiring soon (next 7 days)
+      // Subscriptions expiring in next 7 days
       const nextWeek = new Date();
       nextWeek.setDate(nextWeek.getDate() + 7);
-      
       const expiringSoon = await User.countDocuments({
-        'membership.isActive': true,
-        'membership.expiresAt': { 
-          $gte: now, 
-          $lte: nextWeek 
-        }
+        "membership.isActive": true,
+        "membership.expiresAt": { $gte: now, $lte: nextWeek },
+      });
+
+      // Active streaks (count > 0, lastVisit today)
+      const activeStreaksToday = await User.countDocuments({
+        "streak.count": { $gt: 0 },
+        "streak.lastVisit": { $gte: todayStart },
       });
 
       return {
@@ -229,41 +203,37 @@ class TokenResetService {
         stats: {
           totalFreeUsers,
           totalPremiumUsers,
-          usersToResetToday: usersWhoUsedTokens.length,
+          tokensGrantedToday,
+          dailyTokenAllocation: FREE_DAILY_TOKENS,
           expiringSubscriptions: expiringSoon,
-          lastCheck: new Date()
-        }
+          activeStreaksToday,
+          lastCheck: now,
+        },
       };
-
     } catch (error) {
       console.error("❌ Error getting reset stats:", error);
-      return {
-        success: false,
-        message: error.message
-      };
+      return { success: false, message: error.message };
     }
   }
 
   /**
-   * Stop all cron jobs
+   * Stop all cron jobs gracefully.
    */
   stopAllJobs() {
-    if (this.dailyResetJob) {
-      this.dailyResetJob.stop();
-    }
-    if (this.subscriptionCheckJob) {
-      this.subscriptionCheckJob.stop();
-    }
+    if (this.dailyResetJob) this.dailyResetJob.stop();
+    if (this.subscriptionCheckJob) this.subscriptionCheckJob.stop();
     console.log("🛑 Token reset service stopped");
   }
 
   /**
-   * Test function to run reset manually (for testing)
+   * Test: manually trigger all midnight jobs (dev only).
    */
   async testReset() {
-    console.log("🧪 Running test token reset...");
-    await this.resetFreeUserTokens();
+    console.log("🧪 Running test daily stack reset...");
+    await this.grantDailyTokensToFreeUsers();
+    await this.resetMissedStreaks();
     await this.handleExpiredSubscriptions();
+    console.log("🧪 Test complete.");
   }
 }
 

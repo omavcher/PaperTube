@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format } from 'date-fns';
+import { LoaderX } from '@/components/LoaderX';
 
 type Ticket = {
   _id: string;
@@ -100,11 +101,7 @@ export default function AdminSupportCenter() {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 text-neutral-600 animate-spin" />
-      </div>
-    );
+    return <LoaderX />;
   }
 
   return (

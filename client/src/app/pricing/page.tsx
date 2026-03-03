@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Smartphone, Tag, Zap, User, Loader2, IndianRupee, 
   ShieldCheck, Activity, CheckCircle2, CreditCard, 
   TicketPercent, X, ArrowRight, Timer, Flame,
   Coins, Database, Cpu, Lock, Sparkles, Terminal,
-  AlertCircle, BadgePercent, Gift, Users
+  AlertCircle, BadgePercent, Gift, Users, Sun, Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,91 @@ interface VerifyResponse {
     membership: any;
     status: string;
   };
+}
+
+// ─── Summer Offer: cosmetic pricing illusion ───────────────────
+// These multipliers create the fake "original" (higher) price
+const OFFER_LABEL = "Summer Offer";
+const OFFER_DISCOUNT_PCT = 20; // visually shown discount
+const FAKE_PRICE_MULTIPLIER = 1.25; // fake original = real * 1.25
+
+function fakeOriginal(real: number) {
+  return Math.round(real * FAKE_PRICE_MULTIPLIER);
+}
+
+function SummerOfferBanner() {
+  // Countdown to end of the day (midnight)
+  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(23, 59, 59, 999);
+      const diff = midnight.getTime() - now.getTime();
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft({ h, m, s });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 via-orange-500/5 to-red-500/5 backdrop-blur-xl p-4 mb-10 flex flex-col sm:flex-row items-center justify-between gap-4"
+    >
+      {/* Glow */}
+      <div className="absolute inset-0 bg-gradient-to-r from-amber-600/5 to-orange-600/5 pointer-events-none" />
+      
+      {/* Left */}
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <Sun size={16} className="text-amber-400 animate-spin" style={{ animationDuration: "6s" }} />
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black uppercase tracking-widest text-amber-400">☀ Summer Offer Active</span>
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] font-bold text-amber-400">
+              {OFFER_DISCOUNT_PCT}% OFF Applied
+            </span>
+          </div>
+          <p className="text-[10px] text-neutral-500 mt-0.5 font-medium">
+            Prices already discounted — no code needed. Limited-time deal.
+          </p>
+        </div>
+      </div>
+
+      {/* Countdown */}
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-1 text-neutral-400">
+          <Clock size={12} />
+          <span className="text-[9px] uppercase tracking-widest font-bold">Ends in</span>
+        </div>
+        <div className="flex items-center gap-1">
+          {[
+            { v: timeLeft.h, label: "hr" },
+            { v: timeLeft.m, label: "min" },
+            { v: timeLeft.s, label: "sec" },
+          ].map((t, i) => (
+            <div key={i} className="flex items-center gap-1">
+              {i > 0 && <span className="text-neutral-700 font-bold text-sm">:</span>}
+              <div className="flex flex-col items-center bg-black/40 border border-white/10 rounded-lg px-2 py-1 min-w-[36px]">
+                <span className="text-sm font-black text-white font-mono tabular-nums">{pad(t.v)}</span>
+                <span className="text-[7px] text-neutral-600 uppercase tracking-widest">{t.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
 }
 
 // --- Custom Modal ---
@@ -954,6 +1039,9 @@ export default function PricingSection() {
             )}
           </AnimatePresence>
 
+          {/* ── Summer Offer Banner ── */}
+          <SummerOfferBanner />
+
           {/* Plan Grid */}
           <motion.div
             key={viewMode}
@@ -962,93 +1050,114 @@ export default function PricingSection() {
             transition={{ duration: 0.3 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"
           >
-            {(viewMode === "subscription" ? subscriptionPlans : tokenPackages).map((plan: any) => (
-              <div
-                key={plan.id}
-                className={cn(
-                  "relative p-8 rounded-[2.5rem] border flex flex-col transition-all duration-500 hover:-translate-y-2",
-                  plan.highlight ? "bg-neutral-900/30 backdrop-blur-xl border-white/10 shadow-2xl z-10" : "bg-black/40 border-white/5"
-                )}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-white text-black text-[10px] font-bold uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(255,255,255,0.3)]">
-                    Most Popular
-                  </div>
-                )}
-
-                <div className="mb-8 space-y-4">
-                  <div className="flex items-center justify-between">
-                    {viewMode === "token" ? (
-                      <div className="p-2.5 bg-neutral-900 rounded-xl border border-white/5">
-                        <plan.icon size={18} className="text-white" />
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-                        <Flame size={12} className={cn(plan.highlight ? "text-orange-500" : "text-neutral-600")} />
-                        {plan.slots}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-white tracking-tight">{plan.name}</h3>
-                    <p className="text-xs text-neutral-500 mt-2 font-medium leading-relaxed">{plan.description}</p>
-                  </div>
-                </div>
-
-                <div className="mb-8 pb-8 border-b border-white/5">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-5xl font-bold text-white tracking-tighter">
-                      ₹{viewMode === "subscription" ? (billingPeriod === "monthly" ? plan.monthlyPrice : plan.yearlyPrice) : plan.price}
-                    </span>
-                    {viewMode === "subscription" && (
-                      <span className="text-neutral-500 text-sm font-medium">/ {billingPeriod === "monthly" ? "mo" : "yr"}</span>
-                    )}
-                  </div>
-                  <div className="mt-2 text-[10px] font-mono text-neutral-600">
-                    {viewMode === "subscription"
-                      ? `≈ ₹${((billingPeriod === "monthly" ? plan.monthlyPrice : plan.yearlyPrice) / (billingPeriod === "monthly" ? 30 : 365)).toFixed(2)} / day`
-                      : `${plan.tokens.toLocaleString()} Tokens`}
-                  </div>
-                </div>
-
-                <div className="space-y-4 mb-10 flex-1">
-                  {plan.features.map((f: string, i: number) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div
-                        className={cn(
-                          "mt-0.5 p-0.5 rounded-full flex items-center justify-center shrink-0",
-                          plan.highlight ? "bg-white text-black" : "bg-neutral-800 text-neutral-400"
-                        )}
-                      >
-                        <CheckCircle2 size={10} strokeWidth={4} />
-                      </div>
-                      <span className={cn("text-xs font-medium leading-tight", plan.highlight ? "text-neutral-200" : "text-neutral-500")}>{f}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => {
-                    const token = localStorage.getItem("authToken");
-                    if (!token) {
-                      setSelectedPackage(plan);
-                      setShowLoginModal(true);
-                      return;
-                    }
-                    setSelectedPackage(plan);
-                    setModalOpen(true);
-                  }}
+            {(viewMode === "subscription" ? subscriptionPlans : tokenPackages).map((plan: any) => {
+              const realPrice = viewMode === "subscription"
+                ? (billingPeriod === "monthly" ? plan.monthlyPrice : plan.yearlyPrice)
+                : plan.price;
+              const origPrice = fakeOriginal(realPrice);
+              return (
+                <div
+                  key={plan.id}
                   className={cn(
-                    "w-full h-14 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-95",
-                    plan.highlight
-                      ? "bg-white text-black hover:bg-neutral-200 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
-                      : "bg-neutral-900 text-white border border-white/5 hover:bg-neutral-800"
+                    "relative p-8 rounded-[2.5rem] border flex flex-col transition-all duration-500 hover:-translate-y-2",
+                    plan.highlight ? "bg-neutral-900/30 backdrop-blur-xl border-white/10 shadow-2xl z-10" : "bg-black/40 border-white/5"
                   )}
                 >
-                  {plan.cta} <ArrowRight size={14} />
-                </button>
-              </div>
-            ))}
+                  {plan.popular && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-white text-black text-[10px] font-bold uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+                      Most Popular
+                    </div>
+                  )}
+
+                  {/* Summer Offer corner badge */}
+                  <div className="absolute top-5 right-5 flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                    <Sun size={9} className="text-amber-400" />
+                    <span className="text-[8px] font-black text-amber-400 uppercase tracking-wider">Offer</span>
+                  </div>
+
+                  <div className="mb-8 space-y-4">
+                    <div className="flex items-center justify-between">
+                      {viewMode === "token" ? (
+                        <div className="p-2.5 bg-neutral-900 rounded-xl border border-white/5">
+                          <plan.icon size={18} className="text-white" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+                          <Flame size={12} className={cn(plan.highlight ? "text-orange-500" : "text-neutral-600")} />
+                          {plan.slots}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-white tracking-tight">{plan.name}</h3>
+                      <p className="text-xs text-neutral-500 mt-2 font-medium leading-relaxed">{plan.description}</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-8 pb-8 border-b border-white/5">
+                    {/* Fake (inflated) original — strikethrough illusion */}
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm text-neutral-600 line-through font-mono">₹{origPrice}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[8px] font-black uppercase">
+                        -{OFFER_DISCOUNT_PCT}%
+                      </span>
+                    </div>
+                    {/* Actual price displayed as "discounted" */}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-5xl font-bold text-white tracking-tighter">₹{realPrice}</span>
+                      {viewMode === "subscription" && (
+                        <span className="text-neutral-500 text-sm font-medium">/ {billingPeriod === "monthly" ? "mo" : "yr"}</span>
+                      )}
+                    </div>
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="text-[10px] font-bold text-emerald-500">✓ You save ₹{origPrice - realPrice}</span>
+                      <span className="text-[10px] font-mono text-neutral-600">
+                        {viewMode === "subscription"
+                          ? `≈ ₹${(realPrice / (billingPeriod === "monthly" ? 30 : 365)).toFixed(2)} / day`
+                          : `${plan.tokens.toLocaleString()} Tokens`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 mb-10 flex-1">
+                    {plan.features.map((f: string, i: number) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <div
+                          className={cn(
+                            "mt-0.5 p-0.5 rounded-full flex items-center justify-center shrink-0",
+                            plan.highlight ? "bg-white text-black" : "bg-neutral-800 text-neutral-400"
+                          )}
+                        >
+                          <CheckCircle2 size={10} strokeWidth={4} />
+                        </div>
+                        <span className={cn("text-xs font-medium leading-tight", plan.highlight ? "text-neutral-200" : "text-neutral-500")}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const token = localStorage.getItem("authToken");
+                      if (!token) {
+                        setSelectedPackage(plan);
+                        setShowLoginModal(true);
+                        return;
+                      }
+                      setSelectedPackage(plan);
+                      setModalOpen(true);
+                    }}
+                    className={cn(
+                      "w-full h-14 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-95",
+                      plan.highlight
+                        ? "bg-white text-black hover:bg-neutral-200 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                        : "bg-neutral-900 text-white border border-white/5 hover:bg-neutral-800"
+                    )}
+                  >
+                    {plan.cta} <ArrowRight size={14} />
+                  </button>
+                </div>
+              );
+            })}
           </motion.div>
 
           {/* Trust Footer */}

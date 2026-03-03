@@ -8,6 +8,7 @@ import FeatureHomeSection from "@/components/FeatureHomeSection";
 import ToolsGlimpse from "@/components/ToolsGlimpse";
 import ArcadeGlimpse from "@/components/ArcadeGlimpse";
 import PricingShowcase from "@/components/PricingShowcase";
+import HowToUse from "@/components/HowToUse";
 
 export default function HomeClient() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -22,6 +23,9 @@ export default function HomeClient() {
       <main className="flex flex-1 flex-col items-center justify-center w-full">
         <HomeMain />
         {isAuthenticated && <HomeWorkspace />}
+        <div className="w-full">
+          <HowToUse />
+        </div>
         <div className="w-full">
           <ToolsGlimpse/>
         </div>

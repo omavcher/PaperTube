@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   User, CreditCard, History, Zap, 
   Flame, Shield, Settings, LogOut, 
   ChevronRight, Calendar, Smartphone, 
   Mail, Award, Coins, FileText, Layers,
   Download, Loader2, AlertCircle, ShieldCheck,
-  MessageCircle
+  MessageCircle, Clock, RefreshCw, TrendingUp
 } from "lucide-react";
+import { LoaderX } from "@/components/LoaderX";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -187,12 +188,7 @@ export default function ProfilePage() {
 
   // --- RENDER STATES ---
   if (loading) {
-      return (
-          <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white gap-4">
-              <Loader2 className="w-8 h-8 animate-spin text-white" />
-              <p className="text-neutral-500 text-xs font-mono uppercase tracking-widest animate-pulse">Fetching Neural Data...</p>
-          </div>
-      );
+      return <LoaderX />;
   }
 
   if (error || !profileData) {
@@ -298,15 +294,18 @@ export default function ProfilePage() {
                       transition={{ duration: 0.2 }}
                       className="space-y-6"
                    >
-                      {/* Stats Grid */}
+                      {​/* Stats Grid */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                          <StatCard label="Streak" value={`${user.streak?.count || 0}`} unit="Days" icon={<Flame className="text-orange-500" fill="currentColor" size={18} />} />
-                         <StatCard label="Tokens" value={user.token ? (user.token / 1000).toFixed(1) + 'k' : '0'} unit="Credits" icon={<Coins className="text-yellow-400" fill="currentColor" size={18} />} />
-                         <StatCard label="XP" value={user.xp?.toLocaleString() || 0} unit="Points" icon={<Zap className="text-blue-500" fill="currentColor" size={18} />} />
-                         <StatCard label="Rank" value={user.rank || "Novice"} unit="Top 5%" icon={<Award className="text-purple-500" fill="currentColor" size={18} />} />
+                         <StatCard label="Tokens" value={user.tokens !== undefined ? String(user.tokens) : '0'} unit="Today's Credits" icon={<Coins className="text-yellow-400" fill="currentColor" size={18} />} />
+                         <StatCard label="XP" value={user.xp?.toLocaleString() || '0'} unit="Points" icon={<Zap className="text-blue-500" fill="currentColor" size={18} />} />
+                         <StatCard label="Rank" value={user.rank || "Novice"} unit="Your Level" icon={<Award className="text-purple-500" fill="currentColor" size={18} />} />
                       </div>
 
-                      {/* Membership Banner */}
+                      {​/* Daily Stack widget */}
+                      <DailyStackWidget user={user} />
+
+                      {​/* Membership Banner */}
                       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-neutral-900/30 p-8">
                          <div className="absolute top-0 right-0 p-32 bg-white/5 blur-[80px] rounded-full pointer-events-none" />
                          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -328,7 +327,7 @@ export default function ProfilePage() {
                          </div>
                       </div>
 
-                      {/* Recent Activity */}
+                      {​/* Recent Activity */}
                       <div className="space-y-4">
                          <div className="flex items-center justify-between">
                             <h3 className="text-sm font-bold uppercase tracking-widest text-neutral-500">Recent Activity</h3>
@@ -458,6 +457,132 @@ export default function ProfilePage() {
 }
 
 // --- SUB-COMPONENTS ---
+
+// ── Daily Stack Widget ────────────────────────────────────────────
+function DailyStackWidget({ user }: { user: any }) {
+   const DAILY_CAP = user.membership?.isActive ? Infinity : 10;
+   const tokensLeft = Math.max(0, user.tokens ?? 0);
+   const usedToday = Math.max(0, DAILY_CAP - tokensLeft);
+   const pct = DAILY_CAP === Infinity ? 0 : Math.min(100, Math.round((tokensLeft / DAILY_CAP) * 100));
+   const isPremium = !!user.membership?.isActive;
+
+   // Countdown to midnight
+   const [timeToReset, setTimeToReset] = useState("");
+   useEffect(() => {
+      const tick = () => {
+         const now = new Date();
+         const midnight = new Date();
+         midnight.setHours(24, 0, 0, 0);
+         const diff = midnight.getTime() - now.getTime();
+         const h = Math.floor(diff / 3600000);
+         const m = Math.floor((diff % 3600000) / 60000);
+         const s = Math.floor((diff % 60000) / 1000);
+         setTimeToReset(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+      };
+      tick();
+      const id = setInterval(tick, 1000);
+      return () => clearInterval(id);
+   }, []);
+
+   // Streak display
+   const streak = user.streak?.count || 0;
+   const lastVisit = user.streak?.lastVisit ? new Date(user.streak.lastVisit) : null;
+   const visitedToday = lastVisit ? lastVisit.toDateString() === new Date().toDateString() : false;
+
+   return (
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-neutral-900/30 p-6">
+         {/* Background glow */}
+         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-blue-500/5 pointer-events-none" />
+
+         <div className="relative z-10">
+            <div className="flex items-center justify-between mb-5">
+               <div className="flex items-center gap-2">
+                  <TrendingUp size={15} className="text-neutral-400" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Daily Stack</span>
+               </div>
+               {!isPremium && (
+                  <div className="flex items-center gap-1.5 text-neutral-500">
+                     <Clock size={11} />
+                     <span className="text-[10px] font-mono font-bold text-neutral-400">Resets in {timeToReset}</span>
+                  </div>
+               )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+               {/* Streak block */}
+               <div className={cn(
+                  "p-4 rounded-2xl border flex flex-col gap-2",
+                  visitedToday
+                     ? "bg-orange-500/10 border-orange-500/20"
+                     : "bg-white/[0.02] border-white/5"
+               )}>
+                  <div className="flex items-center justify-between">
+                     <span className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Streak</span>
+                     <Flame size={18} className={visitedToday ? "text-orange-400" : "text-neutral-700"} fill={visitedToday ? "currentColor" : "none"} />
+                  </div>
+                  <span className="text-3xl font-black text-white">{streak}</span>
+                  <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wide">
+                     {visitedToday ? "✓ Active today" : streak === 0 ? "Log in to start" : "Come back tomorrow!"}
+                  </span>
+               </div>
+
+               {/* Token bar block */}
+               <div className="md:col-span-2 p-4 rounded-2xl border bg-white/[0.02] border-white/5 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                     <span className="text-[9px] font-black uppercase tracking-widest text-neutral-500">
+                        {isPremium ? "Premium Tokens" : "Daily Tokens"}
+                     </span>
+                     <div className="flex items-center gap-1">
+                        <Coins size={12} className="text-yellow-400" />
+                        <span className="text-[10px] font-black text-white">
+                           {isPremium ? `${tokensLeft.toLocaleString()} left` : `${tokensLeft} / ${DAILY_CAP} left`}
+                        </span>
+                     </div>
+                  </div>
+
+                  {!isPremium && (
+                     <>
+                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                           <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${pct}%` }}
+                              transition={{ duration: 0.8, ease: "easeOut" }}
+                              className={cn(
+                                 "h-full rounded-full",
+                                 pct > 60 ? "bg-emerald-500" : pct > 30 ? "bg-amber-500" : "bg-red-500"
+                              )}
+                           />
+                        </div>
+                        <div className="flex justify-between text-[9px] text-neutral-600 font-bold uppercase">
+                           <span>{usedToday} used today</span>
+                           <span className={pct === 0 ? "text-red-500" : ""}>
+                              {pct === 0 ? "All used up — resets at midnight" : `${pct}% remaining`}
+                           </span>
+                        </div>
+                     </>
+                  )}
+
+                  {isPremium && (
+                     <div className="flex items-center gap-2 mt-1">
+                        <ShieldCheck size={12} className="text-emerald-400" />
+                        <span className="text-[10px] text-emerald-400 font-bold">Premium — unlimited daily access</span>
+                     </div>
+                  )}
+
+                  <div className="flex items-center gap-1 mt-auto">
+                     <RefreshCw size={9} className="text-neutral-600" />
+                     <span className="text-[9px] text-neutral-600">
+                        {isPremium
+                           ? `Plan expires: ${formatDate(user.membership?.expiresAt)}`
+                           : `Replenished every day at 12:00 AM • Last reset: ${user.lastTokenReset ? formatDate(user.lastTokenReset) : 'Never'}`}
+                     </span>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+}
 
 function ProfileInfoRow({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
     return (

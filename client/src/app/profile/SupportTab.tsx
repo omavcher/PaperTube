@@ -9,6 +9,7 @@ import api from "@/config/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { LoaderX } from "@/components/LoaderX";
 
 type Ticket = {
   _id: string;
@@ -123,11 +124,7 @@ export default function SupportTab({ user }: { user: any }) {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-8 w-8 text-neutral-600 animate-spin" />
-      </div>
-    );
+    return <LoaderX />;
   }
 
   return (

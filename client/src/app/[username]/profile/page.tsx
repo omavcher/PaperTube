@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import Footer from "@/components/Footer";
 import { LoginDialog } from "@/components/LoginDialog";
+import { LoaderX } from "@/components/LoaderX";
 
 // --- MAIN COMPONENT ---
 export default function UserProfilePage() {
@@ -214,7 +215,7 @@ export default function UserProfilePage() {
     return (currentUser._id === user._id) || (currentUser.email === user.email);
   }, [currentUser, user]);
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return <LoaderX />;
   if (errorState.status) return <ErrorScreen message={errorState.message} router={router} />;
 
   return (
@@ -704,11 +705,7 @@ const LikedNotesList = ({ userId, isOwnProfile, router }: any) => {
   }, [userId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-8 w-8 text-neutral-600 animate-spin" />
-      </div>
-    );
+    return <LoaderX />;
   }
 
   if (likedNotes.length === 0) {
@@ -1256,15 +1253,7 @@ const ErrorScreen = ({ message, router }: { message: string; router: any }) => {
 };
 
 // --- LOADING SCREEN COMPONENT ---
-const LoadingScreen = () => (
-  <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center gap-4">
-    <div className="relative">
-      <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-blue-500 rounded-full blur-xl opacity-20 animate-pulse" />
-      <Loader2 className="h-8 w-8 text-white animate-spin relative" />
-    </div>
-    <p className="text-neutral-500 text-xs font-medium uppercase tracking-widest">Loading Profile</p>
-  </div>
-);
+// Removed locally since we're using LoaderX now.
 
 // --- REPORT MODAL COMPONENT ---
 const ReportModal = ({ isOpen, onClose, userId, userName, getAuthHeaders }: any) => {

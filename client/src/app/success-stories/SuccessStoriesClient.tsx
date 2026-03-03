@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LoaderX } from "@/components/LoaderX";
 
 // --- Types ---
 interface Story {
@@ -68,12 +69,7 @@ export default function SuccessStoriesClient({ initialStories }: SuccessStoriesC
 
   // Empty State Handling
   if (stories.length === 0) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-neutral-500 gap-4">
-        <Loader2 className="animate-spin text-red-600" />
-        <p className="text-sm tracking-widest uppercase">Waiting for Success Stories...</p>
-      </div>
-    );
+    return <LoaderX />;
   }
 
   return (

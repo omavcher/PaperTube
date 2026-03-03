@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/config/api";
 import { toast } from "sonner";
+import { LoaderX } from "@/components/LoaderX";
 
 // --- TYPES BASED ON YOUR API RESPONSE ---
 interface Overview {
@@ -89,11 +90,7 @@ export default function AdminAnalyticsPage() {
   }, [timeRange]); // Re-fetch when timeRange changes
 
   if (loading || !data) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <Loader2 className="animate-spin text-red-600" size={40} />
-      </div>
-    );
+    return <LoaderX />;
   }
 
   return (

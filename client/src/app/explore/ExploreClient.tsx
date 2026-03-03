@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import api from "@/config/api"; // Ensure this path is correct
+import { LoaderX } from "@/components/LoaderX";
 // import Footer from "@/components/Footer"; // Uncomment if you have a footer
 
 // --- Types (from your workspace) ---
@@ -254,10 +255,7 @@ export default function ExploreClient({
 
         {/* --- CONTENT GRID --- */}
         {loading && items.length === 0 ? (
-           <div className="flex flex-col items-center justify-center py-20 text-neutral-600 gap-4">
-             <Loader2 className="w-8 h-8 animate-spin" />
-             <p className="text-xs uppercase tracking-widest">Decrypting Data...</p>
-           </div>
+           <LoaderX />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6">
             <AnimatePresence mode="popLayout">

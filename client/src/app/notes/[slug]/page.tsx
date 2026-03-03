@@ -6,9 +6,6 @@ import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 import {
@@ -44,7 +41,6 @@ import api from "@/config/api";
 import { LoaderX } from "@/components/LoaderX";
 import { LoginDialog } from "@/components/LoginDialog";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // --- AUTH HELPERS ---

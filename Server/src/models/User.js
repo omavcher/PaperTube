@@ -87,17 +87,21 @@ followingUsers: [{
       default: true
     },
     streak: {
-    count: { type: Number, default: 0 },
-    lastVisit: { type: Date }
-  },
+      count: { type: Number, default: 0 },
+      lastVisit: { type: Date, default: null }
+    },
     tokens: {
       type: Number,
-      default: 20,
+      default: 10, // Daily free allocation
     },
     tokenUsageHistory: [TokenUsageSchema],
     lastTokenReset: {
       type: Date,
-      default: Date.now
+      default: null
+    },
+    lastLogin: {
+      type: Date,
+      default: null
     },
     transactions: [TransactionSchema],
     joinedAt: {

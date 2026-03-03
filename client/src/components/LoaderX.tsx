@@ -37,7 +37,7 @@ export function LoaderX() {
             className="flex items-center"
           >
             <span className="text-4xl md:text-6xl font-black italic tracking-tighter uppercase text-white select-none">
-              Paper<span className="text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]">Tube</span>
+              Paper<span className="text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]">xify</span>
             </span>
           </motion.div>
 
@@ -64,11 +64,11 @@ export function LoaderX() {
              >
                 <div className="h-1 w-1 rounded-full bg-red-600" />
                 <span className="text-[9px] font-black uppercase tracking-[0.4em] text-neutral-500">
-                   Synchronizing Neural Paths
+                   Loading the page...  
                 </span>
              </motion.div>
              <span className="text-[7px] font-mono text-neutral-700 uppercase tracking-widest">
-                Kernel_Boot_Sequence::v8.4.2
+                   paperxify.com
              </span>
           </div>
         </div>

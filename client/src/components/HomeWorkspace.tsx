@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { LoaderX } from "@/components/LoaderX";
 
 // --- Types ---
 interface Creator {
@@ -486,10 +487,7 @@ export default function NotesWorkspace() {
       {/* --- CONTENT AREA --- */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 min-h-[60vh]">
          {loading && currentItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-32 text-neutral-500 gap-4">
-               <Loader2 className="animate-spin text-red-500" size={32} />
-               <p className="text-[10px] font-bold uppercase tracking-widest animate-pulse">Syncing Database...</p>
-            </div>
+            <LoaderX />
          ) : currentItems.length > 0 ? (
             <div className="animate-in fade-in duration-500">
                {/* Fixed Grid for Mobile to show 2 items per row */}

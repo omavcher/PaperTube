@@ -192,29 +192,79 @@ async function handleUserAuth(userInfo) {
         email,
         username,
         picture,
-        isVerified: true
+        isVerified: true,
+        tokens: 10, // Start with daily allocation
+        streak: { count: 1, lastVisit: new Date() },
+        lastTokenReset: new Date()
       });
       
       console.log("✅ New user created:", user._id);
     } else {
       console.log("👤 Updating existing user:", user._id);
       
+      const now = new Date();
+      const todayStr = now.toDateString();
+
+      // ── Streak logic ──────────────────────────────────────────
+      // lastVisit is the last time they logged in
+      const lastVisit = user.streak?.lastVisit ? new Date(user.streak.lastVisit) : null;
+      const lastVisitStr = lastVisit ? lastVisit.toDateString() : null;
+
+      let newStreak = user.streak?.count || 0;
+
+      if (lastVisitStr === todayStr) {
+        // Same day login — keep streak unchanged
+        console.log("📅 Same day login, streak unchanged:", newStreak);
+      } else {
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toDateString();
+
+        if (lastVisitStr === yesterdayStr) {
+          // Consecutive day — increment streak
+          newStreak += 1;
+          console.log("🔥 Streak incremented:", newStreak);
+        } else {
+          // Missed a day — reset streak back to 1
+          newStreak = 1;
+          console.log("💔 Streak reset to 1 (missed a day)");
+        }
+      }
+
+      // ── Daily token refresh for free users ──────────────────
+      // Only grant daily tokens if they haven't been reset today AND user is free
+      const lastReset = user.lastTokenReset ? new Date(user.lastTokenReset) : null;
+      const lastResetStr = lastReset ? lastReset.toDateString() : null;
+      const isFreePlan = !user.membership?.isActive;
+      const DAILY_FREE_TOKENS = 10;
+
+      let tokenUpdate = {};
+      if (isFreePlan && lastResetStr !== todayStr) {
+        tokenUpdate = {
+          tokens: DAILY_FREE_TOKENS,
+          lastTokenReset: now,
+        };
+        console.log(`🎁 Daily tokens granted (${DAILY_FREE_TOKENS}) to free user: ${email}`);
+      }
+
       // Build update object
-      const updateData = {};
+      const updateData = {
+        lastLogin: now,
+        'streak.count': newStreak,
+        'streak.lastVisit': now,
+        ...tokenUpdate,
+      };
+
       if (googleId && !user.googleId) updateData.googleId = googleId;
       if (picture) updateData.picture = picture;
-      updateData.lastLogin = new Date();
       
-      // Use findByIdAndUpdate to avoid validation issues with existing fields
-      if (Object.keys(updateData).length > 0) {
-        user = await User.findByIdAndUpdate(
-          user._id,
-          { $set: updateData },
-          { new: true, runValidators: false }
-        );
-      }
+      user = await User.findByIdAndUpdate(
+        user._id,
+        { $set: updateData },
+        { new: true, runValidators: false }
+      );
       
-      console.log("✅ User updated");
+      console.log("✅ User updated — streak:", newStreak);
     }
     
     return user;
@@ -229,7 +279,7 @@ async function handleUserAuth(userInfo) {
         console.log("🔄 Attempting to fix username validation error...");
         
         try {
-          const { email, name, picture, googleId, accessToken } = userInfo;
+          const { email, name, picture, googleId } = userInfo;
           
           // Find user by email
           const existingUser = await User.findOne({ email });

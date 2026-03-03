@@ -58,10 +58,6 @@ export default function FeaturesSection() {
   return (
     <section className="relative bg-black overflow-hidden font-sans">
       
-      {/* --- Background Atmosphere --- */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] md:w-[800px] h-[300px] md:h-[500px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-800/30 via-black to-black opacity-80 pointer-events-none" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
-
       <div className="container mx-auto px-4 sm:px-6 relative z-10 max-w-7xl">
         
         {/* --- Header Section --- */}
