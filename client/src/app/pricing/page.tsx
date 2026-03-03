@@ -606,9 +606,9 @@ export default function PricingSection() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.order.amount,
         currency: orderData.order.currency,
-        name: "Neural Protocol",
+        name: "PaperXify",
         description: `${paymentData.packageName}`,
-        image: "/logo.png",
+        image: "/paperxify.png",
         order_id: orderData.order.id,
         handler: async (response: any) => {
           setIsProcessing(true);
