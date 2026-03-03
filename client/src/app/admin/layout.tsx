@@ -11,7 +11,8 @@ import {
   Fence,
   Gamepad2Icon,
   File,
-  ChartBarBig
+  ChartBarBig,
+  TicketPercent
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -202,6 +203,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               icon={<CreditCard size={isMobile ? 20 : 18} />} 
               label="Transactions" 
               active={pathname.includes("/transactions")} 
+              expanded={isSidebarOpen} 
+              mobile={isMobile}
+            />
+            <AdminNavLink 
+              href="/admin/promo" 
+              icon={<TicketPercent size={isMobile ? 20 : 18} />} 
+              label="Promo Codes" 
+              active={pathname.includes("/promo")} 
               expanded={isSidebarOpen} 
               mobile={isMobile}
             />

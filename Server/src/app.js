@@ -13,6 +13,7 @@ const authPayment = require("./routes/paymentRoutes");
 const tokenResetService = require("./services/tokenResetService");
 const pdfRoutes = require("./routes/pdfRoutes");
 const supportRoutes = require("./routes/supportRoutes");
+const promoRoutes = require("./routes/promoRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 
@@ -36,6 +37,7 @@ app.use("/api/general", require("./routes/generalRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/analytics", require("./routes/analyticsRoutes"));
 app.use("/api/support", supportRoutes);
+app.use("/api/promo", promoRoutes);
 
 // Optional: Add admin route to manually trigger token reset
 app.post("/api/admin/trigger-token-reset", async (req, res) => {

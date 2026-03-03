@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const adminAuth = require('../middleware/adminAuth');
 const adminController = require('../controllers/adminController');
+const promoController = require('../controllers/promoController');
 
 router.get('/diagnostics', adminAuth, adminController.getDiagnostics);
 router.get('/users', adminAuth, adminController.getAllUsers);
@@ -64,5 +65,13 @@ router.delete('/comments/:commentId/replies/:replyId',adminAuth , adminControlle
 router.post('/comments/bulk-delete',adminAuth , adminController.bulkDeleteComments);
 
 
+
+// Promo Code Management
+router.get('/promo/all', adminAuth, promoController.adminGetAllPromoCodes);
+router.post('/promo/create', adminAuth, promoController.adminCreatePromoCode);
+router.put('/promo/update/:id', adminAuth, promoController.adminUpdatePromoCode);
+router.patch('/promo/toggle/:id', adminAuth, promoController.adminTogglePromoCode);
+router.delete('/promo/delete/:id', adminAuth, promoController.adminDeletePromoCode);
+router.get('/promo/usage/:id', adminAuth, promoController.adminGetPromoUsage);
 
 module.exports = router;

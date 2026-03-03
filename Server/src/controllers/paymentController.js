@@ -2,7 +2,8 @@
 const User = require("../models/User");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
-const Transaction = require("../models/Transaction"); // Ensure this is imported
+const Transaction = require("../models/Transaction");
+const { consumePromoCode } = require("./promoController");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -421,6 +422,11 @@ const saveTransactionInternal = async (transactionData) => {
         });
 
         console.log(`🪪 Membership updated for ${user.email} till ${expiresAt.toISOString()}`);
+      }
+
+      // Consume promo code after successful payment
+      if (transactionData.couponCode) {
+        await consumePromoCode(transactionData.couponCode, transactionData.userId);
       }
     }
 
