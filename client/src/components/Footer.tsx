@@ -14,7 +14,8 @@ import {
   Heart,
   Mail, 
   Command,
-  Cpu
+  Cpu,
+  Instagram
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
@@ -70,10 +71,10 @@ export default function Footer() {
 
             {/* Social Cluster */}
             <div className="flex items-center gap-2">
-              <SocialIcon icon={<Twitter size={16} />} href="https://twitter.com" />
-              <SocialIcon icon={<Github size={16} />} href="https://github.com" />
-              <SocialIcon icon={<Linkedin size={16} />} href="https://linkedin.com" />
-              <SocialIcon icon={<Youtube size={16} />} href="https://youtube.com" />
+              <SocialIcon icon={<Instagram size={16} />} href="https://www.instagram.com/paperxify" />
+              <SocialIcon icon={<Github size={16} />} href="https://github.com/omavcher" />
+              <SocialIcon icon={<Linkedin size={16} />} href="https://www.linkedin.com/company/paperxify" />
+              <SocialIcon icon={<Youtube size={16} />} href="https://www.youtube.com/@Paperxify" />
             </div>
           </div>
 
