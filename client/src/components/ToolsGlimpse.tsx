@@ -36,13 +36,6 @@ const previewTools = [
     tag: "DevOps" 
   },
   { 
-    id: "resume-ats-checker", 
-    title: "ATS Scan", 
-    desc: "Resume Optimization",
-    icon: ScanLine, 
-    tag: "Career" 
-  },
-  { 
     id: "matrix-calculator", 
     title: "Matrix 5x5", 
     desc: "Linear Algebra Engine",

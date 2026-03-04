@@ -508,27 +508,5 @@ export default function UnitConverterClient() {
         </div>
 
       </main>
-
-      {/* --- Mobile Bottom Navigation --- */}
-      <div className="fixed bottom-0 left-0 w-full bg-black/90 backdrop-blur-xl border-t border-white/10 md:hidden z-50 pb-safe">
-        <div className="flex justify-around items-center h-20 px-4">
-          <Link href="/" className="flex flex-col items-center justify-center w-full h-full text-neutral-500 hover:text-white transition-colors gap-1.5">
-            <Home size={20} />
-            <span className="text-[9px] font-black uppercase tracking-widest">Home</span>
-          </Link>
-          <Link href="/tools" className="flex flex-col items-center justify-center w-full h-full text-purple-500 transition-colors gap-1.5 relative">
-            <div className="absolute inset-0 bg-purple-500/10 blur-xl rounded-full" />
-            <Grid size={20} className="relative z-10" />
-            <span className="text-[9px] font-black uppercase tracking-widest relative z-10">Matrix</span>
-          </Link>
-          <Link href="/settings" className="flex flex-col items-center justify-center w-full h-full text-neutral-500 hover:text-white transition-colors gap-1.5">
-            <Settings size={20} />
-            <span className="text-[9px] font-black uppercase tracking-widest">Config</span>
-          </Link>
-        </div>
-      </div>
-
-      <Footer />
-    </div>
-  );
+);
 }

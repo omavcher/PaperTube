@@ -14,7 +14,7 @@ export const useToolAnalytics = (toolId: string, toolName: string, category: str
           try {
             const user = JSON.parse(userStr);
             // If current user is the admin, DO NOT track
-            if (user.email === "omawchar07@gmail.com") {
+            if (user.email === "omAvcher07@gmail.com") {
               console.log("Admin detected. Analytics disabled.");
               return; 
             }

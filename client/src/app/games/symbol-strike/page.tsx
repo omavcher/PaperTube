@@ -312,7 +312,7 @@ export default function SymbolStrike() {
             <Grid size={20} className="relative z-10" />
             <span className="text-[9px] font-black uppercase tracking-widest relative z-10">Matrix</span>
           </Link>
-          <Link href="/settings" className="flex flex-col items-center justify-center w-full h-full text-neutral-500 hover:text-white transition-colors gap-1.5">
+          <Link href="profile" className="flex flex-col items-center justify-center w-full h-full text-neutral-500 hover:text-white transition-colors gap-1.5">
             <Settings size={20} />
             <span className="text-[9px] font-black uppercase tracking-widest">Config</span>
           </Link>

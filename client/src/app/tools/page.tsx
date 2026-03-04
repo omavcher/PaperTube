@@ -30,7 +30,6 @@ const pdfTools = [
   { id: "merge-pdf", title: "MERGE PDF", description: "Combine multiple PDFs.", icon: <Merge />, category: "Organize PDF", path: "/tools/merge", color: "text-red-400", isNew: true },
   { id: "split-pdf", title: "SPLIT PDF", description: "Extract or split pages.", icon: <Split />, category: "Organize PDF", path: "/tools/split", color: "text-green-400", isNew: false },
   { id: "json-formatter", title: "JSON FIX", description: "Beautify & validate JSON.", icon: <BinaryIcon />, category: "Engineering Tools", path: "/tools/json-formatter", color: "text-blue-400", isNew: true },
-  { id: "resume-ats-checker", title: "ATS CHECK", description: "Optimize for keywords.", icon: <FileSearch />, category: "Workflows", path: "/tools/resume-checker", color: "text-pink-400", isNew: false },
   { id: "matrix-calculator", title: "MATRIX LAB", description: "Up to 5x5 operations.", icon: <InspectionPanel />, category: "Engineering Tools", path: "/tools/matrix-calculator", color: "text-orange-400", isNew: false },
   { id: "logic-gate-lab", title: "LOGIC GATE", description: "Boolean simulation.", icon: <Zap />, category: "Engineering Tools", path: "/tools/logic-gate-lab", color: "text-yellow-400", isNew: false },
   { id: "base-converter", title: "BASE CONV", description: "Binary to Hex/Dec.", icon: <Terminal />, category: "Engineering Tools", path: "/tools/base-converter", color: "text-slate-400", isNew: false },

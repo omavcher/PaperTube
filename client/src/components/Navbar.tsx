@@ -247,9 +247,9 @@ const UserHUD = ({ user, onLogout }: any) => {
 
             {/* Actions */}
             <div className="space-y-1 p-1">
-              <HUDLink href="/profile" icon={<UserCircle size={16} />} label="Dashboard" />
+              <HUDLink href="/profile" icon={<UserCircle size={16} />} label="Profile" />
               <HUDLink href="/leaderboard" icon={<Trophy size={16} />} label="Leaderboard" />
-              <HUDLink href="/billing" icon={<Coins size={16} />} label="Billing" />
+              <HUDLink href="/pricing" icon={<Coins size={16} />} label="Pricing" />
               
               <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors mt-2">
                 <LogOut size={16} /> Log Out

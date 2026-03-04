@@ -37,15 +37,15 @@ export const metadata: Metadata = {
     "best youtube notes ai"
   ],
   
-  authors: [{ name: "Om Awchar", url: "https://paperxify.com/about" }],
-  creator: "Om Awchar",
+  authors: [{ name: "Om Avcher", url: "https://paperxify.com/about" }],
+  creator: "Om Avcher",
   publisher: "Paperxify",
   category: "Education & Productivity",
   applicationName: "Paperxify",
   
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "en-IN",
     url: "https://paperxify.com",
     title: "Paperxify | Best YouTube Video to Notes Converter AI",
     description:
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     description:
       "Transform any YouTube video into beautiful PDF notes instantly. Let AI summarize and extract concepts for you.",
     images: ["/og-image.jpg"],
-    creator: "@omawchar",
+    creator: "@omAvcher",
   },
   
   robots: {
@@ -86,13 +86,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://paperxify.com",
     languages: {
-      'en-US': 'https://paperxify.com',
+      'en-IN': 'https://paperxify.com',
     },
-  },
-  
-  verification: {
-    google: "yoursiteverification", // Can be replaced later with actual Google site verification code
-  },
+  }
 };
 
 export default function RootLayout({

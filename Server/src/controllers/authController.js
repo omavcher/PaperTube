@@ -495,7 +495,7 @@ exports.getUserServices = async (req, res) => {
     if (userData.tokenUsageHistory && userData.tokenUsageHistory.length > 0) {
       userData.tokenUsageHistory.forEach(usage => {
         mixedData.push({
-          type: 'token_usage',
+          type: 'token-INage',
           id: usage._id,
           timestamp: usage.date,
           date: usage.date,
@@ -504,7 +504,7 @@ exports.getUserServices = async (req, res) => {
           tokens: usage.tokens,
           action: usage.name,
           metadata: {
-            type: 'token_usage'
+            type: 'token-INage'
           }
         });
       });

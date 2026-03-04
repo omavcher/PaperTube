@@ -450,14 +450,14 @@ export default function UserProfilePage() {
                 {isOwnProfile ? (
                   <>
                     <Button 
-                      onClick={() => router.push('/profile/edit')} 
+                      onClick={() => router.push('/profile')} 
                       variant="outline"
                       className="flex-1 h-10 border-neutral-800 bg-neutral-900/50 hover:bg-neutral-900 text-neutral-200"
                     >
                       <Edit3 size={14} className="mr-2" /> Edit Profile
                     </Button>
                     <Button 
-                      onClick={() => router.push('/settings')} 
+                      onClick={() => router.push('/profile')} 
                       variant="ghost"
                       className="h-10 w-10 p-0 border-neutral-800 bg-neutral-900/50 hover:bg-neutral-900 text-neutral-200"
                     >

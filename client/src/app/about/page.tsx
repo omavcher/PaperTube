@@ -38,7 +38,7 @@ export default function FounderPage() {
             <div className="absolute inset-0 bg-gradient-to-tr from-red-600 to-blue-600 rounded-[2.5rem] blur-2xl opacity-20 animate-pulse" />
             <div className="relative h-full w-full rounded-[2.5rem] overflow-hidden border border-white/10 bg-neutral-900/50 shadow-2xl group">
               <img 
-                src="/omawchar.webp" 
+                src="/omAvcher.webp" 
                 alt="Om Avchar" 
                 className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 grayscale group-hover:grayscale-0" 
               />
@@ -96,8 +96,8 @@ export default function FounderPage() {
               className="flex flex-wrap justify-center md:justify-start gap-4 pt-4"
             >
                <SocialLink href="https://github.com/omavchar" icon={<Github size={18} />} label="GitHub" />
-               <SocialLink href="https://x.com/omawchar07" icon={<Twitter size={18} />} label="Twitter" />
-               <SocialLink href="https://www.linkedin.com/in/omawchar" icon={<Linkedin size={18} />} label="LinkedIn" />
+               <SocialLink href="https://x.com/omAvcher07" icon={<Twitter size={18} />} label="Twitter" />
+               <SocialLink href="https://www.linkedin.com/in/omAvcher" icon={<Linkedin size={18} />} label="LinkedIn" />
                <SocialLink href="mailto:paperxify@gmail.com" icon={<Mail size={18} />} label="Contact" />
             </motion.div>
           </div>

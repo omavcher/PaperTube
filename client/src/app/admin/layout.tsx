@@ -50,7 +50,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     try {
       const user = JSON.parse(userData);
-      if (user.email === "omawchar07@gmail.com") {
+      if (user.email === "omAvcher07@gmail.com") {
         setIsAuthorized(true);
       } else {
         toast.error("Unauthorized access detected");
@@ -357,10 +357,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               System
             </p>
             <AdminNavLink 
-              href="/admin/settings" 
+              href="/adminprofile" 
               icon={<Settings size={isMobile ? 20 : 18} />} 
               label="Settings" 
-              active={pathname.includes("/settings")} 
+              active={pathname.includes("profile")} 
               expanded={isSidebarOpen} 
               mobile={isMobile}
             />
@@ -435,7 +435,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           
           <div className="flex items-center gap-4 md:gap-6">
             <div className="text-right hidden md:block">
-              <p className="text-[10px] font-black uppercase text-white leading-none">OM AWCHAR</p>
+              <p className="text-[10px] font-black uppercase text-white leading-none">OM Avcher</p>
               <p className="text-[8px] font-bold text-red-500 uppercase tracking-widest mt-1">Prime Architect</p>
             </div>
             <div className="h-8 md:h-10 w-8 md:w-10 rounded-xl border border-red-600/30 overflow-hidden shadow-lg relative group cursor-pointer">

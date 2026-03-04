@@ -29,7 +29,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   // Hide Mobile Bottom Dock on tools that require full-screen height
   const hideMobileNav = [
-    "/admin", 
+    "/admin",
     "/sentinel",
     "/notes/",
     "/note/"

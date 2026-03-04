@@ -264,26 +264,7 @@ ORDER BY o.date DESC;`);
           <Metric icon={<Zap size={20} className="text-red-500" />} title="Rapid Prototyping" desc="Visualize complex query architectures instantly for review." />
         </div>
       </section>
-
-      {/* --- Mobile Bottom Navigation --- */}
-      <div className="fixed bottom-0 left-0 w-full bg-black/90 backdrop-blur-xl border-t border-white/10 md:hidden z-50">
-        <div className="flex justify-around items-center h-16 px-2">
-          <Link href="/" className="flex flex-col items-center justify-center w-full h-full text-neutral-500 hover:text-white transition-colors gap-1">
-            <Home size={20} />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Home</span>
-          </Link>
-          <Link href="/tools" className="flex flex-col items-center justify-center w-full h-full text-blue-500 transition-colors gap-1">
-            <Grid size={20} />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Tools</span>
-          </Link>
-          <Link href="/settings" className="flex flex-col items-center justify-center w-full h-full text-neutral-500 hover:text-white transition-colors gap-1">
-            <Settings size={20} />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Settings</span>
-          </Link>
-        </div>
-      </div>
-
-      <Footer />
+<Footer />
       
       <LoginDialog 
         isOpen={isLoginOpen} 
