@@ -355,7 +355,7 @@ function CertUniversity({ data, template, signatory, certId, certDate }: { data:
       <div style={{ padding: "50px 48px 40px", position: "relative", zIndex: 1 }}>
         {/* University Logo Area */}
         <div style={{ textAlign: "center", marginBottom: 8 }}>
-          <div style={{ display: "inline-block", width: 80, height: 80, borderRadius: "50%", border: `3px solid ${template.accent}`, backgroundColor: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+          <div style={{ width: 80, height: 80, borderRadius: "50%", border: `3px solid ${template.accent}`, backgroundColor: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
             <AshokChakra size={56} color={template.accent} />
           </div>
           <div style={{ fontSize: 9, letterSpacing: 5, textTransform: "uppercase", color: template.secondary, marginBottom: 4 }}>
@@ -911,7 +911,7 @@ function CertPremium({ data, template, signatory, certId, certDate }: { data: Ce
       <div style={{ padding: "48px 44px", position: "relative", zIndex: 1 }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <div style={{ display: "inline-block", width: 70, height: 70, borderRadius: "50%", border: `2px solid ${gold}`, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 70, height: 70, borderRadius: "50%", border: `2px solid ${gold}`, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: 58, height: 58, borderRadius: "50%", border: `1px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ fontSize: 8, fontWeight: 900, color: gold, textAlign: "center", letterSpacing: 1, lineHeight: 1.5 }}>
                 EST.<br />{new Date().getFullYear()}
@@ -973,7 +973,7 @@ function CertPremium({ data, template, signatory, certId, certDate }: { data: Ce
         </div>
 
         {data.description && (
-          <div style={{ maxWidth: 400, margin: "14px auto 0", fontSize: 11, color: "#777", lineHeight: 1.9, textAlign: "center", fontStyle: "italic", color: "#888" }}>
+          <div style={{ maxWidth: 400, margin: "14px auto 0", fontSize: 11, lineHeight: 1.9, textAlign: "center", fontStyle: "italic", color: "#888" }}>
             {data.description}
           </div>
         )}
@@ -1153,7 +1153,7 @@ function CertMinistry({ data, template, signatory, certId, certDate }: { data: C
 
 function Certificate({ data, template, signatory, certId, certDate, innerRef }: {
   data: CertData; template: Template; signatory: Signatory;
-  certId: string; certDate: string; innerRef?: React.RefObject<HTMLDivElement>;
+  certId: string; certDate: string; innerRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const props = { data, template, signatory, certId, certDate };
   const content = (() => {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { 
   Search, BookOpen, CheckCircle2, Zap, Info, 
-  CloudSync, Award, Earth, Trophy, Sparkles,
+  Award, Earth, Trophy, Sparkles,
   ArrowLeft, Home, Grid, Settings, TableRowsSplitIcon,
   PieChart, Share2
 } from "lucide-react";
@@ -179,7 +179,7 @@ export default function SyllabusTrackerClient() {
                       <span>Completion Rate</span>
                       <span className="text-cyan-400">{progressPercent}%</span>
                    </div>
-                   <Progress value={progressPercent} className="h-3 bg-neutral-800 rounded-full border border-white/5" indicatorClassName="bg-cyan-500" />
+                   <Progress value={progressPercent} className="h-3 bg-neutral-800 rounded-full border border-white/5" />
                  </div>
 
                  {/* User Status */}
@@ -326,7 +326,7 @@ export default function SyllabusTrackerClient() {
       <LoginDialog 
         isOpen={isLoginOpen} 
         onClose={() => setIsLoginOpen(false)} 
-        onSuccess={(token, info) => {
+        onSuccess={(token: string, info: any) => {
             const userObj = {
                 id: info.id || "68ea440cce4c1f28b4be9627", 
                 name: info.name,
@@ -342,5 +342,6 @@ export default function SyllabusTrackerClient() {
             toast.success("IDENTITY VERIFIED");
         }}
       />
-);
+    </div>
+  );
 }

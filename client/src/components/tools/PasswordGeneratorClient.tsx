@@ -284,5 +284,6 @@ export default function PasswordGeneratorClient() {
         </div>
 
       </main>
-);
+    </div>
+  );
 }

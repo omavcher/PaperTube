@@ -358,5 +358,6 @@ export default function MatrixCalculatorClient() {
         </div>
 
       </main>
-);
+    </div>
+  );
 }

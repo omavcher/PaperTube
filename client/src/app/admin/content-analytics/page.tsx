@@ -58,7 +58,7 @@ interface AnalyticsData {
 
 export default function AdminAnalyticsPage() {
   const [timeRange, setTimeRange] = useState("7d");
-  const [activeTab, setActiveTab] = useState<"overview" | "blogs" | "stories">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "blogs" | "stories" | "all">("overview");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 

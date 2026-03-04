@@ -266,7 +266,8 @@ export default function LogicLabClient() {
         </div>
 
       </main>
-);
+    </div>
+  );
 }
 
 function LawCard({ title, detail }: { title: string, detail: string }) {

@@ -216,7 +216,8 @@ export default function EmiCalculatorClient() {
         </div>
 
       </main>
-);
+    </div>
+  );
 }
 
 function ResultCard({ label, value, icon }: any) {

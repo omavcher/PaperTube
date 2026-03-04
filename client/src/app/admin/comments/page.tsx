@@ -547,13 +547,13 @@ export default function CommentsPage() {
                   expandedComments={expandedComments}
                   onToggleSelect={toggleCommentSelection}
                   onToggleExpand={toggleCommentExpansion}
-                  onEdit={(comment) => {
+                  onEdit={(comment: any) => {
                     setSelectedComment(comment);
                     setEditContent(comment.content);
                     setShowEditModal(true);
                   }}
                   onDelete={handleDeleteComment}
-                  onEditReply={(commentId, reply) => {
+                  onEditReply={(commentId: any, reply: any) => {
                     setSelectedReply({ commentId, reply });
                     setEditContent(reply.content);
                     setShowReplyModal(true);
@@ -585,7 +585,7 @@ export default function CommentsPage() {
               <CommentGridItem
                 key={comment._id}
                 comment={comment}
-                onEdit={(comment) => {
+                onEdit={(comment: any) => {
                   setSelectedComment(comment);
                   setEditContent(comment.content);
                   setShowEditModal(true);

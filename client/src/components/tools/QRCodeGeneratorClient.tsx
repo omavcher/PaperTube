@@ -597,5 +597,6 @@ export default function QRCodeGeneratorClient() {
         </div>
 
       </main>
-);
+    </div>
+  );
 }

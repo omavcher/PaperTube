@@ -16,6 +16,11 @@ import api from "@/config/api"; // Ensure your axios/api instance is correctly i
 
 // --- Question Pool (Snippet data remains untouched as requested) ---
 // --- Expanded Question Pool (70+ Items) ---
+interface Snippet {
+  code: string;
+  ans: string;
+  tier: number;
+}
 const SNIPPET_POOL: Snippet[] = [
   // Tier 1: Basics (10 items)
   { code: "return users[id];", ans: "O(1)", tier: 1 },

@@ -1,22 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // 1. Move ESLint and TypeScript checks out of the heavy worker process
-  eslint: { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors: true },
+  // 1. Removed eslint and typescript override since they cause type errors
+  
+  // 2. Removed empty turbo config
 
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
 
-  // 2. Add Turbopack specific aliases
-  experimental: {
-    turbo: {
-      resolveAlias: {
-        canvas: false,
-      },
-    },
-  },
+  // 2. Removed Turbopack specific aliases
 
   // 3. Keep Webpack fallback for standard builds
   webpack: (config, { isServer }) => {

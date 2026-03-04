@@ -517,7 +517,8 @@ export default function SplitPDFTool() {
       <div className="hidden md:block">
         <Footer />
       </div>
-);
+    </div>
+  );
 }
 
 function StatCard({ icon, label, sub }: any) {

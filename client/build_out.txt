@@ -1,0 +1,126 @@
+⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+⚠ Invalid next.config.ts options detected: 
+⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+⚠     Unrecognized key(s) in object: 'eslint'
+⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+▲ Next.js 16.1.3 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  ? turbo (invalid experimental key)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 16.1s
+  Skipping validation of types
+  Collecting page data using 15 workers ...
+  Generating static pages using 15 workers (0/74) ...
+  Generating static pages using 15 workers (18/74) 
+🚨 [LEADERBOARD FETCH ERROR] Error: Dynamic server usage: Route /leaderboard couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:5000/api/users/get-groble-leaderboard /leaderboard. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at ignore-listed frames {
+  description: "Route /leaderboard couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:5000/api/users/get-groble-leaderboard /leaderboard. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+  Generating static pages using 15 workers (36/74) 
+🌐 [SEO FETCH] Blogs: http://localhost:5000/api/general/blog/all
+🚨 [SEO ERROR] Error: Dynamic server usage: Route /blog couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:5000/api/general/blog/all /blog. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at ignore-listed frames {
+  description: "Route /blog couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:5000/api/general/blog/all /blog. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+SEO Fetch Error: Error: Dynamic server usage: Route /success-stories couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:5000/api/general/story/all /success-stories. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at ignore-listed frames {
+  description: "Route /success-stories couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:5000/api/general/story/all /success-stories. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+🌐 SEO FETCHING: http://localhost:5000/api/notes/explore?page=1&limit=12&sortBy=updatedAt&sortOrder=desc&type=notes
+🚨 SEO Fetch Exception: Error: Dynamic server usage: Route /explore couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:5000/api/notes/explore?page=1&limit=12&sortBy=updatedAt&sortOrder=desc&type=notes /explore. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at ignore-listed frames {
+  description: "Route /explore couldn't be rendered statically because it used revalidate: 0 fetch http://localhost:5000/api/notes/explore?page=1&limit=12&sortBy=updatedAt&sortOrder=desc&type=notes /explore. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+  Generating static pages using 15 workers (55/74) 
+✓ Generating static pages using 15 workers (74/74) in 3.5s
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /[username]/profile
+├ ○ /about
+├ ○ /admin
+├ ○ /admin/analytics
+├ ○ /admin/arced
+├ ○ /admin/blog
+├ ○ /admin/bugs
+├ ○ /admin/comments
+├ ○ /admin/content
+├ ○ /admin/content-analytics
+├ ○ /admin/faker
+├ ○ /admin/feedback
+├ ○ /admin/promo
+├ ○ /admin/reports
+├ ○ /admin/seo
+├ ○ /admin/success-stories
+├ ○ /admin/support
+├ ○ /admin/tools-analytics
+├ ○ /admin/transactions
+├ ○ /admin/users
+├ ƒ /blog
+├ ƒ /blog/[slug]
+├ ○ /contact
+├ ○ /engineering-youtube-notes
+├ ƒ /explore
+├ ○ /games
+├ ○ /games/binary-blitz
+├ ○ /games/circuit-breaker
+├ ○ /games/complexity-dash
+├ ○ /games/flag-mastery
+├ ○ /games/keyword-crypt
+├ ○ /games/logic-leap
+├ ○ /games/sort-fu
+├ ○ /games/sql-sniper
+├ ○ /games/symbol-strike
+├ ƒ /leaderboard
+├ ○ /models
+├ ƒ /note/[name]/[slug]
+├ ƒ /notes/[slug]
+├ ○ /pricing
+├ ○ /privacy
+├ ○ /profile
+├ ○ /report-bug
+├ ○ /robots.txt
+├ ○ /share-story
+├ ƒ /sitemap.xml
+├ ƒ /success-stories
+├ ƒ /success-stories/[slug]
+├ ○ /support
+├ ○ /terms
+├ ○ /tools
+├ ○ /tools/base-converter
+├ ○ /tools/code-to-image
+├ ○ /tools/emi-calculator
+├ ○ /tools/fack
+├ ○ /tools/fake-internship-letter-generator
+├ ○ /tools/generate-qr
+├ ○ /tools/git-forge
+├ ○ /tools/github-wrapped
+├ ○ /tools/image-converter
+├ ○ /tools/json-formatter
+├ ○ /tools/logic-gate-lab
+├ ○ /tools/markdown-editor
+├ ○ /tools/matrix-calculator
+├ ○ /tools/merge
+├ ○ /tools/password-generator
+├ ○ /tools/sentinel
+├ ○ /tools/split
+├ ○ /tools/sql-architect
+├ ○ /tools/syllabus-tracker
+├ ○ /tools/typing-test
+├ ○ /tools/unit-converter
+├ ○ /use-cases/developers
+├ ○ /use-cases/researchers
+└ ○ /use-cases/students
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

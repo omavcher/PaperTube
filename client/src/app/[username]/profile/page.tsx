@@ -251,11 +251,11 @@ export default function UserProfilePage() {
         loading={listLoading}
         total={listTotal}
         page={listPage}
-        onPageChange={(page) => {
+        onPageChange={(page: number) => {
           setListPage(page);
           loadList('followers', page, listSearch);
         }}
-        onSearch={(search) => {
+        onSearch={(search: string) => {
           setListSearch(search);
           loadList('followers', 1, search);
         }}
@@ -273,11 +273,11 @@ export default function UserProfilePage() {
         loading={listLoading}
         total={listTotal}
         page={listPage}
-        onPageChange={(page) => {
+        onPageChange={(page: number) => {
           setListPage(page);
           loadList('following', page, listSearch);
         }}
-        onSearch={(search) => {
+        onSearch={(search: string) => {
           setListSearch(search);
           loadList('following', 1, search);
         }}

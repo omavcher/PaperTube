@@ -338,7 +338,7 @@ export default function TypingTestClient() {
 <Footer />
       
       {/* --- Auth Bridge --- */}
-      <LoginDialog isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onSuccess={(t, info) => {
+      <LoginDialog isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onSuccess={(t: string, info: any) => {
         const u = { username: info.name.split(' ')[0], picture: info.picture };
         localStorage.setItem("user", JSON.stringify(u));
         setUser(u);
