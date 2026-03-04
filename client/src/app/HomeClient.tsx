@@ -30,10 +30,7 @@ export default function HomeClient() {
         </div>
         <div className="w-full">
           <ToolsGlimpse/>
-        </div>
-        <div className="w-full">
-          <UseCasesHome/>
-        </div>
+        </div>   
         <div className="w-full">
           <PricingShowcase/>
         </div>
@@ -42,9 +39,6 @@ export default function HomeClient() {
         </div>
         <section className="w-full">
           <FeatureHomeSection/>
-        </section>
-        <section className="w-full">
-          <FAQHome/>
         </section>
        
       </main>

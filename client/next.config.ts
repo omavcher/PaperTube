@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   // 1. Removed eslint and typescript override since they cause type errors
   
   // 2. Removed empty turbo config
+  turbopack: {},
 
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],

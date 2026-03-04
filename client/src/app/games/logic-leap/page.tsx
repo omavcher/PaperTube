@@ -704,9 +704,9 @@ export default function LogicLeap() {
 
     try {
       await api.post("/general/game-stats", payload);
-      toast.success("TELEMETRY_SYNCED");
+      toast.success("Score Saved");
     } catch (error) {
-      toast.error("SYNC_OFFLINE", { description: "Mission data stored locally." });
+      toast.error("Saving Error", { description: "Mission data stored locally." });
     } finally {
       setGameState('GAMEOVER');
     }
@@ -721,7 +721,7 @@ export default function LogicLeap() {
 
   // --- Intelligence Engine ---
   const generateQuestion = useCallback(() => {
-    // HARDER Scaling: Phases determine the Tier pool
+    // HARDER Scaling: Levels determine the Tier pool
     const targetTier = level < 8 ? 1 : level < 18 ? 2 : level < 30 ? 3 : level < 45 ? 4 : 5;
     const pool = APTITUDE_POOL.filter(q => q.tier <= targetTier);
     
@@ -769,17 +769,17 @@ export default function LogicLeap() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-emerald-600/30 overflow-hidden">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-blue-600/30 overflow-hidden">
       
       {/* --- HUD --- */}
-      <div className="w-full max-w-2xl bg-neutral-900/20 border border-white/5 p-6 rounded-[2.5rem] md:rounded-[3rem] backdrop-blur-3xl mb-8 shadow-2xl">
+      <div className="w-full max-w-2xl bg-neutral-900/20 border border-white/5 p-6 rounded-xl md:rounded-2xl backdrop-blur-md mb-8 shadow-2xl">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 border border-emerald-500/20">
+            <div className="h-12 w-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 border border-blue-500/20">
               <Brain size={24} />
             </div>
             <div>
-              <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">IQ_Score</p>
+              <p className="text-[9px] font-black text-neutral-600 tracking-widest leading-none mb-1">IQ_Score</p>
               <p className="text-2xl font-black tabular-nums">{score}</p>
             </div>
           </div>
@@ -791,7 +791,7 @@ export default function LogicLeap() {
           </div>
 
           <div className="text-right">
-            <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">Infiltration_Lvl</p>
+            <p className="text-[9px] font-black text-neutral-600 tracking-widest leading-none mb-1">Infiltration_Lvl</p>
             <span className={cn("text-xl font-black tabular-nums", timeLeft < 4 ? "text-red-600 animate-pulse" : "text-white")}>
               {timeLeft.toFixed(1)}s
             </span>
@@ -805,16 +805,16 @@ export default function LogicLeap() {
           {gameState === 'START' && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-10">
               <div className="space-y-4">
-                <div className="inline-flex p-10 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10 shadow-[0_0_80px_rgba(16,185,129,0.1)]">
-                  <Puzzle size={80} className="text-emerald-500" />
+                <div className="inline-flex p-10 bg-blue-500/5 rounded-2xl border border-blue-500/10 shadow-lg">
+                  <Puzzle size={80} className="text-blue-500" />
                 </div>
-                <h1 className="text-6xl md:text-8xl font-black tracking-tighter uppercase italic leading-none">LOGIC_<span className="text-emerald-500">LEAP</span></h1>
-                <p className="text-neutral-600 text-[10px] md:text-xs font-black uppercase tracking-[0.4em] max-w-sm mx-auto">
+                <h1 className="text-6xl md:text-8xl font-black tracking-tight  leading-none">Logic <span className="text-blue-500">Leap</span></h1>
+                <p className="text-neutral-600 text-[10px] md:text-xs font-black tracking-widest max-w-sm mx-auto">
                   Neural_Aptitude_Testing_Module_v5.0
                 </p>
               </div>
               <Button onClick={() => { setScore(0); setLives(3); setLevel(1); setGameState('PLAYING'); generateQuestion(); }} 
-                className="w-full h-24 bg-emerald-600 hover:bg-emerald-500 text-black font-black text-3xl rounded-[2.5rem] shadow-2xl active:scale-95 transition-all">
+                className="w-full h-24 bg-blue-600 hover:bg-blue-500 text-black font-black text-3xl rounded-xl shadow-2xl active:scale-95 transition-all">
                 START <Play size={28} className="ml-3 fill-black" />
               </Button>
             </motion.div>
@@ -826,16 +826,16 @@ export default function LogicLeap() {
                 <motion.div 
                   initial={{ width: '100%' }}
                   animate={{ width: `${(timeLeft / 15) * 100}%` }}
-                  className={cn("h-full transition-colors", timeLeft < 4 ? "bg-red-600" : "bg-emerald-500")}
+                  className={cn("h-full transition-colors", timeLeft < 4 ? "bg-red-600" : "bg-blue-500")}
                 />
               </div>
 
               {/* Requirement Card */}
               <div className="relative group">
-                <div className="absolute inset-0 bg-emerald-500/5 blur-[100px] rounded-full group-hover:bg-emerald-500/10 transition-all duration-700" />
-                <Card className="bg-neutral-900/40 border-2 border-white/5 rounded-[3rem] p-10 md:p-16 text-center relative z-10 backdrop-blur-xl">
-                  <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[10px] mb-6 tracking-[0.4em]">DATA_REQUIREMENT</Badge>
-                  <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white leading-tight italic">
+                <div className="absolute inset-0 bg-blue-500/5 blur-[100px] rounded-full group-hover:bg-blue-500/10 transition-all duration-700" />
+                <Card className="bg-neutral-900/40 border-2 border-white/5 rounded-2xl p-10 md:p-16 text-center relative z-10 backdrop-blur-md">
+                  <Badge className="bg-blue-500/10 text-blue-500 border-none font-black text-[10px] mb-6 tracking-widest">DATA_REQUIREMENT</Badge>
+                  <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white leading-tight ">
                     "{currentQ?.question}"
                   </h2>
                 </Card>
@@ -847,7 +847,7 @@ export default function LogicLeap() {
                   <Button 
                     key={i} 
                     onClick={() => handleAnswer(opt)}
-                    className="h-24 md:h-32 bg-neutral-900/50 border border-white/5 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-xl md:text-3xl font-black rounded-[2rem] transition-all transform active:scale-90"
+                    className="h-24 md:h-32 bg-neutral-900/50 border border-white/5 hover:border-blue-500/50 hover:bg-blue-500/10 text-xl md:text-3xl font-black rounded-[2rem] transition-all transform active:scale-90"
                   >
                     {opt}
                   </Button>
@@ -858,23 +858,23 @@ export default function LogicLeap() {
 
           {(gameState === 'GAMEOVER' || gameState === 'SYNCING') && (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10">
-              <div className="text-center bg-neutral-900/50 p-12 rounded-[4rem] border border-red-900/20 shadow-2xl backdrop-blur-3xl relative overflow-hidden">
+              <div className="text-center bg-neutral-900/50 p-12 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md relative overflow-hidden">
                  <div className="absolute inset-0 bg-red-600/5 animate-pulse" />
-                 <h2 className="text-6xl md:text-8xl font-black text-red-600 uppercase italic tracking-tighter mb-10 relative z-10">CORE_FAILURE</h2>
+                 <h2 className="text-6xl md:text-8xl font-black text-red-600  tracking-tight mb-10 relative z-10">CORE_FAILURE</h2>
                  
                  <div className="grid grid-cols-2 gap-6 mb-10 relative z-10">
-                   <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
-                     <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Final_IQ</p>
-                     <p className="text-5xl font-black text-emerald-500 leading-none">{score}</p>
+                   <div className="bg-black/40 p-8 rounded-2xl border border-white/5">
+                     <p className="text-[10px] font-black text-neutral-600 mb-2 tracking-widest">Final_IQ</p>
+                     <p className="text-5xl font-black text-blue-500 leading-none">{score}</p>
                    </div>
-                   <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
-                     <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Max_Phase</p>
+                   <div className="bg-black/40 p-8 rounded-2xl border border-white/5">
+                     <p className="text-[10px] font-black text-neutral-600 mb-2 tracking-widest">Level Reached</p>
                      <p className="text-5xl font-black text-white leading-none">L{level}</p>
                    </div>
                  </div>
 
                  {gameState === 'SYNCING' ? (
-                   <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-[0.4em] uppercase">
+                   <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-widest">
                       <Loader2 size={16} className="animate-spin" /> UPLOADING_TELEMETRY...
                    </div>
                  ) : (
@@ -889,10 +889,10 @@ export default function LogicLeap() {
       </div>
 
       {/* Meta HUD */}
-      <div className="mt-16 flex flex-wrap justify-center gap-12 text-[10px] font-black uppercase tracking-[0.5em] text-neutral-900">
+      <div className="mt-16 flex flex-wrap justify-center gap-12 text-[10px] font-black tracking-widest text-neutral-900">
         <span className="flex items-center gap-2"><Lock size={14} /> ID: {getIdentity().id.substring(0,10)}...</span>
-        <span className="flex items-center gap-2"><Trophy size={14} /> pb_node: {highScore}</span>
-        <span className="flex items-center gap-2 italic text-emerald-900"><ShieldCheck size={14} /> Verified_Profile</span>
+        <span className="flex items-center gap-2"><Trophy size={14} /> Best: {highScore}</span>
+        <span className="flex items-center gap-2  text-blue-900"><ShieldCheck size={14} /> Verified_Profile</span>
       </div>
     </div>
   );

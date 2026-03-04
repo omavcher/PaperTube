@@ -18,7 +18,7 @@ import { COUNTRY_POOL, CountryData } from "@/data/countries";
 
 type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
 
-export default function FlagMastery() {
+export default function FlagLevel Reached() {
   const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
@@ -70,7 +70,7 @@ export default function FlagMastery() {
       userId: user.id || user._id,
       name: user.name,
       email: user.email,
-      game: "Flag Mastery",
+      game: "Flag Level Reached",
       stats: {
         score: finalScore,
         level: finalLevel,
@@ -81,9 +81,9 @@ export default function FlagMastery() {
 
     try {
       await api.post("/general/game-stats", payload);
-      toast.success("DIPLOMATIC_DATA_SYNCED");
+      toast.success("Score saved!");
     } catch (error) {
-      toast.error("SYNC_OFFLINE", { description: "Data stored in local cache." });
+      toast.error("Couldn't save score.");
     } finally {
       setGameState('GAMEOVER');
     }
@@ -132,7 +132,7 @@ export default function FlagMastery() {
     if (selectedName === currentCountry.name) {
       const points = 10 * currentCountry.tier * level;
       setScore(s => s + points);
-      toast.success("RECOGNITION_VERIFIED");
+      toast.success(`Correct! +${10 * currentCountry.tier * level} pts`);
       setTimeout(() => {
         setLevel(l => l + 1);
         generateQuestion();
@@ -140,7 +140,7 @@ export default function FlagMastery() {
     } else {
       if (lives > 1) {
         setLives(l => l - 1);
-        toast.error(`IDENT_FAILURE: ${currentCountry.name}`);
+        toast.error(`Wrong! It was ${currentCountry.name}`);
         setTimeout(() => generateQuestion(), 1200);
       } else {
         pushStats(score, level);
@@ -161,13 +161,13 @@ export default function FlagMastery() {
       
       <div className="max-w-2xl w-full relative">
         {/* --- HUD --- */}
-        <div className="flex justify-between items-center mb-8 bg-neutral-900/20 p-6 rounded-[2.5rem] md:rounded-[3rem] border border-white/5 backdrop-blur-3xl shadow-2xl">
+        <div className="flex justify-between items-center mb-8 bg-neutral-900/20 p-6 rounded-xl md:rounded-2xl border border-white/5 backdrop-blur-md shadow-2xl">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 border border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+            <div className="h-12 w-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 border border-blue-500/20 shadow-lg">
               <MapPin size={24} />
             </div>
             <div>
-              <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">Diplomatic_Score</p>
+              <p className="text-[9px] font-black text-neutral-600 tracking-widest leading-none mb-1">Score</p>
               <p className="text-2xl font-black tabular-nums">{score}</p>
             </div>
           </div>
@@ -178,11 +178,11 @@ export default function FlagMastery() {
                 <Heart key={i} size={18} className={cn("transition-all", i < lives ? "text-red-600 fill-red-600" : "text-neutral-950")} />
               ))}
             </div>
-            <Badge className="bg-blue-600/10 text-blue-400 border-none font-black text-[8px] uppercase tracking-widest">Integrity</Badge>
+            <Badge className="bg-blue-600/10 text-blue-400 border-none font-black text-[8px] tracking-widest">Lives</Badge>
           </div>
 
           <div className="text-right">
-            <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">Phase</p>
+            <p className="text-[9px] font-black text-neutral-600 tracking-widest leading-none mb-1">Level</p>
             <p className="text-2xl font-black text-blue-500 tabular-nums">L{level}</p>
           </div>
         </div>
@@ -191,13 +191,13 @@ export default function FlagMastery() {
           {gameState === 'START' && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-10">
               <div className="space-y-4">
-                <div className="inline-flex p-10 bg-blue-600/5 rounded-[4rem] border border-blue-600/10 shadow-[0_0_80px_rgba(59,130,246,0.1)]">
+                <div className="inline-flex p-10 bg-blue-600/5 rounded-2xl border border-blue-600/10 shadow-lg">
                   <Globe size={100} className="text-blue-500" />
                 </div>
-                <h1 className="text-6xl md:text-8xl font-black tracking-tighter uppercase italic leading-none">FLAG_<span className="text-blue-500">MASTERY</span></h1>
-                <p className="text-neutral-600 text-[10px] md:text-xs font-black uppercase tracking-[0.4em]">Sovereign_Identity_Protocol_v4.0</p>
+                <h1 className="text-6xl md:text-8xl font-black tracking-tight  leading-none">Flag <span className="text-blue-500">Level Reached</span></h1>
+                <p className="text-neutral-600 text-[10px] md:text-xs font-black tracking-widest">Identify flags from around the world!</p>
               </div>
-              <Button onClick={startGame} className="w-full h-24 bg-blue-600 hover:bg-blue-500 text-white font-black text-3xl rounded-[2.5rem] shadow-2xl active:scale-95 transition-all">
+              <Button onClick={startGame} className="w-full h-24 bg-blue-600 hover:bg-blue-500 text-white font-black text-3xl rounded-xl shadow-2xl active:scale-95 transition-all">
                 START <Play size={28} className="ml-3 fill-white" />
               </Button>
             </motion.div>
@@ -208,7 +208,7 @@ export default function FlagMastery() {
               {/* Flag Card: Strict 16:9 Inspired Ratio */}
               <div className="relative group">
                 <div className="absolute inset-0 bg-blue-500/10 blur-[100px] rounded-full group-hover:bg-blue-500/20 transition-all duration-700" />
-                <Card className="bg-neutral-900/40 border-2 border-white/5 rounded-[3rem] p-10 md:p-16 flex items-center justify-center relative z-10 backdrop-blur-xl overflow-hidden min-h-[300px]">
+                <Card className="bg-neutral-900/40 border-2 border-white/5 rounded-2xl p-10 md:p-16 flex items-center justify-center relative z-10 backdrop-blur-md overflow-hidden min-h-[300px]">
                   <motion.img 
                     key={currentCountry.code}
                     initial={{ scale: 0.8, opacity: 0 }}
@@ -218,7 +218,7 @@ export default function FlagMastery() {
                     className="w-auto h-auto max-h-[220px] max-w-full object-contain rounded-lg shadow-2xl border border-white/10"
                   />
                   <div className="absolute top-6 right-6">
-                    <Badge className="bg-blue-500/10 text-blue-500 border-none font-black text-[9px] tracking-[0.2em]">TIER_{currentCountry.tier}</Badge>
+                    <Badge className="bg-blue-500/10 text-blue-500 border-none font-black text-[9px] tracking-[0.2em]">Level {currentCountry.tier}</Badge>
                   </div>
                 </Card>
               </div>
@@ -231,9 +231,9 @@ export default function FlagMastery() {
                     onClick={() => handleAnswer(opt)}
                     disabled={isAnswering}
                     className={cn(
-                      "h-20 md:h-24 rounded-[2rem] text-lg md:text-xl font-black italic tracking-tighter transition-all transform active:scale-90 border-2",
+                      "h-20 md:h-24 rounded-[2rem] text-lg md:text-xl font-black  tracking-tight transition-all transform active:scale-90 border-2",
                       !isAnswering ? "bg-neutral-900 border-white/5 hover:border-blue-500 text-white" : 
-                      opt === currentCountry.name ? "bg-emerald-600 border-emerald-400 text-white" : 
+                      opt === currentCountry.name ? "bg-blue-600 border-blue-400 text-white" : 
                       opt === selectedOption ? "bg-red-600 border-red-400 text-white animate-shake" : "bg-neutral-950 border-white/5 text-neutral-800"
                     )}
                   >
@@ -246,23 +246,23 @@ export default function FlagMastery() {
 
           {(gameState === 'GAMEOVER' || gameState === 'SYNCING') && (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10">
-              <div className="text-center bg-neutral-900/50 p-12 rounded-[4rem] border border-red-900/20 shadow-2xl backdrop-blur-3xl relative overflow-hidden">
+              <div className="text-center bg-neutral-900/50 p-12 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md relative overflow-hidden">
                  <div className="absolute inset-0 bg-red-600/5 animate-pulse" />
-                 <h2 className="text-5xl md:text-7xl font-black text-red-600 uppercase italic tracking-tighter mb-10 relative z-10 leading-none">DIPLOMATIC_<br/>FAILURE</h2>
+                 <h2 className="text-5xl md:text-7xl font-black text-red-500  tracking-tight mb-10 relative z-10 leading-none">Game Over!</h2>
                  
                  <div className="grid grid-cols-2 gap-6 mb-10 relative z-10">
-                   <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
-                     <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Final_Score</p>
+                   <div className="bg-black/40 p-8 rounded-2xl border border-white/5">
+                     <p className="text-[10px] font-black text-neutral-600 mb-2 tracking-widest">Final_Score</p>
                      <p className="text-5xl font-black text-blue-500 leading-none tabular-nums">{score}</p>
                    </div>
-                   <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
-                     <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Max_Phase</p>
+                   <div className="bg-black/40 p-8 rounded-2xl border border-white/5">
+                     <p className="text-[10px] font-black text-neutral-600 mb-2 tracking-widest">Level Reached</p>
                      <p className="text-5xl font-black text-white leading-none tabular-nums">L{level}</p>
                    </div>
                  </div>
 
                  {gameState === 'SYNCING' ? (
-                   <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-[0.4em] uppercase">
+                   <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-widest">
                       <Loader2 size={16} className="animate-spin" /> Transmitting_Logs...
                    </div>
                  ) : (
@@ -277,10 +277,10 @@ export default function FlagMastery() {
       </div>
 
       {/* Meta HUD */}
-      <div className="mt-16 flex flex-wrap justify-center gap-12 text-[10px] font-black uppercase tracking-[0.5em] text-neutral-900">
+      <div className="mt-16 flex flex-wrap justify-center gap-12 text-[10px] font-black tracking-widest text-neutral-900">
         <span className="flex items-center gap-2"><Fingerprint size={14} /> ID: {getIdentity().id.substring(0,10)}...</span>
-        <span className="flex items-center gap-2"><ShieldCheck size={14} /> pb_node: {highScore}</span>
-        <span className="flex items-center gap-2 italic">v2026.VOID-ARCADE</span>
+        <span className="flex items-center gap-2"><ShieldCheck size={14} /> Best: {highScore}</span>
+        <span className="flex items-center gap-2 ">v1.0</span>
       </div>
     </div>
   );

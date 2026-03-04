@@ -159,9 +159,9 @@ export default function ComplexityDash() {
 
     try {
       await api.post("/general/game-stats", payload);
-      toast.success("TELEMETRY_SYNCED", { description: "Mission data stored." });
+      toast.success("Score Saved", { description: "Mission data stored." });
     } catch (error) {
-      toast.error("SYNC_OFFLINE", { description: "Data saved to local cache." });
+      toast.error("Saving Error", { description: "Data saved to local cache." });
     } finally {
       setGameState('GAMEOVER');
     }
@@ -226,16 +226,16 @@ export default function ComplexityDash() {
       
       {/* --- HUD --- */}
       <div className="w-full max-w-2xl space-y-4 mb-8">
-        <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.4em] text-neutral-600 px-2">
+        <div className="flex justify-between text-[10px] font-black tracking-widest text-neutral-600 px-2">
           <span className="flex items-center gap-2"><Bug size={14} className="text-red-600 animate-pulse" /> Bug_Proximity</span>
-          <span className="flex items-center gap-2">Node_Status: {Math.floor(level)} <Activity size={12} className="text-emerald-500" /></span>
+          <span className="flex items-center gap-2">Node_Status: {Math.floor(level)} <Activity size={12} className="text-blue-500" /></span>
         </div>
         <div className="h-2 w-full bg-neutral-900/50 rounded-full border border-white/5 overflow-hidden relative">
           <motion.div 
             animate={{ left: `${bugProximity}%` }}
             className="absolute top-0 bottom-0 w-2 bg-red-600 shadow-[0_0_20px_red] z-20"
           />
-          <div className="h-full bg-emerald-600/10" style={{ width: '100%', marginLeft: `${bugProximity}%` }} />
+          <div className="h-full bg-blue-600/10" style={{ width: '100%', marginLeft: `${bugProximity}%` }} />
         </div>
       </div>
 
@@ -245,18 +245,18 @@ export default function ComplexityDash() {
           {gameState === 'START' && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-10">
               <div className="space-y-4">
-                <div className="inline-flex p-10 bg-red-600/5 rounded-[4rem] border border-red-600/10 shadow-[0_0_80px_rgba(220,38,38,0.1)]">
+                <div className="inline-flex p-10 bg-red-600/5 rounded-2xl border border-red-600/10 shadow-lg">
                   <Terminal size={80} className="text-red-600" />
                 </div>
-                <h1 className="text-6xl md:text-9xl font-black tracking-tighter uppercase italic leading-none">
+                <h1 className="text-6xl md:text-9xl font-black tracking-tight  leading-none">
                   COMPLEXITY
-                </h1><span className="text-6xl md:text-9xl font-black tracking-tighter uppercase italic leading-none text-red-600">DASH</span>
-                <p className="text-neutral-500 text-[10px] md:text-xs font-black uppercase tracking-[0.4em] max-w-xs mx-auto">
-                  Neural_Big-O_Analysis // Phase_v5.0
+                </h1><span className="text-6xl md:text-9xl font-black tracking-tight  leading-none text-red-600">DASH</span>
+                <p className="text-neutral-500 text-[10px] md:text-xs font-black tracking-widest max-w-xs mx-auto">
+                  Neural_Big-O_Analysis // Level_v5.0
                 </p>
               </div>
               <Button onClick={() => { setScore(0); setBugProximity(0); setLevel(1); setGameState('PLAYING'); nextQuestion(); }} 
-                className="w-full h-24 bg-red-600 hover:bg-red-500 text-white font-black text-3xl rounded-[2.5rem] shadow-2xl active:scale-95 transition-all">
+                className="w-full h-24 bg-red-600 hover:bg-red-500 text-white font-black text-3xl rounded-xl shadow-2xl active:scale-95 transition-all">
                 START <Play size={28} className="ml-3 fill-white" />
               </Button>
             </motion.div>
@@ -265,14 +265,14 @@ export default function ComplexityDash() {
           {gameState === 'PLAYING' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 md:space-y-10">
               <Card className={cn(
-                "bg-neutral-950 border-2 rounded-[3rem] overflow-hidden transition-colors duration-500",
-                SNIPPET_POOL[currentIdx].tier === 4 ? "border-red-600 shadow-[0_0_40px_rgba(220,38,38,0.1)]" : "border-white/5"
+                "bg-neutral-950 border-2 rounded-2xl overflow-hidden transition-colors duration-500",
+                SNIPPET_POOL[currentIdx].tier === 4 ? "border-red-600 shadow-lg" : "border-white/5"
               )}>
                 <div className="bg-white/5 px-6 py-4 border-b border-white/5 flex items-center justify-between">
                   <div className="flex gap-2">
                     <div className="h-3 w-3 rounded-full bg-red-500/20" />
                     <div className="h-3 w-3 rounded-full bg-yellow-500/20" />
-                    <div className="h-3 w-3 rounded-full bg-emerald-500/20" />
+                    <div className="h-3 w-3 rounded-full bg-blue-500/20" />
                   </div>
                   <div className="flex items-center gap-4">
                     <Badge className="bg-red-600/10 text-red-500 border-none font-black text-[9px]">TIER_{SNIPPET_POOL[currentIdx].tier}</Badge>
@@ -282,7 +282,7 @@ export default function ComplexityDash() {
                   </div>
                 </div>
                 <CardContent className="p-8 md:p-12">
-                  <pre className="font-mono text-lg md:text-2xl text-emerald-400 leading-relaxed overflow-x-auto custom-scrollbar">
+                  <pre className="font-sans text-lg md:text-2xl text-blue-400 leading-relaxed overflow-x-auto custom-scrollbar">
                     <code>{SNIPPET_POOL[currentIdx].code}</code>
                   </pre>
                 </CardContent>
@@ -305,26 +305,26 @@ export default function ComplexityDash() {
 
           {(gameState === 'GAMEOVER' || gameState === 'SYNCING') && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-              <div className="text-center bg-neutral-900 border border-red-600/20 p-8 md:p-16 rounded-[4rem] shadow-3xl relative overflow-hidden">
+              <div className="text-center bg-neutral-900 border border-red-600/20 p-8 md:p-16 rounded-2xl shadow-3xl relative overflow-hidden">
                 <ShieldAlert size={80} className="text-red-600 mx-auto mb-6 animate-pulse" />
-                <h2 className="text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter leading-none">
+                <h2 className="text-5xl md:text-7xl font-black text-white  tracking-tight leading-none">
                   SYSTEM
                 </h2>
-                <span className="text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter leading-none text-red-600">FAILED</span>
+                <span className="text-5xl md:text-7xl font-black text-white  tracking-tight leading-none text-red-600">FAILED</span>
                 
                 <div className="grid grid-cols-2 gap-4 mb-12">
                   <div className="bg-black/40 p-6 rounded-3xl border border-white/5">
-                    <p className="text-[9px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Final_Score</p>
+                    <p className="text-[9px] font-black text-neutral-600 mb-2 tracking-widest">Final_Score</p>
                     <p className="text-4xl font-black text-red-600 tabular-nums leading-none">{score}</p>
                   </div>
                   <div className="bg-black/40 p-6 rounded-3xl border border-white/5">
-                    <p className="text-[9px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Max_Phase</p>
+                    <p className="text-[9px] font-black text-neutral-600 mb-2 tracking-widest">Level Reached</p>
                     <p className="text-4xl font-black text-white tabular-nums leading-none">L{Math.floor(level)}</p>
                   </div>
                 </div>
 
                 {gameState === 'SYNCING' ? (
-                  <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-[0.4em] uppercase">
+                  <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-widest">
                      <Loader2 size={16} className="animate-spin" /> Transmitting_Telemetry...
                   </div>
                 ) : (
@@ -339,9 +339,9 @@ export default function ComplexityDash() {
       </div>
 
       {/* Meta HUD */}
-      <div className="mt-12 flex flex-wrap justify-center gap-x-12 gap-y-4 text-[9px] font-black uppercase tracking-[0.5em] text-neutral-900">
+      <div className="mt-12 flex flex-wrap justify-center gap-x-12 gap-y-4 text-[9px] font-black tracking-widest text-neutral-900">
         <span className="flex items-center gap-2"><Fingerprint size={12} /> ID: {getIdentity().id.substring(0, 10)}...</span>
-        <span className="flex items-center gap-2"><Cpu size={12} /> Personal_Best: {highScore}</span>
+        <span className="flex items-center gap-2"><Cpu size={12} /> Best: {highScore}</span>
         <span className="flex items-center gap-2 text-red-900"><ShieldCheck size={12} /> Verified_Profile</span>
       </div>
     </div>

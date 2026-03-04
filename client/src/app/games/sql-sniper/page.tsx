@@ -177,32 +177,32 @@ export default function SqlSniper() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-emerald-600/30 overflow-hidden">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-blue-600/30 overflow-hidden">
       
       {/* Ambient Background */}
-      <div className="fixed top-0 left-0 w-full h-[60vh] bg-emerald-600/5 blur-[120px] pointer-events-none" />
+      <div className="fixed top-0 left-0 w-full h-[60vh] bg-blue-600/5 blur-[120px] pointer-events-none" />
 
       {/* --- Desktop Navbar --- */}
-      <nav className="hidden md:flex items-center justify-between px-8 py-6 border-b border-white/5 bg-black/50 backdrop-blur-xl fixed top-0 w-full z-50">
+      <nav className="hidden md:flex items-center justify-between px-8 py-6 border-b border-white/5 bg-black/50 backdrop-blur-md fixed top-0 w-full z-50">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="h-8 w-8 bg-emerald-600 rounded-lg flex items-center justify-center text-black">
+          <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center text-black">
             <Gamepad2 className="h-5 w-5" />
           </div>
-          <span className="text-xl font-black italic tracking-tighter text-white uppercase">
-            VOID<span className="text-emerald-600 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">ARCADE</span>
+          <span className="text-xl font-black  tracking-tight text-white">
+            VOID<span className="text-blue-600 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">ARCADE</span>
           </span>
         </Link>
         <div className="flex items-center gap-6">
-            <Link href="/tools" className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500 hover:text-white transition-colors">Exit</Link>
-            <Badge variant="outline" className="border-emerald-500/20 text-emerald-400 uppercase tracking-widest text-[10px] bg-emerald-500/5">Database Div</Badge>
+            <Link href="/tools" className="text-[10px] font-black tracking-[0.2em] text-neutral-500 hover:text-white transition-colors">Exit</Link>
+            <Badge variant="outline" className="border-blue-500/20 text-blue-400 tracking-widest text-[10px] bg-blue-500/5">Database Div</Badge>
         </div>
       </nav>
 
       {/* --- Mobile Header --- */}
       <div className="md:hidden flex items-center justify-between px-4 py-4 border-b border-white/5 bg-black sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <Database className="text-emerald-500 h-5 w-5" />
-          <span className="font-black italic tracking-tighter text-white uppercase">SQL SNIPER</span>
+          <Database className="text-blue-500 h-5 w-5" />
+          <span className="font-black  tracking-tight text-white">SQL SNIPER</span>
         </div>
         <Link href="/tools">
            <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-500"><ArrowLeft className="h-5 w-5" /></Button>
@@ -212,18 +212,18 @@ export default function SqlSniper() {
       <main className="flex-1 flex flex-col items-center justify-center p-4 relative z-10 w-full max-w-4xl mx-auto min-h-[80vh]">
         
         {/* --- HUD --- */}
-        <div className="w-full max-w-2xl bg-neutral-900/40 border border-white/5 p-6 rounded-[2.5rem] md:rounded-full backdrop-blur-md mb-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-emerald-500/5 opacity-50" />
+        <div className="w-full max-w-2xl bg-neutral-900/40 border border-white/5 p-6 rounded-xl md:rounded-full backdrop-blur-md mb-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-blue-500/5 opacity-50" />
           
           <div className="relative z-10 flex justify-between items-center px-2 md:px-6">
             {/* Score */}
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 border border-emerald-500/20">
+              <div className="h-12 w-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 border border-blue-500/20">
                 <Database size={24} />
               </div>
               <div>
-                <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">Rows Fetched</p>
-                <p className="text-2xl font-black tabular-nums tracking-tighter">{score}</p>
+                <p className="text-[9px] font-black text-neutral-600 tracking-widest leading-none mb-1">Rows Fetched</p>
+                <p className="text-2xl font-black tabular-nums tracking-tight">{score}</p>
               </div>
             </div>
 
@@ -236,7 +236,7 @@ export default function SqlSniper() {
 
             {/* Timer */}
             <div className="text-right">
-              <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest leading-none mb-1">Breach Time</p>
+              <p className="text-[9px] font-black text-neutral-600 tracking-widest leading-none mb-1">Breach Time</p>
               <span className={cn("text-xl font-black tabular-nums", timeLeft < 3 ? "text-red-600 animate-pulse" : "text-white")}>
                 {timeLeft.toFixed(1)}s
               </span>
@@ -251,18 +251,18 @@ export default function SqlSniper() {
             {gameState === 'START' && (
               <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-10 py-12">
                 <div className="space-y-4">
-                  <div className="inline-flex p-10 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10 shadow-[0_0_80px_rgba(16,185,129,0.1)]">
-                    <Terminal size={100} className="text-emerald-500" />
+                  <div className="inline-flex p-10 bg-blue-500/5 rounded-2xl border border-blue-500/10 shadow-lg">
+                    <Terminal size={100} className="text-blue-500" />
                   </div>
-                  <h1 className="text-6xl md:text-9xl font-black tracking-tighter uppercase italic leading-none">
-                    SQL_<span className="text-emerald-500">SNIPER</span>
+                  <h1 className="text-6xl md:text-9xl font-black tracking-tight  leading-none">
+                    SQL <span className="text-blue-500">Sniper</span>
                   </h1>
-                  <p className="text-neutral-500 text-[10px] md:text-xs font-black uppercase tracking-[0.4em] max-w-sm mx-auto leading-relaxed">
-                    Analyze_Requirement // Inject_Correct_Query // Phase_v4.0
+                  <p className="text-neutral-500 text-[10px] md:text-xs font-black tracking-widest max-w-sm mx-auto leading-relaxed">
+                    Analyze_Requirement // Inject_Correct_Query // Level_v4.0
                   </p>
                 </div>
                 <Button onClick={() => { setScore(0); setLives(3); setLevel(1); setGameState('PLAYING'); generateQuestion(); }} 
-                  className="w-full h-24 bg-emerald-600 hover:bg-emerald-500 text-black font-black text-3xl rounded-[2.5rem] shadow-2xl active:scale-95 transition-all uppercase italic tracking-widest">
+                  className="w-full h-24 bg-blue-600 hover:bg-blue-500 text-black font-black text-3xl rounded-xl shadow-2xl active:scale-95 transition-all  tracking-widest">
                   Initialize <Play size={28} className="ml-3 fill-black" />
                 </Button>
               </motion.div>
@@ -275,16 +275,16 @@ export default function SqlSniper() {
                   <motion.div 
                     initial={{ width: '100%' }}
                     animate={{ width: `${(timeLeft / 12) * 100}%` }}
-                    className={cn("h-full transition-colors", timeLeft < 3 ? "bg-red-600" : "bg-emerald-500")}
+                    className={cn("h-full transition-colors", timeLeft < 3 ? "bg-red-600" : "bg-blue-500")}
                   />
                 </div>
 
                 {/* Data Requirement Card */}
                 <div className="relative group">
-                  <div className="absolute inset-0 bg-emerald-500/5 blur-[100px] rounded-full group-hover:bg-emerald-500/10 transition-all duration-700" />
-                  <Card className="bg-neutral-900/40 border-2 border-white/5 rounded-[4rem] p-10 md:p-16 text-center relative z-10 backdrop-blur-xl">
-                    <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[10px] mb-6 tracking-[0.4em]">DATA_SPECIFICATION</Badge>
-                    <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight italic drop-shadow-lg">
+                  <div className="absolute inset-0 bg-blue-500/5 blur-[100px] rounded-full group-hover:bg-blue-500/10 transition-all duration-700" />
+                  <Card className="bg-neutral-900/40 border-2 border-white/5 rounded-2xl p-10 md:p-16 text-center relative z-10 backdrop-blur-md">
+                    <Badge className="bg-blue-500/10 text-blue-500 border-none font-black text-[10px] mb-6 tracking-widest">DATA_SPECIFICATION</Badge>
+                    <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight  drop-shadow-lg">
                       "{SQL_POOL[currentIdx].question}"
                     </h2>
                   </Card>
@@ -296,11 +296,11 @@ export default function SqlSniper() {
                     <Button 
                       key={i} 
                       onClick={() => handleAnswer(opt)}
-                      className="h-auto min-h-[100px] py-6 px-8 bg-neutral-900 border border-white/5 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-left justify-start rounded-[2rem] transition-all transform active:scale-95 group"
+                      className="h-auto min-h-[100px] py-6 px-8 bg-neutral-900 border border-white/5 hover:border-blue-500/50 hover:bg-blue-500/10 text-left justify-start rounded-[2rem] transition-all transform active:scale-95 group"
                     >
                       <div className="flex gap-4 items-start w-full">
-                        <ChevronRight size={18} className="text-neutral-700 group-hover:text-emerald-500 mt-1 shrink-0" />
-                        <span className="font-mono text-sm md:text-base text-emerald-400 break-all leading-relaxed w-full">{opt}</span>
+                        <ChevronRight size={18} className="text-neutral-700 group-hover:text-blue-500 mt-1 shrink-0" />
+                        <span className="font-sans text-sm md:text-base text-blue-400 break-all leading-relaxed w-full">{opt}</span>
                       </div>
                     </Button>
                   ))}
@@ -311,27 +311,27 @@ export default function SqlSniper() {
             {/* --- VIEW: GAMEOVER --- */}
             {(gameState === 'GAMEOVER' || gameState === 'SYNCING') && (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10">
-                <div className="text-center bg-neutral-900/50 p-12 rounded-[4rem] border border-red-900/20 shadow-2xl backdrop-blur-3xl relative overflow-hidden">
+                <div className="text-center bg-neutral-900/50 p-12 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md relative overflow-hidden">
                     <div className="absolute inset-0 bg-red-600/5 animate-pulse" />
-                    <h2 className="text-6xl md:text-8xl font-black text-red-600 uppercase italic tracking-tighter mb-10 relative z-10">CONNECTION_LOST</h2>
+                    <h2 className="text-6xl md:text-8xl font-black text-red-600  tracking-tight mb-10 relative z-10">CONNECTION_LOST</h2>
                     
                     <div className="grid grid-cols-2 gap-6 mb-10 relative z-10">
-                      <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
-                        <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Rows_Secured</p>
-                        <p className="text-5xl font-black text-emerald-500 leading-none">{score}</p>
+                      <div className="bg-black/40 p-8 rounded-2xl border border-white/5">
+                        <p className="text-[10px] font-black text-neutral-600 mb-2 tracking-widest">Rows_Secured</p>
+                        <p className="text-5xl font-black text-blue-500 leading-none">{score}</p>
                       </div>
-                      <div className="bg-black/40 p-8 rounded-[3rem] border border-white/5">
-                        <p className="text-[10px] font-black text-neutral-600 uppercase mb-2 tracking-widest">Max_Depth</p>
+                      <div className="bg-black/40 p-8 rounded-2xl border border-white/5">
+                        <p className="text-[10px] font-black text-neutral-600 mb-2 tracking-widest">Level Reached</p>
                         <p className="text-5xl font-black text-white leading-none">L{level}</p>
                       </div>
                     </div>
 
                     {gameState === 'SYNCING' ? (
-                      <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-[0.4em] uppercase">
+                      <div className="h-20 flex items-center justify-center gap-3 bg-neutral-950 rounded-2xl text-[10px] font-black text-neutral-700 tracking-widest">
                          <Loader2 size={16} className="animate-spin" /> UPLOADING_MISSION_STATS...
                       </div>
                     ) : (
-                      <Button onClick={() => setGameState('START')} className="w-full h-20 bg-white text-black font-black text-2xl rounded-[2.5rem] hover:bg-emerald-500 hover:text-white transition-all active:scale-95 shadow-2xl uppercase italic tracking-widest">
+                      <Button onClick={() => setGameState('START')} className="w-full h-20 bg-white text-black font-black text-2xl rounded-xl hover:bg-blue-500 hover:text-white transition-all active:scale-95 shadow-2xl  tracking-widest">
                        Reboot System <RotateCcw size={24} className="ml-3" />
                       </Button>
                     )}
@@ -342,9 +342,9 @@ export default function SqlSniper() {
         </div>
 
         {/* Meta HUD */}
-        <div className="mt-16 flex flex-wrap justify-center gap-12 text-[10px] font-black uppercase tracking-[0.5em] text-neutral-900">
+        <div className="mt-16 flex flex-wrap justify-center gap-12 text-[10px] font-black tracking-widest text-neutral-900">
           <span className="flex items-center gap-2"><Fingerprint size={14} /> ID: {getIdentity().id.substring(0,10)}...</span>
-          <span className="flex items-center gap-2"><HardDrive size={14} /> pb_node: {highScore}</span>
+          <span className="flex items-center gap-2"><HardDrive size={14} /> Best: {highScore}</span>
         </div>
 
       </main>

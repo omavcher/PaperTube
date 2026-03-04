@@ -19,6 +19,7 @@ const STEPS = [
     color: "text-red-400",
     bg: "bg-red-500/10",
     border: "border-red-500/20",
+    dotColor: "bg-red-500",
   },
   {
     step: "02",
@@ -28,6 +29,7 @@ const STEPS = [
     color: "text-amber-400",
     bg: "bg-amber-500/10",
     border: "border-amber-500/20",
+    dotColor: "bg-amber-500",
   },
   {
     step: "03",
@@ -37,6 +39,7 @@ const STEPS = [
     color: "text-emerald-400",
     bg: "bg-emerald-500/10",
     border: "border-emerald-500/20",
+    dotColor: "bg-emerald-500",
   },
 ];
 
@@ -44,7 +47,7 @@ export default function HowToUse() {
   const [videoLoaded, setVideoLoaded] = useState(false);
 
   return (
-    <section className="relative w-full bg-black text-white overflow-hidden font-sans py-24 px-4">
+    <section className="relative w-full bg-black text-white overflow-hidden font-sans py-16 md:py-24">
       {/* Background blobs */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-white/[0.02] blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute inset-0 z-0 opacity-10 [background-image:linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] [background-size:40px_40px] pointer-events-none" />
@@ -52,7 +55,7 @@ export default function HowToUse() {
       <div className="relative z-10 max-w-7xl mx-auto">
 
         {/* ── Header ── */}
-        <div className="text-center mb-16 space-y-5">
+        <div className="text-center mb-10 md:mb-16 space-y-4 md:space-y-5">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -68,7 +71,7 @@ export default function HowToUse() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.08 }}
-            className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 leading-none"
+            className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 leading-none"
           >
             YouTube to PDF<br />
             <span className="text-white">in 3 steps.</span>
@@ -79,14 +82,48 @@ export default function HowToUse() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.15 }}
-            className="text-neutral-400 text-base max-w-lg mx-auto leading-relaxed"
+            className="text-neutral-400 text-sm max-w-lg mx-auto leading-relaxed"
           >
             Watch the demo below — see exactly how PaperXify converts any YouTube video into a clean, exam-ready PDF.
           </motion.p>
         </div>
 
-        {/* ── Steps Row ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-16">
+        {/* 
+          ── Steps ──
+          MOBILE: compact flat list (no cards — just icon + text rows)
+          DESKTOP: 3-column card grid  
+        */}
+
+        {/* ── MOBILE STEPS: compact list ── */}
+        <div className="flex flex-col gap-3 mb-10 sm:hidden">
+          {STEPS.map((s, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -12 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08 }}
+              className="flex items-start gap-4 px-4 py-3 rounded-2xl bg-white/[0.03] border border-white/5"
+            >
+              {/* Icon bubble */}
+              <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border ${s.border} ${s.bg}`}>
+                <s.icon size={16} className={s.color} />
+              </div>
+
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-bold text-sm leading-snug">{s.title}</p>
+                <p className="text-neutral-500 text-xs leading-relaxed mt-0.5">{s.desc}</p>
+              </div>
+
+              {/* Step number */}
+              <span className={`shrink-0 text-[10px] font-black ${s.color} opacity-60 mt-1`}>{s.step}</span>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* ── DESKTOP STEPS: card grid ── */}
+        <div className="hidden sm:grid sm:grid-cols-3 gap-6 mb-16">
           {STEPS.map((s, i) => (
             <motion.div
               key={i}
@@ -177,8 +214,8 @@ export default function HowToUse() {
 
                   {/* Play button */}
                   <div className="relative z-10 flex flex-col items-center gap-4">
-                    <div className="w-20 h-20 rounded-full bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center group-hover:scale-110 group-hover:bg-white/20 transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)]">
-                      <Play size={32} className="text-white ml-1.5" fill="white" />
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center group-hover:scale-110 group-hover:bg-white/20 transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)]">
+                      <Play size={28} className="text-white ml-1.5" fill="white" />
                     </div>
                     <div className="text-center">
                       <p className="text-white font-bold text-sm">Watch the Full Demo</p>
@@ -196,7 +233,7 @@ export default function HowToUse() {
             </div>
 
             {/* ── Bottom bar — CTA ── */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-white/5 bg-neutral-900/40">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-white/5 bg-neutral-900/40">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-white/5 border border-white/5">
                   <Sparkles size={14} className="text-neutral-400" />
@@ -221,7 +258,7 @@ export default function HowToUse() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
-          className="flex flex-wrap justify-center gap-4 mt-10"
+          className="flex flex-wrap justify-center gap-3 md:gap-4 mt-8 md:mt-10"
         >
           {[
             "Works with any YouTube video",

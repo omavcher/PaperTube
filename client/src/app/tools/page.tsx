@@ -16,7 +16,7 @@ import {
   Loader2, Send, Terminal, FileCode, Database, GitCompare, 
   ShieldAlert, Github, BookOpen, InspectionPanel, TableRowsSplitIcon, 
   BinaryIcon, CalculatorIcon, KeyRoundIcon, FileText, QrCode, FileSignature,
-  Home, Grid, Settings, ArrowRightLeft, Keyboard, Wrench, Code2
+  Home, Grid, Settings, ArrowRightLeft, Keyboard, Wrench, Code2, Image as ImageIcon, Download, Instagram
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,7 @@ const pdfTools = [
   { id: "json-formatter", title: "JSON FIX", description: "Beautify & validate JSON.", icon: <BinaryIcon />, category: "Engineering Tools", path: "/tools/json-formatter", color: "text-blue-400", isNew: true },
   { id: "matrix-calculator", title: "MATRIX LAB", description: "Up to 5x5 operations.", icon: <InspectionPanel />, category: "Engineering Tools", path: "/tools/matrix-calculator", color: "text-orange-400", isNew: false },
   { id: "logic-gate-lab", title: "LOGIC GATE", description: "Boolean simulation.", icon: <Zap />, category: "Engineering Tools", path: "/tools/logic-gate-lab", color: "text-yellow-400", isNew: false },
+    { id: "youtube-thumbnail", title: "YT THUMB DOWNLOADER", description: "Download YT Thumbnails.", icon: <ImageIcon />, category: "Engineering Tools", path: "/tools/youtube-thumbnail", color: "text-red-500", isNew: true },
   { id: "base-converter", title: "BASE CONV", description: "Binary to Hex/Dec.", icon: <Terminal />, category: "Engineering Tools", path: "/tools/base-converter", color: "text-slate-400", isNew: false },
   { id: "syllabus-tracker", title: "SYLLABUS", description: "Track exam milestones.", icon: <TableRowsSplitIcon />, category: "Workflows", path: "/tools/syllabus-tracker", color: "text-cyan-400", isNew: true },
   { id: "code-to-image", title: "CODE SNAP", description: "Snippets to images.", icon: <FileCode />, category: "Engineering Tools", path: "/tools/code-to-image", color: "text-red-500", isNew: false },
@@ -47,6 +48,8 @@ const pdfTools = [
   { id: "generate-qr", title: "QR FORGE", description: "Text to 2D barcode synthesis.", icon: <QrCode />, category: "Workflows", path: "/tools/generate-qr", color: "text-violet-400", isNew: true },
   { id: "fake-internship-letter-generator", title: "INTERNSHIP GEN", description: "Generate realistic offer letters.", icon: <FileSignature />, category: "Career", path: "/tools/fake-internship-letter-generator", color: "text-yellow-400", isNew: true },
   { id: "emi-calculator", title: "EMI CALC", description: "Plan loan repayments.", icon: <IconCalculatorFilled />, category: "Engineering Tools", path: "/tools/emi-calculator", color: "text-green-400", isNew: true },
+  { id: "youtube-downloader", title: "YT DOWNLOADER", description: "Download YouTube videos.", icon: <Download />, category: "Engineering Tools", path: "/tools/youtube-downloader", color: "text-red-500", isNew: true },
+  { id: "instagram-downloader", title: "IG DOWNLOADER", description: "Download IG Reels & Videos.", icon: <Instagram />, category: "Engineering Tools", path: "/tools/instagram-downloader", color: "text-purple-400", isNew: true },
 ];
 
 const categories = [
