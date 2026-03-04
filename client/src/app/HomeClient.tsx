@@ -9,9 +9,6 @@ import ToolsGlimpse from "@/components/ToolsGlimpse";
 import ArcadeGlimpse from "@/components/ArcadeGlimpse";
 import PricingShowcase from "@/components/PricingShowcase";
 import HowToUse from "@/components/HowToUse";
-import UseCasesHome from "@/components/UseCasesHome";
-import FAQHome from "@/components/FAQHome";
-
 export default function HomeClient() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 

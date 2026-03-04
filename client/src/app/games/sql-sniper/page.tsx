@@ -61,7 +61,7 @@ const SQL_POOL: SQLQuestion[] = [
 
 type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
 
-export default function SqlSniper() {
+export default function SqlSniperGame() {
   const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);

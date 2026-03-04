@@ -645,7 +645,7 @@ const APTITUDE_POOL: AptitudeQuestion[] = [
 ];
 
 
-export default function LogicLeap() {
+export default function LogicLeapGame() {
   const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);

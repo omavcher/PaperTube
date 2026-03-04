@@ -18,7 +18,7 @@ import { COUNTRY_POOL, CountryData } from "@/data/countries";
 
 type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
 
-export default function FlagLevel Reached() {
+export default function FlagMasteryGame() {
   const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);

@@ -54,7 +54,7 @@ const WORD_POOL: WordData[] = [
 
 type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
 
-export default function KeywordCrypt() {
+export default function KeywordCryptGame() {
   const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);

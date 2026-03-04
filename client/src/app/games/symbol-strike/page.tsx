@@ -34,7 +34,7 @@ const ELEMENTS = [
 
 type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
 
-export default function SymbolStrike() {
+export default function SymbolStrikeGame() {
   const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);

@@ -103,7 +103,7 @@ const SNIPPET_POOL: Snippet[] = [
 
 type GameState = 'START' | 'PLAYING' | 'GAMEOVER' | 'SYNCING';
 
-export default function ComplexityDash() {
+export default function ComplexityDashGame() {
   const [gameState, setGameState] = useState<GameState>('START');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
