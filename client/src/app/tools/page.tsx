@@ -42,7 +42,6 @@ const pdfTools = [
   { id: "typing-speed-test", title: "VELOCITY", description: "Precision WPM test.", icon: <Keyboard />, category: "Engineering Tools", path: "/tools/typing-test", color: "text-red-500", isNew: false },
   { id: "ai-detector", title: "SENTINEL", description: "Forensic image scans.", icon: <ShieldAlert />, category: "Engineering Tools", path: "/tools/sentinel", color: "text-red-600", isNew: true },
   { id: "github-wrapped", title: "WRAPPED", description: "Visual GitHub impact.", icon: <Github />, category: "Career", path: "/tools/github-wrapped", color: "text-white", isNew: true },
-  { id: "unit-converter", title: "Unit Converter", description: "Universal Unit Converter.", icon: <CalculatorIcon />, category: "Workflows", path: "/tools/unit-converter", color: "text-violet-400", isNew: true },
   { id: "password-generator", title: "KEY GEN", description: "Secure random secrets.", icon: <KeyRoundIcon />, category: "Engineering Tools", path: "/tools/password-generator", color: "text-violet-400", isNew: true },
   { id: "markdown-editor", title: "MD EDITOR", description: "Real-time syntax preview.", icon: <FileText />, category: "Workflows", path: "/tools/markdown-editor", color: "text-violet-400", isNew: true },
   { id: "generate-qr", title: "QR FORGE", description: "Text to 2D barcode synthesis.", icon: <QrCode />, category: "Workflows", path: "/tools/generate-qr", color: "text-violet-400", isNew: true },

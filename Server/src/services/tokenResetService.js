@@ -18,7 +18,7 @@ class TokenResetService {
     // ── Run at midnight every day (00:00 IST = 18:30 UTC if needed, but use local) ──
     this.dailyResetJob = cron.schedule("0 0 * * *", async () => {
       console.log("🌙 Midnight cron: starting daily stack reset...");
-      await this.grantDailyTokensToFreeUsers();
+      await this.grantDailyTokensToAllUsers();
       await this.resetMissedStreaks();
     });
 
@@ -32,29 +32,37 @@ class TokenResetService {
   }
 
   /**
-   * Grant FREE_DAILY_TOKENS to ALL free users at midnight.
-   * This happens regardless of whether they used tokens yesterday.
-   * Their `lastTokenReset` gate (in authController) prevents double-granting
-   * within the same calendar day.
+   * Top-up FREE_DAILY_TOKENS to ALL users at midnight if their balance is < 10.
+   * This ensures premium or free users always start the day with at least 10 tokens if they were low.
+   * Does not reduce tokens if they have >= 10.
    */
-  async grantDailyTokensToFreeUsers() {
+  async grantDailyTokensToAllUsers() {
     try {
       const now = new Date();
-      console.log(`🎁 Granting ${FREE_DAILY_TOKENS} daily tokens to all free users...`);
+      console.log(`🎁 Topping up daily tokens to minimum ${FREE_DAILY_TOKENS} for all users...`);
 
+      // Using aggregation pipeline in updateMany to conditionally set tokens
       const result = await User.updateMany(
-        { "membership.isActive": false },
-        {
-          $set: {
-            tokens: FREE_DAILY_TOKENS,
-            lastTokenReset: now,
-          },
-        }
+        {},
+        [
+          {
+            $set: {
+              tokens: {
+                $cond: {
+                  if: { $lt: ["$tokens", FREE_DAILY_TOKENS] },
+                  then: FREE_DAILY_TOKENS,
+                  else: "$tokens"
+                }
+              },
+              lastTokenReset: now
+            }
+          }
+        ]
       );
 
-      console.log(`✅ Daily token grant complete — updated ${result.modifiedCount} free users.`);
+      console.log(`✅ Daily token top-up complete — processed users (matched: ${result.matchedCount}).`);
     } catch (error) {
-      console.error("❌ Error in grantDailyTokensToFreeUsers:", error);
+      console.error("❌ Error in grantDailyTokensToAllUsers:", error);
     }
   }
 
@@ -145,11 +153,9 @@ class TokenResetService {
 
       if (!user) throw new Error("User not found");
 
-      if (user.membership?.isActive) {
-        return { success: false, message: "Premium users don't use the free daily token system" };
+      if (user.tokens < FREE_DAILY_TOKENS) {
+        user.tokens = FREE_DAILY_TOKENS;
       }
-
-      user.tokens = FREE_DAILY_TOKENS;
       user.lastTokenReset = new Date();
       await user.save({ validateBeforeSave: false });
 
@@ -157,7 +163,7 @@ class TokenResetService {
 
       return {
         success: true,
-        message: "Tokens reset successfully",
+        message: "Tokens topped up successfully",
         user: { email: user.email, tokens: user.tokens },
       };
     } catch (error) {
@@ -180,7 +186,6 @@ class TokenResetService {
 
       // Users whose tokens were reset today
       const tokensGrantedToday = await User.countDocuments({
-        "membership.isActive": false,
         lastTokenReset: { $gte: todayStart },
       });
 
@@ -230,7 +235,7 @@ class TokenResetService {
    */
   async testReset() {
     console.log("🧪 Running test daily stack reset...");
-    await this.grantDailyTokensToFreeUsers();
+    await this.grantDailyTokensToAllUsers();
     await this.resetMissedStreaks();
     await this.handleExpiredSubscriptions();
     console.log("🧪 Test complete.");

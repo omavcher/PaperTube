@@ -54,8 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     'base-converter', 'code-to-image', 'emi-calculator', 'fake-internship-letter-generator',
     'generate-qr', 'git-forge', 'github-wrapped', 'image-converter', 'json-formatter',
     'logic-gate-lab', 'markdown-editor', 'matrix-calculator', 'merge', 'password-generator',
-    'resume-checker', 'sentinel', 'split', 'sql-architect', 'syllabus-tracker', 'typing-test',
-    'unit-converter'
+    'resume-checker', 'sentinel', 'split', 'sql-architect', 'syllabus-tracker', 'typing-test'
   ].map((tool) => ({
     url: `${baseUrl}/tools/${tool}`,
     lastModified: new Date(),

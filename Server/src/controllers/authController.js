@@ -231,20 +231,21 @@ async function handleUserAuth(userInfo) {
         }
       }
 
-      // ── Daily token refresh for free users ──────────────────
-      // Only grant daily tokens if they haven't been reset today AND user is free
+      // ── Daily token refresh for all users ──────────────────
+      // Top up tokens to 10 if it's a new day and they have less than 10.
       const lastReset = user.lastTokenReset ? new Date(user.lastTokenReset) : null;
       const lastResetStr = lastReset ? lastReset.toDateString() : null;
-      const isFreePlan = !user.membership?.isActive;
       const DAILY_FREE_TOKENS = 10;
 
       let tokenUpdate = {};
-      if (isFreePlan && lastResetStr !== todayStr) {
-        tokenUpdate = {
-          tokens: DAILY_FREE_TOKENS,
-          lastTokenReset: now,
-        };
-        console.log(`🎁 Daily tokens granted (${DAILY_FREE_TOKENS}) to free user: ${email}`);
+      if (lastResetStr !== todayStr) {
+        tokenUpdate.lastTokenReset = now;
+        if (user.tokens === undefined || user.tokens === null || user.tokens < DAILY_FREE_TOKENS) {
+          tokenUpdate.tokens = DAILY_FREE_TOKENS;
+          console.log(`🎁 Daily tokens topped up (to ${DAILY_FREE_TOKENS}) for user: ${email}`);
+        } else {
+          console.log(`ℹ️ Daily reset checked but user ${email} already has ${user.tokens} tokens (>= ${DAILY_FREE_TOKENS})`);
+        }
       }
 
       // Build update object

@@ -11,7 +11,8 @@ import {
   Cpu, 
   Zap, 
   Command,
-  ChevronRight
+  ChevronRight,
+  FileSignature
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -42,6 +43,16 @@ const previewTools = [
     icon: Grid3x3, 
     tag: "Math" 
   },
+  {
+    id: 'fake-internship-letter-generator',
+    title: 'INTERNSHIP GEN',
+    desc: 'Generate realistic offer letters.',
+    icon: FileSignature,
+    tag: 'Career',
+    path: '/tools/fake-internship-letter-generator',
+    color: 'text-yellow-400',
+    isNew: true
+  }
 ];
 
 export default function ToolsGlimpse() {

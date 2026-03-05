@@ -562,7 +562,7 @@ Wrap up your post with a strong conclusion.
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-emerald-500/30 font-sans flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-emerald-500/30 font-sans flex flex-col overflow-x-hidden">
       
       
       {/* Desktop Header */}
@@ -609,20 +609,33 @@ Wrap up your post with a strong conclusion.
       </header>
 
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between px-4 py-4 border-b border-white/5 bg-black sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <Edit className="text-emerald-500 h-5 w-5" />
-          <span className="font-black italic tracking-tighter text-white uppercase">MD EDITOR</span>
+      <div className="md:hidden flex flex-col gap-3 px-4 py-3 border-b border-white/5 bg-black sticky top-0 z-40 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Edit className="text-emerald-500 h-5 w-5" />
+            <span className="font-black italic tracking-tighter text-white uppercase">MD EDITOR</span>
+          </div>
+          <Link href="/tools">
+             <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-500"><ArrowLeft className="h-5 w-5" /></Button>
+          </Link>
         </div>
-        <Link href="/tools">
-           <Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-5 w-5" /></Button>
-        </Link>
+        <div className="flex items-center w-full bg-neutral-900 rounded-xl p-1 border border-white/5">
+            <Button variant="ghost" size="sm" onClick={() => toggleViewMode('editor')} className={cn("flex-1 h-8 text-[10px] font-black uppercase tracking-widest", viewMode === 'editor' ? "bg-emerald-500 text-black shadow-lg" : "text-neutral-500")}>
+              Write
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => toggleViewMode('split')} className={cn("flex-1 h-8 text-[10px] font-black uppercase tracking-widest", viewMode === 'split' ? "bg-emerald-500 text-black shadow-lg" : "text-neutral-500")}>
+              Split
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => toggleViewMode('preview')} className={cn("flex-1 h-8 text-[10px] font-black uppercase tracking-widest", viewMode === 'preview' ? "bg-emerald-500 text-black shadow-lg" : "text-neutral-500")}>
+              View
+            </Button>
+        </div>
       </div>
 
-      <main className="flex-1 container mx-auto px-4 py-6 w-full relative z-10">
+      <main className="flex-1 container mx-auto px-2 md:px-4 py-4 md:py-6 w-full relative z-10">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 mb-4 bg-neutral-900/50 p-3 rounded-2xl border border-white/5 overflow-x-auto backdrop-blur-sm sticky top-20 md:static z-30">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-nowrap md:flex-wrap items-center gap-1 md:gap-2 mb-4 bg-neutral-900/50 p-2 md:p-3 rounded-xl md:rounded-2xl border border-white/5 overflow-x-auto backdrop-blur-md sticky top-[108px] md:static z-30 custom-scrollbar -mx-2 px-3 md:mx-0">
+          <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
             <Button variant="ghost" size="sm" onClick={handleUndo} disabled={historyIndex === 0} className="h-8 w-8 p-0 text-neutral-400 hover:text-emerald-400 disabled:opacity-50"><Undo className="h-3.5 w-3.5" /></Button>
             <Button variant="ghost" size="sm" onClick={handleRedo} disabled={historyIndex === history.length - 1} className="h-8 w-8 p-0 text-neutral-400 hover:text-emerald-400 disabled:opacity-50"><Redo className="h-3.5 w-3.5" /></Button>
           </div>
@@ -634,32 +647,40 @@ Wrap up your post with a strong conclusion.
               </Button>
             ))}
           </div>
-          <div className="w-px h-6 bg-white/10 mx-1" />
-          <ToolbarButton onClick={() => insertText("**", "**")} icon={<Bold size={16} />} title="Bold" />
-          <ToolbarButton onClick={() => insertText("*", "*")} icon={<Italic size={16} />} title="Italic" />
-          <ToolbarButton onClick={() => insertText("`", "`")} icon={<Code size={16} />} title="Inline Code" />
-          <ToolbarButton onClick={insertImage} icon={<Image size={16} />} title="Image" />
-          <div className="w-px h-6 bg-white/10 mx-1" />
-          <ToolbarButton onClick={() => insertList()} icon={<List size={16} />} title="Unordered List" />
-          <ToolbarButton onClick={insertCheckbox} icon={<Check size={16} />} title="Checkbox" />
-          <ToolbarButton onClick={insertTable} icon={<Table size={16} />} title="Table" />
-          <div className="w-px h-6 bg-white/10 mx-1" />
-          <ToolbarButton onClick={() => insertText("```\n", "\n```")} icon={<TerminalIcon size={16} />} title="Code Block" />
+          <div className="w-px h-6 bg-white/10 mx-0.5 md:mx-1 shrink-0" />
+          <div className="flex flex-nowrap items-center shrink-0 gap-0.5 md:gap-1">
+             <ToolbarButton onClick={() => insertText("**", "**")} icon={<Bold size={16} />} title="Bold" />
+             <ToolbarButton onClick={() => insertText("*", "*")} icon={<Italic size={16} />} title="Italic" />
+             <ToolbarButton onClick={() => insertText("`", "`")} icon={<Code size={16} />} title="Inline Code" />
+             <ToolbarButton onClick={insertImage} icon={<Image size={16} />} title="Image" />
+          </div>
+          <div className="w-px h-6 bg-white/10 mx-0.5 md:mx-1 shrink-0" />
+          <div className="flex flex-nowrap items-center shrink-0 gap-0.5 md:gap-1">
+             <ToolbarButton onClick={() => insertList()} icon={<List size={16} />} title="Unordered List" />
+             <ToolbarButton onClick={insertCheckbox} icon={<Check size={16} />} title="Checkbox" />
+             <ToolbarButton onClick={insertTable} icon={<Table size={16} />} title="Table" />
+          </div>
+          <div className="w-px h-6 bg-white/10 mx-0.5 md:mx-1 shrink-0" />
+          <div className="flex flex-nowrap items-center shrink-0">
+             <ToolbarButton onClick={() => insertText("```\n", "\n```")} icon={<TerminalIcon size={16} />} title="Code Block" />
+          </div>
           
-          <div className="flex-grow" />
+          <div className="flex-grow hidden md:block" />
           
-          <Button variant="ghost" size="sm" onClick={() => setShowTemplates(!showTemplates)} className={cn("text-neutral-400 hover:text-emerald-400 gap-2 h-9", showTemplates && "text-emerald-400 bg-emerald-500/10")}>
-            {showTemplates ? <FolderOpen size={14} /> : <FolderClosed size={14} />}
-            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest">Templates</span>
-          </Button>
+          <div className="flex items-center shrink-0 gap-1 md:gap-2 pl-2 border-l border-white/10 md:border-none md:pl-0">
+             <Button variant="ghost" size="sm" onClick={() => setShowTemplates(!showTemplates)} className={cn("text-neutral-400 hover:text-emerald-400 gap-1.5 md:gap-2 h-8 md:h-9 px-2 md:px-3", showTemplates && "text-emerald-400 bg-emerald-500/10")}>
+               {showTemplates ? <FolderOpen size={14} /> : <FolderClosed size={14} />}
+               <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest">Templates</span>
+             </Button>
 
-          <input type="file" id="md-upload" className="hidden" accept=".md,.txt,.markdown" onChange={handleFileUpload} />
-          <label htmlFor="md-upload" className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-2 transition-colors border border-white/5 h-9 uppercase tracking-wider">
-            <Upload size={14} /> <span className="hidden sm:inline">Upload</span>
-          </label>
-          <Button variant="ghost" size="sm" onClick={handleDownload} className="text-neutral-400 hover:text-emerald-400 gap-2 h-9 border border-transparent hover:border-emerald-500/20 hover:bg-emerald-500/5">
-            <Download size={14} /> <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest">Export</span>
-          </Button>
+             <input type="file" id="md-upload" className="hidden" accept=".md,.txt,.markdown" onChange={handleFileUpload} />
+             <label htmlFor="md-upload" className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-2 md:px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-bold cursor-pointer flex items-center gap-1.5 md:gap-2 transition-colors border border-white/5 h-8 md:h-9 uppercase tracking-wider shrink-0 mb-0">
+               <Upload size={14} /> <span className="hidden sm:inline">Upload</span>
+             </label>
+             <Button variant="ghost" size="sm" onClick={handleDownload} className="text-neutral-400 hover:text-emerald-400 gap-1.5 md:gap-2 h-8 md:h-9 px-2 md:px-3 border border-transparent hover:border-emerald-500/20 hover:bg-emerald-500/5 shrink-0">
+               <Download size={14} /> <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest">Export</span>
+             </Button>
+          </div>
         </div>
 
         {/* Templates Panel */}
@@ -705,10 +726,10 @@ Wrap up your post with a strong conclusion.
         </AnimatePresence>
 
         {/* Editor & Preview Area */}
-        <div className={cn("grid gap-6 min-h-[70vh]", viewMode === 'split' ? "md:grid-cols-2" : "grid-cols-1")}>
+        <div className={cn("grid gap-4 md:gap-6 min-h-[60vh] md:min-h-[70vh]", viewMode === 'split' ? "md:grid-cols-2" : "grid-cols-1")}>
           {(viewMode === 'split' || viewMode === 'editor') && (
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="relative group h-full">
-              <div className="absolute top-4 left-6 text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] flex items-center gap-2 pointer-events-none z-10">
+              <div className="absolute top-3 md:top-4 left-4 md:left-6 text-[9px] md:text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] flex items-center gap-2 pointer-events-none z-10">
                 <Terminal size={12} /> editor.md
               </div>
               <textarea
@@ -716,7 +737,7 @@ Wrap up your post with a strong conclusion.
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full h-full min-h-[600px] p-8 pt-12 rounded-[2rem] bg-neutral-900 border-2 border-white/5 font-mono text-sm text-neutral-300 focus:outline-none focus:border-emerald-500/30 transition-all resize-none shadow-2xl custom-scrollbar"
+                className="w-full h-full min-h-[400px] md:min-h-[600px] p-4 md:p-8 pt-10 md:pt-12 rounded-2xl md:rounded-[2rem] bg-neutral-900 border border-white/5 md:border-2 font-mono text-sm text-neutral-300 focus:outline-none focus:border-emerald-500/30 transition-all resize-none shadow-2xl custom-scrollbar"
                 spellCheck={true}
               />
             </motion.div>
@@ -724,10 +745,10 @@ Wrap up your post with a strong conclusion.
 
           {(viewMode === 'split' || viewMode === 'preview') && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="relative group h-full">
-              <div className="absolute top-4 left-6 text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] flex items-center gap-2 pointer-events-none z-10">
+              <div className="absolute top-3 md:top-4 left-4 md:left-6 text-[9px] md:text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] flex items-center gap-2 pointer-events-none z-10">
                 <Eye size={12} /> preview.html
               </div>
-              <div ref={previewRef} className="w-full h-full min-h-[600px] p-8 pt-12 rounded-[2rem] bg-neutral-900/40 border-2 border-white/5 font-sans overflow-y-auto shadow-inner scroll-smooth custom-scrollbar">
+              <div ref={previewRef} className="w-full h-full min-h-[400px] md:min-h-[600px] p-4 md:p-8 pt-10 md:pt-12 rounded-2xl md:rounded-[2rem] bg-neutral-900/40 border border-white/5 md:border-2 font-sans overflow-y-auto shadow-inner scroll-smooth custom-scrollbar">
                 {content ? (
                   <div className="prose prose-invert prose-sm max-w-none">
                     <ReactMarkdown
