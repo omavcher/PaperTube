@@ -116,7 +116,6 @@ export default function ProfilePage() {
     doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
     doc.text("Nagpur, Maharashtra, India - 440034", 14, 29);
     doc.text("Email: paperxify@gmail.com", 14, 34);
-    doc.text("GSTIN: 27AAAAA0000A1Z5", 14, 39); 
 
     // --- Invoice Meta ---
     doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
@@ -294,15 +293,20 @@ export default function ProfilePage() {
                       transition={{ duration: 0.2 }}
                       className="space-y-6"
                    >
-                      {​/* Stats Grid */}
+                      {/* Stats Grid */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                          <StatCard label="Streak" value={`${user.streak?.count || 0}`} unit="Days" icon={<Flame className="text-orange-500" fill="currentColor" size={18} />} />
-                         <StatCard label="Tokens" value={user.tokens !== undefined ? String(user.tokens) : '0'} unit="Today's Credits" icon={<Coins className="text-yellow-400" fill="currentColor" size={18} />} />
+                         <StatCard 
+                            label="Tokens" 
+                            value={user.membership?.isActive ? "Unlimited" : (user.tokens !== undefined ? String(user.tokens) : '0')} 
+                            unit={user.membership?.isActive ? "Premium Access" : "Today's Credits"} 
+                            icon={<Coins className="text-yellow-400" fill="currentColor" size={18} />} 
+                         />
                          <StatCard label="XP" value={user.xp?.toLocaleString() || '0'} unit="Points" icon={<Zap className="text-blue-500" fill="currentColor" size={18} />} />
                          <StatCard label="Rank" value={user.rank || "Novice"} unit="Your Level" icon={<Award className="text-purple-500" fill="currentColor" size={18} />} />
                       </div>
 
-                      {​/* Daily Stack widget */}
+                      {/* Daily Stack widget */}
                       <DailyStackWidget user={user} />
 
                       {​/* Membership Banner */}
