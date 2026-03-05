@@ -64,9 +64,14 @@ app.get("/api/admin/token-reset-stats", async (req, res) => {
 // Start daily token reset scheduler
 tokenResetService.startDailyReset();
 
+// Basic health-check / root route for the keep-alive ping
+app.get("/", (req, res) => {
+  res.status(200).send("Backend is active.");
+});
+
 // Keep your existing keep-alive functionality
 const url = process.env.BACKEND_URL;
-const interval = 90000;
+const interval = 90000; // 15 minutes in milliseconds
 
 function reloadWebsite() {
   if (!url) {
