@@ -65,12 +65,12 @@ app.get("/api/admin/token-reset-stats", async (req, res) => {
 tokenResetService.startDailyReset();
 
 // Keep your existing keep-alive functionality
-const url = process.env.BACKUP_URL;
+const url = process.env.BACKEND_URL;
 const interval = 90000;
 
 function reloadWebsite() {
   if (!url) {
-    console.log("BACKUP_URL is not defined. Skipping website reload.");
+    console.log("BACKEND_URL is not defined. Skipping website reload.");
     return;
   }
   
