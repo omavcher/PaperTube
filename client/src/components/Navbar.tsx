@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { 
   Menu as MenuIcon, X, ChevronDown, Cpu, Zap, 
@@ -37,6 +37,26 @@ export const Navbar = ({
   const [visible, setVisible] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { scrollY } = useScroll();
+  const [tokenInfo, setTokenInfo] = useState<any>(null);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      const fetchTokens = async () => {
+        try {
+          const token = localStorage.getItem("authToken");
+          const res = await api.get("/users/tokens", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.data.success) {
+            setTokenInfo(res.data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch tokens:", error);
+        }
+      };
+      fetchTokens();
+    }
+  }, [isLoggedIn]);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     setVisible(latest > 60);
@@ -86,6 +106,12 @@ export const Navbar = ({
               {/* Right Actions */}
               <div className="flex items-center gap-4">
                 {/* Token Counter (Non-Subscribers) */}
+                {isLoggedIn && tokenInfo && !tokenInfo.isSubscribed && (
+                    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-neutral-900 border border-white/10 rounded-full">
+                        <Coins size={14} className="text-blue-400" />
+                        <span className="text-xs font-bold text-white">{tokenInfo.tokens}</span>
+                    </div>
+                )}
                 
                 {isLoggedIn ? (
                   <UserHUD user={user} onLogout={handleLogout} />
@@ -180,6 +206,7 @@ export const Navbar = ({
         onLoginSuccess={onLoginSuccess}
         authLoading={authLoading}
         onLogout={handleLogout}
+        tokenInfo={tokenInfo}
       />
     </>
   );
@@ -268,9 +295,9 @@ const HUDLink = ({ href, icon, label }: any) => (
     </Link>
 )
 
-const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authLoading, onLogout }: any) => {
+const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authLoading, onLogout, tokenInfo }: any) => {
   const isActive = user?.membership?.isActive;
-  const planInfo = PLANS.find(p => p.id === user?.membership?.planId) || { name: "Standard", color: "text-neutral-400" };
+  const planInfo = PLANS.find(p => p.id === user?.membership?.planId) || { name: "Standard", color: "text-neutral-400", border: "border-neutral-600", bg: "bg-neutral-800" };
   
   return (
     <AnimatePresence>
@@ -294,22 +321,68 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
           <div className="flex-1 overflow-y-auto p-6 font-sans">
             {isLoggedIn ? (
                 <div className="space-y-8">
-                    {/* User Profile */}
-                    <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-2xl border border-white/10 overflow-hidden">
-                            <img src={user?.picture} className="w-full h-full object-cover" />
+                    {/* User Profile Info Card */}
+                    <div className="bg-neutral-900/40 border border-white/5 rounded-3xl p-5 relative overflow-hidden">
+                        {/* Background Elements */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
+                        
+                        <div className="flex items-start gap-4 relative z-10">
+                            <div className={cn("h-16 w-16 rounded-2xl border-2 overflow-hidden shrink-0 bg-black/50", isActive ? planInfo.border : "border-white/10")}>
+                                <img src={user?.picture || "/avatar.png"} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-xl font-bold text-white leading-tight truncate">{user?.name}</h3>
+                                <p className="text-xs text-neutral-500 mb-2 truncate">{user?.email}</p>
+                                <span className={cn("text-[10px] font-bold uppercase px-2 py-1 bg-white/5 rounded inline-block", planInfo.color)}>
+                                    {isActive ? planInfo.name : "Free Plan"}
+                                </span>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-xl font-bold text-white">{user?.name}</h3>
-                            <span className={cn("text-[10px] font-bold uppercase px-2 py-1 bg-white/5 rounded", planInfo.color)}>
-                                {isActive ? planInfo.name : "Free Plan"}
-                            </span>
+
+                        {/* Stats box */}
+                        <div className="grid grid-cols-2 gap-3 mt-5 relative z-10">
+                            {/* Streak */}
+                            <div className="bg-black/50 border border-white/5 rounded-2xl p-3 flex items-center justify-between">
+                                <div>
+                                    <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider block mb-0.5">Streak</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-lg font-bold text-white">{user?.streak?.count || 0}</span>
+                                        <span className="text-[9px] text-neutral-600 uppercase">days</span>
+                                    </div>
+                                </div>
+                                <div className="h-8 w-8 bg-orange-500/10 rounded-full flex items-center justify-center shrink-0">
+                                    <Flame size={14} className={(user?.streak?.count || 0) > 0 ? "text-orange-500" : "text-neutral-700"} />
+                                </div>
+                            </div>
+                            {/* Coins / Credits */}
+                            {(!tokenInfo || !tokenInfo.isSubscribed) && (
+                                <div className="bg-black/50 border border-white/5 rounded-2xl p-3 flex items-center justify-between">
+                                    <div>
+                                        <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider block mb-0.5">Credits</span>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-lg font-bold text-white">{tokenInfo?.tokens || user?.credits || 0}</span>
+                                        </div>
+                                    </div>
+                                    <div className="h-8 w-8 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
+                                        <Coins size={14} className="text-blue-500" />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Navigation */}
                     <div className="space-y-2">
                         <p className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-4">System</p>
+                        
+                        <Link href="/profile" onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900/40 rounded-2xl border border-white/5">
+                            <div className="text-white"><UserCircle size={18} /></div>
+                            <div>
+                                <p className="text-sm font-bold text-white">Profile</p>
+                                <p className="text-[10px] text-neutral-500">Manage your account and settings.</p>
+                            </div>
+                        </Link>
+
                         {SUPPORT_TOOLS.map((tool, i) => (
                             <Link key={i} href={tool.href} onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900/40 rounded-2xl border border-white/5">
                                 <div className="text-white">{tool.icon}</div>
