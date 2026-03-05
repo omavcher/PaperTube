@@ -69,13 +69,18 @@ const url = process.env.BACKUP_URL;
 const interval = 90000;
 
 function reloadWebsite() {
+  if (!url) {
+    console.log("BACKUP_URL is not defined. Skipping website reload.");
+    return;
+  }
+  
   axios
     .get(url)
     .then((response) => {
       console.log("website reloaded");
     })
     .catch((error) => {
-      console.error(`Error: ${error.message}`);
+      console.error(`Error reloading website: ${error.message}`);
     });
 }
 
