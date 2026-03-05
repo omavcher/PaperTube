@@ -86,6 +86,10 @@ followingUsers: [{
       type: Boolean,
       default: true
     },
+    isFake: {
+      type: Boolean,
+      default: false
+    },
     streak: {
       count: { type: Number, default: 0 },
       lastVisit: { type: Date, default: null }

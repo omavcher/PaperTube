@@ -50,7 +50,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     try {
       const user = JSON.parse(userData);
-      if (user.email === "omAvcher07@gmail.com") {
+      if (user.email ===process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
         setIsAuthorized(true);
       } else {
         toast.error("Unauthorized access detected");
