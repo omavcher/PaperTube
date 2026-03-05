@@ -25,6 +25,7 @@ import AdDialog from './AdDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthLoginModal, PremiumUpgradeModal } from '@/components/AuthGuard';
+import MegaOfferBanner from '@/components/MegaOfferBanner';
 
 // --- Constants & Config ---
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
@@ -286,6 +287,7 @@ export default function HomeMain() {
               transition={{ duration: 0.5, ease: "easeOut" }}
               className="flex flex-col items-center space-y-10"
             >
+             <MegaOfferBanner className="mb-8" />
              {/* Branding */}
               <div className="text-center space-y-5 md:space-y-6 mb-6 md:mb-10">
                 

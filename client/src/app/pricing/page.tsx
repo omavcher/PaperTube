@@ -89,7 +89,7 @@ function fakeOriginal(real: number) {
   return Math.round(real * FAKE_PRICE_MULTIPLIER);
 }
 
-function SummerOfferBanner() {
+function MegaOfferBanner() {
   // Countdown to end of the day (midnight)
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
 
@@ -115,34 +115,34 @@ function SummerOfferBanner() {
     <motion.div
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 via-orange-500/5 to-red-500/5 backdrop-blur-xl p-4 mb-10 flex flex-col sm:flex-row items-center justify-between gap-4"
+      className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-500/10 via-orange-500/10 to-rose-500/10 backdrop-blur-xl p-5 mb-10 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-[0_0_30px_rgba(239,68,68,0.2)]"
     >
       {/* Glow */}
-      <div className="absolute inset-0 bg-gradient-to-r from-amber-600/5 to-orange-600/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 to-orange-600/10 pointer-events-none" />
       
       {/* Left */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
-          <Sun size={16} className="text-amber-400 animate-spin" style={{ animationDuration: "6s" }} />
+      <div className="flex items-center gap-4">
+        <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30">
+          <Gift size={24} className="text-red-400 animate-bounce" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black uppercase tracking-widest text-amber-400">☀ Summer Offer Active</span>
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] font-bold text-amber-400">
-              {OFFER_DISCOUNT_PCT}% OFF Applied
+            <span className="text-sm font-black uppercase tracking-widest text-red-500">🚨 The "Rob Us" Launch Giveaway</span>
+            <span className="px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/30 text-[10px] font-bold text-red-400 animate-pulse">
+              100% Guaranteed Win Chances
             </span>
           </div>
-          <p className="text-[10px] text-neutral-500 mt-0.5 font-medium">
-            Prices already discounted — no code needed. Limited-time deal.
+          <p className="text-xs text-neutral-300 mt-1.5 font-medium max-w-2xl leading-relaxed">
+            We're giving away a <strong className="text-white">FREE iPhone 16 Pro</strong> or <strong className="text-white">Samsung S26 Ultra</strong> for ONE lucky subscriber! You're robbing us while we build our user base. Grab a subscription now before we regret it! 🤯
           </p>
         </div>
       </div>
 
       {/* Countdown */}
       <div className="flex items-center gap-3 shrink-0">
-        <div className="flex items-center gap-1 text-neutral-400">
-          <Clock size={12} />
-          <span className="text-[9px] uppercase tracking-widest font-bold">Ends in</span>
+        <div className="flex items-center gap-1 text-red-400/80">
+          <Clock size={12} className="animate-pulse" />
+          <span className="text-[9px] uppercase tracking-widest font-bold">Offer Ends In</span>
         </div>
         <div className="flex items-center gap-1">
           {[
@@ -151,10 +151,10 @@ function SummerOfferBanner() {
             { v: timeLeft.s, label: "sec" },
           ].map((t, i) => (
             <div key={i} className="flex items-center gap-1">
-              {i > 0 && <span className="text-neutral-700 font-bold text-sm">:</span>}
-              <div className="flex flex-col items-center bg-black/40 border border-white/10 rounded-lg px-2 py-1 min-w-[36px]">
-                <span className="text-sm font-black text-white font-mono tabular-nums">{pad(t.v)}</span>
-                <span className="text-[7px] text-neutral-600 uppercase tracking-widest">{t.label}</span>
+              {i > 0 && <span className="text-red-500/50 font-bold text-sm">:</span>}
+              <div className="flex flex-col items-center bg-red-950/50 border border-red-500/20 rounded-lg px-2.5 py-1.5 min-w-[38px]">
+                <span className="text-sm font-black text-red-400 font-mono tabular-nums">{pad(t.v)}</span>
+                <span className="text-[7px] text-red-500/80 uppercase tracking-widest">{t.label}</span>
               </div>
             </div>
           ))}
@@ -1039,8 +1039,18 @@ export default function PricingSection() {
             )}
           </AnimatePresence>
 
-          {/* ── Summer Offer Banner ── */}
-          <SummerOfferBanner />
+          {/* ── Mega Offer Banner ── */}
+          <AnimatePresence>
+            {viewMode === "subscription" && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                animate={{ opacity: 1, height: "auto", scale: 1 }}
+                exit={{ opacity: 0, height: 0, scale: 0.95 }}
+              >
+                <MegaOfferBanner />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Plan Grid */}
           <motion.div
@@ -1069,11 +1079,18 @@ export default function PricingSection() {
                     </div>
                   )}
 
-                  {/* Summer Offer corner badge */}
-                  <div className="absolute top-5 right-5 flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                    <Sun size={9} className="text-amber-400" />
-                    <span className="text-[8px] font-black text-amber-400 uppercase tracking-wider">Offer</span>
-                  </div>
+                  {/* Offer corner badge */}
+                  {viewMode === "subscription" ? (
+                    <div className="absolute top-5 right-5 flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                      <Gift size={9} className="text-red-400" />
+                      <span className="text-[8px] font-black text-red-400 uppercase tracking-wider">Giveaway</span>
+                    </div>
+                  ) : (
+                    <div className="absolute top-5 right-5 flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                      <Sun size={9} className="text-amber-400" />
+                      <span className="text-[8px] font-black text-amber-400 uppercase tracking-wider">Offer</span>
+                    </div>
+                  )}
 
                   <div className="mb-8 space-y-4">
                     <div className="flex items-center justify-between">
