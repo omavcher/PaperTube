@@ -512,7 +512,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
               </div>
               <div className="flex-1 bg-white">
                 <Editor
-                  apiKey="xuwnpn5va0cwbivoch3ovgc44gtceufhg07937jqqu6dnl25"
+                  apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY}
                   onInit={(_, editor) => (tinyMceRef.current = editor)}
                   value={markdownContent}
                   init={{
