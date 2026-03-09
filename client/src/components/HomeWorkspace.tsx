@@ -404,7 +404,7 @@ export default function NotesWorkspace() {
                   <Database size={18} className="md:w-5 md:h-5" />
                </div>
                <div>
-                  <h1 className="text-lg md:text-xl font-bold tracking-tight text-white leading-tight">Data Library</h1>
+                  <h1 className="text-lg md:text-xl font-bold tracking-tight text-white leading-tight">My Library</h1>
                   <p className="text-[9px] md:text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Personal Workspace</p>
                </div>
             </div>
@@ -424,7 +424,7 @@ export default function NotesWorkspace() {
                       <input 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search databases..."
+                        placeholder="Search..."
                         className="w-full bg-transparent border-none focus:outline-none text-xs font-bold uppercase tracking-wider text-white placeholder:text-neutral-600"
                       />
                    </div>
@@ -455,7 +455,7 @@ export default function NotesWorkspace() {
                   onClick={() => router.push('/')}
                   className="hidden md:flex bg-red-600 hover:bg-red-700 text-white rounded-xl h-10 text-xs font-bold uppercase tracking-widest px-6 shadow-[0_0_15px_rgba(220,38,38,0.4)] transition-all"
                >
-                  <Plus size={16} className="mr-2" /> Init Note
+                  <Plus size={16} className="mr-2" /> Generate Note
                </Button>
             </div>
          </div>
@@ -536,7 +536,7 @@ export default function NotesWorkspace() {
                  </EmptyHeader>
               </Empty>
             </div>
-         )}
+         )} 
       </div>
 
     </div>

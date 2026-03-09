@@ -67,6 +67,7 @@ export default function HomeMain() {
   // User & Access States
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasPremiumAccess, setHasPremiumAccess] = useState(false);
+  const [userPlanId, setUserPlanId] = useState<string | null>(null);
   const [userTokens, setUserTokens] = useState<number | null>(null);
   
   // Modal States
@@ -90,6 +91,7 @@ export default function HomeMain() {
             setUserTokens(res.data.tokens);
             if (res.data.isSubscribed) {
               setHasPremiumAccess(true);
+              setUserPlanId(res.data.planId || null);
             }
           }
         } catch (error) {
@@ -144,6 +146,12 @@ export default function HomeMain() {
       setShowPremiumModal(true);
       return;
     }
+
+    // Scholar plan cannot use Vyavastha
+    if (selectedModel.id === 'vyavastha' && userPlanId === 'scholar') {
+      setShowPremiumModal(true);
+      return;
+    }
     
     setIsGenerating(true);
     setTokenErrorData(null); 
@@ -182,6 +190,9 @@ export default function HomeMain() {
         // Correctly handle the new Insufficient Tokens response
         if (errData?.code === "INSUFFICIENT_TOKENS") {
             setTokenErrorData(errData);
+        } else if (errData?.code === "MODEL_NOT_AVAILABLE" || errData?.code === "VIDEO_TOO_LONG") {
+            // Show specific error for plan restrictions
+            alert(errData?.message || "This feature requires a higher plan.");
         } else if (err.response?.status === 403) {
             setShowPaywall(true);
         } else {
@@ -386,20 +397,31 @@ export default function HomeMain() {
                           <div className="px-3 pb-2 mb-2 pt-1 border-b border-white/5">
                              <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Select Engine</p>
                           </div>
-                          {AI_MODELS.map(m => (
+                          {AI_MODELS.map(m => {
+                            // Check if model is accessible based on plan
+                            const isLocked = m.accessTier === 'Premium' && !hasPremiumAccess;
+                            const isVyavasthaPlanLocked = m.id === 'vyavastha' && hasPremiumAccess && userPlanId === 'scholar';
+                            
+                            return (
                             <DropdownMenuItem key={m.id} onClick={() => {
-                              if (m.accessTier === 'Premium' && !hasPremiumAccess) {
+                              if (isLocked) {
                                 const token = localStorage.getItem('authToken');
                                 if (!token) { setShowLoginModal(true); return; }
+                                setShowPremiumModal(true);
+                                return;
+                              }
+                              if (isVyavasthaPlanLocked) {
                                 setShowPremiumModal(true);
                                 return;
                               }
                               setSelectedModel(m);
                             }} className="focus:bg-white/10 focus:text-white cursor-pointer rounded-xl p-3">
                               <span className="font-bold text-sm">{m.name}</span> 
-                              {m.accessTier === 'Premium' && <span className="ml-auto text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded uppercase">PRO</span>}
+                              {isLocked && <span className="ml-auto text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded uppercase">PRO</span>}
+                              {isVyavasthaPlanLocked && <span className="ml-auto text-[9px] font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded uppercase">PRO SCHOLAR+</span>}
                             </DropdownMenuItem>
-                          ))}
+                            );
+                          })}
                           
                           {/* Model Info Redirection */}
                           <div className="mt-2 pt-2 border-t border-white/5">

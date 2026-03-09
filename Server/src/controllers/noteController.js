@@ -797,7 +797,10 @@ exports.createNote = async (req, res) => {
       }
     } catch (error) {
       console.error('Transcript fetch failed:', error);
-      throw new Error(`Could not fetch transcript: ${error.message}`);
+      return res.status(400).json({
+        success: false,
+        message: "Sorry, this video does not have a proper format and clear pronunciation. Please try another video."
+      });
     }
 
     // Generate images for bhashasetu model

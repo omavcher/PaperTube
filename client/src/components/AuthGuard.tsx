@@ -260,11 +260,11 @@ export function PremiumUpgradeModal({ isOpen, onClose, featureName }: PremiumUpg
   ];
 
   const features = [
-    "All Premium AI Models (Pariksha-Sarthi, Vyavastha)",
-    "Unlimited note generation",
-    "AI-powered PaperChat assistant",
+    "Pariksha-Sarthi model (Scholar+)",
+    "Vyavastha model (Pro Scholar+)",
+    "Up to 12hr video processing (Pro Scholar)",
     "Priority processing speed",
-    "100+ hours of video support",
+    "Unlimited video length (Power Scholar)",
   ];
 
   return (

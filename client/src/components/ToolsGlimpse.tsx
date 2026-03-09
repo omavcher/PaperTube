@@ -97,7 +97,7 @@ export default function ToolsGlimpse() {
               className="text-sm md:text-lg text-neutral-400 font-medium md:font-light leading-relaxed max-w-lg"
             >
               Access our suite of high-precision logic engines. 
-              <span className="text-white font-bold md:font-medium"> 15+ specialized modules</span> designed to optimize your academic and technical workflow.
+              <span className="text-white font-bold md:font-medium"> 20+ specialized modules</span> designed to optimize your academic and technical workflow.
             </motion.p>
           </div>
 
@@ -109,7 +109,7 @@ export default function ToolsGlimpse() {
           >
             <Link href="/tools">
               <Button className="group bg-white text-black hover:bg-neutral-200 rounded-2xl h-14 px-8 font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                Open Console <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                View All <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           </motion.div>

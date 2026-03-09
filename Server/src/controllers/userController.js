@@ -1094,6 +1094,8 @@ exports.getTokenBalance = async (req, res) => {
       success: true,
       tokens: user.tokens,
       isSubscribed,
+      planId: user.membership?.planId || null,
+      planName: user.membership?.planName || null,
       tokenCostPerGeneration: TOKEN_COST_PER_GENERATION,
       canGenerate,
       message

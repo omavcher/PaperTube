@@ -53,10 +53,10 @@ const MODELS = [
     id: "parikshasarthi",
     name: "Pariksha-Sarthi",
     tier: "Premium",
-    description: "Exam-focused Q&A format with flashcards",
-    longDescription: "Pariksha-Sarthi transforms content into active-recall study materials with question-answer pairs, flashcards, and exam tips. Perfect for test preparation and self-assessment.",
+    description: "Exam-focused Q&A format with active recall",
+    longDescription: "Pariksha-Sarthi transforms content into active-recall study materials with question-answer pairs, practice problems, and exam tips. Perfect for test preparation and self-assessment.",
     features: [
-      "Question-Answer flashcard grid",
+      "Question-Answer grid layout",
       "High-yield summary boxes",
       "Exam tips and common mistakes",
       "Electric purple and orange accents",

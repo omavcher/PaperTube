@@ -36,7 +36,7 @@ interface StoryDetail {
   slug: string;
 }
 
-const DEFAULT_TOOLS = ["AI Note Synthesis", "Neural Flashcards", "Custom Quiz Engine"];
+const DEFAULT_TOOLS = ["AI Note Synthesis", "Smart Quiz Engine", "Custom Quiz Engine"];
 
 export default function SuccessStoryClient({ story }: { story: StoryDetail }) {
   

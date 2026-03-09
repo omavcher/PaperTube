@@ -86,7 +86,7 @@ export default function ArcadeGlimpse() {
               transition={{ delay: 0.1 }}
               className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 leading-none"
             >
-              The <span className="text-white">Arcade.</span>
+              The <span className="text-white">Education Game.</span>
             </motion.h2>
             
             <motion.p 
@@ -108,7 +108,7 @@ export default function ArcadeGlimpse() {
           >
             <Link href="/games">
               <Button className="group bg-white text-black hover:bg-neutral-200 rounded-2xl h-14 px-8 font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                Enter The Void <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                Explore Games <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           </motion.div>

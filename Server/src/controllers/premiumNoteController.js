@@ -7,6 +7,27 @@ const { getTranscript } = require('../youtube-transcript');
 const PREMIUM_MODELS = ['parikshasarthi', 'vyavastha'];
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
+// Plan-based video duration limits (in seconds)
+const PLAN_VIDEO_LIMITS = {
+  scholar: 6 * 60 * 60,    // 6 hours for Scholar plan
+  pro: 12 * 60 * 60,       // 12 hours for Pro Scholar plan
+  power: Infinity           // Unlimited for Power Scholar plan
+};
+
+// Plan-based model restrictions
+// Scholar plan cannot use Vyavastha model
+const PLAN_MODEL_RESTRICTIONS = {
+  scholar: ['parikshasarthi'],  // Scholar can only use parikshasarthi
+  pro: ['parikshasarthi', 'vyavastha'],     // Pro can use all premium models
+  power: ['parikshasarthi', 'vyavastha']    // Power can use all premium models
+};
+
+// Helper to get max video duration for a user's plan
+function getMaxVideoDuration(user) {
+  const planId = user.membership?.planId || 'scholar';
+  return PLAN_VIDEO_LIMITS[planId] || PLAN_VIDEO_LIMITS.scholar;
+}
+
 // Token limits
 const MAX_INPUT_TOKENS = 500000; // 500k tokens for transcript
 const MAX_OUTPUT_TOKENS = 15000;  // 15k tokens for generated content
@@ -560,6 +581,22 @@ exports.createNote = async (req, res) => {
       });
     }
 
+    // Check plan-based model restrictions (Scholar cannot use Vyavastha)
+    const userPlanId = user.membership?.planId || 'scholar';
+    const allowedModels = PLAN_MODEL_RESTRICTIONS[userPlanId] || PLAN_MODEL_RESTRICTIONS.scholar;
+    
+    if (!allowedModels.includes(model)) {
+      const planName = user.membership?.planName || 'Scholar Plan';
+      return res.status(403).json({
+        success: false,
+        code: "MODEL_NOT_AVAILABLE",
+        message: `The ${model === 'vyavastha' ? 'Vyavastha' : model} model is not available on the ${planName}. Please upgrade to Pro Scholar or higher to access this model.`,
+        currentPlan: planName,
+        requiredPlan: 'Pro Scholar',
+        upgradeRequired: true
+      });
+    }
+
     // Extract video ID for the note
     const videoId = extractVideoId(videoUrl);
     if (!videoId) {
@@ -579,6 +616,24 @@ exports.createNote = async (req, res) => {
         videoTitle = `Notes: ${videoInfo.title}`;
       }
       videoDuration = videoInfo.duration;
+
+      // Check video duration limit based on user's plan
+      const maxDuration = getMaxVideoDuration(user);
+      if (videoDuration && videoDuration > maxDuration) {
+        const formattedDuration = formatDuration(videoDuration);
+        const maxFormattedDuration = maxDuration === Infinity ? 'Unlimited' : formatDuration(maxDuration);
+        const planName = user.membership?.planName || 'Scholar Plan';
+        
+        return res.status(403).json({
+          success: false,
+          code: "VIDEO_TOO_LONG",
+          message: `This video is ${formattedDuration} long. ${planName} users can only process videos up to ${maxFormattedDuration}. Please upgrade your plan.`,
+          videoDuration: formattedDuration,
+          maxAllowedDuration: maxFormattedDuration,
+          upgradeRequired: true,
+          currentPlan: userPlanId
+        });
+      }
     } catch (error) {
       console.error('Error fetching video info:', error);
       // Continue with default title if video info fetch fails
@@ -613,7 +668,10 @@ exports.createNote = async (req, res) => {
       console.log(`Found ${transcript.split('\n').length} transcript segments`);
     } catch (error) {
       console.error('Transcript fetch failed:', error);
-      throw new Error(`Could not fetch transcript: ${error.message}`);
+      return res.status(400).json({
+        success: false,
+        message: "Sorry, this video does not have a proper format and clear pronunciation. Please try another video."
+      });
     }
 
     // STEP 2: Generate images for premium models

@@ -12,8 +12,8 @@ export default function FAQHome() {
         <div className="bg-neutral-900/50 border border-white/10 rounded-2xl p-6">
           <h3 className="text-xl font-bold mb-2">What is the best AI to convert YouTube to notes?</h3>
           <p className="text-neutral-300">
-            Paperxify is the top-rated AI tool for converting YouTube links into structured engineering notes, 
-            flashcards, and PDFs. It is fast, free, and highly accurate.
+            Paperxify is the top-rated AI tool for converting YouTube links into structured engineering notes
+            and PDFs. It is fast, free, and highly accurate.
           </p>
         </div>
         <div className="bg-neutral-900/50 border border-white/10 rounded-2xl p-6">

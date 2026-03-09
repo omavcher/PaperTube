@@ -54,11 +54,10 @@ export default function SubscriptionDialog({
       monthlyPrice: 149,
       yearlyPrice: 1490,
       features: [
-        { text: "Basic Summaries", included: true },
-        { text: "90 min video limit", included: true },
+        { text: "3 AI Models (excl. Vyavastha)", included: true },
+        { text: "6 hour video limit", included: true },
         { text: "5 videos / batch", included: true },
-        { text: "Advanced AI Models", included: false },
-        { text: "Flashcards", included: false },
+        { text: "Vyavastha Model", included: false },
       ],
       cta: "Upgrade",
     },
@@ -70,27 +69,27 @@ export default function SubscriptionDialog({
       popular: true,
       highlight: true,
       features: [
-        { text: "ALL Premium AI Models", included: true },
-        { text: "4 hour video limit", included: true },
+        { text: "ALL 4 AI Models (incl. Vyavastha)", included: true },
+        { text: "12 hour video limit", included: true },
         { text: "20 videos / batch", included: true },
-        { text: "Flashcard Creator", included: true },
+        { text: "Zero Ads Experience", included: true },
         { text: "Priority Processing", included: true },
       ],
       cta: "Get Pro",
     },
     {
-      name: "Institute",
-      description: "For researchers",
+      name: "Power Scholar",
+      description: "For power users",
       monthlyPrice: 599,
       yearlyPrice: 5990,
       features: [
-        { text: "Unlimited Limits", included: true },
-        { text: "8 hour video limit", included: true },
+        { text: "ALL 4 AI Models", included: true },
+        { text: "Unlimited video length", included: true },
         { text: "Unlimited Batch", included: true },
         { text: "Team Features", included: true },
-        { text: "Custom AI Training", included: true },
+        { text: "VIP Support", included: true },
       ],
-      cta: "Contact",
+      cta: "Go Power",
     },
   ];
 
@@ -113,7 +112,7 @@ export default function SubscriptionDialog({
               Unlock Your <span className="text-red-500">Learning Superpowers</span>
             </DialogTitle>
             <DialogDescription className="text-neutral-400 max-w-lg mx-auto text-base">
-              You've hit a limit on your current plan. Upgrade now to generate unlimited notes, flashcards, and access premium AI models.
+              You've hit a limit on your current plan. Upgrade now to generate unlimited notes and access premium AI models.
             </DialogDescription>
           </DialogHeader>
 

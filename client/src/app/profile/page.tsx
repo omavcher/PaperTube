@@ -365,8 +365,7 @@ export default function ProfilePage() {
                       <h2 className="text-2xl font-bold text-white tracking-tight">Activity Log</h2>
                       <div className="space-y-3">
                          {user.noteCreationHistory?.map((note: any) => <ActivityItem key={note._id} item={note} type="note" />)}
-                         {user.flashcardCreationHistory?.map((fc: any) => <ActivityItem key={fc._id} item={fc} type="flashcard" />)}
-                         {(!user.noteCreationHistory?.length && !user.flashcardCreationHistory?.length) && (
+                         {(!user.noteCreationHistory?.length) && (
                             <div className="text-center py-12 text-neutral-500 bg-neutral-900/20 rounded-3xl border border-white/5">
                                No activity history found.
                             </div>
@@ -629,20 +628,17 @@ function NavButton({ active, onClick, icon, label }: any) {
    )
 }
 
-function ActivityItem({ item, type }: { item: any, type: 'note' | 'flashcard' }) {
+function ActivityItem({ item, type }: { item: any, type: 'note' }) {
    return (
       <div className="flex items-center gap-4 bg-neutral-900/30 border border-white/5 p-4 rounded-2xl hover:bg-neutral-900/50 transition-colors group cursor-default">
-         <div className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5",
-            type === 'note' ? "bg-blue-500/10 text-blue-500" : "bg-purple-500/10 text-purple-500"
-         )}>
-            {type === 'note' ? <FileText size={18} /> : <Layers size={18} />}
+         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5 bg-blue-500/10 text-blue-500">
+            <FileText size={18} />
          </div>
          <div className="flex-1 min-w-0">
             <h4 className="text-sm font-bold text-white truncate pr-4">{item.videoTitle || "Untitled Project"}</h4>
             <div className="flex items-center gap-2 mt-1.5">
                <Badge variant="outline" className="border-white/10 text-neutral-500 text-[9px] px-1.5 py-0 uppercase font-bold tracking-wide">
-                  {type === 'note' ? (item.model || "AI Note") : `${item.cardCount || 0} Cards`}
+                  {item.model || "AI Note"}
                </Badge>
                <span className="text-[10px] text-neutral-600 font-mono">{formatDate(item.createdAt)}</span>
             </div>

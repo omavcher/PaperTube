@@ -21,20 +21,20 @@ const plans = [
   { 
     id: "scholar", name: "Scholar", price: 149, daily: 4.90,
     desc: "For occasional research.", 
-    features: ["Standard AI Access", "90 Min Video Limit", "Cloud Save Enabled", "Basic Export"],
+    features: ["3 AI Models (excl. Vyavastha)", "6 Hour Video Limit", "Cloud Save Enabled", "Basic Export"],
     cta: "Get Started", highlight: false,
   },
   { 
     id: "pro", name: "Pro Scholar", price: 299, daily: 9.90,
     desc: "For serious academic work.", 
-    features: ["ALL 5 AI Models", "4 Hour Video Limit", "Priority Processing", "Advanced PDF Export", "No Watermark"],
+    features: ["All 4 AI Models", "12 Hour Video Limit", "Priority Processing", "Advanced PDF Export", "No Watermark"],
     cta: "Upgrade to Pro", highlight: true, popular: true,
   },
   { 
-    id: "power", name: "Research Lab", price: 599, daily: 19.90,
+    id: "power", name: "Power Scholar", price: 599, daily: 19.90,
     desc: "For power users & teams.", 
-    features: ["Enterprise AI Models", "Unlimited Processing", "API Access", "24/7 Priority Support", "Team Dashboard"],
-    cta: "Contact Sales", highlight: false,
+    features: ["All 4 AI Models", "Unlimited Video Processing", "API Access", "24/7 Priority Support", "Team Dashboard"],
+    cta: "Go Power", highlight: false,
   },
 ];
 

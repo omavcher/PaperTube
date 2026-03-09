@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     url: "https://paperxify.com",
     title: "Paperxify | Best YouTube Video to Notes Converter AI",
     description:
-      "Paste a YouTube video link and instantly convert it into structured study notes, flashcards, and PDFs using advanced AI.",
+      "Paste a YouTube video link and instantly convert it into structured study notes and PDFs using advanced AI.",
     siteName: "Paperxify",
     images: [
       {

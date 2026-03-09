@@ -700,7 +700,7 @@ export default function PricingSection() {
       monthlyPrice: 149,
       yearlyPrice: 1490,
       description: "Essential toolkit for survival.",
-      features: ["Access to All Premium Models", "Unlimited AI Quiz", "6hr Video Processing/Day", "Basic Game Access", "Standard Tools"],
+      features: ["3 AI Models (excl. Vyavastha)", "Unlimited AI Quiz", "6hr Video Processing/Day", "Basic Game Access", "Standard Tools"],
       cta: "Get Started",
       slots: "High Demand"
     },
@@ -713,7 +713,7 @@ export default function PricingSection() {
       description: "The choice of toppers.",
       popular: true,
       highlight: true,
-      features: ["Everything in Scholar", "Priority Fast-Lane Speed", "Verified Scholar Badge", "Zero Ads", "12hr Video Processing/Day", "Beta Tools Access"],
+      features: ["All 4 AI Models", "Everything in Scholar", "Priority Fast-Lane Speed", "Verified Scholar Badge", "Zero Ads", "12hr Video Processing/Day", "Beta Tools Access"],
       cta: "Upgrade to Pro",
       slots: "97% Capacity"
     },
@@ -724,7 +724,7 @@ export default function PricingSection() {
       monthlyPrice: 599,
       yearlyPrice: 5990,
       description: "God-mode for Engineers.",
-      features: ["Everything in Pro", "Unlimited Processing", "Instant Image Gen", "Bulk Documentation", "Career Roadmap", "VIP Support"],
+      features: ["All 4 AI Models", "Everything in Pro", "Unlimited Video Processing", "Instant Image Gen", "Bulk Documentation", "Career Roadmap", "VIP Support"],
       cta: "Unlock Power",
       slots: "Limited Access"
     }

@@ -196,7 +196,7 @@ export default function ContentArchive() {
          </div>
          
          <div className="flex bg-black border border-white/5 rounded-3xl p-1.5 gap-1">
-            {["All", "Note", "Flashcards", "Quiz"].map((tab) => (
+            {["All", "Note", "Quiz"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}

@@ -5,7 +5,22 @@ const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
 
 const FREE_MODELS = ['sankshipta', 'bhashasetu'];
-const MAX_FREE_VIDEO_LENGTH = 90 * 60; // 90 minutes in seconds
+const MAX_FREE_VIDEO_LENGTH = 2 * 60 * 60; // 2 hours in seconds for free users
+
+// Plan-based video duration limits (in seconds)
+const PLAN_VIDEO_LIMITS = {
+  free: 2 * 60 * 60,      // 2 hours for free users
+  scholar: 6 * 60 * 60,   // 6 hours for Scholar plan
+  pro: 12 * 60 * 60,      // 12 hours for Pro Scholar plan
+  power: Infinity          // Unlimited for Power Scholar plan
+};
+
+// Helper to get max video duration for a user's plan
+function getMaxVideoDuration(user) {
+  if (!user.membership?.isActive) return PLAN_VIDEO_LIMITS.free;
+  const planId = user.membership?.planId || 'free';
+  return PLAN_VIDEO_LIMITS[planId] || PLAN_VIDEO_LIMITS.free;
+}
 const TOKEN_COST_PER_GENERATION = 5; // Deduct 5 tokens per free generation
 
 // Model-specific token limits
@@ -848,18 +863,23 @@ exports.createNote = async (req, res) => {
       }
       videoDuration = videoInfo.duration;
       
-      // Check video duration limit for free users
-      if (!isSubscribed && videoDuration && videoDuration > MAX_FREE_VIDEO_LENGTH) {
+      // Check video duration limit based on user's plan
+      const maxDuration = getMaxVideoDuration(user);
+      if (videoDuration && videoDuration > maxDuration) {
         const formattedDuration = formatDuration(videoDuration);
-        const maxFormattedDuration = formatDuration(MAX_FREE_VIDEO_LENGTH);
+        const maxFormattedDuration = maxDuration === Infinity ? 'Unlimited' : formatDuration(maxDuration);
+        const planName = user.membership?.planId 
+          ? user.membership.planId.charAt(0).toUpperCase() + user.membership.planId.slice(1) 
+          : 'Free';
         
         return res.status(403).json({
           success: false,
           code: "VIDEO_TOO_LONG",
-          message: `This video is ${formattedDuration} long. Free users can only process videos up to ${maxFormattedDuration}.`,
+          message: `This video is ${formattedDuration} long. ${planName} plan users can only process videos up to ${maxFormattedDuration}.`,
           videoDuration: formattedDuration,
           maxAllowedDuration: maxFormattedDuration,
-          upgradeRequired: true
+          upgradeRequired: true,
+          currentPlan: planName
         });
       }
     } catch (error) {
@@ -900,7 +920,10 @@ exports.createNote = async (req, res) => {
       }
     } catch (error) {
       console.error('Transcript fetch failed:', error);
-      throw new Error(`Could not fetch transcript: ${error.message}`);
+      return res.status(400).json({
+        success: false,
+        message: "Sorry, this video does not have a proper format and clear pronunciation. Please try another video."
+      });
     }
 
     // STEP 2: Generate images for bhashasetu model with language support
@@ -1101,11 +1124,21 @@ exports.getVideoInfo = async (req, res) => {
 
     const videoInfo = await fetchYouTubeInfo(videoUrl);
     
-    // Check if video is too long for free tier
-    if (videoInfo.duration && videoInfo.duration > MAX_FREE_VIDEO_LENGTH) {
-      videoInfo.tooLongForFree = true;
-      videoInfo.maxFreeDuration = MAX_FREE_VIDEO_LENGTH;
-      videoInfo.maxFreeDurationFormatted = formatDuration(MAX_FREE_VIDEO_LENGTH);
+    // Add plan-based duration limit info
+    if (videoInfo.duration) {
+      videoInfo.planLimits = {
+        free: { maxDuration: PLAN_VIDEO_LIMITS.free, formatted: formatDuration(PLAN_VIDEO_LIMITS.free), allowed: videoInfo.duration <= PLAN_VIDEO_LIMITS.free },
+        scholar: { maxDuration: PLAN_VIDEO_LIMITS.scholar, formatted: formatDuration(PLAN_VIDEO_LIMITS.scholar), allowed: videoInfo.duration <= PLAN_VIDEO_LIMITS.scholar },
+        pro: { maxDuration: PLAN_VIDEO_LIMITS.pro, formatted: formatDuration(PLAN_VIDEO_LIMITS.pro), allowed: videoInfo.duration <= PLAN_VIDEO_LIMITS.pro },
+        power: { maxDuration: null, formatted: 'Unlimited', allowed: true }
+      };
+
+      // Backward compatibility
+      if (videoInfo.duration > MAX_FREE_VIDEO_LENGTH) {
+        videoInfo.tooLongForFree = true;
+        videoInfo.maxFreeDuration = MAX_FREE_VIDEO_LENGTH;
+        videoInfo.maxFreeDurationFormatted = formatDuration(MAX_FREE_VIDEO_LENGTH);
+      }
     }
     
     res.json({
