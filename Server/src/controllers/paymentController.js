@@ -583,7 +583,7 @@ exports.getTokenBalance = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const user = await User.findById(userId).select('token usedToken membership name email');
+    const user = await User.findById(userId).select('tokens membership name email');
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -591,12 +591,12 @@ exports.getTokenBalance = async (req, res) => {
       });
     }
 
-    const availableToken = Math.max(0, (user.token || 0) - (user.usedToken || 0));
+    const availableToken = Math.max(0, user.tokens || 0);
 
     res.json({
       success: true,
-      token: user.token || 0,
-      usedToken: user.usedToken || 0,
+      token: user.tokens || 0,
+      usedToken: 0,
       availableToken: availableToken,
       membership: user.membership || null,
       user: {

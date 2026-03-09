@@ -635,7 +635,7 @@ exports.getUserStats = async (req, res) => {
     }
 
     // Get token usage
-    const user = await User.findById(userId).select('token usedToken tokenUsageHistory');
+    const user = await User.findById(userId).select('tokens tokenUsageHistory');
     
     if (!user) {
       return res.status(404).json({
@@ -680,8 +680,7 @@ exports.getUserStats = async (req, res) => {
         totalViews,
         totalComments,
         totalLikes,
-        tokenBalance: user.token,
-        usedTokens: user.usedToken,
+        tokenBalance: user.tokens,
         followersCount: Math.floor(totalViews / 10), // Estimated
         followingCount: 0,
         dailyStats
