@@ -4,6 +4,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const Transaction = require("../models/Transaction");
 const { consumePromoCode } = require("./promoController");
+const emailService = require("../utils/emailService");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -212,7 +213,7 @@ exports.verifyPayment = async (req, res) => {
           transactionId: result.transactionId,
           orderId: razorpay_order_id,
           paymentId: razorpay_payment_id,
-          tokens: user?.token || 0,
+          tokens: user?.tokens || 0,
           tokensAwarded: result.tokensAwarded || 0,
           membership: user?.membership || null,
           status: "success"
@@ -370,22 +371,21 @@ const saveTransactionInternal = async (transactionData) => {
     // Process successful payments
     if (transactionData.status === "success") {
       if (transactionData.packageType === "token") {
-        // Add tokens to user's balance
-        user.token += tokensToAward;
+        // Add tokens to user's balance. (Backend field is 'tokens', not 'token')
+        if (typeof user.tokens !== 'number') user.tokens = 0;
+        user.tokens += tokensToAward;
         
-        if (!user.tokenTransactions) {
-          user.tokenTransactions = [];
+        if (!user.tokenUsageHistory) {
+          user.tokenUsageHistory = [];
         }
         
-        user.tokenTransactions.push({
+        user.tokenUsageHistory.push({
           name: `Token Purchase - ${transactionRecord.packageName}`,
-          type: "token_purchase",
-          tokensUsed: tokensToAward,
-          status: "success",
+          tokens: tokensToAward,
           date: new Date()
         });
         
-        console.log(`💰 Added ${tokensToAward} tokens to user ${user.email}. New balance: ${user.token}`);
+        console.log(`💰 Added ${tokensToAward} tokens to user ${user.email}. New balance: ${user.tokens}`);
       }
 
       if (transactionData.packageType === "subscription") {
@@ -409,15 +409,13 @@ const saveTransactionInternal = async (transactionData) => {
           autoRenew: user.membership?.autoRenew || false,
         };
 
-        if (!user.tokenTransactions) {
-          user.tokenTransactions = [];
+        if (!user.tokenUsageHistory) {
+          user.tokenUsageHistory = [];
         }
 
-        user.tokenTransactions.push({
+        user.tokenUsageHistory.push({
           name: `Membership - ${packageDetails.name} (${transactionData.billingPeriod})`,
-          type: "membership_purchase",
-          tokensUsed: 0,
-          status: "success",
+          tokens: 0,
           date: new Date()
         });
 
@@ -428,10 +426,31 @@ const saveTransactionInternal = async (transactionData) => {
       if (transactionData.couponCode) {
         await consumePromoCode(transactionData.couponCode, transactionData.userId);
       }
+
+      // ─── Fire confirmation email (non-blocking) ───────────────────────────
+      // We fire this AFTER saving so we have the updated user object.
+      // Using .catch() ensures any email error never fails the payment response.
+      const emailPayload = { ...transactionRecord };
+      setImmediate(async () => {
+        try {
+          await user.save(); // ensure fresh data is saved before email reads it
+          const freshUser = await User.findById(user._id).select('name email membership tokens').lean();
+          if (!freshUser) return;
+
+          if (transactionData.packageType === 'subscription') {
+            await emailService.sendSubscriptionPurchase(freshUser, emailPayload);
+          } else if (transactionData.packageType === 'token') {
+            await emailService.sendTokenPurchase(freshUser, emailPayload);
+          }
+        } catch (emailErr) {
+          console.error('⚠️ [Payment] Email notification failed (non-critical):', emailErr.message);
+        }
+      });
+      // Skip the duplicate user.save() below since we do it in setImmediate
     }
 
-    // Save user
-    await user.save();
+    // Save user (for non-success paths)
+    if (transactionData.status !== 'success') await user.save();
 
     // Return the ID of the embedded transaction for response consistency
     const savedTransaction = user.transactions[user.transactions.length - 1];
@@ -440,7 +459,7 @@ const saveTransactionInternal = async (transactionData) => {
       transactionId: savedTransaction._id,
       paymentId: savedTransaction.paymentId,
       tokensAwarded: tokensToAward,
-      newTokenBalance: user.token
+      newTokenBalance: user.tokens
     });
 
     return {

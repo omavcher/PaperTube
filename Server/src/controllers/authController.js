@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Note = require("../models/Note");
 const { OAuth2Client } = require('google-auth-library');
 const axios = require('axios'); // Add axios for better HTTP requests
+const emailService = require('../utils/emailService');
 
 exports.googleAuth = async (req, res) => {
   try {
@@ -199,6 +200,12 @@ async function handleUserAuth(userInfo) {
       });
       
       console.log("✅ New user created:", user._id);
+
+      // Fire welcome email in background (non-blocking)
+      setImmediate(() => {
+        emailService.sendWelcome({ name: user.name, email: user.email, _id: user._id })
+          .catch(e => console.warn('⚠️ Welcome email failed (non-critical):', e.message));
+      });
     } else {
       console.log("👤 Updating existing user:", user._id);
       

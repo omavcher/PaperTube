@@ -39,6 +39,7 @@ app.use("/api/admin/faker", require("./routes/fakerRoutes"));
 app.use("/api/analytics", require("./routes/analyticsRoutes"));
 app.use("/api/support", supportRoutes);
 app.use("/api/promo", promoRoutes);
+app.use("/api/email", require("./routes/emailRoutes"));
 
 // Optional: Add admin route to manually trigger token reset
 app.post("/api/admin/trigger-token-reset", async (req, res) => {

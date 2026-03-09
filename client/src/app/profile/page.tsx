@@ -60,6 +60,7 @@ const numToWords = (n: number) => {
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"overview" | "history" | "billing" | "support">("overview");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [emailingId, setEmailingId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +184,23 @@ export default function ProfilePage() {
 
     doc.save(`Invoice_${invoiceNo}.pdf`);
     setDownloadingId(null);
+  };
+
+  // --- SEND INVOICE EMAIL ---
+  const sendInvoiceEmail = async (tx: any) => {
+    if (!profileData) return;
+    setEmailingId(tx._id);
+    try {
+      await api.post('/email/resend-invoice', { transactionId: tx._id }, {
+        headers: { 'Auth': getAuthToken() }
+      });
+      // silent success
+    } catch (e) {
+      // swallow — don't alert user on email failure
+      console.warn('Invoice email failed:', e);
+    } finally {
+      setEmailingId(null);
+    }
   };
 
   // --- RENDER STATES ---
