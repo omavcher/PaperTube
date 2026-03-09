@@ -16,7 +16,8 @@ import {
   Loader2, Send, Terminal, FileCode, Database, GitCompare, 
   ShieldAlert, Github, BookOpen, InspectionPanel, TableRowsSplitIcon, 
   BinaryIcon, CalculatorIcon, KeyRoundIcon, FileText, QrCode, FileSignature,
-  Home, Grid, Settings, ArrowRightLeft, Keyboard, Wrench, Code2, Image as ImageIcon
+  Home, Grid, Settings, ArrowRightLeft, Keyboard, Wrench, Code2, Image as ImageIcon,
+  Globe
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ const pdfTools = [
   { id: "generate-qr", title: "QR FORGE", description: "Text to 2D barcode synthesis.", icon: <QrCode />, category: "Workflows", path: "/tools/generate-qr", color: "text-violet-400", isNew: true },
   { id: "fake-internship-letter-generator", title: "INTERNSHIP GEN", description: "Generate realistic offer letters.", icon: <FileSignature />, category: "Career", path: "/tools/fake-internship-letter-generator", color: "text-yellow-400", isNew: true },
   { id: "emi-calculator", title: "EMI CALC", description: "Plan loan repayments.", icon: <IconCalculatorFilled />, category: "Engineering Tools", path: "/tools/emi-calculator", color: "text-green-400", isNew: true },
+  { id: "html-preview", title: "HTML EDITOR", description: "Live HTML/CSS/JS playground.", icon: <Globe />, category: "Engineering Tools", path: "/tools/html-preview", color: "text-emerald-400", isNew: true },
 ];
 
 const categories = [

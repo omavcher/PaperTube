@@ -72,10 +72,10 @@ export const Navbar = ({
       {/* --- DESKTOP NAVIGATION --- */}
       {!hideDesktop && (
         <nav className={cn(
-          "fixed top-0 inset-x-0 z-[100] transition-all duration-500 hidden lg:block font-sans", 
+          "fixed top-0 inset-x-0 z-[100] transition-all duration-500 hidden lg:block font-sans pointer-events-none", 
           visible ? "pt-4" : "pt-0"
         )}>
-          <div className="container mx-auto px-4 flex justify-center">
+          <div className="container mx-auto px-4 flex justify-center pointer-events-auto">
             <motion.div
               animate={{
                 width: visible ? "auto" : "100%",
