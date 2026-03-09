@@ -74,6 +74,7 @@ export default function HomeMain() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAdDialog, setShowAdDialog] = useState(false);
   const [tokenErrorData, setTokenErrorData] = useState<any>(null);
+  const [planErrorData, setPlanErrorData] = useState<any>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
@@ -192,7 +193,7 @@ export default function HomeMain() {
             setTokenErrorData(errData);
         } else if (errData?.code === "MODEL_NOT_AVAILABLE" || errData?.code === "VIDEO_TOO_LONG") {
             // Show specific error for plan restrictions
-            alert(errData?.message || "This feature requires a higher plan.");
+            setPlanErrorData(errData);
         } else if (err.response?.status === 403) {
             setShowPaywall(true);
         } else {
@@ -280,6 +281,42 @@ export default function HomeMain() {
                             Acquire Tokens <ArrowRight size={14} />
                         </Link>
                     )}
+                </motion.div>
+            </motion.div>
+        )}
+        
+        {planErrorData && (
+            <motion.div 
+                key="plan-error-modal"
+                className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+            >
+                <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    onClick={() => setPlanErrorData(null)}
+                    className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                />
+                <motion.div 
+                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                    className="relative w-full max-w-sm bg-neutral-900 border border-white/10 rounded-[2rem] p-6 shadow-2xl z-10 text-center"
+                >
+                    <button onClick={() => setPlanErrorData(null)} className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors">
+                        <X size={18} />
+                    </button>
+                    
+                    <div className="w-12 h-12 bg-orange-500/10 rounded-2xl border border-orange-500/20 flex items-center justify-center mx-auto mb-4">
+                        <AlertTriangle className="text-orange-500" size={24} />
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Access Restricted</h3>
+                    <p className="text-sm text-neutral-400 mb-8 leading-relaxed overflow-hidden text-ellipsis line-clamp-4">
+                        {planErrorData.message}
+                    </p>
+
+                    <Link href="/pricing" onClick={() => setPlanErrorData(null)} className="w-full h-12 bg-white text-black rounded-xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                        Upgrade Plan <ArrowRight size={14} />
+                    </Link>
                 </motion.div>
             </motion.div>
         )}
