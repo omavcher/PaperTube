@@ -100,7 +100,6 @@ const AdContainer = ({ iteration }: { iteration: number }) => {
 export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogProps) {
   const [countdown, setCountdown] = useState(10);
   const [adCompleted, setAdCompleted] = useState(false);
-  const [adIteration, setAdIteration] = useState(0);
   const [currentBanner, setCurrentBanner] = useState(CUSTOM_BANNERS[0]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -108,7 +107,6 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
     if (open) {
       setCountdown(10);
       setAdCompleted(false);
-      setAdIteration(0);
       setCurrentBanner(CUSTOM_BANNERS[Math.floor(Math.random() * CUSTOM_BANNERS.length)]);
 
       if (timerRef.current) clearInterval(timerRef.current);
@@ -116,12 +114,6 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
       timerRef.current = setInterval(() => {
         setCountdown(prev => {
           const nextValue = prev - 1;
-
-          // Trigger ad refresh at 7s and 4s
-          if (nextValue === 7 || nextValue === 4) {
-            setAdIteration(i => i + 1);
-            setCurrentBanner(CUSTOM_BANNERS[Math.floor(Math.random() * CUSTOM_BANNERS.length)]);
-          }
 
           if (nextValue <= 0) {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -157,35 +149,12 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
                </Badge>
             </div>
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={adIteration}
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 1.05, y: -10 }}
-                transition={{ duration: 0.4 }}
-                className="relative z-10"
-              >
-                <AdContainer iteration={adIteration} />
-              </motion.div>
-            </AnimatePresence>
-
-            {/* Iteration dots */}
-            <div className="flex gap-1.5 mt-5">
-              {[0, 1, 2].map((i) => (
-                <div 
-                  key={i} 
-                  className={cn(
-                    "h-1 rounded-full transition-all duration-500",
-                    adIteration === i ? "w-4 bg-blue-500" : "w-1 bg-white/10"
-                  )} 
-                />
-              ))}
+            <div className="relative z-10">
+              <AdContainer iteration={0} />
             </div>
 
             {/* CUSTOM BANNER GIF (LONG & THIN) */}
             <motion.a
-                key={`banner-${adIteration}`}
                 href={currentBanner.link}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -224,7 +193,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
                         <span className="text-[10px] font-bold uppercase tracking-widest text-white leading-none mb-0.5">
                             {adCompleted ? "Ready" : "Please Wait"}
                         </span>
-                        <span className="text-[8px] font-mono text-neutral-600 uppercase">Step {adIteration + 1} of 3</span>
+                        <span className="text-[8px] font-mono text-neutral-600 uppercase">Verification Step</span>
                     </div>
                 </div>
 
