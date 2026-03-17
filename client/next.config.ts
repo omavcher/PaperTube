@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   // Compress all responses
   compress: true,
 
+  // Silence Turbopack/Webpack configuration mismatch error
+  turbopack: {},
+
   // Optimize heavy icon package imports — only bundle what's actually used
   experimental: {
     optimizePackageImports: [
