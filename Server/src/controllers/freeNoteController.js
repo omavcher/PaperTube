@@ -1,4 +1,4 @@
-﻿// controllers/freeNoteController.js
+// controllers/freeNoteController.js
 const User = require('../models/User');
 const Note = require('../models/Note');
 const crypto = require('crypto');
@@ -908,15 +908,17 @@ exports.createNote = async (req, res) => {
       
       console.log(`Transcript estimated tokens: ${estimatedTokens}, Model max input: ${modelLimits.maxInputTokens}`);
       
+      // If transcript is too long, truncate it to fit within the model's token limit
+      // (~4 chars per token), so we can still generate notes instead of erroring out
       if (estimatedTokens > modelLimits.maxInputTokens) {
-        return res.status(400).json({
-          success: false,
-          code: "TRANSCRIPT_TOO_LONG",
-          message: `Transcript is too long (estimated ${estimatedTokens} tokens). ${model} model can only process up to ${modelLimits.maxInputTokens} tokens.`,
-          estimatedTokens,
-          maxTokens: modelLimits.maxInputTokens,
-          model: model
-        });
+        const maxChars = modelLimits.maxInputTokens * 4;
+        transcript = transcript.substring(0, maxChars);
+        // Try to end at a clean line boundary
+        const lastNewline = transcript.lastIndexOf('\n');
+        if (lastNewline > maxChars * 0.8) {
+          transcript = transcript.substring(0, lastNewline);
+        }
+        console.log(`⚠️ Transcript truncated from ~${estimatedTokens} to ~${estimateTokenCount(transcript)} tokens to fit ${model} model limits. Proceeding with generation.`);
       }
     } catch (error) {
       console.error('Transcript fetch failed:', error);

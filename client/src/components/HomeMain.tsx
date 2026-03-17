@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '@/config/api';
@@ -75,6 +75,7 @@ export default function HomeMain() {
   const [showAdDialog, setShowAdDialog] = useState(false);
   const [tokenErrorData, setTokenErrorData] = useState<any>(null);
   const [planErrorData, setPlanErrorData] = useState<any>(null);
+  const [transcriptErrorData, setTranscriptErrorData] = useState<any>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
@@ -155,7 +156,8 @@ export default function HomeMain() {
     }
     
     setIsGenerating(true);
-    setTokenErrorData(null); 
+    setTokenErrorData(null);
+    setTranscriptErrorData(null);
     
     try {
       const payload = {
@@ -194,6 +196,9 @@ export default function HomeMain() {
         } else if (errData?.code === "MODEL_NOT_AVAILABLE" || errData?.code === "VIDEO_TOO_LONG") {
             // Show specific error for plan restrictions
             setPlanErrorData(errData);
+        } else if (errData?.code === "TRANSCRIPT_TOO_LONG") {
+            // Show a proper modal instead of a browser alert
+            setTranscriptErrorData(errData);
         } else if (err.response?.status === 403) {
             setShowPaywall(true);
         } else {
@@ -317,6 +322,60 @@ export default function HomeMain() {
                     <Link href="/pricing" onClick={() => setPlanErrorData(null)} className="w-full h-12 bg-white text-black rounded-xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                         Upgrade Plan <ArrowRight size={14} />
                     </Link>
+                </motion.div>
+            </motion.div>
+        )}
+
+        {transcriptErrorData && (
+            <motion.div 
+                key="transcript-error-modal"
+                className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+            >
+                <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    onClick={() => setTranscriptErrorData(null)}
+                    className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                />
+                <motion.div 
+                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                    className="relative w-full max-w-sm bg-neutral-900 border border-white/10 rounded-[2rem] p-6 shadow-2xl z-10"
+                >
+                    <button onClick={() => setTranscriptErrorData(null)} className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors">
+                        <X size={18} />
+                    </button>
+
+                    <div className="w-12 h-12 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 flex items-center justify-center mb-4">
+                        <AlertTriangle className="text-yellow-400" size={24} />
+                    </div>
+
+                    <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Video Too Long</h3>
+                    <p className="text-sm text-neutral-400 mb-4 leading-relaxed">
+                        This video's transcript is too large for the <span className="text-white font-bold">{selectedModel.name}</span> model. 
+                        Free models support up to <span className="text-white font-bold">{(transcriptErrorData.maxTokens || 10000).toLocaleString()} tokens</span>.
+                    </p>
+
+                    <div className="p-4 bg-black/50 rounded-2xl border border-white/5 mb-6 text-center">
+                        <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Estimated Video Size</p>
+                        <p className="text-xl font-mono font-bold text-yellow-400">~{(transcriptErrorData.estimatedTokens || 0).toLocaleString()} tokens</p>
+                    </div>
+
+                    <p className="text-xs text-neutral-500 mb-5 text-center leading-relaxed">
+                        Upgrade to a premium model to process longer videos with up to <span className="text-white">500,000 tokens</span>.
+                    </p>
+
+                    <div className="flex flex-col gap-2">
+                        <Link href="/pricing" onClick={() => setTranscriptErrorData(null)} className="w-full h-11 bg-white text-black rounded-xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all">
+                            Upgrade for Longer Videos <ArrowRight size={14} />
+                        </Link>
+                        <button 
+                            onClick={() => setTranscriptErrorData(null)} 
+                            className="w-full h-11 bg-neutral-800 text-neutral-300 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-neutral-700 transition-all border border-white/5"
+                        >
+                            Try Another Video
+                        </button>
+                    </div>
                 </motion.div>
             </motion.div>
         )}
