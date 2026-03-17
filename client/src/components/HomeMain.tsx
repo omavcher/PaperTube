@@ -437,7 +437,7 @@ export default function HomeMain() {
                 )}
 
                 {/* Input Area */}
-                <div id="tour-url-input" className="relative flex items-center bg-black/40 rounded-2xl border border-white/5 px-4 py-3 transition-colors focus-within:border-white/20 mt-2 mx-1">
+                <div className="relative flex items-center bg-black/40 rounded-2xl border border-white/5 px-4 py-3 transition-colors focus-within:border-white/20 mt-2 mx-1">
                   <div className={cn("p-2 rounded-lg bg-neutral-800/50 text-neutral-400 transition-colors", isValidUrl && "text-red-500 bg-red-500/10")}>
                     <IconBrandYoutube size={20} />
                   </div>
@@ -472,7 +472,7 @@ export default function HomeMain() {
                 </AnimatePresence>
 
                 {/* Text Area */}
-                <div id="tour-prompt-input" className="p-1 mt-2">
+                <div className="p-1 mt-2">
                   <textarea 
                     placeholder="Inject specific focal parameters... (Optional)"
                     value={prompt}
@@ -487,7 +487,7 @@ export default function HomeMain() {
                      
                      {/* --- MODEL SELECTOR --- */}
                      <DropdownMenu>
-                        <DropdownMenuTrigger id="tour-model-selector" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-neutral-300 transition-colors">
+                        <DropdownMenuTrigger className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-neutral-300 transition-colors">
                           <IconRobot size={16} className="text-neutral-400" /> {selectedModel.name} <ChevronDown size={12} />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="bg-[#0a0a0a] border-white/10 text-white min-w-[220px] p-2 rounded-2xl shadow-2xl">
@@ -532,7 +532,7 @@ export default function HomeMain() {
                      </DropdownMenu>
 
                      <DropdownMenu>
-                        <DropdownMenuTrigger id="tour-options-selector" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-neutral-300 transition-colors">
+                        <DropdownMenuTrigger className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-neutral-300 transition-colors">
                           <IconSettings size={16} className="text-neutral-400" /> Options <ChevronDown size={12} />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="bg-[#0a0a0a] border-white/10 text-white w-64 p-4 rounded-2xl shadow-2xl">
@@ -557,7 +557,6 @@ export default function HomeMain() {
                   </div>
 
                   <button 
-                    id="tour-generate-btn"
                     onClick={handleGenerateClick}
                     disabled={!isValidUrl || loading || isGenerating}
                     className={cn(

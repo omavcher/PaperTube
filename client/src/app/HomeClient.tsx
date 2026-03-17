@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, lazy, Suspense } from "react";
 import HomeMain from "@/components/HomeMain";
-import WelcomeTour from "@/components/WelcomeTour";
 
 // ─── Lazy load everything below the fold ────────────────────────────────────
 // This prevents heavy components from being parsed/executed until the user
@@ -34,9 +33,6 @@ export default function HomeClient() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-start py-2 bg-black text-white">
-      {/* First-time user onboarding tour — renders itself only for new users */}
-      <WelcomeTour />
-
       <main className="flex flex-1 flex-col items-center justify-center w-full">
         {/* HomeMain is always above-the-fold → eager load */}
         <HomeMain />
