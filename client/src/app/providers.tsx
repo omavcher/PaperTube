@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
-import { BackgroundBeams } from "@/components/ui/background-beams";
 import { GoogleOAuthProvider, useGoogleOneTapLogin } from "@react-oauth/google";
 import axios from "axios";
 import api from "@/config/api";
@@ -11,30 +10,42 @@ import { Toaster, toast } from "sonner";
 import UserTracker from "@/components/UserTracker";
 import { cn } from "@/lib/utils";
 
+// ── BackgroundBeams is only needed on marketing pages, never on /notes, /admin, etc.
+// Lazy import so it doesn't land in the initial JS bundle at all.
+import dynamic from "next/dynamic";
+const BackgroundBeams = dynamic(
+  () => import("@/components/ui/background-beams").then((m) => ({ default: m.BackgroundBeams })),
+  { ssr: false, loading: () => null }
+);
+
+/** Pages that should show the decorative background beams */
+const BEAMS_PAGES = ["/", "/pricing", "/about", "/models", "/explore", "/tools", "/games", "/blog", "/success-stories"];
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const pathname = usePathname();
+  const streakCalled = useRef(false);
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  // --- GRANULAR VISIBILITY MAP ---
-  // Hide Desktop Nav on high-focus tools or admin pages
-  const hideDesktopNav = [
-    "/admin", 
-    "/notes/", 
-    "/note/"
-  ].some(path => pathname?.startsWith(path));
+  // Pages where desktop nav should be hidden
+  const hideDesktopNav = ["/admin", "/notes/", "/note/"].some(
+    (path) => pathname?.startsWith(path)
+  );
 
-  // Hide Mobile Bottom Dock on tools that require full-screen height
-  const hideMobileNav = [
-    "/admin",
-    "/sentinel",
-    "/notes/",
-    "/note/"
-  ].some(path => pathname?.startsWith(path));
+  // Pages where mobile bottom dock should be hidden
+  const hideMobileNav = ["/admin", "/sentinel", "/notes/", "/note/"].some(
+    (path) => pathname?.startsWith(path)
+  );
 
+  // Only show beams on marketing pages — not on heavy editor/note pages
+  const showBeams = BEAMS_PAGES.some(
+    (p) => pathname === p || pathname?.startsWith(p + "/") === false && pathname?.startsWith(p)
+  );
+
+  // Sync auth state from localStorage
   useEffect(() => {
     const syncAuthState = () => {
       const token = localStorage.getItem("authToken");
@@ -57,45 +68,47 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("auth-change", syncAuthState);
   }, []);
 
-   useEffect(() => {
-  const updateStreak = async () => {
-    try {
-      const token = localStorage.getItem("authToken");
+  // Defer streak update — use requestIdleCallback so it never blocks UI
+  useEffect(() => {
+    if (streakCalled.current) return;
+    streakCalled.current = true;
 
-      await api.post(
-        "/users/update-streak",
-        {}, // 👈 no body needed
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          withCredentials: true,
-        }
-      );
-    } catch (err) {
-      console.log("Streak error", err);
+    const updateStreak = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) return;
+        await api.post(
+          "/users/update-streak",
+          {},
+          { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+        );
+      } catch (err) {
+        // Non-critical — silent fail
+      }
+    };
+
+    // Use idle callback so we never block the main thread during page load
+    if ("requestIdleCallback" in window) {
+      (window as any).requestIdleCallback(() => updateStreak(), { timeout: 5000 });
+    } else {
+      setTimeout(updateStreak, 2000);
     }
-  };
+  }, []);
 
-  updateStreak();
-}, []);
-
-  
-
-  const handleLoginSuccess = async (googleAccessToken: string, userInfo: any, backendResponse?: any) => {
+  const handleLoginSuccess = async (
+    googleAccessToken: string,
+    userInfo: any,
+    backendResponse?: any
+  ) => {
     try {
       setAuthLoading(true);
       if (backendResponse?.success && backendResponse?.data) {
         const { token, user: backendUser } = backendResponse.data;
-
         localStorage.setItem("authToken", token);
         localStorage.setItem("user", JSON.stringify(backendUser));
-
         setUser(backendUser);
         setIsLoggedIn(true);
         toast.success(`Welcome, ${backendUser.name}!`);
-        
-        // Full website reload to rehydrate data but stay on the current route
         window.location.reload();
       }
     } catch {
@@ -108,11 +121,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <GoogleOAuthProvider clientId={clientId || ""}>
       <Toaster theme="dark" position="top-center" richColors />
-      
-      {/* Matrix Background */}
-      <div className="fixed inset-0 -z-10 opacity-20 pointer-events-none">
-        <BackgroundBeams />
-      </div>
+
+      {/* Background beams — only on marketing pages, lazily loaded */}
+      {showBeams && (
+        <div
+          className="fixed inset-0 -z-10 opacity-20 pointer-events-none"
+          aria-hidden="true"
+        >
+          <BackgroundBeams />
+        </div>
+      )}
 
       <GoogleOneTapLoginWrapper onSuccess={handleLoginSuccess} />
 
@@ -126,11 +144,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
       />
 
       {/* Main Content Wrapper with Adaptive Padding */}
-      <main className={cn(
-        "flex-1 transition-all duration-500",
-        !hideDesktopNav ? "lg:mt-20" : "mt-0",
-        !hideMobileNav ? "pb-20 lg:pb-0" : "pb-0"
-      )}>
+      <main
+        className={cn(
+          "flex-1 transition-all duration-300",
+          !hideDesktopNav ? "lg:mt-20" : "mt-0",
+          !hideMobileNav ? "pb-20 lg:pb-0" : "pb-0"
+        )}
+      >
         {children}
       </main>
 
