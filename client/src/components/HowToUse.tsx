@@ -7,7 +7,7 @@ import Link from "next/link";
 
 // ─────────────────────────────────────────────────────────────────
 // 🎬  CHANGE THIS to update the YouTube video anywhere on the site
-const YOUTUBE_VIDEO_ID = "V8lBIDdHdcs";
+const YOUTUBE_VIDEO_ID = "8E99L3nYn2U";
 // ─────────────────────────────────────────────────────────────────
 
 const STEPS = [
@@ -209,19 +209,6 @@ export default function HowToUse() {
                     className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-opacity duration-300"
                   />
 
-                  {/* Dark gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/20" />
-
-                  {/* Play button */}
-                  <div className="relative z-10 flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center group-hover:scale-110 group-hover:bg-white/20 transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)]">
-                      <Play size={28} className="text-white ml-1.5" fill="white" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-white font-bold text-sm">Watch the Full Demo</p>
-                      <p className="text-neutral-400 text-xs mt-0.5">See how PaperXify works in 2 minutes</p>
-                    </div>
-                  </div>
 
                   {/* YouTube badge */}
                   <div className="absolute bottom-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/60 border border-white/10 backdrop-blur-sm">

@@ -69,7 +69,17 @@ export default function SuccessStoriesClient({ initialStories }: SuccessStoriesC
 
   // Empty State Handling
   if (stories.length === 0) {
-    return <LoaderX />;
+    return (
+      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-4">
+        <h2 className="text-2xl md:text-4xl font-black uppercase tracking-widest mb-4">No Stories Found</h2>
+        <p className="text-neutral-400 mb-8 max-w-md text-center">We couldn't load the success stories at this time. Please check your connection or try again later.</p>
+        <Link href="/">
+          <Button className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-wider px-6 py-3 rounded-xl shadow-lg active:scale-95 transition-all text-xs">
+            Return Home
+          </Button>
+        </Link>
+      </div>
+    );
   }
 
   return (
