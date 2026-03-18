@@ -1,4 +1,4 @@
-﻿const mongoose = require("mongoose");
+const mongoose = require("mongoose");
 const Note = require("../models/Note");
 const User = require("../models/User");
 const Comment = require("../models/Comment");
@@ -349,20 +349,34 @@ ${transcript}
 
     let figures;
     try {
+      // Try direct parse
       figures = JSON.parse(resultText);
-    } catch {
-      const cleaned = resultText
-        .replace(/```json|```/g, "")
-        .replace(/[\r\n]/g, "")
-        .trim();
-      figures = JSON.parse(cleaned);
+    } catch (e) {
+      // Robust JSON extraction using regex
+      const arrayMatch = resultText.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        try {
+          figures = JSON.parse(arrayMatch[0]);
+        } catch (e2) {
+          // One last attempt: clean common markdown garbage
+          const cleaned = arrayMatch[0].replace(/```json|```/g, "").trim();
+          try {
+            figures = JSON.parse(cleaned);
+          } catch (e3) {
+            console.error("Final legacy JSON parse attempt failed:", e3.message);
+            return null;
+          }
+        }
+      } else {
+        return null;
+      }
     }
 
-    console.log("Generated Figures:", figures);
+    console.log("Generated Figure Topics:", figures);
     return figures;
   } catch (err) {
     console.error("Error generating image data:", err);
-    throw err;
+    return null; // Fail gracefully
   }
 }
 

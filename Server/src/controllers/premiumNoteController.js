@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Note = require('../models/Note');
 const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
+const { generateStudyImages } = require('../services/imageGenerationService');
 
 const PREMIUM_MODELS = ['parikshasarthi', 'vyavastha'];
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -232,94 +233,25 @@ function formatDuration(seconds) {
   return `${minutes} minute${minutes > 1 ? 's' : ''}`;
 }
 
-// Function to get image links from Google Custom Search
-const getImgLink = async (query, count = 1) => {
-  try {
-    const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
-    const cx = process.env.GOOGLE_SEARCH_CX;
-
-    const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
-      query
-    )}&cx=${cx}&searchType=image&num=${count}&key=${apiKey}`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!data.items || data.items.length === 0) {
-      console.log("No images found for query:", query);
-      return [];
-    }
-
-    const blockedDomains = [
-      "instagram.com",
-      "facebook.com",
-      "twitter.com",
-      "youtube.com",
-      "youtube.in",
-      "tiktok.com",
-      "snapchat.com",
-      "linkedin.com",
-      "flickr.com",
-      "vimeo.com",
-      "quora.com",
-      "medium.com",
-      "whatsapp.com",
-      "telegram.org",
-      "discord.com",
-      "weibo.com",
-      "vk.com",
-      "twitch.tv",
-      "netflix.com",
-      "hulu.com",
-      "primevideo.com",
-      "spotify.com",
-      "soundcloud.com",
-      "bandcamp.com",
-      "mixcloud.com",
-      "patreon.com",
-    ];
-    
-    const imgLinks = data.items
-      .filter(item => !blockedDomains.some(domain => item.displayLink.includes(domain)))
-      .map(item => item.link);
-
-    return imgLinks;
-  } catch (err) {
-    console.error("Error fetching image links:", err);
-    return [];
-  }
-};
-
-// Function to generate objects array {title, img_url} from figure names
-const generateImgObjects = async (figures) => {
-  const result = [];
-
-  for (const title of figures) {
-    const links = await getImgLink(title, 1);
-    result.push({
-      title,
-      img_url: links.length > 0 ? links[0] : null,
-    });
-  }
-
-  return result;
-};
-
+// Extract relevant figure/topic names from the transcript using AI
+// These names are passed to the AI image generator as prompts
 async function generateImgGEnAI(transcript, language = 'English') {
   if (!transcript) {
     throw new Error("Transcript is required for image generation!");
   }
 
-  const languageInstruction = language !== 'English' ? 
-    `Generate figure names in ${language} language.` : 
+  const languageInstruction = language !== 'English' ?
+    `Generate figure names in ${language} language.` :
     'Generate figure names in English.';
 
-  const prompt = `For the following transcript, generate figure names in a strict JSON array format. 
-- Minimum 1 and Maximum 5 items. 
-- Do not add any extra text, explanation, or formatting. 
+  const prompt = `For the following transcript, generate figure/topic names suitable for educational image generation in a strict JSON array format.
+- Minimum 1 and Maximum 6 items.
+- Each item should be a short, descriptive noun phrase (3-6 words max) that can be used as an AI image generation prompt.
+- Focus on concrete visual concepts: diagrams, scientific processes, anatomical structures, historical events, mathematical concepts, engineering systems, etc.
+- Do not add any extra text, explanation, or formatting.
 - ${languageInstruction}
-- If the transcript is NOT about educational, technical, or book-related content, return "none". 
-- If no figure is required (because no proper educational figure exists), return "none". 
+- If the transcript is NOT about educational, technical, or book-related content, return "none".
+- If no clear visual concept exists, return "none".
 
 Transcript:
 ${transcript}
@@ -329,7 +261,7 @@ ${transcript}
     const messages = [
       {
         role: "system",
-        content: "You are a helpful assistant that generates relevant figure names for educational content. Return only JSON array or 'none'."
+        content: "You are a helpful assistant that identifies key visual concepts from educational transcripts for AI image generation. Return only a JSON array of short descriptive phrases, or 'none'."
       },
       {
         role: "user",
@@ -339,7 +271,7 @@ ${transcript}
 
     const response = await openRouterChatCompletion(messages, {
       temperature: 0.3,
-      max_tokens: 500
+      max_tokens: 2000 // Increased to prevent truncation
     });
 
     if (!response.success) {
@@ -354,20 +286,34 @@ ${transcript}
 
     let figures;
     try {
+      // Try direct parse
       figures = JSON.parse(resultText);
-    } catch {
-      const cleaned = resultText
-        .replace(/```json|```/g, "")
-        .replace(/[\r\n]/g, "")
-        .trim();
-      figures = JSON.parse(cleaned);
+    } catch (e) {
+      // Robust JSON extraction using regex
+      const arrayMatch = resultText.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        try {
+          figures = JSON.parse(arrayMatch[0]);
+        } catch (e2) {
+          // One last attempt: clean common markdown garbage
+          const cleaned = arrayMatch[0].replace(/```json|```/g, "").trim();
+          try {
+            figures = JSON.parse(cleaned);
+          } catch (e3) {
+            console.error("Final Premium JSON parse attempt failed:", e3.message);
+            return null;
+          }
+        }
+      } else {
+        return null;
+      }
     }
 
-    console.log("Generated Figures:", figures);
+    console.log("Generated Figure Topics:", figures);
     return figures;
   } catch (err) {
-    console.error("Error generating image data:", err);
-    throw err;
+    console.error("Error generating figure topics:", err);
+    return null; // Fail gracefully - image generation is non-critical
   }
 }
 
@@ -375,111 +321,293 @@ ${transcript}
 const getPremiumModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, settings = {}) => {
   const { language = 'English', detailLevel = 'Standard Notes' } = settings;
 
-  // --- 1. SHARED CONFIGURATION ---
-  const languageInstruction = language !== 'English' ? `Generate all content in ${language} language.` : 'Generate all content in English.';
-  const userInstructions = userPrompt ? `\n**Additional User Instructions:** ${userPrompt}` : '';
+  const languageInstruction = language !== 'English'
+    ? `IMPORTANT: Write ALL content — headings, explanations, bullets, labels, questions — entirely in ${language}. Do not mix languages.`
+    : 'Write all content in precise, academic English.';
 
-  // Detail level instructions
-  const detailInstructions = {
-    'Brief Summary': 'Create a concise summary focusing only on key concepts.',
-    'Standard Notes': 'Create balanced notes with main concepts and examples.',
-    'Comprehensive': 'Create an in-depth study guide with detailed explanations.',
-    'Bullet Points Only': 'Create a structured bullet-point list.'
+  const userInstructions = userPrompt
+    ? `\nThe user provided these extra instructions — follow them precisely: "${userPrompt}"`
+    : '';
+
+  const detailConfig = {
+    'Brief Summary': 'Cover only the most critical concepts. Be concise — maximum impact, minimum words.',
+    'Standard Notes': 'Cover all major concepts with proper explanations, examples, and context.',
+    'Comprehensive': 'Cover everything exhaustively. Leave no concept unexplained. Include edge cases, nuances, worked examples, and cross-concept links.',
+    'Bullet Points Only': 'Use bullet/numbered lists throughout. No prose paragraphs. Use nested lists for sub-points.'
   };
+  const depthInstruction = detailConfig[detailLevel] || detailConfig['Standard Notes'];
 
-  const detailInstruction = detailInstructions[detailLevel] || detailInstructions['Standard Notes'];
+  // ─── SHARED CORE INTELLIGENCE LAYER ──────────────────────────────────────
+  // The AI must THINK before it writes — understand the content, THEN synthesize it.
+  const coreIntelligence = `
+**YOUR ROLE: Expert Academic Content Synthesizer**
 
-  // The Base Prompt ensures technical compliance (No Markdown, Pure HTML)
-  const basePrompt = `You are an elite educational AI using the ${model} engine. 
-  Your task is to convert a video transcript into a **High-End, HTML-Formatted Study Document**.
+You have been given a raw video transcript. You must NOT transcribe, copy, or directly paraphrase it.
+Instead, follow this 3-step cognitive process:
 
-  **TECHNICAL RULES (STRICT):**
-  1. Output **ONLY HTML** content to go inside a <body> tag. DO NOT write <html>, <head>, or <body> tags.
-  2. **NO MARKDOWN**. Do not use **bold**, ## headers, or tables in markdown. Use <b>, <h2>, <table> tags.
-  3. **INLINE STYLES ONLY**. Do not generate <style> blocks. Every tag must have a style="..." attribute.
-  4. **Font:** Use "Segoe UI, Roboto, Helvetica Neue, sans-serif".
-  5. **Spacing:** Use generous padding/margin. No walls of text.
-  
-  **CONTEXT:**
-  - ${languageInstruction}
-  - ${detailInstruction}
-  ${userInstructions}
-  - Video URL for linking: ${videoUrl}
-  `;
+═══ STEP 1 — DEEP UNDERSTANDING ═══
+Read the entire transcript and extract:
+  ① Subject domain (e.g., Data Structures, Organic Chemistry, World History, Economics...)
+  ② Central topic / problem / skill being taught
+  ③ Every key concept, term, theorem, formula, process, or principle mentioned
+  ④ The pedagogical logic — how does the instructor build from simple to complex?
+  ⑤ All examples, analogies, case studies, and real-world applications used
+  ⑥ Common mistakes, misconceptions, or "gotchas" mentioned or implied
 
-  // --- 2. MODEL SPECIFIC PROMPTS ---
+═══ STEP 2 — KNOWLEDGE SYNTHESIS ═══
+Using your extracted understanding, construct study material that:
+  • Is completely original — your own expert words, not the instructor's
+  • Teaches the concepts from first principles
+  • Explains the "why" and "how", not just the "what"
+  • Includes your own examples if the transcript's examples are weak
+  • Organizes knowledge logically, not in transcription order
+  • ${depthInstruction}
 
-  // =========================================================
-  // 🔥 MODEL: PARIKSHA-SARTHI (Exam-Focused Q&A)
-  // Vibe: High Energy, Question Bank, Flashcards, "Important!"
-  // =========================================================
+═══ STEP 3 — PREMIUM PRESENTATION ═══
+Format the synthesized knowledge as a stunning, print-ready HTML document.
+
+**NON-NEGOTIABLE RULES:**
+✗ NEVER copy raw sentences from the transcript
+✗ NEVER write "the speaker mentions" / "in this video" / "the instructor explains"
+✗ NEVER produce thin or shallow content — this is PREMIUM tier
+✗ NEVER use <style> blocks, <html>, <head>, or <body> tags
+✗ NEVER use markdown syntax (**, ##, etc.) — use proper HTML tags only
+✓ ALWAYS use inline style="..." on every single HTML element
+✓ ALWAYS write as if you are the world's best textbook author on this subject
+✓ ALWAYS produce rich, dense, high-value study content
+`;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔥 PARIKSHA-SARTHI — High-Intensity Exam Preparation Engine
+  // ═══════════════════════════════════════════════════════════════════════════
   if (model === 'parikshasarthi') {
-    return `${basePrompt}
+    return `
+${coreIntelligence}
 
-**MODE: PARIKSHA-SARTHI (High Energy Flashcards & Question Bank)**
+**${languageInstruction}**${userInstructions}
 
-**Design Language:**
-- Vibe: High energy, intense study session, test-prep focused.
-- Colors: Electric Purple (#9333ea) primary, Warning Orange (#f97316) for "Important!" alerts.
-- Layout: Grid-based flashcards, quick Q&A pairs.
+**DESIGN SYSTEM — PARIKSHA-SARTHI (Exam Powerhouse):**
+Font: "Segoe UI, Roboto, sans-serif" | Line-height: 1.7
+Theme: Deep Purple (#7c3aed) primary | Orange (#ea580c) for critical alerts | Emerald (#059669) for correct/positive
+Background: #faf5ff (light purple tint)
 
-**Structure Instructions:**
-1. **Header:** <h1> with an energetic, modern style.
-2. **Important Callout:** <div style="background: #fff7ed; border-left: 5px solid #ea580c; padding: 15px; margin: 20px 0; border-radius: 4px;">🚨 <strong>CRITICAL CONCEPT:</strong> [Concept]</div>
-3. **Flashcard Grid:** <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
-     <div style="background: #faf5ff; border: 2px solid #d8b4fe; border-radius: 12px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-       <div style="font-weight: 900; color: #7e22ce; margin-bottom: 8px;">Q: [Question based on transcript]</div>
-       <div style="color: #4b5563; font-size: 14px;">A: [Concise Answer]</div>
-       <div style="margin-top: 10px;"><a href="${videoUrl}&t=Xs" style="background:#e9d5ff; color:#7e22ce; padding:3px 8px; border-radius:12px; text-decoration:none; font-size:11px; font-weight:bold;">⏱️ Review Concept</a></div>
-     </div>
-   </div>
+**MANDATORY DOCUMENT STRUCTURE:**
 
-**Execution Strategy:**
-- Process this transcript: "${transcript}"
-- Aggressively convert paragraphs into Question/Answer flashcards.
-- Identify the 3 most crucial takeaways and wrap them in the "Important Callout" HTML.
-- Inject images from ${images_json} above the relevant flashcard grids if it aids active recall.
+━━━ SECTION 1: EXAM HEADER ━━━
+<div style="background:linear-gradient(135deg,#4c1d95,#7c3aed);border-radius:14px;padding:28px 32px;margin-bottom:24px;color:#fff">
+  <div style="font-size:11px;letter-spacing:2px;font-weight:700;opacity:0.7;text-transform:uppercase;margin-bottom:8px">EXAM PREPARATION GUIDE • [SUBJECT]</div>
+  <h1 style="font-size:28px;font-weight:900;margin:0 0 8px;line-height:1.2">[TOPIC TITLE]</h1>
+  <p style="opacity:0.8;font-size:13px;margin:0">Source: <a href="${videoUrl}" style="color:#c4b5fd;text-decoration:none">Video Reference ↗</a></p>
+</div>
+
+━━━ SECTION 2: EXAM READINESS CHECKLIST ━━━
+<div style="background:#fff;border:2px solid #ede9fe;border-radius:12px;padding:20px 24px;margin-bottom:22px">
+  <h3 style="color:#6d28d9;font-size:15px;font-weight:700;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px">📋 What You Must Know for the Exam</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="background:#f5f3ff;border-radius:8px;padding:10px 14px;font-size:13px;color:#5b21b6;font-weight:500">☐ [Core concept 1]</div>
+    ... (6-10 items, 2-column grid)
+  </div>
+</div>
+
+━━━ SECTION 3: CONCEPT BREAKDOWN (one card per major concept) ━━━
+<div style="background:#fff;border:1px solid #ede9fe;border-radius:12px;padding:22px 26px;margin-bottom:18px;box-shadow:0 2px 10px rgba(124,58,237,0.07)">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px">CONCEPT</span>
+    <h2 style="font-size:18px;font-weight:700;color:#1e1b4b;margin:0">[Concept Name]</h2>
+  </div>
+  <p style="color:#374151;font-size:14px;line-height:1.75;margin:0 0 14px">[Clear expert explanation of the concept — written as a textbook author]</p>
+
+  <!-- Critical Alert box — use for exam-critical points -->
+  <div style="background:#fff7ed;border-left:4px solid #ea580c;padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0">
+    <b style="color:#9a3412;font-size:13px">🚨 EXAM TRAP / COMMON MISTAKE:</b>
+    <p style="color:#374151;font-size:13px;margin:6px 0 0">[What students commonly get wrong about this concept and how to avoid it]</p>
+  </div>
+
+  <!-- Memory Tip -->
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin:12px 0">
+    <b style="color:#14532d;font-size:13px">🧠 Memory Trick:</b>
+    <span style="color:#374151;font-size:13px"> [Mnemonic, analogy, or memory hook]</span>
+  </div>
+
+  <!-- Formula/Rule box if applicable -->
+  <div style="background:#1e1b4b;color:#e0e7ff;border-radius:8px;padding:12px 18px;margin:12px 0;font-family:monospace;font-size:14px">
+    [Formula / Definition / Rule — use for maths, science, law, etc.]
+  </div>
+
+  <!-- Timestamp -->
+  <a href="${videoUrl}&t=0s" style="display:inline-block;background:#f5f3ff;color:#7c3aed;padding:4px 12px;border-radius:20px;text-decoration:none;font-size:11px;font-weight:600;margin-top:10px">⏱️ Review in video</a>
+</div>
+
+━━━ SECTION 4: Q&A FLASHCARD BANK ━━━
+<h2 style="font-size:20px;font-weight:800;color:#1e1b4b;margin:28px 0 16px">🃏 Exam Question Bank</h2>
+<p style="color:#6b7280;font-size:13px;margin:0 0 18px">Cover each answer and attempt to recall before revealing</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+  <!-- Generate 8-15 Q&A pairs based on the topic -->
+  <div style="background:#fff;border:2px solid #ede9fe;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(124,58,237,0.06)">
+    <div style="font-size:12px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Q</div>
+    <p style="font-weight:600;color:#1e1b4b;font-size:14px;margin:0 0 12px">[Exam-style question that tests deep understanding]</p>
+    <div style="border-top:1px dashed #ddd6fe;padding-top:10px">
+      <div style="font-size:12px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">A</div>
+      <p style="color:#374151;font-size:13px;line-height:1.65;margin:0">[Precise, exam-ready answer]</p>
+    </div>
+  </div>
+</div>
+
+━━━ SECTION 5: IMAGES ━━━
+Embed images from: ${images_json}
+Place each image inside a relevant concept card like:
+<div style="text-align:center;margin:16px 0">
+  <img src="[img_url]" alt="[concept]" style="max-width:100%;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.10)">
+  <p style="color:#9ca3af;font-size:12px;font-style:italic;margin:6px 0 0">Visual: [descriptive caption]</p>
+</div>
+
+━━━ SECTION 6: HIGH-YIELD SUMMARY ━━━
+<div style="background:linear-gradient(135deg,#1e1b4b,#4c1d95);color:#fff;border-radius:14px;padding:26px 30px;margin-top:30px">
+  <h3 style="font-size:18px;font-weight:800;margin:0 0 16px">⚡ High-Yield Summary — Must Know for Exam</h3>
+  <ul style="margin:0;padding-left:18px">
+    <li style="font-size:14px;line-height:1.7;margin-bottom:9px;opacity:0.9">[Most critical point — written as a bullet a student would memorize]</li>
+    ... (7-12 bullets — the absolute essentials)
+  </ul>
+</div>
+
+**NOW SYNTHESIZE THE TRANSCRIPT BELOW INTO THE ABOVE EXAM GUIDE:**
+${transcript}
 `;
   }
 
-  // =========================================================
-  // 🏛️ MODEL: VYAVASTHA (The Organizer / Comprehensive)
-  // Vibe: Formal, university-level, structured textbook
-  // =========================================================
-  else if (model === 'vyavastha') {
-    return `${basePrompt}
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🏛️ VYAVASTHA — Academic Deep Dive / Comprehensive Textbook
+  // ═══════════════════════════════════════════════════════════════════════════
+  return `
+${coreIntelligence}
 
-**MODE: VYAVASTHA (The Organizer / Academic)**
+**${languageInstruction}**${userInstructions}
 
-**Design Language:**
-- Vibe: Formal, university-level, structured textbook.
-- Colors: Oxford Blue (#0f172a), Crimson Red (#991b1b) accents.
-- Typography: Use standard sans-serif for body, but serif for primary headings to look academic.
+**DESIGN SYSTEM — VYAVASTHA (Academic Excellence):**
+Font: "Georgia, 'Times New Roman', serif" for headings | "Segoe UI, Arial, sans-serif" for body
+Primary: #0f172a | Accent: #0369a1 | Subheading: #1e40af | Success: #14532d | Warning: #92400e
+Background: #ffffff | Print-optimized, formal academic aesthetic
 
-**Structure Instructions:**
-1. **Header:** Clean <h1> with a solid bottom border.
-2. **Table of Contents:** An organized <ul> block with links to internal sections at the top.
-3. **Academic Sections:** Clear <h2> headings.
-4. **Timeline/Process Flow (Use when sequence matters):** <div style="border-left: 3px solid #cbd5e1; padding-left: 20px; margin-left: 10px; margin-bottom: 25px;">
-     <div style="position: relative; margin-bottom: 15px;">
-       <span style="position: absolute; left: -28px; top: 2px; background: #0f172a; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></span>
-       <strong style="color: #0f172a;">[Timestamp/Step]</strong>: [Detailed Explanation]
-     </div>
-   </div>
-5. **Data Integration:** Use basic HTML <table> elements if comparing concepts.
+**MANDATORY DOCUMENT STRUCTURE:**
 
-**Execution Strategy:**
-- Process this transcript: "${transcript}"
-- Generate a comprehensive, highly detailed document. Do not summarize too aggressively; utilize the full context window.
-- Create a Table of Contents right after the title.
-- Embed images from ${images_json} inside formal "Figure 1.1" style captions centered on the page.
-- Ensure the document reads like a published research paper or textbook chapter.
+━━━ SECTION 1: ACADEMIC TITLE PAGE ━━━
+<div style="border-bottom:3px solid #0f172a;padding-bottom:24px;margin-bottom:28px">
+  <p style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#64748b;margin:0 0 8px">[SUBJECT DOMAIN] • ACADEMIC STUDY GUIDE</p>
+  <h1 style="font-size:32px;font-weight:900;color:#0f172a;margin:0 0 10px;line-height:1.15;font-family:Georgia,'Times New Roman',serif">[TOPIC TITLE]</h1>
+  <p style="color:#64748b;font-size:13px;margin:0">Reference: <a href="${videoUrl}" style="color:#0369a1;text-decoration:none">Source Material ↗</a></p>
+</div>
+
+━━━ SECTION 2: ABSTRACT / EXECUTIVE OVERVIEW ━━━
+<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:20px 24px;margin-bottom:28px">
+  <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#475569;margin:0 0 10px">Abstract</h3>
+  <p style="color:#1e293b;font-size:15px;line-height:1.8;margin:0">[2-3 sentence expert summary of what this study guide covers and why it matters — written like a textbook abstract]</p>
+</div>
+
+━━━ SECTION 3: TABLE OF CONTENTS ━━━
+<div style="border:1px solid #e2e8f0;border-radius:8px;padding:18px 22px;margin-bottom:28px">
+  <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 12px">Contents</h3>
+  <ol style="margin:0;padding-left:18px;color:#0369a1">
+    <li style="font-size:14px;margin-bottom:6px"><a href="#sec1" style="color:#0369a1;text-decoration:none">[Section 1 Name]</a></li>
+    ... (one entry per section)
+  </ol>
+</div>
+
+━━━ SECTION 4: CORE ACADEMIC SECTIONS (one per major topic/concept) ━━━
+<!-- Each section gets a proper anchor ID and academic formatting -->
+<section id="sec1" style="margin-bottom:36px">
+  <h2 style="font-size:22px;font-weight:700;color:#0f172a;font-family:Georgia,'Times New Roman',serif;border-bottom:2px solid #e2e8f0;padding-bottom:10px;margin:0 0 18px">[Section N: Concept Name]</h2>
+  
+  <!-- Main explanation — 2-4 substantial paragraphs -->
+  <p style="color:#1e293b;font-size:15px;line-height:1.85;margin:0 0 14px">[Expert, well-structured explanation of the concept. Be thorough. Think textbook chapter.]</p>
+  
+  <!-- Definition sidebar style -->
+  <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:14px 0">
+    <b style="color:#1e40af;font-size:13px;display:block;margin-bottom:4px">Formal Definition</b>
+    <p style="color:#1d4ed8;font-size:14px;line-height:1.7;margin:0;font-style:italic">[Precise, formal definition]</p>
+  </div>
+
+  <!-- Image placement if relevant -->
+  ${images_json ? `
+  <div style="text-align:center;margin:20px 0">
+    <img src="[relevant img_url from images_json]" alt="[concept]" style="max-width:90%;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.12)">
+    <p style="color:#64748b;font-size:12px;font-style:italic;margin:8px 0 0">Figure [N]. [Descriptive caption explaining what the image shows]</p>
+  </div>` : ''}
+
+  <!-- Key points -->
+  <ul style="padding-left:22px;margin:14px 0">
+    <li style="color:#1e293b;font-size:14px;line-height:1.75;margin-bottom:10px">[Key academic point — written with precision]</li>
+  </ul>
+
+  <!-- Example / Case Study box -->
+  <div style="background:#fff7ed;border-left:4px solid #d97706;padding:14px 18px;border-radius:0 8px 8px 0;margin:14px 0">
+    <b style="color:#92400e;font-size:13px;display:block;margin-bottom:6px">Worked Example / Case Study</b>
+    <p style="color:#374151;font-size:14px;line-height:1.75;margin:0">[Step-by-step example showing the concept in action]</p>
+  </div>
+
+  <!-- Process Flow / Timeline (use when there's a sequence) -->
+  <div style="border-left:3px solid #cbd5e1;padding-left:22px;margin:18px 0">
+    <div style="position:relative;margin-bottom:16px;padding-left:10px">
+      <span style="position:absolute;left:-27px;top:4px;background:#0f172a;width:11px;height:11px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #94a3b8;display:block"></span>
+      <b style="color:#0f172a;font-size:14px">[Step / Phase / Stage]</b>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:4px 0 0">[Detailed explanation of this step]</p>
+    </div>
+    ... (repeat for each step in a process)
+  </div>
+</section>
+
+━━━ SECTION 5: COMPARATIVE ANALYSIS TABLE ━━━
+<!-- Use when 2 or more concepts/approaches can be compared -->
+<div style="overflow-x:auto;margin-bottom:30px">
+  <h2 style="font-size:20px;font-weight:700;color:#0f172a;font-family:Georgia,'Times New Roman',serif;border-bottom:2px solid #e2e8f0;padding-bottom:8px;margin:0 0 16px">Comparative Analysis</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:14px">
+    <thead>
+      <tr style="background:#0f172a">
+        <th style="padding:12px 16px;text-align:left;font-weight:600;color:#f1f5f9;border:1px solid #334155">[Criterion]</th>
+        <th style="padding:12px 16px;text-align:left;font-weight:600;color:#f1f5f9;border:1px solid #334155">[Approach A]</th>
+        <th style="padding:12px 16px;text-align:left;font-weight:600;color:#f1f5f9;border:1px solid #334155">[Approach B]</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#f8fafc">
+        <td style="padding:11px 16px;color:#374151;border:1px solid #e2e8f0;font-weight:500">[criterion]</td>
+        <td style="padding:11px 16px;color:#374151;border:1px solid #e2e8f0">[value]</td>
+        <td style="padding:11px 16px;color:#374151;border:1px solid #e2e8f0">[value]</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+━━━ SECTION 6: ACADEMIC GLOSSARY ━━━
+<div style="border:1px solid #e2e8f0;border-radius:8px;padding:20px 24px;margin-bottom:28px">
+  <h2 style="font-size:20px;font-weight:700;color:#0f172a;font-family:Georgia,'Times New Roman',serif;margin:0 0 16px">Glossary of Terms</h2>
+  <dl style="margin:0;columns:2;gap:24px">
+    <dt style="font-weight:700;color:#0369a1;font-size:14px;margin:10px 0 3px;break-inside:avoid">[Term]</dt>
+    <dd style="color:#374151;font-size:13px;line-height:1.7;margin:0 0 8px;padding-left:14px;border-left:2px solid #bfdbfe;break-inside:avoid">[Precise academic definition with context]</dd>
+  </dl>
+</div>
+
+━━━ SECTION 7: CONCLUSION & FURTHER STUDY ━━━
+<div style="background:#0f172a;color:#f1f5f9;border-radius:12px;padding:26px 30px;margin-top:28px">
+  <h2 style="font-size:20px;font-weight:700;font-family:Georgia,'Times New Roman',serif;margin:0 0 14px">Conclusion</h2>
+  <p style="font-size:14px;line-height:1.85;opacity:0.9;margin:0 0 18px">[2-3 sentence scholarly conclusion — what has been established, its significance, and how it connects to broader knowledge]</p>
+  
+  <h3 style="font-size:15px;font-weight:700;margin:0 0 12px;opacity:0.8">Key Takeaways</h3>
+  <ul style="margin:0 0 18px;padding-left:18px">
+    <li style="font-size:14px;line-height:1.7;margin-bottom:8px;opacity:0.9">[critical takeaway]</li>
+  </ul>
+
+  <h3 style="font-size:15px;font-weight:700;margin:0 0 12px;opacity:0.8">Discussion Questions</h3>
+  <ol style="margin:0;padding-left:18px">
+    <li style="font-size:14px;line-height:1.7;margin-bottom:7px;opacity:0.85">[Open-ended question encouraging critical thinking]</li>
+    ... (3-5 questions)
+  </ol>
+</div>
+
+**NOW SYNTHESIZE THE TRANSCRIPT BELOW INTO THE ABOVE ACADEMIC STUDY GUIDE:**
+${transcript}
 `;
-  }
-
-  // Fallback to base prompt if no match
-  return basePrompt; 
 };
+
 
 // YouTube info fetching with duration
 async function fetchYouTubeInfo(url) {
@@ -523,6 +651,17 @@ async function fetchYouTubeInfo(url) {
 function estimateTokenCount(text) {
   // Rough estimation: ~4 characters per token for English
   return Math.ceil(text.length / 4);
+}
+
+// Strip markdown code fences that AI models sometimes wrap HTML output in
+function stripMarkdownFences(content) {
+  if (!content) return content;
+  // Remove opening fence: ```html, ```HTML, ```xml, or plain ```
+  // and the corresponding closing ```
+  return content
+    .replace(/^```[a-zA-Z]*\s*\n?/m, '')
+    .replace(/```\s*$/m, '')
+    .trim();
 }
 
 exports.createNote = async (req, res) => {
@@ -675,24 +814,21 @@ exports.createNote = async (req, res) => {
       });
     }
 
-    // STEP 2: Generate images for premium models
+    // STEP 2: Generate AI images for premium models
+    // Premium tier → max 6 images via Fireworks AI + Cloudflare R2
     let img_with_url = [];
-    console.log('Generating images for premium model...');
-    const figures = await generateImgGEnAI(transcript, settings?.language);
-    if (figures && figures.length > 0) {
-      console.log(`Generated ${figures.length} figures, fetching images...`);
-      img_with_url = await generateImgObjects(figures);
-      // Filter out entries with null or invalid img_url
-      img_with_url = img_with_url.filter(img => {
-        if (!img.img_url || !img.img_url.trim().length) return false;
-        try {
-          new URL(img.img_url);
-          return true;
-        } catch {
-          return false;
-        }
-      });
-      console.log(`Found ${img_with_url.length} valid images`);
+    console.log('🎨 Generating AI images for premium model (premium tier, max 6)...');
+    try {
+      const figures = await generateImgGEnAI(transcript, settings?.language);
+      if (figures && figures.length > 0) {
+        img_with_url = await generateStudyImages(figures, 'premium');
+        console.log(`✅ AI image generation complete: ${img_with_url.length} image(s) ready`);
+      } else {
+        console.log('No visual topics identified – skipping image generation');
+      }
+    } catch (imgErr) {
+      console.error('⚠️ AI image generation failed (non-critical):', imgErr.message);
+      // Continue without images – premium note generation must not fail
     }
 
     // STEP 3: Generate premium PDF content using OpenRouter
@@ -747,7 +883,7 @@ exports.createNote = async (req, res) => {
       title: videoTitle,
       slug: note_slug,
       transcript: transcript,
-      content: content,
+      content: stripMarkdownFences(content),
       status: 'completed',
       visibility: 'private',
       img_with_url: img_with_url,

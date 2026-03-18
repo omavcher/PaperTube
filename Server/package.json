@@ -9,6 +9,7 @@
     "postinstall": "npx puppeteer browsers install chrome"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1011.0",
     "@google-cloud/local-auth": "^3.0.1",
     "@google/genai": "^1.16.0",
     "@google/generative-ai": "^0.24.1",

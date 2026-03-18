@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Note = require('../models/Note');
 const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
+const { generateStudyImages } = require('../services/imageGenerationService');
 
 const FREE_MODELS = ['sankshipta', 'bhashasetu'];
 const MAX_FREE_VIDEO_LENGTH = 2 * 60 * 60; // 2 hours in seconds for free users
@@ -332,94 +333,36 @@ function estimateTokenCount(text) {
   return Math.ceil(text.length / 4);
 }
 
-// Function to get image links from Google Custom Search
-const getImgLink = async (query, count = 1) => {
-  try {
-    const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
-    const cx = process.env.GOOGLE_SEARCH_CX;
+// Strip markdown code fences that AI models sometimes wrap HTML output in
+function stripMarkdownFences(content) {
+  if (!content) return content;
+  // Remove opening fence: ```html, ```HTML, ```xml, or plain ```
+  // and the corresponding closing ```
+  return content
+    .replace(/^```[a-zA-Z]*\s*\n?/m, '')
+    .replace(/```\s*$/m, '')
+    .trim();
+}
 
-    const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
-      query
-    )}&cx=${cx}&searchType=image&num=${count}&key=${apiKey}`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!data.items || data.items.length === 0) {
-      console.log("No images found for query:", query);
-      return [];
-    }
-
-    const blockedDomains = [
-      "instagram.com",
-      "facebook.com",
-      "twitter.com",
-      "youtube.com",
-      "youtube.in",
-      "tiktok.com",
-      "snapchat.com",
-      "linkedin.com",
-      "flickr.com",
-      "vimeo.com",
-      "quora.com",
-      "medium.com",
-      "whatsapp.com",
-      "telegram.org",
-      "discord.com",
-      "weibo.com",
-      "vk.com",
-      "twitch.tv",
-      "netflix.com",
-      "hulu.com",
-      "primevideo.com",
-      "spotify.com",
-      "soundcloud.com",
-      "bandcamp.com",
-      "mixcloud.com",
-      "patreon.com",
-    ];
-    
-    const imgLinks = data.items
-      .filter(item => !blockedDomains.some(domain => item.displayLink.includes(domain)))
-      .map(item => item.link);
-
-    return imgLinks;
-  } catch (err) {
-    console.error("Error fetching image links:", err);
-    return [];
-  }
-};
-
-// Function to generate objects array {title, img_url} from figure names
-const generateImgObjects = async (figures) => {
-  const result = [];
-
-  for (const title of figures) {
-    const links = await getImgLink(title, 1);
-    result.push({
-      title,
-      img_url: links.length > 0 ? links[0] : null,
-    });
-  }
-
-  return result;
-};
-
+// Extract relevant figure/topic names from the transcript using AI
+// These names are passed to the AI image generator as prompts
 async function generateImgGEnAI(transcript, language = 'English') {
   if (!transcript) {
     throw new Error("Transcript is required for image generation!");
   }
 
-  const languageInstruction = language !== 'English' ? 
-    `Generate figure names in ${language} language.` : 
+  const languageInstruction = language !== 'English' ?
+    `Generate figure names in ${language} language.` :
     'Generate figure names in English.';
 
-  const prompt = `For the following transcript, generate figure names in a strict JSON array format. 
-- Minimum 1 and Maximum 5 items. 
-- Do not add any extra text, explanation, or formatting. 
+  const prompt = `For the following transcript, generate figure/topic names suitable for educational image generation in a strict JSON array format.
+- Minimum 1 and Maximum 5 items.
+- Each item should be a short, descriptive noun phrase (3-6 words max) that can be used as an image generation prompt.
+- Focus on concrete visual concepts (diagrams, processes, scientific concepts, historical events, etc.).
+- Do not add any extra text, explanation, or formatting.
 - ${languageInstruction}
-- If the transcript is NOT about educational, technical, or book-related content, return "none". 
-- If no figure is required (because no proper educational figure exists), return "none". 
+- If the transcript is NOT about educational, technical, or book-related content, return "none".
+- If no visual concept exists, return "none".
 
 Transcript:
 ${transcript}
@@ -429,7 +372,7 @@ ${transcript}
     const messages = [
       {
         role: "system",
-        content: "You are a helpful assistant that generates relevant figure names for educational content. Return only JSON array or 'none'."
+        content: "You are a helpful assistant that identifies key visual concepts from educational transcripts for AI image generation. Return only a JSON array of short descriptive phrases, or 'none'."
       },
       {
         role: "user",
@@ -439,7 +382,7 @@ ${transcript}
 
     const response = await openRouterChatCompletion(messages, {
       temperature: 0.3,
-      max_tokens: 500
+      max_tokens: 2000  // Increased to prevent truncation
     });
 
     if (!response.success) {
@@ -454,20 +397,34 @@ ${transcript}
 
     let figures;
     try {
+      // Try direct parse
       figures = JSON.parse(resultText);
-    } catch {
-      const cleaned = resultText
-        .replace(/```json|```/g, "")
-        .replace(/[\r\n]/g, "")
-        .trim();
-      figures = JSON.parse(cleaned);
+    } catch (e) {
+      // Robust JSON extraction using regex
+      const arrayMatch = resultText.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        try {
+          figures = JSON.parse(arrayMatch[0]);
+        } catch (e2) {
+          // One last attempt: clean common markdown garbage
+          const cleaned = arrayMatch[0].replace(/```json|```/g, "").trim();
+          try {
+            figures = JSON.parse(cleaned);
+          } catch (e3) {
+            console.error("Final Premium JSON parse attempt failed:", e3.message);
+            return null;
+          }
+        }
+      } else {
+        return null;
+      }
     }
 
-    console.log("Generated Figures:", figures);
+    console.log("Generated Figure Topics:", figures);
     return figures;
   } catch (err) {
-    console.error("Error generating image data:", err);
-    throw err;
+    console.error("Error generating figure topics:", err);
+    return null; // Fail gracefully - image generation is non-critical
   }
 }
 
@@ -630,85 +587,259 @@ const fetchTranscript = async (videoId) => {
 const getModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, settings = {}) => {
   const { language = 'English', detailLevel = 'Standard Notes' } = settings;
 
-  // Language instruction
-  const languageInstruction = language !== 'English' ?
-    `Generate all content in ${language} language.` :
-    'Generate all content in English.';
+  const languageInstruction = language !== 'English'
+    ? `IMPORTANT: Write ALL content — headings, explanations, bullets, labels — entirely in ${language}. Do not mix languages.`
+    : 'Write all content in clear, academic English.';
 
-  // Detail level instructions
-  const detailInstructions = {
-    'Brief Summary': 'Create a concise summary focusing only on key concepts.',
-    'Standard Notes': 'Create balanced notes with main concepts and examples.',
-    'Comprehensive': 'Create an in-depth study guide with detailed explanations.',
-    'Bullet Points Only': 'Create a structured bullet-point list.'
+  const userInstructions = userPrompt
+    ? `\nThe user has given these additional instructions — follow them precisely: "${userPrompt}"`
+    : '';
+
+  // Detail level controls depth and length
+  const detailConfig = {
+    'Brief Summary': {
+      instruction: 'Produce a compact summary: 1 overview paragraph + the 5-7 most critical concepts as bullets. Skip minor details.',
+      depth: 'concise'
+    },
+    'Standard Notes': {
+      instruction: 'Produce comprehensive study notes covering all major topics in good depth with explanations and examples.',
+      depth: 'standard'
+    },
+    'Comprehensive': {
+      instruction: 'Produce an exhaustive, graduate-level study guide. Cover every concept, sub-concept, edge case, and nuance. Include worked examples, comparisons, and detailed explanations.',
+      depth: 'exhaustive'
+    },
+    'Bullet Points Only': {
+      instruction: 'Produce a structured bullet-point outline only. Use nested bullets for sub-points. No prose paragraphs.',
+      depth: 'bullets'
+    }
   };
 
-  const detailInstruction = detailInstructions[detailLevel] || detailInstructions['Standard Notes'];
-  const userInstructions = userPrompt ? `\n**Additional User Instructions:** ${userPrompt}` : '';
+  const { instruction: depthInstruction } = detailConfig[detailLevel] || detailConfig['Standard Notes'];
 
-  // --- BASE PROMPT ---
-  const basePrompt = `You are an expert educational content generator. Your task is to convert a video transcript into a **visually stunning, HTML-formatted PDF document**.
+  // ─── CORE INTELLIGENCE LAYER ─────────────────────────────────────────────
+  // This is the key change: the AI must UNDERSTAND first, then WRITE study material.
+  // It must NOT copy-paste or paraphrase the transcript.
+  const coreIntelligenceRules = `
+**YOUR TASK — READ THIS CAREFULLY:**
+You are an expert educator and academic writer. You have been given a raw video transcript.
+Your job is NOT to convert the transcript into notes. Your job is to:
 
-  **CRITICAL TECH SPECS:**
-  1. Output **ONLY pure HTML** (inside the body). No <html>, <head>, <body> tags.
-  2. **NO MARKDOWN**. Do not use **bold**, ## Header, or - bullet. Use <b>, <h2>, <li>.
-  3. **INLINE STYLES ONLY**. Everything must have style="..." attributes.
-  4. Font Family: Use "Helvetica Neue, Helvetica, Arial, sans-serif".
-  5. Line Height: Use '1.6' for readability.
+STEP 1 — UNDERSTAND: Read the entire transcript and identify:
+  • The subject domain (e.g., mathematics, history, biology, programming, finance, etc.)
+  • The central topic or problem being addressed
+  • All key concepts, terms, principles, formulas, or processes taught
+  • The logical flow and structure of the ideas
+  • Real-world applications or examples mentioned
 
-  **CONTEXT:**
-  - ${languageInstruction}
-  - ${detailInstruction}
-  ${userInstructions}
-  `;
+STEP 2 — SYNTHESIZE: From your understanding, write ORIGINAL study material that a student
+  can use to learn this topic from scratch, even without watching the video. This means:
+  • Use your own explanations — do NOT copy sentences from the transcript
+  • Define every key term properly
+  • Explain the "why" behind concepts, not just the "what"
+  • Use concrete examples to illustrate abstract ideas
+  • Show connections between concepts
+  • ${depthInstruction}
 
-  // --- LEVEL 1: SANKSHIPTA (Clean Minimalist) ---
-  const sankshiptaPrompt = `${basePrompt}
+STEP 3 — FORMAT: Present the synthesized knowledge as a beautiful, well-structured HTML document.
 
-  **MODE: SANKSHIPTA (Clean Minimalist Notes)**
-  
-  **Design Language:**
-  - Vibe: Clean, academic, distraction-free.
-  - Colors: Dark Slate headers (#334155), Soft Blue accents (#3b82f6).
-  - Background: White/Light Gray.
+**ABSOLUTE RULES:**
+• NEVER copy raw transcript text into the output
+• NEVER write "the speaker says" or "in this video"
+• NEVER start with "This transcript covers..." 
+• ALWAYS write as if YOU are the expert author of a textbook
+• Output ONLY valid HTML with inline styles — no <html>, <head>, <body>, <style> tags
+• No markdown syntax — use <b>, <h2>, <ul>, <table> etc.
+• Every HTML tag must have a style="..." attribute
+`;
 
-  **Structure Instructions:**
-  1. **Header:** Title with bottom border.
-  2. **Summary:** Boxed summary section.
-  3. **Content:** Clear <h2> headings and <ul> lists.
+  // ─── SANKSHIPTA: Clean Academic Notes ────────────────────────────────────
+  if (model === 'sankshipta') {
+    return `
+${coreIntelligenceRules}
 
-  **Execution:**
-  - Process this transcript: "${transcript}"
-  - Create a clean document.
-  - NO IMAGES.
-  `;
+**${languageInstruction}**${userInstructions}
 
-  // --- LEVEL 2: BHASHASETU (Premium Visual) ---
-  const bhashasetuPrompt = `${basePrompt}
+**DESIGN SYSTEM — SANKSHIPTA (Clean Academic):**
+Font: "Segoe UI, Helvetica Neue, Arial, sans-serif" | Line-height: 1.7
+Colors: Primary headings #1e293b, Section headings #2563eb, Accents #059669, Body text #374151
+Background: #ffffff | Max-width: 800px | Padding: 40px
 
-  **MODE: BHASHASETU (Premium Visual Study Guide)**
+**DOCUMENT STRUCTURE — produce ALL of these sections:**
 
-  **Design Language:**
-  - Vibe: Modern textbook, rich media, card-based layout.
-  - Colors: Royal Blue (#2563eb) primary, Emerald Green (#059669) accents.
-  
-  **Content Strategy:**
-  - Insert images from this list: ${images_json} contextually after relevant paragraphs.
-  - Use "Cards" (divs with shadows) for main concepts.
+1. SUBJECT BADGE + TITLE
+   <div style="background:#eff6ff;border-left:5px solid #2563eb;padding:6px 14px;border-radius:4px;display:inline-block;font-size:12px;font-weight:700;color:#2563eb;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">[SUBJECT DOMAIN]</div>
+   <h1 style="font-size:28px;font-weight:800;color:#1e293b;margin:0 0 6px;line-height:1.3">[TOPIC TITLE]</h1>
+   <p style="color:#64748b;font-size:14px;margin:0 0 24px">Based on: <a href="${videoUrl}" style="color:#2563eb;text-decoration:none">Source Video ↗</a></p>
 
-  **HTML Components:**
-  1. **Title:** Styled <h1> with blue underline.
-  2. **Cards:** <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px;">
-  3. **Timestamps:** <a href="${videoUrl}&t=Xs" style="background:#e0f2fe; color:#0284c7; padding:2px 8px; border-radius:12px; text-decoration:none; font-size:12px;">▶ Watch</a>
+2. LEARNING OBJECTIVES BOX
+   <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:18px 22px;margin-bottom:28px">
+     <h3 style="color:#166534;font-size:14px;font-weight:700;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.5px">📋 Learning Objectives</h3>
+     <ul style="margin:0;padding-left:18px">
+       <li style="color:#15803d;font-size:14px;margin-bottom:6px">What you will understand after studying this</li>
+       ... (3–5 objectives)
+     </ul>
+   </div>
 
-  **Execution:**
-  - Process this transcript: "${transcript}"
-  - Create a beautiful, magazine-quality HTML document.
-  - Integrate images.
-  `;
+3. CORE CONCEPT SECTIONS — for EACH major concept in the topic:
+   <h2 style="font-size:20px;font-weight:700;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:8px;margin:28px 0 14px">[Concept Name]</h2>
+   <p style="color:#374151;font-size:15px;line-height:1.75;margin:0 0 14px">[Clear explanation of the concept in your own words]</p>
+   
+   For definitions: <div style="background:#fafafa;border-left:3px solid #2563eb;padding:12px 16px;margin:12px 0;border-radius:0 6px 6px 0">
+     <b style="color:#1e293b;font-size:14px">Definition:</b> <span style="color:#374151;font-size:14px">[precise definition]</span>
+   </div>
+   
+   For examples: <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:14px 18px;margin:12px 0">
+     <b style="color:#c2410c;font-size:13px">💡 Example:</b><br>
+     <span style="color:#374151;font-size:14px">[concrete example that illustrates the concept]</span>
+   </div>
+   
+   Key points: <ul style="padding-left:20px;margin:10px 0">
+     <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:8px">[point]</li>
+   </ul>
 
-  return model === 'sankshipta' ? sankshiptaPrompt : bhashasetuPrompt;
+4. KEY TERMS GLOSSARY (if applicable)
+   <h2 style="font-size:20px;font-weight:700;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:8px;margin:28px 0 14px">📖 Key Terms</h2>
+   <dl style="margin:0">
+     <dt style="font-weight:700;color:#1e293b;font-size:15px;margin:12px 0 4px">[Term]</dt>
+     <dd style="color:#374151;font-size:14px;line-height:1.65;margin-left:16px">[Definition and context]</dd>
+   </dl>
+
+5. SUMMARY TAKEAWAYS
+   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-top:32px">
+     <h3 style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 12px">✅ Key Takeaways</h3>
+     <ul style="margin:0;padding-left:18px">
+       <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:8px">[takeaway]</li>
+     </ul>
+   </div>
+
+**NOW PROCESS THIS TRANSCRIPT AND GENERATE THE COMPLETE STUDY DOCUMENT:**
+${transcript}
+`;
+  }
+
+  // ─── BHASHASETU: Visual Study Guide with Images ──────────────────────────
+  return `
+${coreIntelligenceRules}
+
+**${languageInstruction}**${userInstructions}
+
+**DESIGN SYSTEM — BHASHASETU (Premium Visual Study Guide):**
+Font: "Segoe UI, Roboto, Helvetica Neue, sans-serif" | Line-height: 1.75
+Primary: #2563eb | Success: #059669 | Warning: #d97706 | Danger: #dc2626 | Dark: #1e293b
+Background: #f8fafc | Card background: #ffffff
+
+**AVAILABLE IMAGES:**
+You have these AI-generated images to embed — use them contextually near relevant concepts:
+${images_json}
+For each image: <div style="text-align:center;margin:20px 0">
+  <img src="[img_url]" alt="[title]" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">
+  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: [descriptive caption]</p>
+</div>
+
+**DOCUMENT STRUCTURE — produce ALL of these sections:**
+
+1. HERO HEADER
+   <div style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);border-radius:14px;padding:32px;margin-bottom:28px;color:#fff">
+     <div style="font-size:11px;font-weight:700;letter-spacing:2px;opacity:0.75;text-transform:uppercase;margin-bottom:8px">[SUBJECT DOMAIN]</div>
+     <h1 style="font-size:30px;font-weight:800;margin:0 0 10px;line-height:1.25">[TOPIC TITLE]</h1>
+     <p style="opacity:0.85;font-size:14px;margin:0">Comprehensive study guide • <a href="${videoUrl}" style="color:#93c5fd;text-decoration:none">Source Video ↗</a></p>
+   </div>
+
+2. LEARNING OBJECTIVES CARD
+   <div style="background:#fff;border:1px solid #bbf7d0;border-radius:12px;padding:20px 24px;margin-bottom:24px;box-shadow:0 2px 8px rgba(5,150,105,0.08)">
+     <h3 style="color:#065f46;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 12px">📋 What You Will Learn</h3>
+     <ul style="margin:0;padding-left:20px">
+       <li style="color:#047857;font-size:14px;line-height:1.65;margin-bottom:7px">[objective]</li>
+     </ul>
+   </div>
+
+3. CONCEPT CARDS — for EACH major concept, create a styled card:
+   <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+     <h2 style="font-size:19px;font-weight:700;color:#1e293b;margin:0 0 14px;display:flex;align-items:center;gap:8px">
+       <span style="background:#dbeafe;color:#2563eb;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">CONCEPT</span>
+       [Concept Name]
+     </h2>
+     <p style="color:#374151;font-size:15px;line-height:1.75;margin:0 0 14px">[Clear, original explanation of the concept]</p>
+     
+     [Insert image here if relevant — use the provided images_json]
+     
+     <!-- Definition box if needed -->
+     <div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0">
+       <span style="font-weight:700;color:#1d4ed8;font-size:13px">Definition: </span>
+       <span style="color:#1e40af;font-size:14px">[precise definition]</span>
+     </div>
+     
+     <!-- Example box if needed -->
+     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin:12px 0">
+       <b style="color:#92400e;font-size:13px">💡 Example</b><br>
+       <span style="color:#374151;font-size:14px;line-height:1.65">[concrete example]</span>
+     </div>
+     
+     <!-- Key points -->
+     <ul style="padding-left:18px;margin:12px 0 0">
+       <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:7px">[key point]</li>
+     </ul>
+     
+     <!-- Timestamp link if extractable from transcript -->
+     <div style="margin-top:14px">
+       <a href="${videoUrl}&t=0s" style="background:#f1f5f9;color:#64748b;padding:4px 12px;border-radius:20px;text-decoration:none;font-size:12px;font-weight:500">▶ Watch in video</a>
+     </div>
+   </div>
+
+4. COMPARISON TABLE (use when comparing 2+ related concepts or approaches)
+   <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow-x:auto">
+     <h2 style="font-size:18px;font-weight:700;color:#1e293b;margin:0 0 16px">Comparison / Overview</h2>
+     <table style="width:100%;border-collapse:collapse;font-size:14px">
+       <thead>
+         <tr style="background:#f1f5f9">
+           <th style="padding:10px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0">[Column]</th>
+           <th style="padding:10px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0">[Column]</th>
+         </tr>
+       </thead>
+       <tbody>
+         <tr style="border-bottom:1px solid #f1f5f9">
+           <td style="padding:10px 14px;color:#374151">[value]</td>
+           <td style="padding:10px 14px;color:#374151">[value]</td>
+         </tr>
+       </tbody>
+     </table>
+   </div>
+
+5. CRITICAL POINTS ALERT (for must-know facts)
+   <div style="background:#fff7ed;border-left:5px solid #f97316;border-radius:0 10px 10px 0;padding:16px 20px;margin:20px 0">
+     <b style="color:#ea580c;font-size:14px">🚨 Important to Remember</b>
+     <ul style="margin:8px 0 0;padding-left:18px">
+       <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:6px">[critical point]</li>
+     </ul>
+   </div>
+
+6. KEY TERMS GLOSSARY
+   <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+     <h2 style="font-size:18px;font-weight:700;color:#1e293b;margin:0 0 16px">📖 Glossary of Key Terms</h2>
+     <dl style="margin:0">
+       <dt style="font-weight:700;color:#2563eb;font-size:15px;margin:12px 0 3px">[Term]</dt>
+       <dd style="color:#374151;font-size:14px;line-height:1.65;margin-left:0;padding-left:14px;border-left:2px solid #dbeafe">[Definition with context]</dd>
+     </dl>
+   </div>
+
+7. SUMMARY + REVIEW QUESTIONS
+   <div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid #a7f3d0;border-radius:12px;padding:22px 26px;margin-top:28px">
+     <h3 style="color:#065f46;font-size:17px;font-weight:700;margin:0 0 14px">✅ Summary & Key Takeaways</h3>
+     <ul style="margin:0 0 18px;padding-left:20px">
+       <li style="color:#047857;font-size:14px;line-height:1.65;margin-bottom:8px">[takeaway]</li>
+     </ul>
+     <h3 style="color:#065f46;font-size:15px;font-weight:700;margin:0 0 10px">🧠 Review Questions</h3>
+     <ol style="margin:0;padding-left:20px">
+       <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:7px">[thought-provoking question based on content]</li>
+     </ol>
+   </div>
+
+**NOW PROCESS THIS TRANSCRIPT AND GENERATE THE COMPLETE VISUAL STUDY GUIDE:**
+${transcript}
+`;
 };
+
 
 // YouTube info fetching with duration
 async function fetchYouTubeInfo(url) {
@@ -928,25 +1059,22 @@ exports.createNote = async (req, res) => {
       });
     }
 
-    // STEP 2: Generate images for bhashasetu model with language support
+    // STEP 2: Generate AI images for bhashasetu model
+    // Free tier → max 2 images via Fireworks AI + Cloudflare R2
     let img_with_url = [];
     if (model === 'bhashasetu') {
-      console.log('Generating images for bhashasetu model...');
-      const figures = await generateImgGEnAI(transcript, settings?.language);
-      if (figures && figures.length > 0) {
-        console.log(`Generated ${figures.length} figures, fetching images...`);
-        img_with_url = await generateImgObjects(figures);
-        // Filter out entries with null or invalid img_url
-        img_with_url = img_with_url.filter(img => {
-          if (!img.img_url || !img.img_url.trim().length) return false;
-          try {
-            new URL(img.img_url);
-            return true;
-          } catch {
-            return false;
-          }
-        });
-        console.log(`Found ${img_with_url.length} valid images`);
+      console.log('🎨 Generating AI images for bhashasetu model (free tier, max 2)...');
+      try {
+        const figures = await generateImgGEnAI(transcript, settings?.language);
+        if (figures && figures.length > 0) {
+          img_with_url = await generateStudyImages(figures, 'free');
+          console.log(`✅ AI image generation complete: ${img_with_url.length} image(s) ready`);
+        } else {
+          console.log('No visual topics identified – skipping image generation');
+        }
+      } catch (imgErr) {
+        console.error('⚠️ AI image generation failed (non-critical):', imgErr.message);
+        // Continue without images – note generation must not fail because of this
       }
     }
 
@@ -1013,7 +1141,7 @@ exports.createNote = async (req, res) => {
       title: videoTitle,
       slug: note_slug,
       transcript: transcript,
-      content: response.content,
+      content: stripMarkdownFences(response.content),
       status: 'completed',
       visibility: 'public',
       img_with_url: img_with_url,
