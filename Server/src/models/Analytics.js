@@ -6,6 +6,12 @@ const AnalyticsSchema = new mongoose.Schema({
   email: { type: String, default: null },
   isLoggedIn: { type: Boolean, default: false },
   source: { type: String, default: "Direct" }, // Instagram, WhatsApp, etc.
+  utmSource: { type: String, default: null },
+  utmMedium: { type: String, default: null },
+  utmCampaign: { type: String, default: null },
+  utmTerm: { type: String, default: null },
+  utmContent: { type: String, default: null },
+  referrer: { type: String, default: null },
   path: { type: String }, // e.g., /home, /products
   userAgent: { type: String }, // Browser/Device info
   timestamp: { type: Date, default: Date.now },

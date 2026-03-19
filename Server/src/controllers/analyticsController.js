@@ -4,12 +4,18 @@ const ToolAnalytics = require("../models/ToolAnalytics");
 // Controller to track user activity
 exports.trackUserActivity = async (req, res) => {
   try {
-    const { userId, email, isLoggedIn, source, path, userAgent } = req.body;
+    const { userId, email, isLoggedIn, source, utmSource, utmMedium, utmCampaign, utmTerm, utmContent, referrer, path, userAgent } = req.body;
     const analyticsEntry = new Analytics({
       userId,
       email,
         isLoggedIn,
         source,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmTerm,
+        utmContent,
+        referrer,
         path,
         userAgent,
     });

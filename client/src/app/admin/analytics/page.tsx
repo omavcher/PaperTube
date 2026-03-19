@@ -23,6 +23,12 @@ interface AnalyticsLog {
   path?: string;      
   userAgent?: string; 
   timestamp: string;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmTerm?: string | null;
+  utmContent?: string | null;
+  referrer?: string | null;
 }
 
 export default function AnalyticsMonitor() {
@@ -65,9 +71,19 @@ export default function AnalyticsMonitor() {
     return logs.filter(log => {
       const sourceSafe = log.source || "";
       const emailSafe = log.email || "";
+      const query = searchQuery.toLowerCase();
       
-      const matchesSearch = emailSafe.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            sourceSafe.toLowerCase().includes(searchQuery.toLowerCase());
+      const paramMatches = 
+          (log.utmCampaign || "").toLowerCase().includes(query) ||
+          (log.utmMedium || "").toLowerCase().includes(query) ||
+          (log.utmSource || "").toLowerCase().includes(query) ||
+          (log.utmTerm || "").toLowerCase().includes(query) ||
+          (log.utmContent || "").toLowerCase().includes(query);
+
+      const matchesSearch = 
+          emailSafe.toLowerCase().includes(query) || 
+          sourceSafe.toLowerCase().includes(query) ||
+          paramMatches;
                             
       const matchesFilter = filter === "All" || 
                            (filter === "Auth" && log.isLoggedIn) || 
@@ -119,7 +135,7 @@ export default function AnalyticsMonitor() {
         <div className="relative flex-1">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-600" size={16} />
           <Input 
-            placeholder="Search Node Email or Source..." 
+            placeholder="Search Email, Source, or Campaign..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-black border-white/5 h-14 pl-14 rounded-2xl focus:border-red-600/50 text-[10px] font-black uppercase tracking-widest text-white"
@@ -196,19 +212,34 @@ export default function AnalyticsMonitor() {
 
                   {/* Middle: Path & Source */}
                   <div className="flex flex-wrap items-center gap-3 md:gap-8">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[7px] font-black text-neutral-700 uppercase tracking-widest">Entry_Path</span>
-                      <div className="flex items-center gap-1.5">
-                        <Navigation size={10} className="text-red-600" />
-                        <span className="text-[10px] font-black text-neutral-400 uppercase italic truncate max-w-[100px]">{log.path || "/"}</span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-6">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[7px] font-black text-neutral-700 uppercase tracking-widest">Entry_Path</span>
+                          <div className="flex items-center gap-1.5">
+                            <Navigation size={10} className="text-red-600" />
+                            <span className="text-[10px] font-black text-neutral-400 uppercase italic truncate max-w-[100px]">{log.path || "/"}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[7px] font-black text-neutral-700 uppercase tracking-widest">Traffic_Source</span>
+                          <div className="flex items-center gap-1.5">
+                            <SourceIcon source={log.source || "Direct"} />
+                            <span className="text-[10px] font-black text-blue-500 uppercase tracking-tighter">{log.source || "Direct"}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[7px] font-black text-neutral-700 uppercase tracking-widest">Traffic_Source</span>
-                      <div className="flex items-center gap-1.5">
-                        <SourceIcon source={log.source || "Direct"} />
-                        <span className="text-[10px] font-black text-blue-500 uppercase tracking-tighter">{log.source || "Direct"}</span>
-                      </div>
+                      
+                      {/* Advanced UTM Badges */}
+                      {(log.utmCampaign || log.utmMedium || log.utmSource || log.utmTerm || log.utmContent) && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {log.utmCampaign && <span className="text-[8px] bg-red-600/10 text-red-500 border border-red-600/20 px-1.5 py-0.5 rounded font-bold tracking-[0.1em]">C: {log.utmCampaign}</span>}
+                          {log.utmMedium && <span className="text-[8px] bg-purple-600/10 text-purple-500 border border-purple-600/20 px-1.5 py-0.5 rounded font-bold tracking-[0.1em]">M: {log.utmMedium}</span>}
+                          {log.utmSource && <span className="text-[8px] bg-blue-600/10 text-blue-500 border border-blue-600/20 px-1.5 py-0.5 rounded font-bold tracking-[0.1em]">S: {log.utmSource}</span>}
+                          {log.utmTerm && <span className="text-[8px] bg-amber-600/10 text-amber-500 border border-amber-600/20 px-1.5 py-0.5 rounded font-bold tracking-[0.1em]">T: {log.utmTerm}</span>}
+                          {log.utmContent && <span className="text-[8px] bg-emerald-600/10 text-emerald-500 border border-emerald-600/20 px-1.5 py-0.5 rounded font-bold tracking-[0.1em]">CN: {log.utmContent}</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
 
