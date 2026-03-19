@@ -389,25 +389,23 @@ export default function HomeMain() {
             /* ================= INPUT STATE ================= */
             <motion.div 
               key="input-form"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)", transition: { duration: 0.5 } }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
               className="flex flex-col items-center space-y-10"
             >
              <MegaOfferBanner className="mb-8" />
              {/* Branding */}
               <div className="text-center space-y-5 md:space-y-6 mb-6 md:mb-10">
                 
-                {/* Status Badge (Brand name moved here) */}
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/50 border border-white/10 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400 backdrop-blur-md shadow-lg"
+                {/* Status Badge */}
+                <div 
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/80 border border-white/10 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400 shadow-lg"
                 >
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" style={{ boxShadow: '0 0 6px #ef4444' }} />
                   Paperxify Engine Active
-                </motion.div>
+                </div>
                 
                 {/* Main Title & Subtitle */}
                 <div className="space-y-4 md:space-y-5">
@@ -420,8 +418,8 @@ export default function HomeMain() {
                 </div>
               </div>
 
-              {/* Main Interaction Card */}
-              <div className="w-full max-w-3xl bg-neutral-900/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-2 relative">
+              {/* Main Interaction Card — single backdrop-blur, not stacked */}
+              <div className="w-full max-w-3xl bg-neutral-900/60 border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-2 relative" style={{ backdropFilter: 'blur(12px)' }}>
                 
                 {/* --- Token Status Bar (Only for non-premium logged-in users) --- */}
                 {isLoggedIn && !hasPremiumAccess && userTokens !== null && (
@@ -450,26 +448,19 @@ export default function HomeMain() {
                   {loading && <Loader2 className="animate-spin text-neutral-500" size={18} />}
                 </div>
 
-                {/* Video Info Preview */}
-                <AnimatePresence>
-                  {videoInfo && !loading && (
-                    <motion.div 
-                      key="video-preview-card"
-                      initial={{ height: 0, opacity: 0 }} 
-                      animate={{ height: 'auto', opacity: 1 }} 
-                      exit={{ height: 0, opacity: 0 }} 
-                      className="overflow-hidden"
-                    >
-                       <div className="mt-2 mx-1 p-3 bg-neutral-800/20 rounded-xl border border-white/5 flex items-center gap-4">
-                          <img src={videoInfo.thumbnail} className="w-20 h-12 rounded-lg object-cover bg-neutral-800" alt="thumb" />
-                          <div className="min-w-0">
-                            <h3 className="text-sm font-bold text-white truncate">{videoInfo.title}</h3>
-                            <p className="text-xs text-neutral-500 font-mono">{videoInfo.formattedDuration} • {videoInfo.channel}</p>
-                          </div>
-                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Video Info Preview — CSS transition, no motion.div for height */}
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-out"
+                  style={{ maxHeight: videoInfo && !loading ? '80px' : '0', opacity: videoInfo && !loading ? 1 : 0 }}
+                >
+                   <div className="mt-2 mx-1 p-3 bg-neutral-800/20 rounded-xl border border-white/5 flex items-center gap-4">
+                      <img src={videoInfo?.thumbnail} className="w-20 h-12 rounded-lg object-cover bg-neutral-800" alt="thumb" />
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-white truncate">{videoInfo?.title}</h3>
+                        <p className="text-xs text-neutral-500 font-mono">{videoInfo?.formattedDuration} • {videoInfo?.channel}</p>
+                      </div>
+                   </div>
+                </div>
 
                 {/* Text Area */}
                 <div className="p-1 mt-2">
@@ -579,27 +570,23 @@ export default function HomeMain() {
               key="loader"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
               className="w-full flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 min-h-[60vh]"
             >
               
-              {/* Left: Elegant Thumbnail Card */}
+              {/* Left: Thumbnail Card — no nested framer animate, just CSS */}
               <div className="relative w-full md:w-[480px] aspect-video">
-                 <div className="absolute -inset-4 bg-blue-500/10 blur-3xl rounded-full opacity-50 animate-pulse"></div>
+                 {/* Glow — CSS only, no animate-pulse on blur-3xl (GPU expensive) */}
+                 <div className="absolute -inset-4 rounded-full opacity-30 pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.3) 0%, transparent 70%)' }} />
                  
-                 <motion.div 
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="relative w-full h-full rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl z-10 bg-neutral-900"
-                 >
+                 <div className="relative w-full h-full rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl z-10 bg-neutral-900">
                     <img 
                       src={videoInfo?.thumbnail || "https://img.youtube.com/vi/placeholder/maxresdefault.jpg"} 
                       className="w-full h-full object-cover opacity-50 scale-105" 
                       alt="Processing Video"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
                     
                     <div className="absolute bottom-0 left-0 right-0 p-8">
                        <div className="inline-flex items-center gap-3 mb-3">
@@ -610,7 +597,7 @@ export default function HomeMain() {
                          {videoInfo?.title || "Parsing Video Data..."}
                        </h2>
                     </div>
-                 </motion.div>
+                 </div>
               </div>
 
               {/* Right: Minimal Vertical Stepper */}

@@ -3,21 +3,62 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import HomeMain from "@/components/HomeMain";
 
 // ─── Lazy load everything below the fold ────────────────────────────────────
-// This prevents heavy components from being parsed/executed until the user
-// actually scrolls near them, dramatically improving initial load time and
-// Time-to-Interactive on low-end devices.
-const HomeWorkspace    = lazy(() => import("@/components/HomeWorkspace"));
-const HowToUse         = lazy(() => import("@/components/HowToUse"));
-const ToolsGlimpse     = lazy(() => import("@/components/ToolsGlimpse"));
-const PricingShowcase  = lazy(() => import("@/components/PricingShowcase"));
-const ArcadeGlimpse    = lazy(() => import("@/components/ArcadeGlimpse"));
+const HomeWorkspace      = lazy(() => import("@/components/HomeWorkspace"));
+const HowToUse           = lazy(() => import("@/components/HowToUse"));
+const ToolsGlimpse       = lazy(() => import("@/components/ToolsGlimpse"));
+const PricingShowcase    = lazy(() => import("@/components/PricingShowcase"));
+const ArcadeGlimpse      = lazy(() => import("@/components/ArcadeGlimpse"));
 const FeatureHomeSection = lazy(() => import("@/components/FeatureHomeSection"));
-const Footer           = lazy(() => import("@/components/Footer"));
+const Footer             = lazy(() => import("@/components/Footer"));
 
-/** Thin Suspense wrapper — shows nothing while chunk loads (avoids layout shift) */
-function LazySection({ children }: { children: React.ReactNode }) {
+/**
+ * Smooth skeleton fallback — a shimmer bar that fades in/out.
+ * Prevents the abrupt "pop-in" that was causing the "not smooth" feel.
+ * Uses CSS animations only so it runs on the GPU compositor thread.
+ */
+function SectionSkeleton({ height = "200px" }: { height?: string }) {
   return (
-    <Suspense fallback={<div className="w-full min-h-[200px]" aria-hidden="true" />}>
+    <div
+      className="w-full"
+      style={{ minHeight: height, overflow: "hidden" }}
+      aria-hidden="true"
+    >
+      <style>{`
+        @keyframes shimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        .skeleton-shimmer {
+          background: linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(255,255,255,0.03) 40%,
+            rgba(255,255,255,0.06) 50%,
+            rgba(255,255,255,0.03) 60%,
+            transparent 100%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 2s ease-in-out infinite;
+        }
+      `}</style>
+      <div
+        className="skeleton-shimmer w-full rounded-2xl"
+        style={{ minHeight: height, background: "rgba(255,255,255,0.02)" }}
+      />
+    </div>
+  );
+}
+
+/** Lazy section wrapper with smooth skeleton while loading */
+function LazySection({
+  children,
+  skeletonHeight = "200px",
+}: {
+  children: React.ReactNode;
+  skeletonHeight?: string;
+}) {
+  return (
+    <Suspense fallback={<SectionSkeleton height={skeletonHeight} />}>
       {children}
     </Suspense>
   );
@@ -37,45 +78,45 @@ export default function HomeClient() {
         {/* HomeMain is always above-the-fold → eager load */}
         <HomeMain />
 
-        {/* Below-fold sections → lazy loaded */}
+        {/* Authenticated-only section */}
         {isAuthenticated && (
-          <LazySection>
+          <LazySection skeletonHeight="400px">
             <HomeWorkspace />
           </LazySection>
         )}
 
-        <LazySection>
+        <LazySection skeletonHeight="360px">
           <div className="w-full">
             <HowToUse />
           </div>
         </LazySection>
 
-        <LazySection>
+        <LazySection skeletonHeight="320px">
           <div className="w-full">
             <ToolsGlimpse />
           </div>
         </LazySection>
 
-        <LazySection>
+        <LazySection skeletonHeight="480px">
           <div className="w-full">
             <PricingShowcase />
           </div>
         </LazySection>
 
-        <LazySection>
+        <LazySection skeletonHeight="320px">
           <div className="w-full">
             <ArcadeGlimpse />
           </div>
         </LazySection>
 
-        <LazySection>
+        <LazySection skeletonHeight="280px">
           <section className="w-full">
             <FeatureHomeSection />
           </section>
         </LazySection>
       </main>
 
-      <LazySection>
+      <LazySection skeletonHeight="160px">
         <Footer />
       </LazySection>
     </div>
