@@ -869,6 +869,16 @@ export default function PricingSection() {
           if (verifyResult?.success) {
             toast.dismiss();
             toast.success("Payment Successful!");
+            
+            // Trigger Google Ads Conversion Event
+            if (typeof window !== 'undefined' && (window as any).gtag) {
+              (window as any).gtag('event', 'conversion', {
+                  'send_to': 'AW-363591459/u5W5CL_70YscEKPur60B',
+                  'value': paymentData.finalAmount || 1.0,
+                  'currency': 'INR'
+              });
+            }
+
             setTransactionResult({
               ...verifyResult.data,
               paymentId: response.razorpay_payment_id,
