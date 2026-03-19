@@ -18,10 +18,10 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import api from "@/config/api";
 import { cn } from "@/lib/utils";
+import { uploadToR2 } from "@/utils/r2Upload";
 
 // --- CONFIGURATION ---
-const CLOUDINARY_PRESET = "share-story";
-const CLOUDINARY_CLOUD_NAME = "dieklmzt6";
+// Cloudinary is deprecated, now using Cloudflare R2 via pre-signed URLs
 
 // --- AI PROMPT TEMPLATE (Updated with Tags) ---
 const AI_GENERATION_PROMPT = `
@@ -227,13 +227,8 @@ export default function AdminBlogPage() {
     setLoading(false);
   };
 
-  const uploadToCloudinary = async (file: File): Promise<string> => {
-    const data = new FormData();
-    data.append("file", file);
-    data.append("upload_preset", CLOUDINARY_PRESET);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: "POST", body: data });
-    const json = await res.json();
-    return json.secure_url;
+  const _uploadToR2 = async (file: File): Promise<string> => {
+    return await uploadToR2(file, "blog-images", true);
   };
 
   // --- AI PARSER LOGIC ---
@@ -294,7 +289,7 @@ export default function AdminBlogPage() {
   const handleImageUploadForBlock = async (id: string, file: File) => {
     try {
       toast.loading("Uploading asset...");
-      const url = await uploadToCloudinary(file);
+      const url = await _uploadToR2(file);
       updateBlock(id, "src", url);
       toast.dismiss();
       toast.success("Asset secure");
@@ -433,7 +428,7 @@ export default function AdminBlogPage() {
                   <UploadCloud size={14} />
                   <input type="file" className="hidden" onChange={async (e) => {
                     if(e.target.files?.[0]) {
-                      const url = await uploadToCloudinary(e.target.files[0]);
+                      const url = await _uploadToR2(e.target.files[0]);
                       setFormData(prev => ({ ...prev, coverImage: url }));
                     }
                   }} />

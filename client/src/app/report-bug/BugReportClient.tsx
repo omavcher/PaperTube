@@ -20,6 +20,7 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "@/config/api";
+import { uploadToR2 } from "@/utils/r2Upload";
 
 export default function BugReportClient() {
   const [title, setTitle] = useState("");
@@ -55,18 +56,9 @@ export default function BugReportClient() {
     let evidenceUrl = "";
 
     try {
-      // 1. Upload to Cloudinary
+      // 1. Upload to R2
       if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("upload_preset", "bug_report"); 
-        
-        const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/dieklmzt6/image/upload`, {
-          method: "POST",
-          body: formData,
-        });
-        const cloudData = await cloudRes.json();
-        evidenceUrl = cloudData.secure_url;
+        evidenceUrl = await uploadToR2(selectedFile, "bug-reports", false);
       }
 
       // 2. Get User Info safely

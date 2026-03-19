@@ -12,6 +12,7 @@ const SuccessStory = require('../models/SuccessStory');
 const BlogPost = require('../models/BlogPost');
 const Report = require("../models/Report");
 const Comment = require("../models/Comment");
+const r2Service = require("../utils/r2Service");
 
 exports.getDiagnostics = async (req, res) => {
   try {
@@ -1583,3 +1584,17 @@ exports.getCommentAnalytics = async (req, res) => {
     });
   }
 };
+
+exports.getPresignedUrl = async (req, res) => {
+  try {
+    const { fileName, contentType, folder } = req.body;
+    const { uploadUrl, publicUrl } = await r2Service.generatePresignedUploadUrl(
+      fileName,
+      contentType,
+      folder || 'admin-uploads'
+    );
+    res.status(200).json({ success: true, data: { uploadUrl, publicUrl } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

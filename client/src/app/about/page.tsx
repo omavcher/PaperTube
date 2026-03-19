@@ -38,7 +38,7 @@ export default function FounderPage() {
             <div className="absolute inset-0 bg-gradient-to-tr from-red-600 to-blue-600 rounded-[2.5rem] blur-2xl opacity-20 animate-pulse" />
             <div className="relative h-full w-full rounded-[2.5rem] overflow-hidden border border-white/10 bg-neutral-900/50 shadow-2xl group">
               <img 
-                src="/omAvcher.webp" 
+                src="/omawchar.webp" 
                 alt="Om Avchar" 
                 className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 grayscale group-hover:grayscale-0" 
               />

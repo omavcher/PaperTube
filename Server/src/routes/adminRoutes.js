@@ -30,6 +30,7 @@ router.post('/blog/create',adminAuth, adminController.createPost);
 router.get('/blog/all',adminAuth, adminController.getAllAdminPosts);
 router.patch('/blog/update/:id',adminAuth, adminController.updatePost);
 router.delete('/blog/delete/:id',adminAuth, adminController.deletePost);
+router.post('/r2/presign', adminAuth, adminController.getPresignedUrl);
 
 
 router.get('/content-analytics',adminAuth, adminController.getContentAnalytics);

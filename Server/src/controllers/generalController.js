@@ -6,6 +6,7 @@ const SuccessStory = require('../models/SuccessStory');
 const BlogPost = require('../models/BlogPost');
 const Quiz = require('../models/Quiz');
 const FlashcardSet = require('../models/FlashcardSet');
+const r2Service = require("../utils/r2Service");
 
 exports.reportBug = async (req, res) => {
   try {
@@ -310,6 +311,27 @@ exports.trackMetric = async (req, res) => {
     res.status(500).json({ success: false });
   }
 };
+
+exports.getPublicPresignedUrl = async (req, res) => {
+  try {
+    const { fileName, contentType, folder } = req.body;
+    // Limit folders for security
+    const allowedFolders = ['bug-reports', 'share-story'];
+    if (!allowedFolders.includes(folder)) {
+        return res.status(403).json({ success: false, message: "Invalid target folder" });
+    }
+
+    const { uploadUrl, publicUrl } = await r2Service.generatePresignedUploadUrl(
+      fileName,
+      contentType,
+      folder
+    );
+    res.status(200).json({ success: true, data: { uploadUrl, publicUrl } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 
 

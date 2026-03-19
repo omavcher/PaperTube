@@ -12,9 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import api from "@/config/api";
 import { cn } from "@/lib/utils";
 
+import { uploadToR2 } from "@/utils/r2Upload";
+
 // --- Configuration ---
-const CLOUDINARY_UPLOAD_PRESET = "share-story"; // Replace with your preset
-const CLOUDINARY_CLOUD_NAME = "dieklmzt6";       // Replace with your cloud name
+// Cloudinary is deprecated, now using Cloudflare R2 via pre-signed URLs
 
 const EXAM_OPTIONS = [
   "GATE", "NEET", "JEE Mains", 
@@ -64,19 +65,8 @@ export default function ShareStoryPage() {
     setPreviewUrl(null);
   };
 
-  const uploadToCloudinary = async (file: File): Promise<string> => {
-    const data = new FormData();
-    data.append("file", file);
-    data.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-      { method: "POST", body: data }
-    );
-    
-    if (!res.ok) throw new Error("Cloudinary upload failed");
-    const json = await res.json();
-    return json.secure_url;
+  const _uploadToR2 = async (file: File): Promise<string> => {
+    return await uploadToR2(file, "share-story", false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,7 +85,7 @@ export default function ShareStoryPage() {
       
       // 1. Upload to Cloudinary if image exists
       if (formData.avatar) {
-        avatarUrl = await uploadToCloudinary(formData.avatar);
+        avatarUrl = await _uploadToR2(formData.avatar);
       }
 
       // 2. Prepare formatted data for backend

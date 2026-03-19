@@ -16,9 +16,10 @@ import { toast } from "sonner";
 import api from "@/config/api";
 import { cn } from "@/lib/utils";
 
+import { uploadToR2 } from "@/utils/r2Upload";
+
 // --- Configuration ---
-const CLOUDINARY_UPLOAD_PRESET = "share-story";
-const CLOUDINARY_CLOUD_NAME = "dieklmzt6";
+// Cloudinary is deprecated, now using Cloudflare R2 via pre-signed URLs
 const EXAM_OPTIONS = ["GATE", "NEET", "JEE Mains", "JEE Advanced", "UPSC", "CAT", "MPSC", "Gov", "Other"];
 
 interface Story {
@@ -104,14 +105,8 @@ export default function AdminSuccessStories() {
     setIsModalOpen(true);
   };
 
-  const uploadToCloudinary = async (file: File): Promise<string> => {
-    const data = new FormData();
-    data.append("file", file);
-    data.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: "POST", body: data });
-    if (!res.ok) throw new Error("Cloudinary upload failed");
-    const json = await res.json();
-    return json.secure_url;
+  const _uploadToR2 = async (file: File): Promise<string> => {
+    return await uploadToR2(file, "success-stories", true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,7 +115,7 @@ export default function AdminSuccessStories() {
     try {
       let avatarUrl = formData.existingAvatar;
       if (formData.avatarFile) {
-        avatarUrl = await uploadToCloudinary(formData.avatarFile);
+        avatarUrl = await _uploadToR2(formData.avatarFile);
       }
 
       const payload = {

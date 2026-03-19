@@ -5,6 +5,7 @@ const generalController = require("../controllers/generalController");
 router.post("/bugs/report", generalController.reportBug);
 router.post("/feedback/submit", generalController.submitFeedback);
 router.post('/game-stats', generalController.postGameStats);
+router.post('/r2/presign', generalController.getPublicPresignedUrl);
 // Matches your frontend call: api.post("/success-stories/share", payload)
 router.post('/success-stories/share', generalController.shareStory);
 
