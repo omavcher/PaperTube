@@ -156,6 +156,20 @@ export default function RootLayout({
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
+        {/* Google Analytics / Tag Manager (AW-363591459) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-363591459"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){window.dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'AW-363591459');
+          `}
+        </Script>
       </head>
       <body className="antialiased bg-black text-white selection:bg-red-900/50">
         <Providers>{children}</Providers>
