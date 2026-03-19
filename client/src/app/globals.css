@@ -64,7 +64,7 @@ body {
    ========================================================== */
 
 @layer utilities {
-  /* Force hardware acceleration for very heavy blur decorations */
+  /* Force hardware acceleration for very heavy blur glowing decorations */
   .blur-xl,
   .blur-2xl,
   .blur-3xl,
@@ -80,6 +80,19 @@ body {
     backface-visibility: hidden;
     /* Often these are decorative glowing backgrounds, so we also disable pointer events naturally */
     pointer-events: none;
+  }
+
+  /* Hardware accelerate ALL fixed/absolute background grids and masks (ultimate laptop lag killer) */
+  div.fixed.inset-0.-z-10,
+  div.fixed.inset-0.z-0,
+  div.fixed.inset-0.pointer-events-none,
+  div.absolute.inset-0.-z-10,
+  div.absolute.inset-0.z-0 {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
 
   /* Force hardware acceleration for intense backdrop blurs without breaking fixed layouts */
