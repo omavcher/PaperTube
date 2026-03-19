@@ -90,22 +90,8 @@ export default function ImageConverterClient() {
     }
     ctx.drawImage(img, 0, 0);
 
-    // 2. Add Paperxify Watermark
-    const fontSize = Math.max(24, canvas.width * 0.03); // Dynamic scaling
-    ctx.font = `900 italic ${fontSize}px Inter, sans-serif`;
-    ctx.textAlign = "right";
-    
-    // Watermark Shadow/Outline for readability
-    ctx.strokeStyle = "rgba(0,0,0,0.5)";
-    ctx.lineWidth = fontSize / 8;
-    ctx.strokeText("Paperxify", canvas.width - (fontSize), canvas.height - (fontSize));
 
-    // Watermark Fill
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-    ctx.fillText("Paper", canvas.width - (fontSize * 2.5), canvas.height - (fontSize));
-    ctx.fillStyle = "rgba(220, 38, 38, 0.9)"; // Red-600
-    ctx.fillText("Tube", canvas.width - (fontSize), canvas.height - (fontSize));
-
+ 
     // 3. Export
     // Quality needs to be 0.0 - 1.0 for canvas API
     const exportQuality = quality / 100;
@@ -119,14 +105,14 @@ export default function ImageConverterClient() {
     link.href = dataUrl;
     link.click();
 
-    toast.success("ARTIFACT TRANSMUTED", { id: loadingToast });
+    toast.success("Image converted successfully", { id: loadingToast });
     setIsProcessing(false);
   };
 
   const resetForge = () => {
     if (sourceInfo?.previewUrl) URL.revokeObjectURL(sourceInfo.previewUrl);
     setSourceInfo(null);
-    toast.info("CHAMBER CLEARED");
+    toast.info("Image converter cleared");
   };
 
   const formatLabels = {
