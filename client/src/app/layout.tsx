@@ -1,20 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
 import Script from "next/script";
-
-// next/font pre-optimizes the font at build time:
-// - Self-hosted from Next.js CDN (no external network request)
-// - Font CSS is inlined → zero render-blocking
-// - Only loads used weights
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-  variable: "--font-inter",
-});
-
 
 // Separate viewport export (Next.js 14+ standard)
 export const viewport: Viewport = {
@@ -156,7 +143,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en" className={`dark ${inter.variable}`}>
+    <html lang="en" className="dark">
       <head>
         <script
           type="application/ld+json"
@@ -167,10 +154,10 @@ export default function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8343501385468147"
           crossOrigin="anonymous"
-          strategy="lazyOnload"
+          strategy="afterInteractive"
         />
       </head>
-      <body className="antialiased bg-black text-white selection:bg-red-900/50 font-sans">
+      <body className="antialiased bg-black text-white selection:bg-red-900/50">
         <Providers>{children}</Providers>
       </body>
     </html>

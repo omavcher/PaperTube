@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { 
   Menu as MenuIcon, X, ChevronDown, Cpu, Zap, 
@@ -10,7 +10,7 @@ import {
   Gamepad,
   NotebookTabsIcon
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import Link from "next/link";
 import { useGoogleLogin } from "@react-oauth/google";
 import { FcGoogle } from "react-icons/fc";
@@ -36,33 +36,16 @@ export const Navbar = ({
 }: any) => {
   const [visible, setVisible] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { scrollY } = useScroll();
   const [tokenInfo, setTokenInfo] = useState<any>(null);
 
-  // Use a passive scroll listener that only re-renders on threshold crossing
-  // (much cheaper than useMotionValueEvent which fires on every pixel)
-  useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          setVisible(window.scrollY > 60);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // Fetch token info when logged in
   useEffect(() => {
     if (isLoggedIn) {
       const fetchTokens = async () => {
         try {
           const token = localStorage.getItem("authToken");
           const res = await api.get("/users/tokens", {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${token}` }
           });
           if (res.data.success) {
             setTokenInfo(res.data);
@@ -75,6 +58,9 @@ export const Navbar = ({
     }
   }, [isLoggedIn]);
 
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    setVisible(latest > 60);
+  });
 
   const handleLogout = () => {
     localStorage.clear();
@@ -90,19 +76,18 @@ export const Navbar = ({
           visible ? "pt-4" : "pt-0"
         )}>
           <div className="container mx-auto px-4 flex justify-center pointer-events-auto">
-            <div
-              className={cn(
-                "flex items-center justify-between px-6 py-4 w-full relative transition-all duration-200",
-                visible
-                  ? "rounded-3xl border border-white/[0.08] shadow-2xl"
-                  : "border border-transparent"
-              )}
-              style={{
+            <motion.div
+              animate={{
+                width: visible ? "auto" : "100%",
                 maxWidth: visible ? "1200px" : "1280px",
-                backgroundColor: visible ? "rgba(10,10,10,0.90)" : "transparent",
-                backdropFilter: visible ? "blur(20px)" : "none",
-                WebkitBackdropFilter: visible ? "blur(20px)" : "none",
+                borderRadius: visible ? "24px" : "0px",
+                backgroundColor: visible ? "rgba(10, 10, 10, 0.85)" : "transparent",
+                backdropFilter: visible ? "blur(20px)" : "blur(0px)",
+                border: visible ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid transparent",
+                y: visible ? 0 : 0
               }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-between px-6 py-4 w-full relative"
             >
               <Link href="/" className="group flex items-center shrink-0">
       <span className="text-xl font-black italic tracking-tighter uppercase text-white">
@@ -134,7 +119,7 @@ export const Navbar = ({
                   <GoogleLoginBtn onSuccess={onLoginSuccess} loading={authLoading} />
                 )}
               </div>
-            </div>
+            </motion.div>
           </div>
         </nav>
       )}
