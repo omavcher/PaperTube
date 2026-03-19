@@ -57,3 +57,44 @@ body {
     color: white;
   }
 }
+
+/* ==========================================================
+   PERFORMANCE OPTIMIZATIONS FOR SMOOTHER RENDER ON LOWER-END 
+   MACHINES (LAPTOPS) WITHOUT AFFECTING VISUAL ANIMATIONS
+   ========================================================== */
+
+@layer utilities {
+  /* Force hardware acceleration for very heavy blur decorations */
+  .blur-xl,
+  .blur-2xl,
+  .blur-3xl,
+  .blur-\[140px\],
+  .blur-\[120px\],
+  .blur-\[100px\],
+  .blur-\[80px\],
+  .blur-\[60px\] {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    will-change: transform, filter;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    /* Often these are decorative glowing backgrounds, so we also disable pointer events naturally */
+    pointer-events: none;
+  }
+
+  /* Force hardware acceleration for intense backdrop blurs without breaking fixed layouts */
+  .backdrop-blur-lg,
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-3xl {
+    isolation: isolate;
+    will-change: backdrop-filter;
+  }
+}
+
+/* Global optimization for scrolling elements and animations overriding */
+html, body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
