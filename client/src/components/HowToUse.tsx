@@ -7,7 +7,7 @@ import Link from "next/link";
 
 // ─────────────────────────────────────────────────────────────────
 // 🎬  CHANGE THIS to update the YouTube video anywhere on the site
-const YOUTUBE_VIDEO_ID = "8E99L3nYn2U";
+const YOUTUBE_VIDEO_ID = "lVtP0tkcjPM";
 // ─────────────────────────────────────────────────────────────────
 
 const STEPS = [
