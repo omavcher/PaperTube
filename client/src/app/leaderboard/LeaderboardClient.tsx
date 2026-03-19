@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -266,8 +266,10 @@ export default function LeaderboardClient({ initialData }: { initialData: Leader
             )}
 
             {/* ── LEADERBOARD LIST ─────────────────────────────────────────── */}
-            <motion.div
-              layout
+            {/* NOTE: No `layout` prop here — it causes the whole container to
+                re-measure on every state update (setCurrentUser, setIsLoading)
+                which makes rows near the viewport boundary flicker. */}
+            <div
               className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl"
               style={{ background: "rgba(10,10,10,0.80)", backdropFilter: "blur(12px)" }}
             >
@@ -282,18 +284,21 @@ export default function LeaderboardClient({ initialData }: { initialData: Leader
                 <div className="hidden md:block md:col-span-2 text-center">Badge</div>
               </div>
 
+              {/* NOTE: Plain div replaces AnimatePresence mode="popLayout".
+                  popLayout forces layout recalculation of ALL siblings each time
+                  any row enters or exits, causing stagger-flicker on rows near
+                  the scroll boundary (rank ~10-12). Items here are static after
+                  initial load so AnimatePresence adds no value. */}
               <div className="divide-y divide-white/[0.04]">
-                <AnimatePresence mode="popLayout">
-                  {listUsers.map((user) => (
-                    <LeaderboardRow key={user.rank} user={user} />
-                  ))}
-                </AnimatePresence>
+                {listUsers.map((user) => (
+                  <LeaderboardRow key={user.rank} user={user} />
+                ))}
               </div>
 
               <div className="px-5 py-4 text-center text-[9px] text-neutral-700 font-mono uppercase tracking-widest border-t border-white/5">
                 — Top 100 Players Shown —
               </div>
-            </motion.div>
+            </div>
 
             {/* ── MOBILE BOTTOM CTA ─────────────────────────────────────── */}
             <motion.div
@@ -420,8 +425,10 @@ const PodiumItem = ({ user, position }: { user: LeaderboardUser; position: numbe
   );
 };
 
-// ── Leaderboard Row ───────────────────────────────────────────────────────────
-const LeaderboardRow = ({ user }: { user: LeaderboardUser }) => {
+// ── Leaderboard Row — memoized to prevent re-renders from parent state changes
+// (setCurrentUser / setIsLoading re-renders would otherwise re-trigger the
+//  initial: opacity:0, x:-8 animation on every row, causing the flicker)
+const LeaderboardRow = memo(({ user }: { user: LeaderboardUser }) => {
   const isMe = user.isCurrentUser;
 
   return (
@@ -502,7 +509,7 @@ const LeaderboardRow = ({ user }: { user: LeaderboardUser }) => {
       </div>
     </motion.div>
   );
-};
+});
 
 // ── Current User Sticky Footer ────────────────────────────────────────────────
 const CurrentUserFooter = ({ user }: { user: LeaderboardUser }) => {
