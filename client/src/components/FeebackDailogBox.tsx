@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React from "react";
 import { MessageSquarePlus, Bug, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ function FeebackDailogBox() {
       <div className="relative overflow-hidden rounded-[2.5rem] bg-neutral-900 border border-white/10 p-8 md:p-16 text-center">
         
         {/* Background Glows */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-red-600/10 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-[radial-gradient(circle_at_center,_rgba(220,38,38,0.1)_0%,_transparent_70%)] pointer-events-none transform-gpu" />
         
         <div className="relative z-10 flex flex-col items-center gap-6">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-neutral-300 text-xs font-medium uppercase tracking-widest">

@@ -109,7 +109,7 @@ export function LoginDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] sm:max-w-md bg-neutral-900/95 backdrop-blur-xl border border-white/10 text-white shadow-2xl p-0 gap-0 overflow-hidden rounded-3xl">
+      <DialogContent className="w-[95vw] sm:max-w-md bg-neutral-900/95 backdrop-blur-md transform-gpu border border-white/10 text-white shadow-2xl p-0 gap-0 overflow-hidden rounded-3xl">
         {/* Decorative Header Background */}
         <div className="relative h-32 w-full bg-gradient-to-b from-zinc-800/50 to-neutral-900/50 flex items-center justify-center overflow-hidden">
            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>

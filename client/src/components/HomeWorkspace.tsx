@@ -538,7 +538,7 @@ export default function NotesWorkspace() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-950/20 via-transparent to-transparent pointer-events-none opacity-60" />
       
       {/* --- HEADER BAR --- */}
-      <div className="sticky top-0 z-40 w-full bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
+      <div className="sticky top-0 z-40 w-full bg-black/80 backdrop-blur-md border-b border-white/[0.06] transform-gpu">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 md:py-4 flex items-center justify-between gap-3 md:gap-4">
             
             {/* Logo/Title */}
@@ -650,7 +650,7 @@ export default function NotesWorkspace() {
       </div>
 
       {/* --- MOBILE: Sub-Header (Tabs & Search) --- */}
-      <div className="md:hidden px-4 py-2.5 sticky top-[57px] z-30 bg-black/95 backdrop-blur-md border-b border-white/[0.04] space-y-2.5">
+      <div className="md:hidden px-4 py-2.5 sticky top-[57px] z-30 bg-black/95 backdrop-blur-sm border-b border-white/[0.04] space-y-2.5 transform-gpu">
          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="bg-neutral-900 border border-white/[0.08] h-9 p-0.5 rounded-xl w-full grid grid-cols-2">
                 <TabsTrigger value="explore" className="text-[9px] font-bold uppercase tracking-widest rounded-lg data-[state=active]:bg-white data-[state=active]:text-black transition-all">Community</TabsTrigger>

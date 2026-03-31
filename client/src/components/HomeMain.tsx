@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from 'next/link';
 import SubscriptionDialog from "@/components/SubscriptionDialog";
-import AdDialog from './AdDialog';
+import AdDialog, { preloadAdScript } from './AdDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthLoginModal, PremiumUpgradeModal } from '@/components/AuthGuard';
@@ -94,11 +94,18 @@ export default function HomeMain() {
             if (res.data.isSubscribed) {
               setHasPremiumAccess(true);
               setUserPlanId(res.data.planId || null);
+            } else {
+              preloadAdScript(); // Preload for free users
             }
+          } else {
+            preloadAdScript();
           }
         } catch (error) {
           console.error("Failed to fetch neural tokens:", error);
+          preloadAdScript(); // Preload on fail
         }
+      } else {
+        preloadAdScript(); // Preload for guests
       }
     };
     fetchUserData();
@@ -219,8 +226,8 @@ export default function HomeMain() {
     <section className="w-full min-h-screen relative flex flex-col items-center justify-center bg-black text-white px-4 py-10 font-sans selection:bg-neutral-800 selection:text-white overflow-hidden">
       
       {/* Subtle Background Atmosphere */}
-      <div className="fixed inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-black to-black opacity-80" />
-      <div className="fixed inset-0 z-0 opacity-20 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-black to-black opacity-80 transform-gpu" />
+      <div className="absolute inset-0 z-0 opacity-20 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
       {/* Auth Modals */}
       <AuthLoginModal
@@ -420,7 +427,7 @@ export default function HomeMain() {
               </div>
 
               {/* Main Interaction Card */}
-              <div className="w-full max-w-3xl bg-neutral-900/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-2 relative">
+              <div className="w-full max-w-3xl bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-2 relative transform-gpu will-change-transform">
                 
                 {/* --- Token Status Bar (Only for non-premium logged-in users) --- */}
                 {isLoggedIn && !hasPremiumAccess && userTokens !== null && (
@@ -585,7 +592,7 @@ export default function HomeMain() {
               
               {/* Left: Elegant Thumbnail Card */}
               <div className="relative w-full md:w-[480px] aspect-video">
-                 <div className="absolute -inset-4 bg-blue-500/10 blur-3xl rounded-full opacity-50 animate-pulse"></div>
+                 <div className="absolute -inset-4 bg-blue-500/10 blur-2xl rounded-full opacity-50 transform-gpu"></div>
                  
                  <motion.div 
                     initial={{ y: 20, opacity: 0 }}

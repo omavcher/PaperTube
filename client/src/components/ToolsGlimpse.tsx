@@ -126,7 +126,7 @@ export default function ToolsGlimpse() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -5 }}
-                className="group h-full relative bg-neutral-900/40 backdrop-blur-md border border-white/5 rounded-[1.25rem] md:rounded-[2rem] p-4 md:p-6 transition-all duration-300 hover:bg-neutral-900/60 hover:border-white/10 overflow-hidden"
+                className="group h-full relative bg-neutral-900/40 backdrop-blur-sm md:backdrop-blur-md border border-white/5 rounded-[1.25rem] md:rounded-[2rem] p-4 md:p-6 transition-all duration-300 hover:bg-neutral-900/60 hover:border-white/10 overflow-hidden transform-gpu will-change-transform"
               >
                 {/* Giant Watermark Icon */}
                 <div className="absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity rotate-12 pointer-events-none text-white">

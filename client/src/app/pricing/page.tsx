@@ -115,7 +115,7 @@ function MegaOfferBanner() {
     <motion.div
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-500/10 via-orange-500/10 to-rose-500/10 backdrop-blur-xl p-5 mb-10 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-[0_0_30px_rgba(239,68,68,0.2)]"
+      className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-500/10 via-orange-500/10 to-rose-500/10 backdrop-blur-md p-5 mb-10 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-[0_0_30px_rgba(239,68,68,0.2)] transform-gpu"
     >
       {/* Glow */}
       <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 to-orange-600/10 pointer-events-none" />
@@ -224,7 +224,7 @@ function SuccessModal({ isOpen, onClose, transactionData }: { isOpen: boolean; o
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="relative w-full max-w-md bg-neutral-900 border border-emerald-500/20 rounded-3xl p-8 shadow-2xl overflow-hidden"
           >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-emerald-500/10 blur-[60px] pointer-events-none" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-[radial-gradient(circle_at_center,_rgba(16,185,129,0.15)_0%,_transparent_70%)] pointer-events-none transform-gpu" />
             <div className="text-center space-y-6 relative z-10">
               <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500" />
@@ -972,7 +972,7 @@ export default function PricingSection() {
       <SuccessModal isOpen={successModalOpen} onClose={() => setSuccessModalOpen(false)} transactionData={transactionResult} />
 
       <section className="relative min-h-screen bg-black text-white py-24 px-4 font-sans overflow-hidden selection:bg-neutral-800 selection:text-white">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-neutral-900/20 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.04)_0%,_transparent_70%)] rounded-full pointer-events-none transform-gpu" />
         <div className="absolute inset-0 z-0 opacity-20 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
         <div className="relative z-20 flex justify-center mb-10">
@@ -994,7 +994,7 @@ export default function PricingSection() {
 
           {/* Type Switcher */}
           <div className="flex justify-center mb-12">
-            <div className="p-1 rounded-2xl bg-neutral-900/40 border border-white/5 backdrop-blur-xl flex gap-1">
+            <div className="p-1 rounded-2xl bg-neutral-900/40 border border-white/5 backdrop-blur-md flex gap-1 transform-gpu">
               <button
                 onClick={() => setViewMode("subscription")}
                 className={cn(
@@ -1079,8 +1079,8 @@ export default function PricingSection() {
                 <div
                   key={plan.id}
                   className={cn(
-                    "relative p-8 rounded-[2.5rem] border flex flex-col transition-all duration-500 hover:-translate-y-2",
-                    plan.highlight ? "bg-neutral-900/30 backdrop-blur-xl border-white/10 shadow-2xl z-10" : "bg-black/40 border-white/5"
+                    "relative p-8 rounded-[2.5rem] border flex flex-col transition-all duration-300 hover:-translate-y-2 transform-gpu will-change-transform",
+                    plan.highlight ? "bg-neutral-900/30 backdrop-blur-md border-white/10 shadow-2xl z-10" : "bg-black/40 border-white/5"
                   )}
                 >
                   {plan.popular && (

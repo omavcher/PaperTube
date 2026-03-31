@@ -158,7 +158,7 @@ export function AuthLoginModal({ isOpen, onClose, onSuccess, message }: AuthLogi
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm transform-gpu"
           />
 
           {/* Modal */}
@@ -180,7 +180,7 @@ export function AuthLoginModal({ isOpen, onClose, onSuccess, message }: AuthLogi
             {/* Header Gradient */}
             <div className="relative h-36 bg-gradient-to-br from-neutral-900 via-black to-red-950/30 flex items-center justify-center overflow-hidden">
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-24 bg-red-500/10 blur-[60px] rounded-full" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-24 bg-[radial-gradient(circle_at_center,_rgba(239,68,68,0.15)_0%,_transparent_70%)] transform-gpu pointer-events-none" />
               <div className="relative z-10 w-16 h-16 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm flex items-center justify-center shadow-2xl">
                 <Lock className="w-7 h-7 text-white/80" />
               </div>
@@ -277,7 +277,7 @@ export function PremiumUpgradeModal({ isOpen, onClose, featureName }: PremiumUpg
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/85 backdrop-blur-xl"
+            className="absolute inset-0 bg-black/85 backdrop-blur-sm transform-gpu"
           />
 
           {/* Modal */}
@@ -299,7 +299,7 @@ export function PremiumUpgradeModal({ isOpen, onClose, featureName }: PremiumUpg
             {/* Header */}
             <div className="relative h-40 bg-gradient-to-br from-yellow-950/40 via-black to-purple-950/30 flex items-center justify-center overflow-hidden">
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-32 bg-yellow-500/10 blur-[80px] rounded-full" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-32 bg-[radial-gradient(circle_at_center,_rgba(234,179,8,0.15)_0%,_transparent_70%)] transform-gpu pointer-events-none" />
 
               {/* Animated rings */}
               <div className="relative z-10 flex items-center justify-center">

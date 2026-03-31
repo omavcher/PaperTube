@@ -71,7 +71,7 @@ interface AdDialogProps {
 // dialog open/close cycles — no duplicate network requests.
 let adScriptPreloaded = false;
 
-function preloadAdScript() {
+export function preloadAdScript() {
   if (adScriptPreloaded || typeof document === 'undefined') return;
   adScriptPreloaded = true;
 
@@ -219,23 +219,23 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
             className="fixed inset-0 z-[199] bg-black/80 backdrop-blur-sm"
           />
 
-          {/* ── MOBILE: bottom sheet ── DESKTOP: centered dialog ── */}
-          <motion.div
-            key="ad-dialog"
-            initial={{ opacity: 0, y: "100%" }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: "100%" }}
-            transition={{ type: "spring", damping: 26, stiffness: 280 }}
-            className={cn(
-              // Mobile: full-width bottom sheet
-              "fixed bottom-0 left-0 right-0 z-[200]",
-              // Desktop: centered card
-              "md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:right-auto md:w-[760px] md:max-h-[90vh]",
-              "bg-[#0a0a0a] border border-white/10 text-white font-sans",
-              "rounded-t-[2rem] md:rounded-[2rem] overflow-hidden shadow-[0_-8px_60px_rgba(0,0,0,0.6)] md:shadow-2xl"
-            )}
-            style={{ willChange: "transform, opacity" }}
-          >
+          <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center pointer-events-none p-0">
+            {/* ── MOBILE: bottom sheet ── DESKTOP: centered dialog ── */}
+            <motion.div
+              key="ad-dialog"
+              initial={{ opacity: 0, y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", damping: 26, stiffness: 280 }}
+              className={cn(
+                "pointer-events-auto w-full",
+                // Desktop: centered card
+                "md:w-[760px] md:max-h-[90vh]",
+                "bg-[#0a0a0a] border border-white/10 text-white font-sans",
+                "rounded-t-[2rem] md:rounded-[2rem] overflow-hidden shadow-[0_-8px_60px_rgba(0,0,0,0.6)] md:shadow-2xl"
+              )}
+              style={{ willChange: "transform, opacity" }}
+            >
             {/* ── MOBILE DRAG HANDLE ── */}
             <div className="md:hidden flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-white/20" />
@@ -264,9 +264,9 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
                   />
                 </motion.a>
                 {/* Glow */}
-                <div className="absolute inset-0 opacity-20 pointer-events-none">
-                  <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/20 blur-[80px]" />
-                  <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/20 blur-[80px]" />
+                <div className="absolute inset-0 opacity-20 pointer-events-none transform-gpu">
+                  <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.3)_0%,_transparent_70%)]" />
+                  <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[radial-gradient(circle_at_center,_rgba(168,85,247,0.3)_0%,_transparent_70%)]" />
                 </div>
               </div>
 
@@ -404,6 +404,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
               </div>
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

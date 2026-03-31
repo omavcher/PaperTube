@@ -82,9 +82,10 @@ export const Navbar = ({
                 maxWidth: visible ? "1200px" : "1280px",
                 borderRadius: visible ? "24px" : "0px",
                 backgroundColor: visible ? "rgba(10, 10, 10, 0.85)" : "transparent",
-                backdropFilter: visible ? "blur(20px)" : "blur(0px)",
+                backdropFilter: visible ? "blur(12px)" : "blur(0px)",
                 border: visible ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid transparent",
-                y: visible ? 0 : 0
+                y: visible ? 0 : 0,
+                transform: "translateZ(0)"
               }}
               transition={{ duration: 0.3 }}
               className="flex items-center justify-between px-6 py-4 w-full relative"
@@ -96,7 +97,7 @@ export const Navbar = ({
     </Link>
 
               {/* Center Nav */}
-              <div className="flex items-center gap-1 bg-black/20 p-1 rounded-2xl border border-white/5 backdrop-blur-md mx-5">
+              <div className="flex items-center gap-1 bg-black/20 p-1 rounded-2xl border border-white/5 backdrop-blur-sm mx-5 transform-gpu">
   <NavEntry href="/" icon={<Home size={14} />} label="Home" />
   <NavDropdown label="Backpack" items={SUPPORT_TOOLS} />
   <NavEntry href="/explore" icon={<Compass size={14} />} label="Explore" />
@@ -128,7 +129,7 @@ export const Navbar = ({
       {!hideMobile && (
         <div className="fixed bottom-0 left-0 right-0 z-[120] lg:hidden">
   {/* Glass Container */}
-  <div className="w-full bg-[#0a0a0a]/95 backdrop-blur-2xl border-t border-white/10 h-[80px] pb-safe shadow-[0_-20px_40px_-10px_rgba(0,0,0,0.8)]">
+  <div className="w-full bg-[#0a0a0a]/95 backdrop-blur-md border-t border-white/10 h-[80px] pb-safe shadow-[0_-20px_40px_-10px_rgba(0,0,0,0.8)] transform-gpu">
     
     <div className="grid grid-cols-5 h-full items-center px-1 relative">
       
@@ -245,7 +246,7 @@ const UserHUD = ({ user, onLogout }: any) => {
             animate={{ opacity: 1, y: 0, scale: 1 }} 
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-full right-0 mt-4 w-72 bg-[#0a0a0a] border border-white/10 rounded-3xl p-2 shadow-2xl backdrop-blur-xl z-[110] overflow-hidden"
+            className="absolute top-full right-0 mt-4 w-72 bg-[#0a0a0a] border border-white/10 rounded-3xl p-2 shadow-2xl backdrop-blur-md z-[110] overflow-hidden transform-gpu"
           >
             {/* User Header */}
             <div className="flex items-center gap-4 p-4 mb-2 bg-neutral-900/30 rounded-2xl">
@@ -449,7 +450,7 @@ const NavDropdown = ({ label, items }: any) => {
         <AnimatePresence>
           {open && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-              className="absolute top-full left-0 mt-2 w-64 bg-[#0a0a0a] border border-white/10 rounded-2xl p-2 shadow-2xl backdrop-blur-xl"
+              className="absolute top-full left-0 mt-2 w-64 bg-[#0a0a0a] border border-white/10 rounded-2xl p-2 shadow-2xl backdrop-blur-md transform-gpu"
             >
               {items.map((item: any, i: number) => (
                 <Link key={i} href={item.href} className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl group transition-all">

@@ -172,8 +172,8 @@ export default function PricingShowcase() {
                 className={cn(
                   "relative p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border flex flex-col transition-all duration-300 group md:hover:-translate-y-2 shrink-0 snap-center w-[85vw] max-w-[320px] md:w-auto md:max-w-none",
                   plan.highlight 
-                    ? "bg-neutral-900/40 backdrop-blur-xl border-white/10 shadow-2xl shadow-white/5 z-10" 
-                    : "bg-black/40 border-white/5 hover:bg-neutral-900/40 hover:border-white/10"
+                    ? "bg-neutral-900/40 backdrop-blur-md border-white/10 shadow-2xl shadow-white/5 z-10 transform-gpu will-change-transform" 
+                    : "bg-black/40 border-white/5 hover:bg-neutral-900/40 hover:border-white/10 transform-gpu will-change-transform"
                 )}
               >
                 

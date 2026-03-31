@@ -104,7 +104,7 @@ export default function FeaturesSection() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
               whileHover={{ y: -5 }}
-              className="group relative bg-neutral-900/40 backdrop-blur-md border border-white/5 rounded-[1.25rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:bg-neutral-900/60 hover:border-white/10 hover:shadow-2xl overflow-hidden"
+              className="group relative bg-neutral-900/40 backdrop-blur-sm md:backdrop-blur-md border border-white/5 rounded-[1.25rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:bg-neutral-900/60 hover:border-white/10 hover:shadow-2xl overflow-hidden transform-gpu will-change-transform"
             >
               
               {/* Scanline Effect (Subtle) */}

@@ -32,7 +32,7 @@ export default function MegaOfferBanner({ className = "" }: { className?: string
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className={`relative overflow-hidden rounded-xl md:rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-500/10 via-orange-500/10 to-rose-500/10 backdrop-blur-xl p-3 md:p-5 mb-6 md:mb-10 flex flex-col xl:flex-row items-center justify-between gap-3 md:gap-6 shadow-[0_0_30px_rgba(239,68,68,0.2)] ${className}`}
+      className={`relative overflow-hidden rounded-xl md:rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-500/10 via-orange-500/10 to-rose-500/10 backdrop-blur-md p-3 md:p-5 mb-6 md:mb-10 flex flex-col xl:flex-row items-center justify-between gap-3 md:gap-6 shadow-[0_0_30px_rgba(239,68,68,0.2)] transform-gpu ${className}`}
     >
       {/* Glow */}
       <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 to-orange-600/10 pointer-events-none" />

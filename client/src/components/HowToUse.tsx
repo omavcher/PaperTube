@@ -49,7 +49,7 @@ export default function HowToUse() {
   return (
     <section className="relative w-full bg-black text-white overflow-hidden font-sans py-16 md:py-24">
       {/* Background blobs */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-white/[0.02] blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.03)_0%,_transparent_70%)] rounded-full pointer-events-none transform-gpu" />
       <div className="absolute inset-0 z-0 opacity-10 [background-image:linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] [background-size:40px_40px] pointer-events-none" />
 
       <div className="relative z-10 max-w-7xl mx-auto">
@@ -131,7 +131,7 @@ export default function HowToUse() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className={`relative p-6 rounded-2xl border ${s.border} ${s.bg} backdrop-blur-xl flex flex-col gap-4`}
+              className={`relative p-6 rounded-2xl border ${s.border} ${s.bg} backdrop-blur-md flex flex-col gap-4 transform-gpu will-change-transform`}
             >
               {/* Step number watermark */}
               <span className="absolute top-4 right-5 text-5xl font-black text-white/[0.04] select-none leading-none">
