@@ -264,7 +264,13 @@ export default function AdminBlogPage() {
 
   const handleAiInject = () => {
     try {
-      const cleanJson = aiRawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      let cleanJson = aiRawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+      
+      // AI models often hallucinate markdown escapes inside JSON strings (like \_ or \')
+      // Standard JSON only allows \", \\, \/, \b, \f, \n, \r, \t
+      // We'll clean up the most common invalid escapes that break JSON.parse
+      cleanJson = cleanJson.replace(/\\_/g, "_").replace(/\\'/g, "'");
+
       const parsed = JSON.parse(cleanJson);
 
       setFormData(prev => ({
@@ -290,8 +296,9 @@ export default function AdminBlogPage() {
       toast.success("Neural data injected successfully ✓");
       setIsAiOpen(false);
       setAiRawText("");
-    } catch (err) {
-      toast.error("Failed to parse AI JSON. Check format.");
+    } catch (err: any) {
+      console.error("JSON Parse Error:", err);
+      toast.error(`JSON Parse Error: ${err.message}`);
     }
   };
 
