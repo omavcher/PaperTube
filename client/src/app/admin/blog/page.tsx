@@ -280,9 +280,9 @@ export default function AdminBlogPage() {
         content: (parsed.content || []).map((block: any) => ({
           ...block,
           id: crypto.randomUUID(),
-          // Ensure list items are arrays
+          // Ensure arrays are parsed properly
           items: Array.isArray(block.items) ? block.items : block.items ? [block.items] : undefined,
-          // Ensure rows are 2D arrays
+          headers: Array.isArray(block.headers) ? block.headers : block.headers ? [block.headers] : undefined,
           rows: Array.isArray(block.rows) ? block.rows : undefined,
         }))
       }));
@@ -724,7 +724,7 @@ export default function AdminBlogPage() {
                           <div className="space-y-1">
                             <p className="text-[10px] text-neutral-600">Headers (comma separated)</p>
                             <Input
-                              value={block.headers?.join(", ")}
+                              value={block.headers?.join(", ") || ""}
                               onChange={(e) => updateBlock(block.id, "headers", e.target.value.split(",").map(h => h.trim()))}
                               className="bg-black/50 border-white/10 text-xs font-mono"
                               placeholder="Column 1, Column 2, Column 3"
@@ -733,7 +733,7 @@ export default function AdminBlogPage() {
                           <div className="space-y-1">
                             <p className="text-[10px] text-neutral-600">Rows (one row per line, cells separated by |)</p>
                             <Textarea
-                              value={block.rows?.map(r => r.join(" | ")).join("\n")}
+                              value={block.rows?.map(r => r.join(" | ")).join("\n") || ""}
                               onChange={(e) => {
                                 const rows = e.target.value.split("\n").map(line => line.split("|").map(cell => cell.trim()));
                                 updateBlock(block.id, "rows", rows);
