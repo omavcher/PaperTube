@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -13,11 +13,11 @@ export default function CorePromo({ className }: { className?: string }) {
       viewport={{ once: true }}
       className={cn("w-full py-6", className)}
     >
-      <div className="relative group overflow-hidden rounded-[2rem] border border-red-600/30 bg-neutral-900/40 backdrop-blur-xl">
+      <div className="relative group overflow-hidden rounded-[2rem] border border-red-600/30 bg-neutral-900/40 backdrop-blur-md transform-gpu">
         
         {/* --- Animated Background Effects --- */}
         <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 via-transparent to-transparent opacity-50" />
-        <div className="absolute -right-20 -top-20 h-64 w-64 bg-red-600/20 blur-[100px] group-hover:bg-red-600/30 transition-all duration-500" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 bg-[radial-gradient(circle_at_center,_rgba(220,38,38,0.2)_0%,_transparent_70%)] transform-gpu group-hover:bg-red-600/30 transition-all duration-500" />
         
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 p-6 md:p-8">
           

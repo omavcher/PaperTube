@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { 
@@ -36,6 +36,7 @@ interface BlogPost {
   author: { name: string; role: string; avatar: string };
   meta: { date: string; readTime: string; views: number };
   coverImage: string;
+  tags: string[];
   toc: { id: string; label: string }[];
   content: ContentBlock[];
 }
@@ -245,9 +246,17 @@ export default function BlogClient({ post }: { post: BlogPost }) {
         {/* Hero Header */}
         <header className="max-w-4xl mx-auto mb-12 md:mb-16 animate-fade-in-up">
           <div className="flex flex-wrap gap-3 mb-6">
-            <span className="px-3 py-1 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 text-[10px] font-black uppercase tracking-widest">
-              Tech
-            </span>
+            {post.tags && post.tags.length > 0 ? (
+              post.tags.map((tag) => (
+                <span key={tag} className="px-3 py-1 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 text-[10px] font-black uppercase tracking-widest">
+                  {tag}
+                </span>
+              ))
+            ) : (
+              <span className="px-3 py-1 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 text-[10px] font-black uppercase tracking-widest">
+                Tech
+              </span>
+            )}
             <span className="px-3 py-1 rounded-full bg-white/5 text-neutral-400 border border-white/10 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
               <Clock size={12} /> {post.meta.readTime}
             </span>
