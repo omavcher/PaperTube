@@ -1,4 +1,4 @@
-﻿import type { Metadata, ResolvingMetadata } from "next";
+import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import BlogClient from "./BlogClient";
 
@@ -26,6 +26,7 @@ interface BlogPost {
   author: { name: string; role: string; avatar: string };
   meta: { date: string; readTime: string; views: number };
   coverImage: string;
+  tags: string[];
   toc: { id: string; label: string }[];
   content: ContentBlock[];
 }
