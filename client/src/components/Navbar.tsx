@@ -76,19 +76,13 @@ export const Navbar = ({
           visible ? "pt-4" : "pt-0"
         )}>
           <div className="container mx-auto px-4 flex justify-center pointer-events-auto">
-            <motion.div
-              animate={{
-                width: visible ? "auto" : "100%",
-                maxWidth: visible ? "1200px" : "1280px",
-                borderRadius: visible ? "24px" : "0px",
-                backgroundColor: visible ? "rgba(10, 10, 10, 0.85)" : "transparent",
-                backdropFilter: visible ? "blur(12px)" : "blur(0px)",
-                border: visible ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid transparent",
-                y: visible ? 0 : 0,
-                transform: "translateZ(0)"
-              }}
-              transition={{ duration: 0.3 }}
-              className="flex items-center justify-between px-6 py-4 w-full relative"
+            <div
+              className={cn(
+                "flex items-center justify-between px-6 py-4 w-full relative transition-all duration-300 transform-gpu",
+                visible
+                  ? "max-w-[1200px] rounded-3xl bg-[rgba(10,10,10,0.85)] backdrop-blur-md border border-white/[0.08] shadow-2xl"
+                  : "max-w-7xl rounded-none bg-transparent border border-transparent"
+              )}
             >
               <Link href="/" className="group flex items-center shrink-0">
       <span className="text-xl font-black italic tracking-tighter uppercase text-white">
@@ -120,7 +114,7 @@ export const Navbar = ({
                   <GoogleLoginBtn onSuccess={onLoginSuccess} loading={authLoading} />
                 )}
               </div>
-            </motion.div>
+            </div>
           </div>
         </nav>
       )}

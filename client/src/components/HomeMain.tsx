@@ -225,9 +225,8 @@ export default function HomeMain() {
   return (
     <section className="w-full min-h-screen relative flex flex-col items-center justify-center bg-black text-white px-4 py-10 font-sans selection:bg-neutral-800 selection:text-white overflow-hidden">
       
-      {/* Subtle Background Atmosphere */}
-      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-black to-black opacity-80 transform-gpu" />
-      <div className="absolute inset-0 z-0 opacity-20 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+      {/* Subtle Background Atmosphere - simplified for desktop perf */}
+      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(40,40,40,0.3),transparent)] transform-gpu" />
 
       {/* Auth Modals */}
       <AuthLoginModal
