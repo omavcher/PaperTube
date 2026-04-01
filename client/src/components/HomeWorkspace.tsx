@@ -441,7 +441,7 @@ export default function NotesWorkspace() {
       if (!append) setLoading(true);
       const authToken = localStorage.getItem('authToken');
       const params = new URLSearchParams({
-        page: page.toString(), limit: '12', sortBy, sortOrder: 'desc', type: 'notes', search: search || ''
+        page: page.toString(), limit: '12', sortBy: 'createdAt', sortOrder: 'desc', type: 'notes', search: search || ''
       });
       const response = await api.get<ExploreResponse>(`/notes/explore?${params.toString()}`, { headers: { 'Auth': authToken } }); 
       

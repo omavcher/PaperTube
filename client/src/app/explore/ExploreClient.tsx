@@ -154,34 +154,38 @@ export default function ExploreClient({
     }
   }, []);
 
-  // Initial Fetch & Search Debounce
+  // Handle Category Filter (Server-side instead of client-side!)
+  // Whenever category or search changes, reset page and fetch:
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Don't fetch on initial mount if we already have initial items and no search query
-      if (initialItems.length > 0 && searchQuery === '' && page === 1 && !loading) {
-        return;
-      }
-      // Fetch data regardless of whether user is authenticated or not
+      if (initialItems.length > 0 && searchQuery === '' && activeCat === "All" && page === 1 && !loading) return;
       if (isAuthenticated !== null) {
-        fetchExploreData(1, false, searchQuery);
+        const queryWithCat = activeCat === "All" ? searchQuery.trim() : `${activeCat} ${searchQuery}`.trim();
+        fetchExploreData(1, false, queryWithCat);
       }
-    }, 500); // 500ms debounce
+    }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, isAuthenticated, fetchExploreData, initialItems.length]); // Added initialItems.length dependency
+  }, [searchQuery, activeCat, isAuthenticated, fetchExploreData, initialItems.length]);
 
-  // Handle Category Filter (Client-side filtering for visual effect, ideally API based)
-  const filteredItems = useMemo(() => {
-    if (activeCat === "All") return items;
-    // Note: Since real API might not return explicit category, this is a placeholder logic
-    // You should pass 'category' to API if backend supports it.
-    return items.filter(item => item.category === activeCat || item.title.includes(activeCat));
-  }, [items, activeCat]);
-
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     if (hasMore && !loading) {
-      fetchExploreData(page + 1, true, searchQuery);
+      const queryWithCat = activeCat === "All" ? searchQuery.trim() : `${activeCat} ${searchQuery}`.trim();
+      fetchExploreData(page + 1, true, queryWithCat);
     }
-  };
+  }, [hasMore, loading, page, activeCat, searchQuery, fetchExploreData]);
+
+  // Infinite Scroll Trigger
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        handleLoadMore();
+      }
+    }, { threshold: 0.5 });
+    
+    const target = document.getElementById("infinite-scroll-trigger");
+    if (target) observer.observe(target);
+    return () => observer.disconnect();
+  }, [handleLoadMore]);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-red-500/30 font-sans">
@@ -255,11 +259,26 @@ export default function ExploreClient({
 
         {/* --- CONTENT GRID --- */}
         {loading && items.length === 0 ? (
-           <LoaderX />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="flex flex-col bg-[#0A0A0A] border border-white/5 rounded-2xl overflow-hidden shadow-2xl animate-pulse">
+                <div className="aspect-video bg-white/5 w-full"></div>
+                <div className="p-5 flex flex-col flex-1 h-32 justify-between">
+                  <div className="h-3 w-1/4 bg-white/10 rounded"></div>
+                  <div className="h-4 w-full bg-white/10 rounded mt-3"></div>
+                  <div className="h-4 w-3/4 bg-white/10 rounded mt-2"></div>
+                  <div className="mt-6 flex justify-between items-center">
+                    <div className="flex gap-2 items-center"><div className="w-5 h-5 rounded-full bg-white/10"></div><div className="w-12 h-3 bg-white/10 rounded"></div></div>
+                    <div className="h-3 w-8 bg-white/10 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6">
             <AnimatePresence mode="popLayout">
-              {filteredItems.map((note, i) => (
+              {items.map((note, i) => (
                 <motion.div
                   layout
                   key={note._id}
@@ -275,21 +294,19 @@ export default function ExploreClient({
           </div>
         )}
 
-        {/* --- LOAD MORE --- */}
-        {hasMore && !loading && (
-          <div className="flex justify-center mt-16">
-            <Button 
-              onClick={handleLoadMore}
-              variant="outline" 
-              className="bg-transparent border-white/10 text-neutral-400 hover:text-white hover:border-white/30 hover:bg-white/5 uppercase text-xs font-bold tracking-widest px-8 py-6 rounded-xl"
-            >
-              Load More Data
-            </Button>
+        {/* --- INFINITE SCROLL LOADER --- */}
+        {hasMore && (
+          <div id="infinite-scroll-trigger" className="flex justify-center mt-16 w-full py-8">
+            {loading ? (
+               <Loader2 className="animate-spin text-red-500" size={32} />
+            ) : (
+               <div className="h-1" /> /* Sentinel */
+            )}
           </div>
         )}
 
         {/* Empty State */}
-        {!loading && filteredItems.length === 0 && (
+        {!loading && items.length === 0 && (
           <div className="text-center py-20 text-neutral-600">
              <Globe className="w-12 h-12 mx-auto mb-4 opacity-20" />
              <p className="text-sm">No signals found matching your query.</p>

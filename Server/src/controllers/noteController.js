@@ -1636,20 +1636,28 @@ exports.explore = async (req, res) => {
             algorithmScore: {
               $add: [
                 { $multiply: [{ $ifNull: ["$views", 0] }, 1] },
-                { $multiply: [{ $ifNull: ["$likes", 0] }, 5] },
+                // Large boost if following the creator (ensures they show up first)
                 { 
                   $multiply: [
                     { $cond: [{ $in: ["$owner", followingList] }, 1, 0] },
-                    1000 // Boost if following the creator
+                    10000 
                   ] 
                 },
-                // Add minor pseudo-random noise to make feeds a bit unique based on time generated
-                { $mod: [{ $toLong: "$createdAt" }, 23] }
+                // Recency Boost: Give high preference to newly created notes!
+                // If created today, gets high points. Depreciates over time.
+                {
+                  $multiply: [
+                    { $divide: [10000000000, { $add: [{ $subtract: [new Date(), "$createdAt"] }, 1000000] }] },
+                    1 // Yields ~10 points for brand new, dropping as it ages
+                  ]
+                },
+                // Add strong random variance so every feed is different
+                { $multiply: [{ $rand: {} }, 100] }
               ]
             }
           }
         },
-        { $sort: { algorithmScore: -1, createdAt: -1 } },
+        { $sort: { algorithmScore: -1 } },
         { $skip: skip },
         { $limit: limitNum },
         {
