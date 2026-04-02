@@ -71,12 +71,12 @@ function MegaOfferBanner() {
       {/* Left label */}
       <div className="flex items-center gap-4">
         <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 shrink-0">
-          <Gift size={24} className="text-red-400 animate-bounce" />
+          <Gift size={24} className="text-red-400" />
         </div>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[12px] md:text-sm font-black uppercase tracking-widest text-red-500">🚨 The "Rob Us" Launch Giveaway</span>
-            <span className="px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/30 text-[10px] font-bold text-red-400 animate-pulse">
+            <span className="px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/30 text-[10px] font-bold text-red-400">
               100% Guaranteed Win Chances
             </span>
           </div>
@@ -128,7 +128,7 @@ export default function PricingShowcase() {
             viewport={{ once: true }}
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400"
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
             Sync with 8,400+ Engineers
           </motion.div>
 
@@ -172,8 +172,8 @@ export default function PricingShowcase() {
                 className={cn(
                   "relative p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border flex flex-col transition-all duration-300 group md:hover:-translate-y-2 shrink-0 snap-center w-[85vw] max-w-[320px] md:w-auto md:max-w-none",
                   plan.highlight 
-                    ? "bg-neutral-900/40 backdrop-blur-md border-white/10 shadow-2xl shadow-white/5 z-10 transform-gpu will-change-transform" 
-                    : "bg-black/40 border-white/5 hover:bg-neutral-900/40 hover:border-white/10 transform-gpu will-change-transform"
+                    ? "bg-neutral-900/40 border-white/10 shadow-2xl shadow-white/5 z-10 transform-gpu" 
+                    : "bg-black/40 border-white/5 hover:bg-neutral-900/40 hover:border-white/10 transform-gpu"
                 )}
               >
                 

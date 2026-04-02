@@ -126,7 +126,7 @@ export default function ArcadeGlimpse() {
               viewport={{ once: true }}
               whileHover={{ y: -5 }}
               className={cn(
-                "group relative bg-neutral-900/40 backdrop-blur-sm md:backdrop-blur-md border border-white/5 rounded-[1.25rem] md:rounded-[2rem] overflow-hidden transition-all duration-300 hover:border-white/10 hover:bg-neutral-900/60 shadow-2xl flex flex-col transform-gpu will-change-transform",
+                "group relative bg-neutral-900/40 border border-white/5 rounded-[1.25rem] md:rounded-[2rem] overflow-hidden transition-all duration-300 hover:border-white/10 hover:bg-neutral-900/60 shadow-2xl flex flex-col transform-gpu",
                 // On a 2-column mobile layout, hide the 3rd item to keep the grid perfectly even
                 index === 2 ? "hidden md:flex" : "flex"
               )}
@@ -136,7 +136,7 @@ export default function ArcadeGlimpse() {
               {/* Image Container */}
               {/* Aspect ratio shifted slightly taller on mobile so images don't look crushed */}
               <div className="relative w-full aspect-[4/3] md:aspect-video overflow-hidden bg-black border-b border-white/5">
-                <div className="absolute inset-0 bg-neutral-800 animate-pulse" /> 
+                <div className="absolute inset-0 bg-neutral-800/80" />
                 <img 
                   src={game.image} 
                   alt={game.title}

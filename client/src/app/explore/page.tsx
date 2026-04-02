@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import ExploreClient from "./ExploreClient";
 
 // --- 1. Define Types to Match Your API ---
@@ -40,36 +40,34 @@ interface ApiResponse {
 
 // --- 2. Server-Side Fetch Function ---
 async function getExploreNotes(): Promise<ApiResponse | null> {
+  // In development, skip SSR fetch entirely — the client component 
+  // fetches its own data. Only do SSR in production where a real 
+  // API URL is set, to avoid ECONNREFUSED noise and 790ms delays.
+  const isProd = process.env.NODE_ENV === "production";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+  if (!isProd || !apiUrl) {
+    return null;
+  }
+
   try {
-    // Determine the base URL. Fallback to localhost:5000 if not set.
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:5000";
-    
-    // Construct the full URL. 
-    // IMPORTANT: Check if your backend needs '/api' prefix. 
-    // If your backend is at localhost:5000/api/notes..., keep '/api' below.
-    // If it is localhost:5000/notes..., remove '/api'.
+    const baseUrl = apiUrl.replace(/\/$/, "");
     const endpoint = `${baseUrl}/api/notes/explore?page=1&limit=12&sortBy=updatedAt&sortOrder=desc&type=notes`;
 
-    console.log("🌐 SEO FETCHING:", endpoint); // This will show in your VS Code terminal
-
     const res = await fetch(endpoint, {
-      cache: "no-store", // Ensures fresh data on every request
-      headers: {
-        "Content-Type": "application/json",
-      },
+      // Use revalidate in prod instead of no-store for better perf
+      next: { revalidate: 60 }, // Re-fetch every 60 seconds
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!res.ok) {
-      console.error(`❌ API Error: ${res.status} ${res.statusText}`);
-      const text = await res.text();
-      console.error("Response:", text);
+      console.error(`❌ Explore SSR: ${res.status} ${res.statusText}`);
       return null;
     }
 
-    const data = await res.json();
-    return data;
+    return await res.json();
   } catch (error) {
-    console.error("🚨 SEO Fetch Exception:", error);
+    console.error("🚨 Explore SSR fetch failed:", error);
     return null;
   }
 }

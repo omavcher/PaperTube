@@ -48,9 +48,8 @@ export default function HowToUse() {
 
   return (
     <section className="relative w-full bg-black text-white overflow-hidden font-sans py-16 md:py-24">
-      {/* Background blobs */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.03)_0%,_transparent_70%)] rounded-full pointer-events-none transform-gpu" />
-      <div className="absolute inset-0 z-0 opacity-10 [background-image:linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] [background-size:40px_40px] pointer-events-none" />
+      {/* Background — single cheap radial, no grid */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.02)_0%,transparent_70%)] rounded-full pointer-events-none" />
 
       <div className="relative z-10 max-w-7xl mx-auto">
 

@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
-import { BackgroundBeams } from "@/components/ui/background-beams";
 import { GoogleOAuthProvider, useGoogleOneTapLogin } from "@react-oauth/google";
 import axios from "axios";
 import api from "@/config/api";
@@ -109,11 +108,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <GoogleOAuthProvider clientId={clientId || ""}>
       <Toaster theme="dark" position="top-center" richColors />
       
-      {/* Matrix Background */}
-      <div className="fixed inset-0 -z-10 opacity-20 pointer-events-none">
-        <BackgroundBeams />
-      </div>
-
       <GoogleOneTapLoginWrapper onSuccess={handleLoginSuccess} />
 
       <Navbar

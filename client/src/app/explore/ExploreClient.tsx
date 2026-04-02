@@ -189,13 +189,6 @@ export default function ExploreClient({
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-red-500/30 font-sans">
-      
-      {/* --- BACKGROUND FX --- */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-red-900/10 blur-[120px] rounded-full mix-blend-screen" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full mix-blend-screen" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:40px_40px] opacity-20" />
-      </div>
 
       <main className="container mx-auto px-4 pt-24 pb-32 relative z-10 max-w-7xl">
         
@@ -277,15 +270,14 @@ export default function ExploreClient({
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-6">
-            <AnimatePresence mode="popLayout">
+            <AnimatePresence>
               {items.map((note, i) => (
                 <motion.div
-                  layout
                   key={note._id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: i * 0.05, duration: 0.4 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ delay: Math.min(i * 0.04, 0.3), duration: 0.35 }}
                 >
                   <DiscoveryCard note={note} router={router} />
                 </motion.div>
