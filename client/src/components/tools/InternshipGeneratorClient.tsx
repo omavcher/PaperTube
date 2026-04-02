@@ -53,11 +53,57 @@ function generateCertId(): string {
 // ─── SVG Helpers ─────────────────────────────────────────────────────────────
 
 function SignatureSVG({ initials, color }: { initials: string; color: string }) {
+  // Complex, organic cursive paths using overlapping multi-stroke simulation
+  const sigDefs: Record<string, React.ReactNode> = {
+    RK: (
+      <g>
+        <path d="M12,28 C14,8 30,10 28,22 C26,34 16,36 18,32 C28,16 38,16 42,28 Q48,16 54,26 Q60,34 70,24" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85" />
+        <path d="M80,8 L74,38 M75,28 C85,18 90,20 88,28 C86,36 96,28 104,32 C114,36 118,22 124,18" stroke={color} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85" />
+        <path d="M8,44 Q60,36 126,42 M50,45 Q75,41 95,44" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.4" />
+      </g>
+    ),
+    SS: (
+      <g>
+        <path d="M26,38 C6,42 6,10 22,8 C38,6 36,32 20,28 C34,14 48,16 48,28 Q48,40 56,22 Q66,10 68,24 Q70,38 80,26 Q92,14 102,28 C112,42 118,20 126,18" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85" />
+        <path d="M22,6 Q28,2 34,8" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6" />
+        <path d="M15,44 Q45,39 80,45" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.4" />
+      </g>
+    ),
+    VM: (
+      <g>
+        <path d="M10,14 C18,38 24,42 30,12 C36,28 44,28 48,16" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85" />
+        <path d="M56,36 Q60,12 66,12 Q72,36 78,16 Q84,36 92,20 Q102,30 114,22" stroke={color} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85" />
+        <path d="M8,43 Q65,40 122,46 M90,48 L100,45" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.4" />
+      </g>
+    ),
+    PN: (
+      <g>
+        <path d="M22,42 L20,10 C36,6 42,22 24,26 Q40,12 42,30 L42,38" stroke={color} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85" />
+        <path d="M58,12 Q64,36 74,22 Q82,8 90,26 C98,12 108,28 116,22" stroke={color} strokeWidth="2.0" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85" />
+        <circle cx="86" cy="8" r="1.5" fill={color} opacity="0.8" />
+        <path d="M12,46 Q55,38 120,44" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.4" />
+      </g>
+    ),
+    AA: (
+      <g>
+        <path d="M14,36 C22,8 36,8 44,36 M22,24 L38,22" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85" />
+        <path d="M56,34 C64,10 74,12 84,36 M62,24 L76,22" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.85" />
+        <path d="M86,34 Q100,10 122,14" stroke={color} strokeWidth="2.0" strokeLinecap="round" fill="none" opacity="0.80" />
+        <path d="M10,44 Q60,35 125,43" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.4" />
+      </g>
+    ),
+  };
+  
+  const content = sigDefs[initials] ?? sigDefs.RK;
+
+  // Derive pseudo-random rotation & scale from initials to give it that "human" imperfect touch
+  const hash = initials.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const rot = (hash % 10) - 5; // -5 to 4 degrees
+  const scale = 0.9 + ((hash % 5) * 0.05); // 0.9 to 1.1
+
   return (
-    <svg width="130" height="44" viewBox="0 0 130 44" fill="none">
-      <path d="M8,36 C20,10 38,8 52,24 C66,40 80,12 98,18 C110,22 120,14 126,10" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.8" />
-      <path d="M8,36 C15,32 22,38 28,34" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5" />
-      <text x="6" y="44" fontSize="9" fontWeight="bold" fill={color} opacity="0.4" fontFamily="serif">{initials}</text>
+    <svg width="140" height="55" viewBox="0 0 140 55" fill="none" style={{ transform: `rotate(${rot}deg) scale(${scale}, 1)` }}>
+      {content}
     </svg>
   );
 }
@@ -86,6 +132,79 @@ function OrnateCorner({ color }: { color: string }) {
       <path d="M10,10 L50,10 L50,14 L14,14 L14,50 L10,50 Z" fill={color} opacity="0.4" />
       <circle cx="12" cy="12" r="3" fill={color} opacity="0.6" />
       <path d="M18,18 Q25,12 32,18 Q39,24 46,18" stroke={color} strokeWidth="1.5" fill="none" opacity="0.5" />
+    </svg>
+  );
+}
+
+// Realistic round embossed stamp / seal
+function OfficialSeal({ color, orgName, size = 80 }: { color: string; orgName?: string; size?: number }) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const r1 = size / 2 - 2;
+  const r2 = size / 2 - 7;
+  const r3 = size / 2 - 12;
+  const label = (orgName ?? "OFFICIAL").toUpperCase().slice(0, 12);
+  // Arc text
+  const chars = label.split("");
+  const arcR = r2 - 3;
+  const totalAngle = Math.min(150, chars.length * 14);
+  const startAngle = -90 - totalAngle / 2;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={cx} cy={cy} r={r1} fill="none" stroke={color} strokeWidth="2" />
+      <circle cx={cx} cy={cy} r={r2} fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="3 2" />
+      <circle cx={cx} cy={cy} r={r3} fill="none" stroke={color} strokeWidth="0.5" />
+      {/* Arc text top */}
+      {chars.map((ch, i) => {
+        const angle = startAngle + (totalAngle / Math.max(chars.length - 1, 1)) * i;
+        const rad = (angle * Math.PI) / 180;
+        const x = cx + arcR * Math.cos(rad);
+        const y = cy + arcR * Math.sin(rad);
+        return (
+          <text key={i} x={x} y={y} fontSize={size * 0.095} fontWeight="bold" fill={color}
+            textAnchor="middle" dominantBaseline="middle"
+            transform={`rotate(${angle + 90}, ${x}, ${y})`}
+            fontFamily="Arial, sans-serif" letterSpacing="0.5">
+            {ch}
+          </text>
+        );
+      })}
+      {/* Bottom arc: CERTIFIED */}
+      {"CERTIFIED".split("").map((ch, i) => {
+        const total = 9;
+        const arcAngle = 120;
+        const baseAngle = 90 - arcAngle / 2;
+        const angle = baseAngle + (arcAngle / (total - 1)) * i;
+        const rad = (angle * Math.PI) / 180;
+        const x = cx + arcR * Math.cos(rad);
+        const y = cy + arcR * Math.sin(rad);
+        return (
+          <text key={i} x={x} y={y} fontSize={size * 0.085} fontWeight="700" fill={color}
+            textAnchor="middle" dominantBaseline="middle"
+            transform={`rotate(${angle + 90}, ${x}, ${y})`}
+            fontFamily="Arial, sans-serif" opacity="0.8">
+            {ch}
+          </text>
+        );
+      })}
+      {/* Center: inline 24-spoke chakra */}
+      {Array.from({ length: 24 }, (_, i) => {
+        const a = (i * 360) / 24;
+        const rad = (a * Math.PI) / 180;
+        return <line key={i} x1={cx} y1={cy}
+          x2={cx + (r3 - 2) * Math.sin(rad)}
+          y2={cy - (r3 - 2) * Math.cos(rad)}
+          stroke={color} strokeWidth="0.7" opacity="0.6" />;
+      })}
+      <circle cx={cx} cy={cy} r={r3 * 0.5} fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+      <circle cx={cx} cy={cy} r={3} fill={color} opacity="0.8" />
+      {/* dot ring between r3 and r2 */}
+      {Array.from({ length: 16 }, (_, i) => {
+        const a = (i * 360) / 16;
+        const rad = (a * Math.PI) / 180;
+        const rr = (r2 + r3) / 2;
+        return <circle key={i} cx={cx + rr * Math.cos(rad)} cy={cy + rr * Math.sin(rad)} r={0.9} fill={color} opacity="0.5" />;
+      })}
     </svg>
   );
 }
@@ -119,6 +238,36 @@ function MandalaDecor({ size = 120, color = "#7B2D00" }: { size?: number; color?
   );
 }
 
+// ─── Watermark ───────────────────────────────────────────────────────────────
+
+function CertWatermark({ color }: { color: string }) {
+  return (
+    <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}
+      xmlns="http://www.w3.org/2000/svg">
+      <text
+        x="50%" y="52%"
+        textAnchor="middle" dominantBaseline="middle"
+        fontSize="72" fontWeight="900" fontFamily="Arial Black, sans-serif"
+        fill={color} opacity="0.04"
+        transform="rotate(-35, 397, 561)"
+        letterSpacing="4"
+      >
+        CERTIFIED
+      </text>
+      <text
+        x="50%" y="60%"
+        textAnchor="middle" dominantBaseline="middle"
+        fontSize="28" fontWeight="700" fontFamily="Arial, sans-serif"
+        fill={color} opacity="0.03"
+        transform="rotate(-35, 397, 561)"
+        letterSpacing="8"
+      >
+        INTERNSHIP PROGRAMME
+      </text>
+    </svg>
+  );
+}
+
 // ─── Certificate Templates ────────────────────────────────────────────────────
 
 type CertData = {
@@ -132,6 +281,9 @@ type Signatory = (typeof SIGNATORIES)[0];
 function CertSarkari({ data, template, signatory, certId, certDate }: { data: CertData; template: Template; signatory: Signatory; certId: string; certDate: string }) {
   return (
     <div style={{ width: "210mm", minHeight: "297mm", backgroundColor: "#fff", fontFamily: "'Times New Roman', Georgia, serif", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {/* Watermark */}
+      <CertWatermark color={template.accent} />
+
       {/* Tricolor Header */}
       <div style={{ height: 12, backgroundColor: "#FF9933", width: "100%" }} />
       <div style={{ height: 12, backgroundColor: "#ffffff", width: "100%", borderTop: "1px solid #eee", borderBottom: "1px solid #eee" }} />
@@ -205,15 +357,16 @@ function CertSarkari({ data, template, signatory, certId, certDate }: { data: Ce
           We wish him/her all the best in future endeavours.
         </div>
 
-        {/* Signature */}
+        {/* Signature + Seal */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 48 }}>
           <div style={{ textAlign: "center" }}>
             <SignatureSVG initials={signatory.initials} color={template.accent} />
             <div style={{ width: 160, height: 1, backgroundColor: "#333", margin: "4px auto" }} />
             <div style={{ fontSize: 11, fontWeight: 700, color: "#111" }}>{signatory.name}</div>
             <div style={{ fontSize: 9, color: "#888", letterSpacing: 1 }}>{signatory.title}</div>
+            <div style={{ fontSize: 9, color: "#888" }}>{data.companyName}</div>
           </div>
-         
+          <OfficialSeal color={template.accent} orgName={data.companyName} size={80} />
         </div>
 
         {/* Place & Date line */}
@@ -235,6 +388,8 @@ function CertSarkari({ data, template, signatory, certId, certDate }: { data: Ce
 function CertIIT({ data, template, signatory, certId, certDate }: { data: CertData; template: Template; signatory: Signatory; certId: string; certDate: string }) {
   return (
     <div style={{ width: "210mm", minHeight: "297mm", backgroundColor: template.bg, fontFamily: "'Georgia', serif", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {/* Watermark */}
+      <CertWatermark color={template.accent} />
       {/* Top institutional band */}
       <div style={{ backgroundColor: template.accent, padding: "18px 28px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
@@ -339,6 +494,8 @@ function CertIIT({ data, template, signatory, certId, certDate }: { data: CertDa
 function CertUniversity({ data, template, signatory, certId, certDate }: { data: CertData; template: Template; signatory: Signatory; certId: string; certDate: string }) {
   return (
     <div style={{ width: "210mm", minHeight: "297mm", backgroundColor: "#fdf6ec", fontFamily: "'Times New Roman', Georgia, serif", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {/* Watermark */}
+      <CertWatermark color={template.accent} />
       {/* Parchment texture overlay */}
       <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 39px, #f0e8d644 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #f0e8d622 40px)", pointerEvents: "none" }} />
 
@@ -435,11 +592,7 @@ function CertUniversity({ data, template, signatory, certId, certDate }: { data:
             <div style={{ fontSize: 11, fontWeight: 700, color: "#111" }}>{signatory.name}</div>
             <div style={{ fontSize: 9, color: "#888", letterSpacing: 1 }}>{signatory.title}</div>
           </div>
-          <div style={{ width: 70, height: 70, borderRadius: "50%", border: `2px solid ${template.accent}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: 60, height: 60, borderRadius: "50%", border: `1px solid ${template.secondary}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: 7, fontWeight: 900, color: template.accent, textAlign: "center", lineHeight: 1.6 }}>OFFICIAL<br />SEAL</div>
-            </div>
-          </div>
+          <div style={{ flex: "0 0 auto" }}><OfficialSeal color={template.accent} orgName={data.companyName} size={76} /></div>
         </div>
       </div>
     </div>
@@ -450,6 +603,8 @@ function CertUniversity({ data, template, signatory, certId, certDate }: { data:
 function CertCorporate({ data, template, signatory, certId, certDate }: { data: CertData; template: Template; signatory: Signatory; certId: string; certDate: string }) {
   return (
     <div style={{ width: "210mm", minHeight: "297mm", backgroundColor: "#fff", fontFamily: "'Arial', sans-serif", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {/* Watermark */}
+      <CertWatermark color={template.accent} />
       {/* Bold left stripe */}
       <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 14, backgroundColor: template.accent }} />
       <div style={{ position: "absolute", top: 0, left: 14, bottom: 0, width: 6, background: `linear-gradient(to bottom, ${template.secondary}, ${template.accent}44)` }} />
@@ -550,6 +705,8 @@ function CertCorporate({ data, template, signatory, certId, certDate }: { data: 
 function CertStartup({ data, template, signatory, certId, certDate }: { data: CertData; template: Template; signatory: Signatory; certId: string; certDate: string }) {
   return (
     <div style={{ width: "210mm", minHeight: "297mm", backgroundColor: template.bg, fontFamily: "'Helvetica Neue', Arial, sans-serif", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {/* Watermark */}
+      <CertWatermark color={template.accent} />
       {/* Top cyan strip */}
       <div style={{ height: 8, background: `linear-gradient(to right, ${template.secondary}, ${template.secondary}88)` }} />
 
@@ -635,9 +792,7 @@ function CertStartup({ data, template, signatory, certId, certDate }: { data: Ce
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 9, color: "#aaa" }}>Issued on {certDate}</div>
-            <div style={{ width: 64, height: 64, borderRadius: "50%", border: `2px solid ${template.secondary}`, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "auto", marginTop: 8 }}>
-              <div style={{ fontSize: 7, fontWeight: 900, color: template.secondary, textAlign: "center" }}>VALID<br />✓</div>
-            </div>
+            <div style={{ marginLeft: "auto", marginTop: 8 }}><OfficialSeal color={template.secondary} orgName={data.companyName} size={70} /></div>
           </div>
         </div>
       </div>
@@ -651,6 +806,8 @@ function CertStartup({ data, template, signatory, certId, certDate }: { data: Ce
 function CertSkillIndia({ data, template, signatory, certId, certDate }: { data: CertData; template: Template; signatory: Signatory; certId: string; certDate: string }) {
   return (
     <div style={{ width: "210mm", minHeight: "297mm", backgroundColor: "#fff", fontFamily: "'Arial', sans-serif", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {/* Watermark */}
+      <CertWatermark color={template.accent} />
       {/* Saffron-green-saffron top band */}
       <div style={{ display: "flex", height: 16 }}>
         <div style={{ flex: 1, backgroundColor: "#FF9933" }} />
@@ -770,6 +927,8 @@ function CertSkillIndia({ data, template, signatory, certId, certDate }: { data:
 function CertHeritage({ data, template, signatory, certId, certDate }: { data: CertData; template: Template; signatory: Signatory; certId: string; certDate: string }) {
   return (
     <div style={{ width: "210mm", minHeight: "297mm", backgroundColor: template.bg, fontFamily: "'Times New Roman', Georgia, serif", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {/* Watermark */}
+      <CertWatermark color={template.accent} />
       {/* Mandala backgrounds */}
       <div style={{ position: "absolute", top: -40, left: -40 }}>
         <MandalaDecor size={200} color={template.accent} />
@@ -866,11 +1025,7 @@ function CertHeritage({ data, template, signatory, certId, certDate }: { data: C
             <div style={{ fontSize: 11, fontWeight: 700, color: "#111" }}>{signatory.name}</div>
             <div style={{ fontSize: 9, color: "#888" }}>{signatory.title}</div>
           </div>
-          <div style={{ width: 68, height: 68, borderRadius: "50%", border: `3px solid ${template.secondary}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: 58, height: 58, borderRadius: "50%", border: `1px solid ${template.accent}44`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: 7, fontWeight: 900, color: template.accent, textAlign: "center", lineHeight: 1.6 }}>OFFICIAL<br />SEAL</div>
-            </div>
-          </div>
+          <div style={{ flex: "0 0 auto" }}><OfficialSeal color={template.accent} orgName={data.companyName} size={76} /></div>
         </div>
       </div>
 
@@ -887,6 +1042,8 @@ function CertPremium({ data, template, signatory, certId, certDate }: { data: Ce
   const gold = template.secondary;
   return (
     <div style={{ width: "210mm", minHeight: "297mm", backgroundColor: "#fffff8", fontFamily: "'Georgia', 'Times New Roman', serif", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {/* Watermark */}
+      <CertWatermark color={gold} />
       {/* Gold corner accents */}
       {[
         { top: 0, left: 0, transform: "none" },
@@ -997,11 +1154,7 @@ function CertPremium({ data, template, signatory, certId, certDate }: { data: Ce
             <div>{certId}</div>
             <div style={{ marginTop: 4 }}>{certDate}</div>
           </div>
-          <div style={{ width: 72, height: 72, borderRadius: "50%", border: `2px solid ${gold}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: 62, height: 62, borderRadius: "50%", border: `1px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: 7, fontWeight: 900, color: gold, textAlign: "center", lineHeight: 1.6 }}>OFFICIAL<br />SEAL</div>
-            </div>
-          </div>
+          <div style={{ flex: "0 0 auto" }}><OfficialSeal color={gold} orgName={data.companyName} size={80} /></div>
         </div>
       </div>
     </div>
@@ -1012,6 +1165,8 @@ function CertPremium({ data, template, signatory, certId, certDate }: { data: Ce
 function CertMinistry({ data, template, signatory, certId, certDate }: { data: CertData; template: Template; signatory: Signatory; certId: string; certDate: string }) {
   return (
     <div style={{ width: "210mm", minHeight: "297mm", backgroundColor: "#fff", fontFamily: "'Times New Roman', Georgia, serif", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {/* Watermark */}
+      <CertWatermark color={template.accent} />
       {/* Top decorative bar */}
       <div style={{ height: 8, backgroundColor: template.accent }} />
       <div style={{ height: 3, backgroundColor: template.secondary }} />
@@ -1126,13 +1281,7 @@ function CertMinistry({ data, template, signatory, certId, certDate }: { data: C
             <div style={{ fontSize: 9, color: "#888" }}>{data.companyName}</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ width: 80, height: 80, borderRadius: "50%", border: `3px solid ${template.accent}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ width: 68, height: 68, borderRadius: "50%", border: `1.5px solid ${template.secondary}66`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ fontSize: 7, fontWeight: 900, color: template.accent, textAlign: "center", lineHeight: 1.8 }}>
-                  OFFICIAL<br />SEAL<br />✦
-                </div>
-              </div>
-            </div>
+            <OfficialSeal color={template.accent} orgName={data.companyName} size={86} />
             <div style={{ fontSize: 8, color: "#bbb", marginTop: 4, letterSpacing: 2 }}>AUTHENTIC</div>
           </div>
         </div>
@@ -1295,13 +1444,12 @@ export default function InternshipGeneratorClient() {
     } catch (err) {
       console.error(err);
       toast.dismiss(tid);
-      toast.error("Failed to generate PDF. Try the Print option.");
+      toast.error("Failed to generate PDF.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handlePrint = () => window.print();
 
   return (
     <div className="min-h-screen bg-[#080808] text-white flex flex-col font-sans selection:bg-yellow-500/20">
@@ -1452,9 +1600,6 @@ export default function InternshipGeneratorClient() {
 
             {/* Mobile actions */}
             <div className="flex gap-3 md:hidden">
-              <Button variant="outline" className="flex-1 border-white/10 text-neutral-400 bg-black/30 h-11" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-2" />Print
-              </Button>
               <Button className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase tracking-wider h-11" onClick={handleDownload} disabled={isGenerating}>
                 {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
                 Download
@@ -1472,9 +1617,6 @@ export default function InternshipGeneratorClient() {
                 <span className="text-[10px] font-black uppercase tracking-widest">A4 Live Preview</span>
               </div>
               <div className="hidden md:flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handlePrint} className="h-9 border-white/10 text-neutral-400 hover:text-white bg-black/30">
-                  <Printer className="h-3.5 w-3.5 mr-1.5" />Print
-                </Button>
                 <Button size="sm" onClick={handleDownload} disabled={isGenerating} className="h-9 bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase tracking-wider">
                   {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
                   Download PDF
@@ -1504,14 +1646,36 @@ export default function InternshipGeneratorClient() {
         <div className="mt-16"><CorePromo /></div>
       </main>
 
-      <style jsx global>{`
+      <style>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+          html, body {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
           .no-print { display: none !important; }
-          body { background: white !important; }
           #printable-area {
-            position: fixed !important; top: 0 !important; left: 0 !important;
-            width: 100vw !important; height: 100vh !important;
-            margin: 0 !important; padding: 0 !important; box-shadow: none !important;
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            transform: none !important;
+          }
+          #printable-area > * {
+            width: 210mm !important;
+            min-height: 297mm !important;
           }
         }
       `}</style>

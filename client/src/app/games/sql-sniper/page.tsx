@@ -177,7 +177,7 @@ export default function SqlSniperGame() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-blue-600/30 overflow-hidden">
+    <div className="min-h-[100dvh] pt-24 lg:pt-32 relative z-[20] bg-transparent text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-blue-600/30 overflow-hidden">
       
       {/* Ambient Background */}
       <div className="fixed top-0 left-0 w-full h-[60vh] bg-blue-600/5 blur-[120px] pointer-events-none" />

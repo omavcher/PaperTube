@@ -222,7 +222,7 @@ export default function ComplexityDashGame() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-red-600/30 overflow-hidden">
+    <div className="min-h-[100dvh] pt-24 lg:pt-32 relative z-[20] bg-transparent text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-red-600/30 overflow-hidden">
       
       {/* --- HUD --- */}
       <div className="w-full max-w-2xl space-y-4 mb-8">

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
 import { FcGoogle } from "react-icons/fc";
 import api from "@/config/api";
@@ -38,6 +39,10 @@ export const Navbar = ({
   const [mobileOpen, setMobileOpen] = useState(false);
   const { scrollY } = useScroll();
   const [tokenInfo, setTokenInfo] = useState<any>(null);
+  const pathname = usePathname();
+
+  const isGamePlatform = pathname?.startsWith("/games/") && pathname !== "/games";
+  const finalHideDesktop = hideDesktop || isGamePlatform;
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -70,7 +75,7 @@ export const Navbar = ({
   return (
     <>
       {/* --- DESKTOP NAVIGATION --- */}
-      {!hideDesktop && (
+      {!finalHideDesktop && (
         <nav className={cn(
           "fixed top-0 inset-x-0 z-[100] transition-all duration-500 hidden lg:block font-sans pointer-events-none", 
           visible ? "pt-4" : "pt-0"

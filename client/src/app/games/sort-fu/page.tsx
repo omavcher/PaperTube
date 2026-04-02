@@ -158,7 +158,7 @@ export default function SortFuGame() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-blue-500/30 overflow-hidden">
+    <div className="min-h-[100dvh] pt-24 lg:pt-32 relative z-[20] bg-transparent text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-blue-500/30 overflow-hidden">
       
       {/* --- HUD --- */}
       <div className="w-full max-w-2xl bg-neutral-900/20 border border-white/5 p-6 rounded-xl md:rounded-2xl backdrop-blur-md mb-8 shadow-2xl relative overflow-hidden">

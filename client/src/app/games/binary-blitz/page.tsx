@@ -199,7 +199,7 @@ export default function BinaryBlitzGame() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-blue-500/30">
+    <div className="min-h-[100dvh] pt-24 lg:pt-32 relative z-[20] bg-transparent text-white flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-blue-500/30">
       
       {/* --- HUD: Laptop/Mobile Responsive --- */}
       <div className="w-full max-w-2xl bg-neutral-900/40 border border-white/5 p-4 md:p-8 rounded-[2rem] md:rounded-2xl backdrop-blur-md mb-6 shadow-2xl">

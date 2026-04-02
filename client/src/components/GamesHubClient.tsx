@@ -7,7 +7,7 @@ import {
   Activity, Flame, ShieldCheck, FlaskConical, Database, Hash,
   Globe, Keyboard, Search, Target, MousePointer2, Sparkles,
   ArrowUpRight, TrendingUp, Home, Grid, Settings, Gamepad2,
-  Code2
+  Code2, Building2, Calculator
 } from "lucide-react";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,9 @@ const GAMES = [
   { id: "sql-sniper", title: "SQL Sniper", description: "Query selection drill.", icon: <Database />, path: "/games/sql-sniper", difficulty: "Hard", category: "CS Core", color: "text-blue-400", bg: "from-blue-900/40", stats: "630 Plays", image: "/games_thumb/sql-sniper.webp" },
   { id: "logic-leap", title: "Logic Leap", description: "Sequence completion.", icon: <Hash />, path: "/games/logic-leap", difficulty: "Medium", category: "Math", color: "text-purple-400", bg: "from-purple-900/40", stats: "940 Plays", image: "/games_thumb/logic-leap.webp" },
   { id: "flag-mastery", title: "Flag Mastery", description: "Global geo quizzes.", icon: <Globe />, path: "/games/flag-mastery", difficulty: "Easy", category: "General", color: "text-cyan-400", bg: "from-cyan-900/40", stats: "2.4k Plays", image: "/games_thumb/flag-mastery.webp" },
-  { id: "keyword-crypt", title: "Keyword Crypt", description: "Decrypt tech terms.", icon: <Keyboard />, path: "/games/keyword-crypt", difficulty: "Expert", category: "Logic", color: "text-red-400", bg: "from-red-900/40", stats: "150 Plays", image: "/games_thumb/keyword-crypt.webp" }
+  { id: "keyword-crypt", title: "Keyword Crypt", description: "Decrypt tech terms.", icon: <Keyboard />, path: "/games/keyword-crypt", difficulty: "Expert", category: "Logic", color: "text-red-400", bg: "from-red-900/40", stats: "150 Plays", image: "/games_thumb/keyword-crypt.webp" },
+  { id: "capital-conquest", title: "Capital Conquest", description: "Match countries and capitals.", icon: <Building2 />, path: "/games/capital-conquest", difficulty: "Medium", category: "General", color: "text-emerald-400", bg: "from-emerald-900/40", stats: "1.5k Plays", image: "/games_thumb/capital-conquest.webp" },
+  { id: "math-matrix", title: "Math Matrix", description: "Rapid mental calculations.", icon: <Calculator />, path: "/games/math-matrix", difficulty: "Medium", category: "Math", color: "text-purple-400", bg: "from-purple-900/40", stats: "2.1k Plays", image: "/games_thumb/math-matrix.webp" }
 ];
 
 const categories = ["All", "Programming", "Math", "CS Core", "Logic", "Science"];
