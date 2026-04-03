@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import api from "@/config/api";
+import { AdBanner } from "@/components/AdBanner";
 
 // --- TYPES (Re-used) ---
 interface ContentBlock {
@@ -422,6 +423,10 @@ export default function BlogClient({ post }: { post: BlogPost }) {
               })}
             </div>
 
+            <div className="flex justify-center mt-12 w-full overflow-hidden">
+              <AdBanner dataKey="c3edbe4a4037d587541caa2bae8ba51e" width={300} height={250} />
+            </div>
+
             {/* Author Bio Box */}
             <div className="mt-20 p-8 rounded-3xl bg-[#0f0f0f] border border-white/10 flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left">
               <Avatar className="h-20 w-20 border-2 border-red-600">
@@ -440,8 +445,14 @@ export default function BlogClient({ post }: { post: BlogPost }) {
           </article>
 
           {/* Right Sidebar (Sticky Table of Contents) */}
-          <aside className="lg:col-span-4 relative">
+          <aside className="lg:col-span-4 relative flex flex-col gap-8">
             <StickyTOC toc={generatedToc} />
+            <div className="hidden lg:flex justify-center mt-4">
+              <AdBanner dataKey="75647847b1f77d81354f804405aac4f1" width={160} height={600} />
+            </div>
+            <div className="lg:hidden flex justify-center mt-8 overflow-hidden">
+              <AdBanner dataKey="c3edbe4a4037d587541caa2bae8ba51e" width={300} height={250} />
+            </div>
           </aside>
 
         </div>

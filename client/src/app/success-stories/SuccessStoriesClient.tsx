@@ -14,6 +14,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LoaderX } from "@/components/LoaderX";
+import { AdBanner } from "@/components/AdBanner";
 
 // --- Types ---
 interface Story {
@@ -226,6 +227,11 @@ export default function SuccessStoriesClient({ initialStories }: SuccessStoriesC
                 <SuccessCard key={story._id} story={story} delay={i * 0.05} />
               ))}
             </AnimatePresence>
+          </div>
+          
+          {/* Ad Banner injected at text bottom */}
+          <div className="w-full flex justify-center mt-12 py-6 border-t border-white/5 overflow-hidden">
+             <AdBanner dataKey="c3edbe4a4037d587541caa2bae8ba51e" width={300} height={250} />
           </div>
         </section>
 

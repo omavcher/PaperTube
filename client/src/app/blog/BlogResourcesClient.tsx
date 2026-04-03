@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
+import { AdBanner } from "@/components/AdBanner";
 
 // --- Types ---
 interface BlogPost {
@@ -252,6 +253,14 @@ export default function BlogResourcesClient({ initialPosts }: { initialPosts: Bl
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* AD BANNER */}
+            <div className="hidden lg:flex justify-center mt-8 sticky top-24">
+               <AdBanner dataKey="75647847b1f77d81354f804405aac4f1" width={160} height={600} />
+            </div>
+            <div className="lg:hidden flex justify-center mt-8 w-full overflow-hidden">
+               <AdBanner dataKey="c3edbe4a4037d587541caa2bae8ba51e" width={300} height={250} />
             </div>
           </aside>
 

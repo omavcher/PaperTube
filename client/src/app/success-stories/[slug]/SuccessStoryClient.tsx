@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import api from "@/config/api";
+import { AdBanner } from "@/components/AdBanner";
 
 // Re-use types or import from a shared file
 interface JourneyStep {
@@ -238,9 +239,16 @@ export default function SuccessStoryClient({ story }: { story: StoryDetail }) {
                 </Button>
               </Link>
 
+              <div className="hidden lg:flex justify-center mt-6 w-full">
+                <AdBanner dataKey="75647847b1f77d81354f804405aac4f1" width={160} height={600} />
+              </div>
             </div>
           </aside>
 
+        </div>
+        
+        <div className="flex w-full justify-center mt-8 lg:hidden overflow-hidden">
+          <AdBanner dataKey="c3edbe4a4037d587541caa2bae8ba51e" width={300} height={250} />
         </div>
 
       </div>
