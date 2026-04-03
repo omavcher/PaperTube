@@ -402,56 +402,32 @@ export default function ProfilePage() {
                       transition={{ duration: 0.2 }}
                       className="space-y-6"
                    >
-                      <h2 className="text-2xl font-bold text-white tracking-tight">Billing History</h2>
-                      <div className="bg-neutral-900/40 border border-white/5 rounded-3xl overflow-hidden">
-                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                               <thead className="bg-neutral-900/80 text-neutral-500 border-b border-white/5">
-                                  <tr>
-                                     <th className="p-5 font-bold uppercase tracking-wider text-[10px]">Date</th>
-                                     <th className="p-5 font-bold uppercase tracking-wider text-[10px]">Plan</th>
-                                     <th className="p-5 font-bold uppercase tracking-wider text-[10px]">Amount</th>
-                                     <th className="p-5 font-bold uppercase tracking-wider text-[10px]">Status</th>
-                                     <th className="p-5 font-bold uppercase tracking-wider text-[10px] text-right">Invoice</th>
-                                  </tr>
-                               </thead>
-                               <tbody className="divide-y divide-white/5">
-                                  {user.transactions && user.transactions.length > 0 ? (
-                                     user.transactions.map((tx: any) => (
-                                        <tr key={tx._id} className="hover:bg-white/5 transition-colors group">
-                                           <td className="p-5 text-neutral-300 font-mono text-xs whitespace-nowrap">{formatDate(tx.timestamp)}</td>
-                                           <td className="p-5 font-medium text-white whitespace-nowrap">{tx.packageName}</td>
-                                           <td className="p-5 text-neutral-300 font-mono text-xs whitespace-nowrap">{formatCurrency(tx.amount)}</td>
-                                           <td className="p-5 whitespace-nowrap">
-                                              <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[9px] font-bold uppercase tracking-wide">
-                                                 {tx.status}
-                                              </Badge>
-                                           </td>
-                                           <td className="p-5 text-right whitespace-nowrap">
-                                              <Button 
-                                                 variant="ghost" size="sm" 
-                                                 className="h-8 text-neutral-400 hover:text-white hover:bg-white/10"
-                                                 onClick={() => generateInvoice(tx)}
-                                                 disabled={downloadingId === tx._id}
-                                              >
-                                                 {downloadingId === tx._id ? (
-                                                    <Loader2 className="animate-spin" size={14} />
-                                                 ) : (
-                                                    <Download size={14} />
-                                                 )}
-                                              </Button>
-                                           </td>
-                                        </tr>
-                                     ))
-                                  ) : (
-                                     <tr>
-                                        <td colSpan={5} className="p-12 text-center text-neutral-500 text-sm">No transactions found.</td>
-                                     </tr>
-                                  )}
-                               </tbody>
-                            </table>
-                         </div>
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div>
+                              <h2 className="text-2xl font-black text-white uppercase italic tracking-tight">Billing History</h2>
+                              <p className="text-sm text-neutral-500 font-medium mt-1">View and download your authentic past invoices.</p>
+                          </div>
                       </div>
+
+                      {user.transactions && user.transactions.length > 0 ? (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              {user.transactions.map((tx: any) => (
+                                  <ReceiptCard 
+                                      key={tx._id} 
+                                      tx={tx} 
+                                      user={user} 
+                                      onDownload={() => generateInvoice(tx)} 
+                                      downloading={downloadingId === tx._id} 
+                                  />
+                              ))}
+                          </div>
+                      ) : (
+                          <div className="bg-neutral-900/40 border border-white/5 rounded-3xl p-12 text-center flex flex-col items-center justify-center">
+                              <History size={48} className="text-neutral-700 mb-4" />
+                              <h3 className="text-lg font-bold text-white mb-2">No Transactions Yet</h3>
+                              <p className="text-sm text-neutral-500">Your billing and authentic invoice history will appear here once you make a purchase.</p>
+                          </div>
+                      )}
                    </motion.div>
                 )}
 
@@ -666,4 +642,93 @@ function ActivityItem({ item, type }: { item: any, type: 'note' }) {
          </div>
       </div>
    )
+}
+
+function ReceiptCard({ tx, user, onDownload, downloading }: any) {
+    const totalAmt = parseFloat(tx.amount);
+    const gstRate = 0.18;
+    const baseVal = totalAmt / (1 + gstRate);
+    const gstVal = totalAmt - baseVal;
+
+    return (
+        <div className="relative bg-neutral-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-6 md:p-8 flex flex-col overflow-hidden group shadow-2xl transition-all duration-300 hover:border-white/20 hover:bg-neutral-900/80">
+            {/* Ambient Lighting */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-red-600/10 blur-[60px] rounded-full pointer-events-none transition-all duration-700 group-hover:bg-red-600/20" />
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-600/10 blur-[60px] rounded-full pointer-events-none transition-all duration-700 group-hover:bg-blue-600/20" />
+            
+            <div className="relative z-10 flex flex-col h-full">
+                {/* Header Section */}
+                <div className="flex justify-between items-start mb-8">
+                    <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 bg-black rounded-xl p-0.5 border border-white/10 flex items-center justify-center shadow-lg relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-50" />
+                          <Layers className="text-white relative z-10" size={20} />
+                       </div>
+                       <div>
+                          <h3 className="text-lg md:text-xl font-black text-white leading-tight uppercase tracking-tight italic">Paperxify</h3>
+                          <p className="text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-bold">Tax Invoice</p>
+                       </div>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-2xl font-black text-white tracking-tighter">{formatCurrency(totalAmt)}</p>
+                       <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] uppercase font-black tracking-widest mt-1.5 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                           {tx.status}
+                       </Badge>
+                    </div>
+                </div>
+
+                {/* Details Section (The "Paper" part) */}
+                <div className="bg-black/50 rounded-2xl p-5 border border-white/5 space-y-4 mb-6 relative">
+                   {/* Dotted cutting line illusion */}
+                   <div className="absolute left-[-5px] right-[-5px] top-1/2 -translate-y-1/2 border-t-2 border-dashed border-neutral-900 z-0 h-[1px]" />
+                   <div className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-neutral-900 rounded-full z-10" />
+                   <div className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-neutral-900 rounded-full z-10" />
+
+                   <div className="flex justify-between items-center text-sm relative z-10">
+                      <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Billed To</span>
+                      <span className="text-white font-bold">{user.name}</span>
+                   </div>
+                   <div className="flex justify-between items-center text-sm relative z-10 pt-2 border-t border-white/5">
+                      <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Date Paid</span>
+                      <span className="text-neutral-300 font-medium">{formatDate(tx.timestamp)}</span>
+                   </div>
+                   <div className="flex justify-between items-center text-sm relative z-10 pt-2 border-t border-white/5">
+                      <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Invoice Code</span>
+                      <span className="text-neutral-400 font-mono text-xs bg-white/5 px-2 py-0.5 rounded">INV-{tx._id.slice(-6).toUpperCase()}</span>
+                   </div>
+                   <div className="flex justify-between items-center text-sm relative z-10 pt-2 border-t border-white/5 pb-1">
+                      <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Plan Access</span>
+                      <span className="text-white font-black italic">{tx.packageName}</span>
+                   </div>
+                </div>
+
+                {/* Tax Breakdown */}
+                <div className="flex-col gap-2 mb-auto px-2 hidden sm:flex">
+                   <div className="flex justify-between text-[11px] font-bold">
+                      <span className="text-neutral-500 uppercase tracking-widest">Base Amount</span>
+                      <span className="text-neutral-400">{formatCurrency(baseVal)}</span>
+                   </div>
+                   <div className="flex justify-between text-[11px] font-bold">
+                      <span className="text-neutral-500 uppercase tracking-widest">IGST (18%)</span>
+                      <span className="text-neutral-400">{formatCurrency(gstVal)}</span>
+                   </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="mt-8 pt-5 border-t border-white/10 flex gap-3">
+                    <Button 
+                       onClick={onDownload}
+                       disabled={downloading}
+                       className="w-full bg-white hover:bg-neutral-200 text-black font-black uppercase italic tracking-widest text-xs rounded-xl h-12 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                    >
+                       {downloading ? (
+                           <><Loader2 className="animate-spin w-4 h-4 mr-2" /> Generating PDF...</>
+                       ) : (
+                           <><Download className="w-4 h-4 mr-2" /> Download Original Invoice</>
+                       )}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    )
 }
