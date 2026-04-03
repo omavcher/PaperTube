@@ -75,6 +75,13 @@ const formatTimeAgo = (dateString: string) => {
 
 const CATEGORIES = ["All", "Tech", "Dev", "AI", "Finance", "Science"];
 
+const SORT_OPTIONS = [
+  { label: "Latest", sortBy: "updatedAt", sortOrder: "desc", icon: Clock },
+  { label: "Trending", sortBy: "views", sortOrder: "desc", icon: Flame },
+  { label: "Most Liked", sortBy: "likes", sortOrder: "desc", icon: Heart },
+  { label: "Oldest", sortBy: "updatedAt", sortOrder: "asc", icon: Clock },
+];
+
 interface ExploreClientProps {
   initialItems?: Note[];
   initialPagination?: {
@@ -100,6 +107,7 @@ export default function ExploreClient({
   // UI/Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCat, setActiveCat] = useState("All");
+  const [activeSort, setActiveSort] = useState(SORT_OPTIONS[0]);
   const [activeUsers, setActiveUsers] = useState(842);
 
   // Social Proof Simulation
@@ -117,7 +125,7 @@ export default function ExploreClient({
   }, []);
 
   // 2. Fetch Data
-  const fetchExploreData = useCallback(async (pageNum: number, append = false, search = '') => {
+  const fetchExploreData = useCallback(async (pageNum: number, append = false, search = '', sort = SORT_OPTIONS[0]) => {
     const token = localStorage.getItem('authToken');
 
     try {
@@ -126,8 +134,8 @@ export default function ExploreClient({
       const params = new URLSearchParams({
         page: pageNum.toString(),
         limit: '12',
-        sortBy: 'updatedAt',
-        sortOrder: 'desc',
+        sortBy: sort.sortBy,
+        sortOrder: sort.sortOrder,
         type: 'notes',
         search: search
       });
@@ -154,25 +162,25 @@ export default function ExploreClient({
     }
   }, []);
 
-  // Handle Category Filter (Server-side instead of client-side!)
-  // Whenever category or search changes, reset page and fetch:
+  // Handle Category, Search & Sort Filter (Server-side instead of client-side!)
+  // Whenever category, search or sort changes, reset page and fetch:
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (initialItems.length > 0 && searchQuery === '' && activeCat === "All" && page === 1 && !loading) return;
+      if (initialItems.length > 0 && searchQuery === '' && activeCat === "All" && activeSort.label === "Latest" && page === 1 && !loading) return;
       if (isAuthenticated !== null) {
         const queryWithCat = activeCat === "All" ? searchQuery.trim() : `${activeCat} ${searchQuery}`.trim();
-        fetchExploreData(1, false, queryWithCat);
+        fetchExploreData(1, false, queryWithCat, activeSort);
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, activeCat, isAuthenticated, fetchExploreData, initialItems.length]);
+  }, [searchQuery, activeCat, activeSort, isAuthenticated, fetchExploreData, initialItems.length]);
 
   const handleLoadMore = useCallback(() => {
     if (hasMore && !loading) {
       const queryWithCat = activeCat === "All" ? searchQuery.trim() : `${activeCat} ${searchQuery}`.trim();
-      fetchExploreData(page + 1, true, queryWithCat);
+      fetchExploreData(page + 1, true, queryWithCat, activeSort);
     }
-  }, [hasMore, loading, page, activeCat, searchQuery, fetchExploreData]);
+  }, [hasMore, loading, page, activeCat, searchQuery, activeSort, fetchExploreData]);
 
   // Infinite Scroll Trigger
   useEffect(() => {
@@ -231,22 +239,48 @@ export default function ExploreClient({
             </div>
           </div>
 
-          {/* Categories */}
-          <div className="flex flex-wrap justify-center gap-2 pt-4">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCat(cat)}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all border",
-                  activeCat === cat 
-                    ? "bg-white text-black border-white" 
-                    : "bg-neutral-900/50 text-neutral-500 border-white/5 hover:border-white/20 hover:text-white"
-                )}
-              >
-                {cat}
-              </button>
-            ))}
+          {/* Filters & Categories */}
+          <div className="flex flex-col gap-4 w-full max-w-3xl pt-4">
+            {/* Categories */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCat(cat)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all border",
+                    activeCat === cat 
+                      ? "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]" 
+                      : "bg-neutral-900/50 text-neutral-500 border-white/5 hover:border-white/20 hover:text-white"
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort Options */}
+            <div className="flex flex-wrap justify-center gap-2 mt-2">
+              {SORT_OPTIONS.map((sort) => {
+                const Icon = sort.icon;
+                const isActive = activeSort.label === sort.label;
+                return (
+                  <button
+                    key={sort.label}
+                    onClick={() => setActiveSort(sort)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all border",
+                      isActive 
+                        ? "bg-red-500/10 text-red-500 border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.2)]" 
+                        : "bg-transparent text-neutral-500 border-transparent hover:bg-white/5 hover:text-neutral-300"
+                    )}
+                  >
+                    <Icon size={12} />
+                    {sort.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
