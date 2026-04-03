@@ -335,7 +335,7 @@ function sendAuthResponse(res, user) {
       name: user.name 
     },
     process.env.JWT_SECRET || process.env.SESSION_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
   );
 
   console.log("✅ Auth successful, sending response for user:", user.email);
@@ -353,7 +353,7 @@ function sendAuthResponse(res, user) {
         username: user.username,
         googleId: user.googleId
       },
-      expiresIn: 604800 // 7 days in seconds
+      expiresIn: 2592000 // 30 days in seconds
     }
   };
   
