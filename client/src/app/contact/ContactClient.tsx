@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { motion } from "framer-motion";
@@ -20,7 +20,7 @@ const CONTACT_CHANNELS = [
     id: "support",
     title: "Technical Support",
     description: "Issues with AI Note Generation or tool access?",
-    action: "paperxify@gmail.com",
+    action: "support@paperxify.com",
     icon: LifeBuoy,
     delay: 0.1
   },
@@ -28,7 +28,7 @@ const CONTACT_CHANNELS = [
     id: "business",
     title: "Business & API",
     description: "For enterprise licensing and educational partnerships.",
-    action: "paperxify@gmail.com",
+    action: "support@paperxify.com",
     icon: Briefcase,
     delay: 0.2
   },
@@ -44,7 +44,7 @@ const CONTACT_CHANNELS = [
     id: "general",
     title: "General Inquiries",
     description: "Feedback, suggestions, or just saying hello.",
-    action: "paperxify@gmail.com",
+    action: "support@paperxify.com",
     icon: Mail,
     delay: 0.4
   }

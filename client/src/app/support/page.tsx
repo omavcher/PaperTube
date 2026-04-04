@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -266,7 +266,7 @@ export default function SupportPage() {
                </div>
                
                <div className="space-y-4">
-                  <ContactCard icon={<Mail className="text-red-500"/>} title="Email" val="paperxify@gmail.com" />
+                  <ContactCard icon={<Mail className="text-red-500"/>} title="Email" val="support@paperxify.com" />
                   <ContactCard icon={<MessageSquare className="text-emerald-500"/>} title="Live Chat" val="Awaiting Peer..." />
                </div>
             </div>

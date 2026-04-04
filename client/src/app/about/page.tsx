@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { 
@@ -98,7 +98,7 @@ export default function FounderPage() {
                <SocialLink href="https://github.com/omavchar" icon={<Github size={18} />} label="GitHub" />
                <SocialLink href="https://x.com/omAvcher07" icon={<Twitter size={18} />} label="Twitter" />
                <SocialLink href="https://www.linkedin.com/in/omAvcher" icon={<Linkedin size={18} />} label="LinkedIn" />
-               <SocialLink href="mailto:paperxify@gmail.com" icon={<Mail size={18} />} label="Contact" />
+               <SocialLink href="mailto:support@paperxify.com" icon={<Mail size={18} />} label="Contact" />
             </motion.div>
           </div>
         </div>

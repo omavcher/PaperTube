@@ -130,7 +130,7 @@ const shell = (content, previewText = "") => `
       <!-- Footer -->
       <div class="footer">
         <p>© ${new Date().getFullYear()} Paperxify · Nagpur, Maharashtra, India<br/>
-        <a href="https://paperxify.com">paperxify.com</a> &nbsp;·&nbsp; <a href="mailto:paperxify@gmail.com">paperxify@gmail.com</a></p>
+        <a href="https://paperxify.com">paperxify.com</a> &nbsp;·&nbsp; <a href="mailto:support@paperxify.com">support@paperxify.com</a></p>
         <p style="margin-top:10px;">You're receiving this because you have an account at Paperxify.</p>
       </div>
 
@@ -308,7 +308,7 @@ exports.subscriptionPurchase = ({
         <a href="https://paperxify.com/profile" class="btn">View Your Plan →</a>
       </div>
 
-      <p class="p" style="font-size:12px;color:${C.dim};">This is a computer-generated invoice and does not require a physical signature. Registered under GST (IGST @18%). For any queries, email us at paperxify@gmail.com.</p>
+      <p class="p" style="font-size:12px;color:${C.dim};">This is a computer-generated invoice and does not require a physical signature. Registered under GST (IGST @18%). For any queries, email us at support@paperxify.com.</p>
       `,
       `Your ${planName} subscription is now active!`
     ),
@@ -404,7 +404,7 @@ exports.tokenPurchase = ({
         <a href="https://paperxify.com" class="btn">Start Using Tokens →</a>
       </div>
 
-      <p class="p" style="font-size:12px;color:${C.dim};">Computer-generated invoice · IGST @18% · paperxify@gmail.com</p>
+      <p class="p" style="font-size:12px;color:${C.dim};">Computer-generated invoice · IGST @18% · support@paperxify.com</p>
       `,
       `${tokensAwarded?.toLocaleString("en-IN")} tokens have been added to your Paperxify account!`
     ),
@@ -620,7 +620,7 @@ exports.invoiceResend = ({
         ${numToWords(totalAmt)}
       </div>
 
-      <p class="p" style="font-size:12px;color:${C.dim};">Computer-generated invoice · IGST @18% · Not a physical document · paperxify@gmail.com</p>
+      <p class="p" style="font-size:12px;color:${C.dim};">Computer-generated invoice · IGST @18% · Not a physical document · support@paperxify.com</p>
       `,
       `Your Paperxify tax invoice ${invNo}`
     ),

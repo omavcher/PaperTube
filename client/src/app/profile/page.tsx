@@ -116,7 +116,7 @@ export default function ProfilePage() {
     
     doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
     doc.text("Nagpur, Maharashtra, India - 440034", 14, 29);
-    doc.text("Email: paperxify@gmail.com", 14, 34);
+    doc.text("Email: support@paperxify.com", 14, 34);
 
     // --- Invoice Meta ---
     doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);

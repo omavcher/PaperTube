@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import ContactClient from "./ContactClient";
 
 export const metadata: Metadata = {
@@ -32,7 +32,7 @@ export default function ContactPage() {
           "@type": "ContactPoint",
           "telephone": "+91-0000000000", // Replace if you have one
           "contactType": "customer service",
-          "email": "paperxify@gmail.com",
+          "email": "support@paperxify.com",
           "areaServed": "Global",
           "availableLanguage": "English"
         }
