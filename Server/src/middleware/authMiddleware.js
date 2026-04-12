@@ -17,7 +17,7 @@ const authMiddleware = async (req, res, next) => {
       ? authHeader.slice(7) 
       : authHeader;
 
-    if (!token) {
+    if (!token || token === 'null' || token === 'undefined') {
       return res.status(401).json({ 
         success: false,
         message: "Access denied. Invalid token format." 

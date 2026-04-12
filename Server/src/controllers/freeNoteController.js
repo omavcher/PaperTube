@@ -617,6 +617,33 @@ const getModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, se
 
   const { instruction: depthInstruction } = detailConfig[detailLevel] || detailConfig['Standard Notes'];
 
+  if (settings?.format === 'flashcards') {
+    const cardLimit = settings.flashcardCount || 5;
+    return `
+**YOUR TASK — READ THIS CAREFULLY:**
+You are an expert educator creating high-yield flashcards from a video transcript.
+Generate EXACTLY ${cardLimit} flashcards that cover the most important concepts.
+
+STEP 1 — UNDERSTAND
+Read the transcript and extract the ${cardLimit} most critical terms, questions, or concepts.
+
+STEP 2 — SYNTHESIZE
+Create concise, punchy flashcards.
+- The 'front' should be a clear question or term.
+- The 'back' should be a comprehensive but concise answer/explanation.
+
+STEP 3 — FORMAT
+You MUST output ONLY a valid JSON array of objects. Do not wrap in markdown fences like \`\`\`json. Output raw JSON only.
+Format:
+[
+  { "front": "Question or Term here", "back": "Answer or Explanation here" }
+]
+
+**TRANSCRIPT:**
+${transcript}
+`;
+  }
+
   // ─── CORE INTELLIGENCE LAYER ─────────────────────────────────────────────
   // This is the key change: the AI must UNDERSTAND first, then WRITE study material.
   // It must NOT copy-paste or paraphrase the transcript.
@@ -914,7 +941,14 @@ exports.createNote = async (req, res) => {
   const startTime = Date.now();
 
   try {
-    const { videoUrl, prompt, model, settings } = req.body;
+    const { videoUrl, prompt, model, settings, format, flashcardCount } = req.body;
+    
+    // Inject format into settings so getModelPrompt can access it
+    if (settings) {
+      settings.format = format;
+      settings.flashcardCount = flashcardCount;
+    }
+
     const userId = req.user.id;
 
     // Input validation
@@ -1150,6 +1184,8 @@ exports.createNote = async (req, res) => {
         language: settings?.language || 'English',
         detailLevel: mapDetailLevel(settings?.detailLevel) || 'Standard Notes',
         prompt: prompt || "",
+        format: format || 'notes',
+        flashcardCount: flashcardCount,
         generatedAt: new Date(),
         processingTime: processingTime,
         type: isSubscribed ? 'premium' : 'free',

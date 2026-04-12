@@ -23,6 +23,7 @@ import {
   Eye,
   Clock,
   ChevronRight,
+  Layers
 } from "lucide-react";
 import { IconFolderCode } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ interface Note {
   videoId?: string;
   visibility?: string;
   lastEdit?: string;
+  type?: string;
 }
 
 interface Pagination {
@@ -153,7 +155,7 @@ const GridCard = React.memo(({
 }: {
   note: Note;
   searchQuery: string;
-  onClick: (slug: string, isPersonal: boolean, creatorUsername?: string) => void;
+  onClick: (note: Note, isPersonal: boolean) => void;
   onProfileClick: (creatorName: string) => void;
   highlightText: (text: string, highlight: string) => string | JSX.Element;
   showCreator?: boolean;
@@ -162,8 +164,7 @@ const GridCard = React.memo(({
   const thumbnailUrl = note.thumbnail || getYouTubeThumbnail(note.videoUrl);
   
   const handleCardClick = () => {
-    const creatorUsername = note.creator?.username || (note.creator?.name ? formatCreatorNameForUrl(note.creator.name) : undefined);
-    onClick(note.slug, isPersonal, creatorUsername);
+    onClick(note, isPersonal);
   };
 
   const handleCreatorClick = (e: React.MouseEvent) => {
@@ -203,7 +204,7 @@ const GridCard = React.memo(({
         {/* Desktop hover play */}
         <div className="hidden md:flex absolute inset-0 bg-black/40 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
            <div className="rounded-full p-3 bg-red-600/20 backdrop-blur-md text-red-500 border border-red-500/30 scale-90 group-hover:scale-100 transition-transform duration-300 shadow-lg">
-             <FileText size={16} />
+             {note.type === 'flashcard' ? <Layers size={16} /> : <FileText size={16} />}
            </div>
         </div>
 
@@ -216,6 +217,7 @@ const GridCard = React.memo(({
       {/* Content */}
       <div className="flex flex-col flex-1 p-3 md:p-4">
         <h3 className="font-bold text-white mb-auto leading-snug group-hover:text-red-400 transition-colors text-xs md:text-sm line-clamp-2">
+          {note.type === 'flashcard' && <span className="inline-flex items-center text-amber-500 border border-amber-500/30 bg-amber-500/10 px-1 py-0.5 rounded text-[8px] mr-1.5 uppercase tracking-wider mb-1 align-middle">Flashcards</span>}
           {searchQuery ? highlightText(note.title, searchQuery) : note.title}
         </h3>
 
@@ -264,7 +266,7 @@ const ListCard = React.memo(({
 }: {
   note: Note;
   searchQuery: string;
-  onClick: (slug: string, isPersonal: boolean, creatorUsername?: string) => void;
+  onClick: (note: Note, isPersonal: boolean) => void;
   onProfileClick: (creatorName: string) => void;
   highlightText: (text: string, highlight: string) => string | JSX.Element;
   showCreator?: boolean;
@@ -273,8 +275,7 @@ const ListCard = React.memo(({
   const thumbnailUrl = note.thumbnail || getYouTubeThumbnail(note.videoUrl);
   
   const handleCardClick = () => {
-    const creatorUsername = note.creator?.username || (note.creator?.name ? formatCreatorNameForUrl(note.creator.name) : undefined);
-    onClick(note.slug, isPersonal, creatorUsername);
+    onClick(note, isPersonal);
   };
 
   const handleCreatorClick = (e: React.MouseEvent) => {
@@ -316,8 +317,9 @@ const ListCard = React.memo(({
         {/* Main Info */}
         <div className="flex-1 min-w-0 space-y-1.5 md:space-y-2">
           {/* Title */}
-          <h3 className="font-bold text-white leading-snug group-hover:text-red-400 transition-colors text-xs sm:text-sm md:text-base line-clamp-1 md:line-clamp-2">
-            {searchQuery ? highlightText(note.title, searchQuery) : note.title}
+          <h3 className="font-bold text-white leading-snug group-hover:text-red-400 transition-colors text-xs sm:text-sm md:text-base line-clamp-1 md:line-clamp-2 flex items-center gap-1.5">
+            {note.type === 'flashcard' && <span className="inline-flex items-center text-amber-500 border border-amber-500/30 bg-amber-500/10 px-1 py-0.5 rounded text-[8px] uppercase tracking-wider align-middle shrink-0">Flashcards</span>}
+            <span className="truncate">{searchQuery ? highlightText(note.title, searchQuery) : note.title}</span>
           </h3>
           
           {/* Meta row */}
@@ -487,8 +489,13 @@ export default function NotesWorkspace() {
     }
   };
 
-  const handleCardClick = useCallback((slug: string, isPersonal: boolean, creatorUsername?: string) => {
-    router.push(isPersonal ? `/notes/${slug}` : `/note/${creatorUsername || 'anonymous'}/${slug}`);
+  const handleCardClick = useCallback((note: Note, isPersonal: boolean) => {
+    if (note.type === 'flashcard') {
+      router.push(`/flashcards/${note.slug}`);
+    } else {
+      const creatorUsername = note.creator?.username || (note.creator?.name ? formatCreatorNameForUrl(note.creator.name) : 'anonymous');
+      router.push(isPersonal ? `/notes/${note.slug}` : `/note/${creatorUsername}/${note.slug}`);
+    }
   }, [router]);
 
   const highlightText = useCallback((text: string, highlight: string) => {

@@ -21,6 +21,7 @@ interface Note {
   likes?: number;
   category?: string;
   creator?: Creator;
+  type?: string;
 }
 
 interface Pagination {
@@ -131,7 +132,9 @@ export default async function ExplorePage() {
       "itemListElement": initialItems.map((note, index) => ({
         "@type": "ListItem",
         "position": index + 1,
-        "url": `https://paperxify.com/note/${note.creator?.username || 'user'}/${note.slug}`,
+        "url": note.type === 'flashcard' 
+          ? `https://paperxify.com/flashcards/${note.slug}`
+          : `https://paperxify.com/note/${note.creator?.username || 'user'}/${note.slug}`,
         "name": note.title,
         "author": {
           "@type": "Person",

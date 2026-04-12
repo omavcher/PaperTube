@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   Search, Globe, Zap, Eye, Heart, 
   TrendingUp, FileText, Flame, Clock, 
-  Share2, Bookmark, Loader2, RefreshCw
+  Share2, Bookmark, Loader2, RefreshCw, Layers
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,7 @@ interface Note {
   thumbnail?: string;
   likes?: number; // Assuming API returns this, or defaulting to 0
   category?: string; // Assuming API returns this
+  type?: string;
 }
 
 interface ExploreResponse {
@@ -353,7 +354,13 @@ const DiscoveryCard = ({ note, router }: { note: Note; router: any }) => {
   
   return (
     <div 
-      onClick={() => router.push(`/note/${note.creator?.username || 'user'}/${note.slug}`)}
+      onClick={() => {
+        if (note.type === 'flashcard') {
+          router.push(`/flashcards/${note.slug}`);
+        } else {
+          router.push(`/note/${note.creator?.username || 'user'}/${note.slug}`);
+        }
+      }}
       className="group relative flex flex-col bg-[#0A0A0A] border border-white/5 rounded-2xl overflow-hidden cursor-pointer hover:border-white/20 transition-all duration-500"
     >
       {/* Image Container */}
@@ -368,7 +375,7 @@ const DiscoveryCard = ({ note, router }: { note: Note; router: any }) => {
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-900">
             <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center text-neutral-500 group-hover:text-white transition-colors shadow-inner border border-white/5">
-              <FileText size={20} />
+              {note.type === 'flashcard' ? <Layers size={20} /> : <FileText size={20} />}
             </div>
           </div>
         )}
@@ -386,7 +393,7 @@ const DiscoveryCard = ({ note, router }: { note: Note; router: any }) => {
         {/* Icon Overlay (Hover) */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
            <div className="w-12 h-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center text-white shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
-              <FileText size={18} />
+              {note.type === 'flashcard' ? <Layers size={18} /> : <FileText size={18} />}
            </div>
         </div>
       </div>
@@ -394,8 +401,8 @@ const DiscoveryCard = ({ note, router }: { note: Note; router: any }) => {
       {/* Content Meta */}
       <div className="p-5 flex flex-col flex-1">
         <div className="flex items-center justify-between mb-2">
-           <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider">
-             {note.category || "General"}
+           <span className={`text-[9px] font-bold uppercase tracking-wider ${note.type === 'flashcard' ? 'text-amber-500' : 'text-red-500'}`}>
+             {note.type === 'flashcard' ? 'Flashcards' : (note.category || "General")}
            </span>
            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-1 group-hover:translate-y-0">
               <button className="text-neutral-400 hover:text-white"><Bookmark size={14} /></button>

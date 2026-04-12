@@ -1059,19 +1059,21 @@ exports.getUserNotes = async (req, res) => {
     
     const userId = req.user._id;
 
-    let searchQuery = { owner: userId };
+    let matchQuery = { owner: new mongoose.Types.ObjectId(userId) };
+    let fcMatchQuery = { owner: new mongoose.Types.ObjectId(userId) };
     
     if (search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
-      searchQuery.$and = [
-        { owner: userId },
-        {
-          $or: [
-            { title: searchRegex },
-            { content: searchRegex },
-            { transcript: searchRegex }
-          ]
-        }
+      
+      matchQuery.$and = [
+        { owner: new mongoose.Types.ObjectId(userId) },
+        { $or: [{ title: searchRegex }, { content: searchRegex }, { transcript: searchRegex }] }
+      ];
+
+      // Flashcards don't have 'content', only 'flashcards' but it's an array of objects
+      fcMatchQuery.$and = [
+        { owner: new mongoose.Types.ObjectId(userId) },
+        { $or: [{ title: searchRegex }, { transcript: searchRegex }] }
       ];
     }
 
@@ -1082,36 +1084,55 @@ exports.getUserNotes = async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    const notes = await Note.find(searchQuery)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(limitNum)
-      .select('-__v -transcript -img_with_url -content')
-      .lean();
+    // Use unionWith to combine notes and flashcardsets
+    const pipeline = [
+      { $match: matchQuery },
+      { $addFields: { type: 'note' } },
+      { $project: { __v: 0, content: 0, transcript: 0, img_with_url: 0 } },
+      {
+        $unionWith: {
+          coll: 'flashcardsets',
+          pipeline: [
+            { $match: fcMatchQuery },
+            { $addFields: { type: 'flashcard' } },
+            { $project: { __v: 0, flashcards: 0, transcript: 0 } }
+          ]
+        }
+      },
+      { $sort: sortOptions },
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [{ $skip: skip }, { $limit: limitNum }]
+        }
+      }
+    ];
 
-    const totalNotes = await Note.countDocuments(searchQuery);
+    const results = await Note.aggregate(pipeline);
+    
+    const totalNotes = results[0].metadata.length > 0 ? results[0].metadata[0].total : 0;
+    const items = results[0].data;
+    
     const totalPages = Math.ceil(totalNotes / limitNum);
 
-    const transformedNotes = notes.map(note => ({
-      _id: note._id,
-      title: note.title,
-      slug: note.slug,
-      thumbnail: note.thumbnail,
-      videoUrl: note.videoUrl,
-      videoId: note.videoId,
-      content: note.content,
-      transcript: note.transcript,
-      img_with_url: note.img_with_url || [],
-      createdAt: note.createdAt,
-      updatedAt: note.updatedAt,
-      lastEdit: note.updatedAt.toISOString().split('T')[0]
+    const transformedNotes = items.map(item => ({
+      _id: item._id,
+      title: item.title,
+      slug: item.slug,
+      thumbnail: item.thumbnail,
+      videoUrl: item.videoUrl,
+      videoId: item.videoId,
+      type: item.type, // 'note' or 'flashcard'
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      lastEdit: item.updatedAt ? item.updatedAt.toISOString().split('T')[0] : null
     }));
 
     return res.status(200).json({
       success: true,
       message: totalNotes === 0 
-        ? "No notes found. Create your first note!" 
-        : "Notes fetched successfully",
+        ? "No notes found. Create your first note/flashcard!" 
+        : "Items fetched successfully",
       data: {
         notes: transformedNotes,
         pagination: {
@@ -1601,14 +1622,20 @@ exports.explore = async (req, res) => {
       }
     }
 
-    // 1. Build Query (Only for Notes)
-    const query = { visibility: "public" };
+    // 1. Build Query (For both Notes and Flashcards)
+    const matchQuery = { visibility: "public" };
+    const fcMatchQuery = { visibility: "public" };
     
     if (search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
-      query.$or = [
+      matchQuery.$or = [
         { title: searchRegex },
         { content: searchRegex },
+        { transcript: searchRegex }
+      ];
+      // Flashcards don't have 'content'
+      fcMatchQuery.$or = [
+        { title: searchRegex },
         { transcript: searchRegex }
       ];
     }
@@ -1624,31 +1651,46 @@ exports.explore = async (req, res) => {
 
     // Determine if we should use algorithmic recommendation feed
     const isAlgoFeed = !search.trim() && (sortBy === 'updatedAt' || !sortBy);
-    let notes = [];
-    let totalNotes = 0;
+    let items = [];
+    let totalItems = 0;
+
+    const basePipeline = [
+      { $match: matchQuery },
+      { $addFields: { type: 'note' } },
+      { $project: { __v: 0, content: 0, transcript: 0, img_with_url: 0, pdf_data: 0 } },
+      {
+        $unionWith: {
+          coll: 'flashcardsets',
+          pipeline: [
+            { $match: fcMatchQuery },
+            { $addFields: { type: 'flashcard' } },
+            { $project: { __v: 0, flashcards: 0, transcript: 0 } }
+          ]
+        }
+      }
+    ];
 
     if (isAlgoFeed) {
       // 3a. Algorithmic Fetch
       const pipeline = [
-        { $match: query },
+        ...basePipeline,
         { 
           $addFields: {
             algorithmScore: {
               $add: [
                 { $multiply: [{ $ifNull: ["$views", 0] }, 1] },
-                // Large boost if following the creator (ensures they show up first)
+                // Large boost if following the creator
                 { 
                   $multiply: [
                     { $cond: [{ $in: ["$owner", followingList] }, 1, 0] },
                     10000 
                   ] 
                 },
-                // Recency Boost: Give high preference to newly created notes!
-                // If created today, gets high points. Depreciates over time.
+                // Recency Boost
                 {
                   $multiply: [
                     { $divide: [10000000000, { $add: [{ $subtract: [new Date(), "$createdAt"] }, 1000000] }] },
-                    1 // Yields ~10 points for brand new, dropping as it ages
+                    1
                   ]
                 },
                 // Add strong random variance so every feed is different
@@ -1658,42 +1700,46 @@ exports.explore = async (req, res) => {
           }
         },
         { $sort: { algorithmScore: -1 } },
-        { $skip: skip },
-        { $limit: limitNum },
-        {
-          $lookup: {
-            from: "users",
-            localField: "owner",
-            foreignField: "_id",
-            as: "ownerDetails"
-          }
-        },
-        { $unwind: { path: "$ownerDetails", preserveNullAndEmptyArrays: true } }
+        { $facet: {
+            metadata: [{ $count: "total" }],
+            data: [
+              { $skip: skip },
+              { $limit: limitNum },
+              { $lookup: { from: "users", localField: "owner", foreignField: "_id", as: "ownerDetails" } },
+              { $unwind: { path: "$ownerDetails", preserveNullAndEmptyArrays: true } }
+            ]
+        }}
       ];
 
       const aggResult = await Note.aggregate(pipeline);
-      notes = aggResult.map(n => ({
-        ...n,
-        owner: n.ownerDetails
-      }));
-      totalNotes = await Note.countDocuments(query);
+      items = aggResult[0].data.map(n => ({ ...n, owner: n.ownerDetails }));
+      totalItems = aggResult[0].metadata.length > 0 ? aggResult[0].metadata[0].total : 0;
 
     } else {
       // 3b. Standard Search / Sort
-      notes = await Note.find(query)
-        .populate('owner', 'name picture username') 
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(limitNum)
-        .select('-__v -transcript -content -img_with_url -pdf_data')
-        .lean();
-      totalNotes = await Note.countDocuments(query);
+      const pipeline = [
+        ...basePipeline,
+        { $sort: sortOptions },
+        { $facet: {
+            metadata: [{ $count: "total" }],
+            data: [
+              { $skip: skip },
+              { $limit: limitNum },
+              { $lookup: { from: "users", localField: "owner", foreignField: "_id", as: "ownerDetails" } },
+              { $unwind: { path: "$ownerDetails", preserveNullAndEmptyArrays: true } }
+            ]
+        }}
+      ];
+      
+      const aggResult = await Note.aggregate(pipeline);
+      items = aggResult[0].data.map(n => ({ ...n, owner: n.ownerDetails }));
+      totalItems = aggResult[0].metadata.length > 0 ? aggResult[0].metadata[0].total : 0;
     }
 
-    const totalPages = Math.ceil(totalNotes / limitNum);
+    const totalPages = Math.ceil(totalItems / limitNum);
 
     // 5. Transform Data
-    const transformedItems = notes.map(note => ({
+    const transformedItems = items.map(note => ({
       _id: note._id,
       title: note.title,
       slug: note.slug,
@@ -1703,7 +1749,7 @@ exports.explore = async (req, res) => {
       createdAt: note.createdAt,
       updatedAt: note.updatedAt,
       views: note.views || 0,
-      type: 'note', 
+      type: note.type, // Dynamically use the type assigned in aggregation!
       creator: note.owner ? {
         _id: note.owner._id,
         name: note.owner.name,
@@ -1719,14 +1765,14 @@ exports.explore = async (req, res) => {
     // 6. Return Response
     return res.status(200).json({
       success: true,
-      message: transformedItems.length > 0 ? "Notes fetched successfully" : "No public notes found",
+      message: transformedItems.length > 0 ? "Items fetched successfully" : "No public items found",
       data: {
         items: transformedItems,
         pagination: {
           currentPage: pageNum,
           totalPages,
-          totalItems: totalNotes, // Total items is just total notes now
-          totalNotes,
+          totalItems,
+          totalNotes: totalItems, // Backwards compatibility
           hasNext: pageNum < totalPages,
           hasPrev: pageNum > 1
         }

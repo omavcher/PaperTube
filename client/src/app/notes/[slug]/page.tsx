@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useRef, useEffect, useCallback, use } from "react";
 import { Editor } from "@tinymce/tinymce-react";
@@ -41,6 +41,7 @@ import {
 import api from "@/config/api";
 import { LoaderX } from "@/components/LoaderX";
 import { LoginDialog } from "@/components/LoginDialog";
+import FlashcardViewer from "@/components/FlashcardViewer";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -57,7 +58,7 @@ const isAuthenticated = () => !!getAuthToken();
 // --- TYPES ---
 interface ApiMessage { _id: string; role: string; content: string; timestamp: string; videoLink?: string; feedback?: "good" | "bad" | null; }
 interface ApiMessagesResponse { messages: ApiMessage[]; }
-interface NoteData { _id: string; title: string; content: string; thumbnail?: string; }
+interface NoteData { _id: string; title: string; content: string; thumbnail?: string; generationDetails?: any; }
 
 // --- STYLES ---
 const iphoneStyles = `
@@ -430,6 +431,9 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       setIsGeneratingPDF(false); 
     }
   };
+  
+  const isFlashcard = data?.generationDetails?.format === 'flashcards' || 
+                     (data?.content && data.content.trim().startsWith('[') && data.content.includes('"front"'));
 
   if (loading) return <LoaderX />;
   if (!hasPermission) return (
@@ -480,18 +484,26 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
             <div className={`absolute inset-0 p-3 lg:p-6 transition-opacity duration-300 ${mobileView === 'preview' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}`}>
                <div className="h-full w-full max-w-4xl mx-auto flex flex-col">
                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-white">Document Preview</h3>
-                    <Button size="sm" variant="outline" onClick={generatePDF} disabled={isGeneratingPDF} className="h-8 border-neutral-700">
-                      {isGeneratingPDF ? <Loader2 className="animate-spin h-4 w-4"/> : <Download className="h-4 w-4 mr-2"/>}
-                      Export PDF
-                    </Button>
+                    <h3 className="text-lg font-bold text-white">{isFlashcard ? 'Flashcards Preview' : 'Document Preview'}</h3>
+                    {!isFlashcard && (
+                      <Button size="sm" variant="outline" onClick={generatePDF} disabled={isGeneratingPDF} className="h-8 border-neutral-700">
+                        {isGeneratingPDF ? <Loader2 className="animate-spin h-4 w-4"/> : <Download className="h-4 w-4 mr-2"/>}
+                        Export PDF
+                      </Button>
+                    )}
                  </div>
                  <div className="flex-1 min-h-0">
-                    <PDFPreviewWithThumbnail 
-                      content={markdownContent} 
-                      isGenerating={isGeneratingPDF}
-                      onGeneratePDF={generatePDF}
-                    />
+                    {isFlashcard ? (
+                       <div className="w-full h-full border border-neutral-800 shadow-2xl overflow-hidden rounded-lg bg-neutral-950 relative group flex flex-col">
+                         <FlashcardViewer content={markdownContent} />
+                       </div>
+                    ) : (
+                       <PDFPreviewWithThumbnail 
+                         content={markdownContent} 
+                         isGenerating={isGeneratingPDF}
+                         onGeneratePDF={generatePDF}
+                       />
+                    )}
                  </div>
                </div>
             </div>

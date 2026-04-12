@@ -337,6 +337,31 @@ const getPremiumModelPrompt = (model, transcript, userPrompt, images_json, video
   };
   const depthInstruction = detailConfig[detailLevel] || detailConfig['Standard Notes'];
 
+  if (settings?.format === 'flashcards') {
+    const cardLimit = settings.flashcardCount || 30; // Premium users get up to 30
+    return `
+**YOUR ROLE: Expert Academic Flashcard Architect**
+
+You have been given a raw video transcript. Your task is to generate EXACTLY ${cardLimit} premium flashcards that cover the most important concepts, avoiding trivial details.
+
+STEP 1 — DEEP UNDERSTANDING
+Identify the core principles and concepts from the transcript.
+
+STEP 2 — KNOWLEDGE SYNTHESIS
+Create powerful, high-yield flashcards. Make the "back" of the flashcard beautifully detailed but concise.
+
+STEP 3 — FORMAT
+You MUST output ONLY a valid JSON array of objects. Do not wrap in markdown fences like \`\`\`json. Output raw JSON only.
+Format:
+[
+  { "front": "Question, Term, or Prompt", "back": "Detailed Academic Explanation / Answer / Definition" }
+]
+
+**TRANSCRIPT:**
+${transcript}
+`;
+  }
+
   // ─── SHARED CORE INTELLIGENCE LAYER ──────────────────────────────────────
   // The AI must THINK before it writes — understand the content, THEN synthesize it.
   const coreIntelligence = `
@@ -668,7 +693,13 @@ exports.createNote = async (req, res) => {
   const startTime = Date.now();
   
   try {
-    const { videoUrl, prompt, model, settings } = req.body;
+    const { videoUrl, prompt, model, settings, format, flashcardCount } = req.body;
+    
+    if (settings) {
+      settings.format = format;
+      settings.flashcardCount = flashcardCount;
+    }
+
     const userId = req.user.id;
 
     // Input validation
@@ -892,6 +923,8 @@ exports.createNote = async (req, res) => {
         language: settings?.language || 'English',
         detailLevel: mapDetailLevel(settings?.detailLevel) || 'Standard Notes',
         prompt: prompt || "",
+        format: format || 'notes',
+        flashcardCount: flashcardCount,
         generatedAt: new Date(),
         processingTime: processingTime,
         type: 'premium',

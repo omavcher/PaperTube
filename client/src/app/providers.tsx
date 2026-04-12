@@ -23,7 +23,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const hideDesktopNav = [
     "/admin", 
     "/notes/", 
-    "/note/"
+    "/note/",
+    "/flashcards/"
   ].some(path => pathname?.startsWith(path));
 
   // Hide Mobile Bottom Dock on tools that require full-screen height
@@ -31,8 +32,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     "/admin",
     "/sentinel",
     "/notes/",
-    "/note/"
+    "/note/",
+    "/flashcards/"
   ].some(path => pathname?.startsWith(path));
+
 
   useEffect(() => {
     const syncAuthState = () => {
