@@ -60,6 +60,57 @@ const mapDetailLevel = (level) => {
   return mapping[level] || level;
 };
 
+// Function to get image links from Google Custom Search
+const getImgLink = async (query, count = 1) => {
+  try {
+    const apiKey = 'AIzaSyAkD0dWuBRTharsqXlhh-Bv05ek6AdzhlI';
+    const cx = '6606604e9a50d4c0d';
+
+    const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
+      query
+    )}&cx=${cx}&searchType=image&num=${count}&key=${apiKey}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.items || data.items.length === 0) {
+      console.log("No images found for query:", query);
+      return [];
+    }
+
+    const blockedDomains = [
+      "instagram.com", "facebook.com", "twitter.com", "youtube.com", "youtube.in",
+      "tiktok.com", "snapchat.com", "linkedin.com", "flickr.com", "vimeo.com",
+      "quora.com", "medium.com", "whatsapp.com", "telegram.org", "discord.com",
+      "weibo.com", "vk.com", "twitch.tv", "netflix.com", "hulu.com",
+      "primevideo.com", "spotify.com", "soundcloud.com", "bandcamp.com",
+      "mixcloud.com", "patreon.com"
+    ];
+    
+    const imgLinks = data.items
+      .filter(item => !blockedDomains.some(domain => item.displayLink.includes(domain)))
+      .map(item => item.link);
+
+    return imgLinks;
+  } catch (err) {
+    console.error("Error fetching image links:", err);
+    return [];
+  }
+};
+
+// Function to generate objects array {title, img_url} from figure names
+const generateImgObjects = async (figures) => {
+  const result = [];
+  for (const title of figures) {
+    const links = await getImgLink(title, 1);
+    result.push({
+      title,
+      img_url: links.length > 0 ? links[0] : null,
+    });
+  }
+  return result;
+};
+
 const extractVideoId = (url) => {
   try {
     const urlObj = new URL(url);
@@ -692,6 +743,14 @@ Font: "Segoe UI, Helvetica Neue, Arial, sans-serif" | Line-height: 1.7
 Colors: Primary headings #1e293b, Section headings #2563eb, Accents #059669, Body text #374151
 Background: #ffffff | Max-width: 800px | Padding: 40px
 
+**AVAILABLE IMAGES:**
+You have these image links to embed — use them contextually near relevant concepts:
+\${images_json}
+For each image: <div style="text-align:center;margin:20px 0">
+  <img src="[img_url]" alt="[title]" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">
+  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: [descriptive caption]</p>
+</div>
+
 **DOCUMENT STRUCTURE — produce ALL of these sections:**
 
 1. SUBJECT BADGE + TITLE
@@ -1093,23 +1152,21 @@ exports.createNote = async (req, res) => {
       });
     }
 
-    // STEP 2: Generate AI images for bhashasetu model
-    // Free tier → max 2 images via Fireworks AI + Cloudflare R2
+    // STEP 2: Generate AI images for all free models
+    // Free tier → use Google custom search for image links
     let img_with_url = [];
-    if (model === 'bhashasetu') {
-      console.log('🎨 Generating AI images for bhashasetu model (free tier, max 2)...');
-      try {
-        const figures = await generateImgGEnAI(transcript, settings?.language);
-        if (figures && figures.length > 0) {
-          img_with_url = await generateStudyImages(figures, 'free');
-          console.log(`✅ AI image generation complete: ${img_with_url.length} image(s) ready`);
-        } else {
-          console.log('No visual topics identified – skipping image generation');
-        }
-      } catch (imgErr) {
-        console.error('⚠️ AI image generation failed (non-critical):', imgErr.message);
-        // Continue without images – note generation must not fail because of this
+    console.log('🎨 Generating images for free models using Google Search...');
+    try {
+      const figures = await generateImgGEnAI(transcript, settings?.language);
+      if (figures && figures.length > 0) {
+        img_with_url = await generateImgObjects(figures);
+        console.log(`✅ Image retrieval complete: ${img_with_url.length} image(s) ready`);
+      } else {
+        console.log('No visual topics identified – skipping image generation');
       }
+    } catch (imgErr) {
+      console.error('⚠️ Image generation failed (non-critical):', imgErr.message);
+      // Continue without images – note generation must not fail because of this
     }
 
     // STEP 3: Generate PDF content using appropriate AI

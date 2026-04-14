@@ -150,6 +150,59 @@ async function openRouterChatCompletion(messages, options = {}) {
   };
 }
 
+// Function to get image links from Google Custom Search
+const getImgLink = async (query, count = 1) => {
+  try {
+    const apiKey = 'AIzaSyAkD0dWuBRTharsqXlhh-Bv05ek6AdzhlI';
+    const cx = '6606604e9a50d4c0d';
+
+    const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
+      query
+    )}&cx=${cx}&searchType=image&num=${count}&key=${apiKey}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.items || data.items.length === 0) {
+      console.log("No images found for query:", query);
+      return [];
+    }
+
+    const blockedDomains = [
+      "instagram.com", "facebook.com", "twitter.com", "youtube.com", "youtube.in",
+      "tiktok.com", "snapchat.com", "linkedin.com", "flickr.com", "vimeo.com",
+      "quora.com", "medium.com", "whatsapp.com", "telegram.org", "discord.com",
+      "weibo.com", "vk.com", "twitch.tv", "netflix.com", "hulu.com",
+      "primevideo.com", "spotify.com", "soundcloud.com", "bandcamp.com",
+      "mixcloud.com", "patreon.com"
+    ];
+    
+    const imgLinks = data.items
+      .filter(item => !blockedDomains.some(domain => item.displayLink.includes(domain)))
+      .map(item => item.link);
+
+    return imgLinks;
+  } catch (err) {
+    console.error("Error fetching image links:", err);
+    return [];
+  }
+};
+
+// Function to generate objects array {title, img_url} from figure names
+const generateImgObjects = async (figures) => {
+  const result = [];
+
+  for (const title of figures) {
+    const links = await getImgLink(title, 1);
+    result.push({
+      title,
+      img_url: links.length > 0 ? links[0] : null,
+    });
+  }
+
+  return result;
+};
+
 const extractVideoId = (url) => {
   try {
     const urlObj = new URL(url);
@@ -846,19 +899,19 @@ exports.createNote = async (req, res) => {
     }
 
     // STEP 2: Generate AI images for premium models
-    // Premium tier → max 6 images via Fireworks AI + Cloudflare R2
+    // Premium tier → use Google custom search for image links
     let img_with_url = [];
-    console.log('🎨 Generating AI images for premium model (premium tier, max 6)...');
+    console.log('🎨 Generating images for premium model using Google Search...');
     try {
       const figures = await generateImgGEnAI(transcript, settings?.language);
       if (figures && figures.length > 0) {
-        img_with_url = await generateStudyImages(figures, 'premium');
-        console.log(`✅ AI image generation complete: ${img_with_url.length} image(s) ready`);
+        img_with_url = await generateImgObjects(figures);
+        console.log(`✅ Image retrieval complete: ${img_with_url.length} image(s) ready`);
       } else {
         console.log('No visual topics identified – skipping image generation');
       }
     } catch (imgErr) {
-      console.error('⚠️ AI image generation failed (non-critical):', imgErr.message);
+      console.error('⚠️ Image generation failed (non-critical):', imgErr.message);
       // Continue without images – premium note generation must not fail
     }
 
