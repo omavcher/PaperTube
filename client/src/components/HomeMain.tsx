@@ -534,8 +534,8 @@ export default function HomeMain() {
                 </div>
               </div>
 
-              {/* Top Level App Categories */}
-              <div onWheel={handleHorizontalScroll} className="flex relative w-full max-w-3xl overflow-x-auto p-1.5 bg-white/[0.03] border border-white/[0.08] backdrop-blur-md rounded-[1.8rem] mb-6 no-scrollbar scroll-fade-x flex-nowrap shrink-0 shadow-xl z-20">
+              {/* Top Level App Categories - Mobile Optimized Scroll container */}
+              <div onWheel={handleHorizontalScroll} className="flex relative w-full max-w-3xl overflow-x-auto p-1.5 bg-white/[0.03] border border-white/[0.08] backdrop-blur-md rounded-[1.2rem] sm:rounded-[1.8rem] mb-6 md:mb-8 no-scrollbar scroll-fade-x flex-nowrap shrink-0 shadow-xl z-20">
                  {HOME_CATEGORIES.map(c => {
                     const isActive = activeCategory === c.id;
                     return (
@@ -546,16 +546,16 @@ export default function HomeMain() {
                             setOutputFormat(CATEGORY_TOOLS[c.id][0].id);
                             setVideoUrl(''); // Reset input between major sections
                           }} 
-                          className={cn("flex-1 relative px-5 py-3 rounded-[1.4rem] font-bold text-[13px] sm:text-sm flex items-center justify-center gap-2 transition-colors duration-200 whitespace-nowrap shrink-0", isActive ? "text-black" : "text-neutral-400 hover:text-white hover:bg-white/[0.06]")}
+                          className={cn("flex-1 relative px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-[1.4rem] font-bold text-[12px] sm:text-[13px] flex items-center justify-center gap-2 transition-colors duration-200 whitespace-nowrap shrink-0", isActive ? "text-black" : "text-neutral-400 hover:text-white hover:bg-white/[0.06]")}
                         >
                            {isActive && (
                              <motion.div 
                                layoutId="activeTabIndicator"
-                               className="absolute inset-0 bg-white rounded-[1.4rem] shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                               className="absolute inset-0 bg-white rounded-xl sm:rounded-[1.4rem] shadow-[0_0_20px_rgba(255,255,255,0.15)]"
                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                              />
                            )}
-                           <c.icon size={18} className={cn("relative z-10", isActive ? "text-black" : "text-neutral-500")} />
+                           <c.icon size={16} className={cn("relative z-10 sm:w-[18px] sm:h-[18px]", isActive ? "text-black" : "text-neutral-500")} />
                            <span className="relative z-10">{c.label}</span>
                         </button>
                     )
@@ -579,17 +579,17 @@ export default function HomeMain() {
                   )} 
                 />
 
-                <div className="relative z-10 bg-[#0c0c0c] border border-white/[0.08] rounded-[2rem] overflow-hidden shadow-[0_20px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-500 focus-within:border-white/20 focus-within:shadow-[0_0_40px_-15px_rgba(255,255,255,0.06)]">
+                <div className="relative z-10 bg-[#0c0c0c] border border-white/[0.08] rounded-[1.25rem] sm:rounded-[2rem] overflow-hidden shadow-[0_20px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-500 focus-within:border-white/20 focus-within:shadow-[0_0_40px_-15px_rgba(255,255,255,0.06)]">
                   
                   {/* === OVERHAULED INPUT ZONE === */}
-                  <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 pt-4 sm:pt-6 pb-2.5 sm:pb-3">
                     <motion.div 
                       key={`iconbox-${activeCategory}-${isValidUrl}`}
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ type: "spring", bounce: 0.4 }}
                       className={cn(
-                        "shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300",
+                        "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all duration-300",
                         isValidUrl 
                           ? (activeCategory === 'youtube' ? "bg-red-500/15 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
                             : activeCategory === 'coding' ? "bg-blue-500/15 text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
@@ -608,7 +608,7 @@ export default function HomeMain() {
                       placeholder={CATEGORY_TOOLS[activeCategory].find(t => t.id === outputFormat)?.placeholder || "Paste link or enter your request..."}
                       value={videoUrl}
                       onChange={(e) => setVideoUrl(e.target.value)}
-                      className="flex-1 bg-transparent border-none focus:ring-0 text-[16px] sm:text-[18px] font-semibold text-white placeholder:text-neutral-600 outline-none min-w-0"
+                      className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] sm:text-[18px] font-semibold text-white placeholder:text-neutral-500 sm:placeholder:text-neutral-600 outline-none min-w-0 px-1"
                     />
                     <div className="shrink-0 flex items-center gap-2">
                       {loading && <Loader2 className="animate-spin text-neutral-600" size={16} />}
@@ -642,7 +642,7 @@ export default function HomeMain() {
                   </AnimatePresence>
 
                   {/* === MAIN TEXTAREA === */}
-                  <div className="px-5 pb-4">
+                  <div className="px-4 sm:px-6 pb-2 sm:pb-4">
                     <textarea 
                       placeholder={activeCategory === 'youtube' 
                         ? "Add specific focus areas, topics to emphasize... (optional)"
@@ -650,13 +650,13 @@ export default function HomeMain() {
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       rows={2}
-                      className="w-full bg-transparent border-none focus:ring-0 text-[15px] text-neutral-300 placeholder:text-neutral-700 resize-none outline-none leading-relaxed"
+                      className="w-full bg-transparent border-none focus:ring-0 text-[14px] sm:text-[15px] text-neutral-300 placeholder:text-neutral-600 sm:placeholder:text-neutral-700 resize-none outline-none leading-relaxed px-1"
                     />
                   </div>
 
                   {/* === Sub-tool Chips === */}
-                  <div className="px-5 pb-3">
-                    <div onWheel={handleHorizontalScroll} className="flex gap-1.5 overflow-x-auto no-scrollbar scroll-fade-x pb-0.5 min-h-[32px]">
+                  <div className="px-4 sm:px-5 pb-3 sm:pb-4">
+                    <div onWheel={handleHorizontalScroll} className="flex gap-1.5 overflow-x-auto no-scrollbar scroll-fade-x pb-1 sm:pb-0.5 min-h-[32px]">
                       <AnimatePresence mode="popLayout" initial={false}>
                         {CATEGORY_TOOLS[activeCategory].map(tool => {
                           const isSelected = outputFormat === tool.id;
@@ -701,12 +701,12 @@ export default function HomeMain() {
                   </div>
 
                   {/* === BOTTOM ACTION BAR === */}
-                  <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-white/[0.05] bg-white/[0.01]">
-                    <div onWheel={handleHorizontalScroll} className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 px-3 sm:px-4 py-3 border-t border-white/[0.05] bg-white/[0.01]">
+                    <div onWheel={handleHorizontalScroll} className="flex items-center gap-2 overflow-x-auto no-scrollbar px-1 sm:px-0">
                       
                       {/* Model Selector */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/15 text-[11px] font-bold text-neutral-400 hover:text-white transition-all duration-200 outline-none shrink-0 group">
+                        <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 sm:py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/15 text-[11px] font-bold text-neutral-400 hover:text-white transition-all duration-200 outline-none shrink-0 group">
                           <IconRobot size={14} className="text-neutral-600 group-hover:text-blue-400 transition-colors" />
                           <span>{selectedModel.name}</span>
                           <ChevronDown size={11} className="text-neutral-600" />
@@ -749,7 +749,7 @@ export default function HomeMain() {
 
                       {/* Options Dropdown */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/15 text-[11px] font-bold text-neutral-400 hover:text-white transition-all duration-200 outline-none shrink-0 group">
+                        <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 sm:py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/15 text-[11px] font-bold text-neutral-400 hover:text-white transition-all duration-200 outline-none shrink-0 group">
                           <IconSettings size={14} className="text-neutral-600 group-hover:text-neutral-300 transition-colors" />
                           <span className="hidden sm:inline">{outputLanguage} &middot; {detailLevel}</span>
                           <span className="sm:hidden">Options</span>
@@ -781,7 +781,7 @@ export default function HomeMain() {
                       onClick={handleGenerateClick}
                       disabled={!isValidUrl || loading || isGenerating}
                       className={cn(
-                        "shrink-0 flex items-center gap-2 h-10 px-5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300",
+                        "w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 h-11 sm:h-10 px-5 rounded-xl font-bold text-[13px] sm:text-xs uppercase tracking-widest transition-all duration-300",
                         isValidUrl 
                           ? "bg-white text-black hover:bg-neutral-100 shadow-[0_0_25px_rgba(255,255,255,0.15)] active:scale-95 active:shadow-none" 
                           : "bg-white/5 text-neutral-600 cursor-not-allowed border border-white/5"
