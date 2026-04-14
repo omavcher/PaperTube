@@ -683,20 +683,7 @@ export default function HomeMain() {
                           );
                         })}
                       </AnimatePresence>
-                      <AnimatePresence>
-                        {outputFormat === 'flashcards' && (
-                          <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 'auto', opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="overflow-hidden shrink-0">
-                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-purple-500/20 bg-purple-500/8 text-[11px] text-purple-400 font-bold ml-1">
-                              <IconBrain size={12} />
-                              <input type="number" min="1" max={hasPremiumAccess ? 30 : 5} value={flashcardCount}
-                                onChange={(e) => { let val = parseInt(e.target.value)||1; if (!hasPremiumAccess && val>5) val=5; if (hasPremiumAccess && val>30) val=30; setFlashcardCount(val); }}
-                                className="w-9 bg-transparent border-none outline-none text-center text-purple-400 font-bold text-[11px] p-0"
-                              />
-                              <span className="text-purple-500/60">cards</span>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+
                     </div>
                   </div>
 
@@ -751,7 +738,7 @@ export default function HomeMain() {
                       <DropdownMenu>
                         <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 sm:py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/15 text-[11px] font-bold text-neutral-400 hover:text-white transition-all duration-200 outline-none shrink-0 group">
                           <IconSettings size={14} className="text-neutral-600 group-hover:text-neutral-300 transition-colors" />
-                          <span className="hidden sm:inline">{outputLanguage} &middot; {detailLevel}</span>
+                          <span className="hidden sm:inline">{outputLanguage} &middot; {detailLevel}{outputFormat === 'flashcards' && ` · ${flashcardCount} cards`}</span>
                           <span className="sm:hidden">Options</span>
                           <ChevronDown size={11} className="text-neutral-600" />
                         </DropdownMenuTrigger>
@@ -764,7 +751,7 @@ export default function HomeMain() {
                               ))}
                             </div>
                           </div>
-                          <div>
+                          <div className={outputFormat === 'flashcards' ? "mb-4" : ""}>
                             <div className="flex items-center gap-1.5 mb-2.5"><IconSparkles size={12} className="text-yellow-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Detail Depth</span></div>
                             <div className="flex gap-1.5">
                               {DETAIL_LEVELS.map(l => (
@@ -772,6 +759,29 @@ export default function HomeMain() {
                               ))}
                             </div>
                           </div>
+
+                          {outputFormat === 'flashcards' && (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-2.5"><IconBrain size={12} className="text-purple-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Card Count</span></div>
+                              <div className="flex items-center gap-1.5">
+                                <input type="number" min="1" max={hasPremiumAccess ? 30 : 5} value={flashcardCount}
+                                  onChange={(e) => { let val = parseInt(e.target.value); if(isNaN(val)) val = 1; if (!hasPremiumAccess && val>5) val=5; if (hasPremiumAccess && val>30) val=30; setFlashcardCount(val); }}
+                                  className="w-16 bg-neutral-900/80 border border-white/5 focus:border-purple-500/50 rounded-lg text-center text-white py-1.5 text-[11px] font-bold outline-none transition-all shrink-0"
+                                />
+                                <div className="flex flex-1 gap-1.5">
+                                  {hasPremiumAccess ? (
+                                    <>
+                                      {[10, 20, 30].map(n => (
+                                        <div key={n} onClick={() => setFlashcardCount(n)} className={cn("flex-1 text-[10px] text-center py-1.5 rounded-lg cursor-pointer font-bold transition-all border", flashcardCount === n ? "bg-purple-500 border-purple-400 text-white" : "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white")}>{n}</div>
+                                      ))}
+                                    </>
+                                  ) : (
+                                    <div className="flex-1 text-[10px] flex items-center justify-center py-1.5 rounded-lg font-bold border bg-neutral-900/40 border-white/5 text-neutral-600">Max 5 (Free)</div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
