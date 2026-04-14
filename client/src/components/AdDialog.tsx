@@ -163,6 +163,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
   const [countdown, setCountdown] = useState(10);
   const [adCompleted, setAdCompleted] = useState(false);
   const [currentBanner, setCurrentBanner] = useState(CUSTOM_BANNERS[0]);
+  const [iteration, setIteration] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -190,6 +191,13 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
           return next;
         });
       }, 1000);
+    } else {
+      // When closed, queue the next ad to load invisibly in the background
+      // after a short delay so it doesn't interrupt the closing animation
+      const bgTimer = setTimeout(() => {
+        setIteration(prev => prev + 1);
+      }, 500);
+      return () => clearTimeout(bgTimer);
     }
 
     return () => {
@@ -207,48 +215,50 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
   const progressPct = Math.round(((10 - countdown) / 10) * 100);
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            key="ad-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[199] bg-black/80 backdrop-blur-sm"
-          />
+    <>
+      <AnimatePresence>
+        {open && (
+           <motion.div
+             key="ad-backdrop"
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+             className="fixed inset-0 z-[199] bg-black/80 backdrop-blur-sm"
+           />
+        )}
+      </AnimatePresence>
 
-          <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center pointer-events-none p-0">
-            {/* ── MOBILE: bottom sheet ── DESKTOP: centered dialog ── */}
-            <motion.div
-              key="ad-dialog"
-              initial={{ opacity: 0, y: "100%" }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: "100%" }}
-              transition={{ type: "spring", damping: 26, stiffness: 280 }}
-              className={cn(
-                "pointer-events-auto w-full",
-                // Desktop: centered card
-                "md:w-[760px] md:max-h-[90vh]",
-                "bg-[#0a0a0a] border border-white/10 text-white font-sans",
-                "rounded-t-[2rem] md:rounded-[2rem] overflow-hidden shadow-[0_-8px_60px_rgba(0,0,0,0.6)] md:shadow-2xl"
-              )}
-              style={{ willChange: "transform, opacity" }}
-            >
-            {/* ── MOBILE DRAG HANDLE ── */}
-            <div className="md:hidden flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
-            </div>
+      <div className={cn("fixed inset-0 z-[200] flex items-end md:items-center justify-center pointer-events-none p-0 overflow-hidden", open ? "pointer-events-auto" : "pointer-events-none pointer-events-none")}>
+        {/* ── MOBILE: bottom sheet ── DESKTOP: centered dialog ── */}
+        <motion.div
+          animate={open ? "open" : "closed"}
+          initial="closed"
+          variants={{
+             open: { opacity: 1, y: 0, transition: { type: "spring", damping: 26, stiffness: 280 } },
+             closed: { opacity: 0, y: "100%", transition: { duration: 0.3 } }
+          }}
+          className={cn(
+            "pointer-events-auto w-full",
+            // Desktop: centered card
+            "md:w-[760px] md:max-h-[90vh]",
+            "bg-[#0a0a0a] border border-white/10 text-white font-sans",
+            "rounded-t-[2rem] md:rounded-[2rem] overflow-hidden shadow-[0_-8px_60px_rgba(0,0,0,0.6)] md:shadow-2xl"
+          )}
+          style={{ willChange: "transform, opacity" }}
+        >
+        {/* ── MOBILE DRAG HANDLE ── */}
+        <div className="md:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
 
             {/* ── DESKTOP: two-column layout ── */}
             <div className="hidden md:flex h-[500px]">
               {/* Left: ads */}
               <div className="relative w-[45%] bg-[#0f0f0f] overflow-hidden flex flex-col items-center justify-center p-6 border-r border-white/5 gap-5">
-                <span className="absolute top-4 left-4 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
+                <span className="absolute top-4 left-4 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full z-20">
                   Sponsored
                 </span>
-                <AdContainer iteration={0} />
+                <AdContainer iteration={iteration} />
                 <motion.a
                   href={currentBanner.link}
                   target="_blank"
@@ -321,7 +331,7 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
                 </span>
                 {/* Scale the 300×250 ad to fit smaller screens */}
                 <div className="scale-[0.82] origin-top" style={{ height: 210 }}>
-                  <AdContainer iteration={0} />
+                  <AdContainer iteration={iteration} />
                 </div>
                 {/* Custom banner */}
                 <motion.a
@@ -404,10 +414,8 @@ export default function AdDialog({ open, onOpenChange, onAdComplete }: AdDialogP
               </div>
             </div>
           </motion.div>
-          </div>
-        </>
-      )}
-    </AnimatePresence>
+        </div>
+    </>
   );
 }
 

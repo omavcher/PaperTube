@@ -23,6 +23,16 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
+/* Hide scrollbar completely but allow scroll */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Fade mask on right edge only for scrollable chip rows to keep left side clear */
+.scroll-fade-x {
+  -webkit-mask-image: linear-gradient(to right, black 0%, black 95%, transparent 100%);
+  mask-image: linear-gradient(to right, black 0%, black 95%, transparent 100%);
+}
+
 
 @layer components {
   .container {

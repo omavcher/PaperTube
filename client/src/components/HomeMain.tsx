@@ -12,7 +12,7 @@ import {
   IconCheck
 } from "@tabler/icons-react";
 import { useRouter } from 'next/navigation';
-import { Loader2, ChevronDown, ArrowRight, Coins, AlertTriangle, X, Zap } from "lucide-react";
+import { Loader2, ChevronDown, ArrowRight, Coins, AlertTriangle, X, Zap, Code, Users, Headphones, Search, FileSignature, BrainCircuit, FileType, CheckSquare, Target, Map, Briefcase, GraduationCap, Link as LinkIcon, BookOpen, PenTool, LayoutGrid, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,7 @@ import AdDialog, { preloadAdScript } from './AdDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthLoginModal, PremiumUpgradeModal } from '@/components/AuthGuard';
-import MegaOfferBanner from '@/components/MegaOfferBanner';
+
 
 // --- Constants & Config ---
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
@@ -38,6 +38,41 @@ const AI_MODELS = [
   { id: "parikshasarthi", name: "Pariksha-Sarthi", accessTier: "Premium", endpoint: "premium" },
   { id: "vyavastha", name: "Vyavastha", accessTier: "Premium", endpoint: "premium" },
 ];
+
+const HOME_CATEGORIES = [
+  { id: 'youtube', label: 'YouTube AI', icon: IconBrandYoutube },
+  { id: 'coding', label: 'Code & Job Prep', icon: Code },
+  { id: 'document', label: 'Document Lab', icon: FileType },
+  { id: 'writing', label: 'AI Writing', icon: BookOpen },
+];
+
+const CATEGORY_TOOLS: Record<string, { id: string, label: string, icon: any, comingSoon?: boolean, placeholder?: string }[]> = {
+  youtube: [
+    { id: 'notes', label: 'YT to Notes', icon: IconFileText },
+    { id: 'flashcards', label: 'YT to Flashcards', icon: IconBrain },
+    { id: 'test', label: 'Practice Test', icon: CheckSquare, comingSoon: true, placeholder: 'Paste Video URL to Gen Test...' },
+  ],
+  coding: [
+    { id: 'code_solution', label: 'Code Solution', icon: Code, comingSoon: true, placeholder: 'Paste Leetcode/Hackerrank URL...' },
+    { id: 'code_flowchart', label: 'Flow Chart', icon: Map, comingSoon: true, placeholder: 'Paste Code or Repository URL...' },
+    { id: 'interview', label: 'Interview Prep', icon: Users, comingSoon: true, placeholder: 'Paste Job Description...' },
+    { id: 'resume', label: 'Resume Builder', icon: FileSignature, comingSoon: true, placeholder: 'Paste LinkedIn URL or Resume...' },
+  ],
+  document: [
+    { id: 'pdf_audio', label: 'PDF to Audio', icon: Headphones, comingSoon: true, placeholder: 'Upload or Paste PDF Link...' },
+    { id: 'pdf_summary', label: 'PDF Summarizer', icon: Search, comingSoon: true, placeholder: 'Upload or Paste PDF Link...' },
+    { id: 'word_summary', label: 'Word Summarizer', icon: FileText, comingSoon: true, placeholder: 'Upload Word Document...' },
+    { id: 'mind_map', label: 'Mind Map Gen', icon: BrainCircuit, comingSoon: true, placeholder: 'Upload Document or Paste Notes...' },
+  ],
+  writing: [
+    { id: 'detector', label: 'AI Detector', icon: Search, comingSoon: true, placeholder: 'Paste text to analyze...' },
+    { id: 'humanizer', label: 'AI Humanizer', icon: Users, comingSoon: true, placeholder: 'Paste AI generated text...' },
+    { id: 'paper', label: 'Paper Writer', icon: FileSignature, comingSoon: true, placeholder: 'Enter research topic...' },
+    { id: 'essay', label: 'Essay Writer', icon: PenTool, comingSoon: true, placeholder: 'Enter essay prompt...' },
+    { id: 'grader', label: 'Essay Grader', icon: GraduationCap, comingSoon: true, placeholder: 'Paste essay to grade...' },
+    { id: 'citation', label: 'Citation Gen', icon: LinkIcon, comingSoon: true, placeholder: 'Enter URL or DOI...' },
+  ]
+};
 
 const NOTES_LOADING_STEPS = [
   { id: 1, label: "Fetching Signal Data", icon: IconBrandYoutube },
@@ -61,10 +96,13 @@ export default function HomeMain() {
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState(AI_MODELS[0]);
   
+  // App Structure States
+  const [activeCategory, setActiveCategory] = useState<string>('youtube');
+  
   // Configuration States
   const [outputLanguage, setOutputLanguage] = useState('English');
   const [detailLevel, setDetailLevel] = useState('Standard');
-  const [outputFormat, setOutputFormat] = useState<'notes'|'flashcards'>('notes');
+  const [outputFormat, setOutputFormat] = useState<string>('notes');
   const [flashcardCount, setFlashcardCount] = useState<number>(5);
 
   // Logic & UI States
@@ -120,10 +158,20 @@ export default function HomeMain() {
     fetchUserData();
   }, []);
 
-  const isValidUrl = useMemo(() => YOUTUBE_REGEX.test(videoUrl), [videoUrl]);
+  const isValidUrl = useMemo(() => {
+    if (activeCategory === 'youtube') return YOUTUBE_REGEX.test(videoUrl);
+    return videoUrl.trim().length > 5;
+  }, [videoUrl, activeCategory]);
+
+  // Premium Horizontal Drag/Wheel Scroll
+  const handleHorizontalScroll = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY !== 0) {
+      e.currentTarget.scrollLeft += e.deltaY;
+    }
+  };
 
   const fetchVideoInfo = useCallback(async () => {
-    if (isValidUrl) {
+    if (isValidUrl && activeCategory === 'youtube') {
       setLoading(true);
       try {
         const response = await api.post('/notes/ytinfo', { videoUrl });
@@ -131,7 +179,7 @@ export default function HomeMain() {
       } catch (err) { console.error(err); } 
       finally { setLoading(false); }
     }
-  }, [videoUrl, isValidUrl]);
+  }, [videoUrl, isValidUrl, activeCategory]);
 
   useEffect(() => {
     const timer = setTimeout(() => { if (videoUrl.trim()) fetchVideoInfo(); }, 800);
@@ -252,6 +300,12 @@ export default function HomeMain() {
   };
 
   const handleGenerateClick = () => {
+    const activeToolInfo = CATEGORY_TOOLS[activeCategory]?.find(t => t.id === outputFormat);
+    if (activeToolInfo?.comingSoon) {
+      alert("This amazing feature is coming very soon!");
+      return;
+    }
+
     if (!hasPremiumAccess && selectedModel.endpoint === "free") {
       setShowAdDialog(true);
     } else {
@@ -263,7 +317,6 @@ export default function HomeMain() {
     <section className="w-full min-h-screen relative flex flex-col items-center justify-center bg-black text-white px-4 py-10 font-sans selection:bg-neutral-800 selection:text-white overflow-hidden">
       
       {/* Subtle Background Atmosphere - simplified for desktop perf */}
-      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(40,40,40,0.3),transparent)] transform-gpu" />
 
       {/* Auth Modals */}
       <AuthLoginModal
@@ -437,245 +490,308 @@ export default function HomeMain() {
               transition={{ duration: 0.5, ease: "easeOut" }}
               className="flex flex-col items-center space-y-10"
             >
-             <MegaOfferBanner className="mb-8" />
-             {/* Branding */}
-              <div className="text-center space-y-5 md:space-y-6 mb-6 md:mb-10">
+
+              {/* Branding */}
+              <div className="text-center space-y-5 md:space-y-6 mb-6 md:mb-10 w-full min-h-[140px] md:min-h-[160px] flex flex-col justify-center">
                 
-                {/* Status Badge (Brand name moved here) */}
+                {/* Status Badge */}
                 <motion.div 
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/50 border border-white/10 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400 backdrop-blur-md shadow-lg"
+                  className="mx-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/50 border border-white/10 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400 backdrop-blur-md shadow-lg relative overflow-hidden"
                 >
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"></div>
+                  <motion.div 
+                    key={`dot-${activeCategory}`}
+                    initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }}
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full animate-pulse",
+                      activeCategory === 'youtube' ? "bg-red-500 shadow-[0_0_8px_#ef4444]" :
+                      activeCategory === 'coding' ? "bg-blue-500 shadow-[0_0_8px_#3b82f6]" :
+                      activeCategory === 'document' ? "bg-purple-500 shadow-[0_0_8px_#a855f7]" :
+                      "bg-emerald-500 shadow-[0_0_8px_#10b981]"
+                    )}
+                  ></motion.div>
                   Paperxify Engine Active
                 </motion.div>
                 
                 {/* Main Title & Subtitle */}
-                <div className="space-y-4 md:space-y-5">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-400 leading-[1.1] pb-2">
-                    Turn YouTube Lectures <br className="hidden sm:block" />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]">
-                      Into Beautiful Notes.
-                    </span>
-                  </h1>
+                <div className="space-y-4 md:space-y-5 flex justify-center">
+                  <AnimatePresence mode="wait">
+                    <motion.h1 
+                      key={activeCategory}
+                      initial={{ opacity: 0, y: 15, filter: "blur(8px)" }}
+                      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                      exit={{ opacity: 0, y: -15, filter: "blur(8px)" }}
+                      transition={{ duration: 0.35, ease: "easeOut" }}
+                      className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-400 leading-[1.1] pb-2"
+                    >
+                      {activeCategory === 'youtube' && <><span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]">Turn YouTube</span> <br className="hidden sm:block"/> Into Knowledge.</>}
+                      {activeCategory === 'coding' && <><span className="text-transparent bg-clip-text bg-gradient-to-b from-blue-500 to-blue-700 drop-shadow-[0_0_20px_rgba(59,130,246,0.3)]">Master Coding</span> <br className="hidden sm:block"/> & Job Prep.</>}
+                      {activeCategory === 'document' && <><span className="text-transparent bg-clip-text bg-gradient-to-b from-purple-500 to-purple-700 drop-shadow-[0_0_20px_rgba(168,85,247,0.3)]">Analyze PDFs</span> <br className="hidden sm:block"/> In Seconds.</>}
+                      {activeCategory === 'writing' && <><span className="text-transparent bg-clip-text bg-gradient-to-b from-emerald-500 to-emerald-700 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]">AI Writing</span> <br className="hidden sm:block"/> Perfected.</>}
+                    </motion.h1>
+                  </AnimatePresence>
                 </div>
               </div>
 
-              {/* Main Interaction Card */}
-              <div className="w-full max-w-3xl bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-2 relative transform-gpu will-change-transform">
-                
-                {/* --- Token Status Bar (Only for non-premium logged-in users) --- */}
-                {isLoggedIn && !hasPremiumAccess && userTokens !== null && (
-                   <div className="px-5 py-3 mb-2 flex items-center justify-between border-b border-white/5 bg-black/20 rounded-2xl mx-1 mt-1">
-                      <div className="flex items-center gap-2 text-xs font-bold text-neutral-400">
-                         <Coins size={14} className="text-yellow-500" />
-                         <span className="uppercase tracking-widest text-[9px] mt-0.5">Tokens Left: <span className="text-white font-mono text-xs">{userTokens.toLocaleString()}</span></span>
-                      </div>
-                      <Link href="/pricing" className="text-[9px] font-bold uppercase tracking-widest text-blue-400 hover:text-white transition-colors bg-blue-500/10 px-2 py-1 rounded-md">
-                         Refill Node
-                      </Link>
-                   </div>
-                )}
+              {/* Top Level App Categories */}
+              <div onWheel={handleHorizontalScroll} className="flex relative w-full max-w-3xl overflow-x-auto p-1.5 bg-white/[0.03] border border-white/[0.08] backdrop-blur-md rounded-[1.8rem] mb-6 no-scrollbar scroll-fade-x flex-nowrap shrink-0 shadow-xl z-20">
+                 {HOME_CATEGORIES.map(c => {
+                    const isActive = activeCategory === c.id;
+                    return (
+                        <button 
+                          key={c.id} 
+                          onClick={() => {
+                            setActiveCategory(c.id);
+                            setOutputFormat(CATEGORY_TOOLS[c.id][0].id);
+                            setVideoUrl(''); // Reset input between major sections
+                          }} 
+                          className={cn("flex-1 relative px-5 py-3 rounded-[1.4rem] font-bold text-[13px] sm:text-sm flex items-center justify-center gap-2 transition-colors duration-200 whitespace-nowrap shrink-0", isActive ? "text-black" : "text-neutral-400 hover:text-white hover:bg-white/[0.06]")}
+                        >
+                           {isActive && (
+                             <motion.div 
+                               layoutId="activeTabIndicator"
+                               className="absolute inset-0 bg-white rounded-[1.4rem] shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                               transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                             />
+                           )}
+                           <c.icon size={18} className={cn("relative z-10", isActive ? "text-black" : "text-neutral-500")} />
+                           <span className="relative z-10">{c.label}</span>
+                        </button>
+                    )
+                 })}
+              </div>
 
-                {/* Input Area */}
-                <div className="relative flex items-center bg-[#0a0a0a] rounded-2xl border border-white/10 px-4 py-3.5 transition-all duration-300 focus-within:border-white/30 focus-within:bg-black/80 focus-within:ring-4 focus-within:ring-white/5 mt-2 mx-1 shadow-inner group">
-                  <div className={cn("p-2.5 rounded-xl text-neutral-400 transition-all duration-300", isValidUrl ? "text-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]" : "bg-neutral-800/50 group-focus-within:bg-neutral-800")}>
-                    <IconBrandYoutube size={22} className={cn(isValidUrl && "animate-pulse")} />
-                  </div>
-                  <input 
-                    placeholder="Paste YouTube Video URL..." 
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-lg font-semibold text-white placeholder:text-neutral-500 px-4 outline-none w-full"
-                  />
-                  {loading && <Loader2 className="animate-spin text-neutral-500" size={20} />}
-                  {isValidUrl && !loading && <IconCheck className="text-green-500 mr-2" size={20} />}
-                </div>
+              {/* ============ MAIN COMMAND CARD ============ */}
+              <div className="w-full max-w-3xl relative z-10">
+                {/* Outer glow ambient effect */}
+                <motion.div 
+                  key={`glow-${activeCategory}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.8 }}
+                  className={cn(
+                    "absolute -inset-px rounded-[2.2rem] bg-gradient-to-b to-transparent pointer-events-none z-0",
+                    activeCategory === 'youtube' ? "from-red-500/20 via-red-500/5" :
+                    activeCategory === 'coding' ? "from-blue-500/20 via-blue-500/5" :
+                    activeCategory === 'document' ? "from-purple-500/20 via-purple-500/5" :
+                    "from-emerald-500/20 via-emerald-500/5"
+                  )} 
+                />
 
-                {/* Video Info Preview */}
-                <AnimatePresence>
-                  {videoInfo && !loading && (
+                <div className="relative z-10 bg-[#0c0c0c] border border-white/[0.08] rounded-[2rem] overflow-hidden shadow-[0_20px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-500 focus-within:border-white/20 focus-within:shadow-[0_0_40px_-15px_rgba(255,255,255,0.06)]">
+                  
+                  {/* === OVERHAULED INPUT ZONE === */}
+                  <div className="flex items-center gap-3 px-5 pt-5 pb-3">
                     <motion.div 
-                      key="video-preview-card"
-                      initial={{ height: 0, opacity: 0 }} 
-                      animate={{ height: 'auto', opacity: 1 }} 
-                      exit={{ height: 0, opacity: 0 }} 
-                      className="overflow-hidden"
+                      key={`iconbox-${activeCategory}-${isValidUrl}`}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", bounce: 0.4 }}
+                      className={cn(
+                        "shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300",
+                        isValidUrl 
+                          ? (activeCategory === 'youtube' ? "bg-red-500/15 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                            : activeCategory === 'coding' ? "bg-blue-500/15 text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                            : activeCategory === 'document' ? "bg-purple-500/15 text-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+                            : "bg-emerald-500/15 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]")
+                          : "bg-white/5 text-neutral-500"
+                      )}
                     >
-                       <div className="mt-2 mx-1 p-3 bg-neutral-800/20 rounded-xl border border-white/5 flex items-center gap-4">
-                          <img src={videoInfo.thumbnail} className="w-20 h-12 rounded-lg object-cover bg-neutral-800" alt="thumb" />
-                          <div className="min-w-0">
-                            <h3 className="text-sm font-bold text-white truncate">{videoInfo.title}</h3>
-                            <p className="text-xs text-neutral-500 font-mono">{videoInfo.formattedDuration} • {videoInfo.channel}</p>
-                          </div>
-                       </div>
+                      {activeCategory === 'youtube' 
+                        ? <IconBrandYoutube size={18} className={cn(isValidUrl && activeCategory === 'youtube' && "animate-pulse")} />
+                        : activeCategory === 'coding' ? <Code size={16} />
+                        : activeCategory === 'document' ? <FileType size={16} />
+                        : <BookOpen size={16} />}
                     </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Text Area */}
-                <div className="px-1 mt-3 mx-1 mb-2">
-                  <div className="relative bg-black/40 rounded-2xl border border-white/5 transition-all duration-300 focus-within:border-white/20 focus-within:bg-black/60 group">
-                    <div className="absolute left-4 top-4 text-neutral-600 group-focus-within:text-blue-400 transition-colors">
-                      <IconSparkles size={18} />
+                    <input 
+                      placeholder={CATEGORY_TOOLS[activeCategory].find(t => t.id === outputFormat)?.placeholder || "Paste link or enter your request..."}
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      className="flex-1 bg-transparent border-none focus:ring-0 text-[16px] sm:text-[18px] font-semibold text-white placeholder:text-neutral-600 outline-none min-w-0"
+                    />
+                    <div className="shrink-0 flex items-center gap-2">
+                      {loading && <Loader2 className="animate-spin text-neutral-600" size={16} />}
+                      {isValidUrl && !loading && (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-6 h-6 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center">
+                          <IconCheck size={12} className="text-green-500" />
+                        </motion.div>
+                      )}
+                      {isLoggedIn && !hasPremiumAccess && userTokens !== null && (
+                        <Link href="/pricing" className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-yellow-500/8 border border-yellow-500/15 text-yellow-500 text-[10px] font-black uppercase tracking-wider hover:bg-yellow-500/15 transition-colors">
+                          <Coins size={11} />
+                          {userTokens.toLocaleString()}
+                        </Link>
+                      )}
                     </div>
+                  </div>
+
+                  {/* === Video Preview === */}
+                  <AnimatePresence>
+                    {videoInfo && !loading && activeCategory === 'youtube' && (
+                      <motion.div key="vinfo" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                        <div className="mx-4 mt-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06] flex items-center gap-3">
+                          <img src={videoInfo.thumbnail} className="w-16 h-10 rounded-lg object-cover shrink-0 bg-neutral-800" alt="thumb" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-white truncate">{videoInfo.title}</p>
+                            <p className="text-[10px] text-neutral-600 font-mono mt-0.5">{videoInfo.formattedDuration} &middot; {videoInfo.channel}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* === MAIN TEXTAREA === */}
+                  <div className="px-5 pb-4">
                     <textarea 
-                      placeholder="Add specific instructions or focus areas... (Optional)"
+                      placeholder={activeCategory === 'youtube' 
+                        ? "Add specific focus areas, topics to emphasize... (optional)"
+                        : "Describe what you need — be specific for best results..."}
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
-                      className="w-full h-20 bg-transparent border-none focus:ring-0 text-sm text-neutral-300 placeholder:text-neutral-600 resize-none outline-none pl-12 pr-4 py-4 font-medium"
+                      rows={2}
+                      className="w-full bg-transparent border-none focus:ring-0 text-[15px] text-neutral-300 placeholder:text-neutral-700 resize-none outline-none leading-relaxed"
                     />
                   </div>
-                </div>
 
-                {/* Output Format Options */}
-                <div className="mx-4 mt-2 mb-3 flex items-center justify-between flex-wrap gap-4 relative z-20">
-                   <div className="flex bg-black/60 p-1.5 rounded-[16px] border border-white/10 shadow-inner backdrop-blur-md">
-                      <button 
-                        onClick={() => setOutputFormat('notes')} 
-                        className={cn("px-6 py-2.5 rounded-xl text-xs font-bold transition-all duration-300", outputFormat === 'notes' ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]" : "text-neutral-400 hover:text-white hover:bg-white/5")}
-                      >
-                         Notes
-                      </button>
-                      <button 
-                         onClick={() => {
-                            setOutputFormat('flashcards');
-                            setFlashcardCount(hasPremiumAccess ? 10 : 5);
-                         }} 
-                         className={cn("px-6 py-2.5 rounded-xl text-xs font-bold transition-all duration-300", outputFormat === 'flashcards' ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]" : "text-neutral-400 hover:text-white hover:bg-white/5")}
-                      >
-                         Flashcards
-                      </button>
-                   </div>
-                   
-                   {outputFormat === 'flashcards' && (
-                     <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Amount</span>
-                        <input 
-                           type="number" 
-                           min="1" 
-                           max={hasPremiumAccess ? 30 : 5}
-                           value={flashcardCount}
-                           onChange={(e) => {
-                             let val = parseInt(e.target.value) || 1;
-                             if (!hasPremiumAccess && val > 5) val = 5;
-                             if (hasPremiumAccess && val > 30) val = 30;
-                             setFlashcardCount(val);
-                           }}
-                           className="w-16 bg-neutral-900 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-white/20 text-center"
-                        />
-                        {!hasPremiumAccess && <span className="text-[9px] text-yellow-500 font-bold ml-1 bg-yellow-500/10 px-2 py-1 rounded">MAX 5 (FREE)</span>}
-                     </div>
-                   )}
-                </div>
-
-                {/* Footer Actions */}
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-2 p-2 pt-4 border-t border-white/5">
-                  <div className="flex gap-2 w-full md:w-auto overflow-x-auto no-scrollbar">
-                     
-                     {/* --- MODEL SELECTOR --- */}
-                     <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-2 px-4 py-2.5 rounded-[14px] bg-neutral-900/80 border border-white/10 hover:border-white/30 hover:bg-neutral-800 text-xs font-bold text-neutral-300 transition-all duration-300 shadow-sm outline-none w-full md:w-auto justify-between group">
-                          <div className="flex items-center gap-2">
-                             <IconRobot size={18} className="text-neutral-500 group-hover:text-blue-400 transition-colors" /> {selectedModel.name}
-                          </div>
-                          <ChevronDown size={14} className="text-neutral-500 group-hover:text-white transition-colors" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-black/90 backdrop-blur-2xl border-white/10 text-white min-w-[260px] p-2.5 rounded-[1.25rem] shadow-[0_10px_50px_-10px_rgba(0,0,0,1)] z-50">
-                          <div className="px-3 pb-3 pt-1 border-b border-white/5 mb-2">
-                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500 flex items-center gap-2">
-                               <IconBrain size={14} className="text-blue-500" /> Select Intelligence Array 
-                             </p>
-                          </div>
-                          {AI_MODELS.map(m => {
-                            // Check if model is accessible based on plan
-                            const isLocked = m.accessTier === 'Premium' && !hasPremiumAccess;
-                            const isVyavasthaPlanLocked = m.id === 'vyavastha' && hasPremiumAccess && userPlanId === 'scholar';
-                            
-                            return (
-                            <DropdownMenuItem key={m.id} onClick={() => {
-                              if (isLocked) {
-                                const token = localStorage.getItem('authToken');
-                                if (!token) { setShowLoginModal(true); return; }
-                                setShowPremiumModal(true);
-                                return;
-                              }
-                              if (isVyavasthaPlanLocked) {
-                                setShowPremiumModal(true);
-                                return;
-                              }
-                              setSelectedModel(m);
-                            }} className={cn("focus:bg-neutral-800/80 focus:text-white cursor-pointer rounded-xl p-3 mb-1 transition-all duration-200 outline-none flex items-center", m.id === selectedModel.id ? "bg-white/10 text-white shadow-inner" : "text-neutral-300 hover:bg-neutral-900/50")}>
-                              <div className="flex flex-col gap-1">
-                                 <span className="font-bold text-sm tracking-tight">{m.name}</span>
-                                 <span className="text-[9px] text-neutral-500 font-medium">Model Arch v1.2</span>
-                              </div>
-                              {isLocked && <span className="ml-auto text-[9px] font-bold text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-md uppercase tracking-widest shadow-[0_0_10px_rgba(234,179,8,0.1)]">PRO</span>}
-                              {isVyavasthaPlanLocked && <span className="ml-auto text-[9px] font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md uppercase tracking-widest shadow-[0_0_10px_rgba(168,85,247,0.1)]">SCHOLAR+</span>}
-                              {!isLocked && !isVyavasthaPlanLocked && m.id === selectedModel.id && <IconCheck size={14} className="ml-auto text-blue-400" />}
-                            </DropdownMenuItem>
-                            );
-                          })}
-                          
-                          {/* Model Info Redirection */}
-                          <div className="mt-2 pt-2 border-t border-white/5">
-                              <Link href="/models" className="block outline-none">
-                                  <DropdownMenuItem className="focus:bg-blue-500/10 focus:text-blue-400 cursor-pointer rounded-xl p-3 flex items-center justify-center gap-2 text-neutral-400 hover:text-blue-400 hover:bg-blue-500/5 transition-all font-bold uppercase tracking-widest text-[10px] outline-none group">
-                                      View Architecture Details <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                                  </DropdownMenuItem>
-                              </Link>
-                          </div>
-                        </DropdownMenuContent>
-                     </DropdownMenu>
-
-                     <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-2 px-4 py-2.5 rounded-[14px] bg-neutral-900/80 border border-white/10 hover:border-white/30 hover:bg-neutral-800 text-xs font-bold text-neutral-300 transition-all duration-300 shadow-sm outline-none w-full md:w-auto justify-between group">
-                          <div className="flex items-center gap-2">
-                             <IconSettings size={18} className="text-neutral-500 group-hover:text-neutral-300 transition-colors" /> Options 
-                          </div>
-                          <ChevronDown size={14} className="text-neutral-500 group-hover:text-white transition-colors" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-black/90 backdrop-blur-2xl border-white/10 text-white w-[280px] p-5 rounded-[1.25rem] shadow-[0_10px_50px_-10px_rgba(0,0,0,1)] z-50">
-                            <div className="mb-6">
-                              <div className="flex items-center gap-2 mb-3">
-                                 <IconRobot size={14} className="text-purple-500" />
-                                 <span className="text-[10px] uppercase text-neutral-400 font-black tracking-[0.2em]">Language Matrix</span>
-                              </div>
-                              <div className="grid grid-cols-3 gap-2">
-                                {LANGUAGES.slice(0, 6).map(l => (
-                                  <div key={l} onClick={() => setOutputLanguage(l)} className={cn("text-[10px] text-center py-2.5 rounded-xl cursor-pointer font-bold transition-all duration-200 border", outputLanguage === l ? "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]" : "bg-neutral-900 border-white/5 hover:border-white/20 text-neutral-400 hover:text-white hover:bg-neutral-800")}>{l}</div>
-                                ))}
-                              </div>
+                  {/* === Sub-tool Chips === */}
+                  <div className="px-5 pb-3">
+                    <div onWheel={handleHorizontalScroll} className="flex gap-1.5 overflow-x-auto no-scrollbar scroll-fade-x pb-0.5 min-h-[32px]">
+                      <AnimatePresence mode="popLayout" initial={false}>
+                        {CATEGORY_TOOLS[activeCategory].map(tool => {
+                          const isSelected = outputFormat === tool.id;
+                          return (
+                            <motion.button 
+                              layout
+                              initial={{ opacity: 0, scale: 0.8, x: -20 }}
+                              animate={{ opacity: 1, scale: 1, x: 0 }}
+                              exit={{ opacity: 0, scale: 0.8, x: 20 }}
+                              transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
+                              key={tool.id}
+                              onClick={() => { setOutputFormat(tool.id); if (tool.id === 'flashcards') setFlashcardCount(hasPremiumAccess ? 10 : 5); }}
+                              className={cn(
+                                "relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border whitespace-nowrap",
+                                isSelected 
+                                  ? "bg-white text-black border-white shadow-[0_0_12px_rgba(255,255,255,0.15)]" 
+                                  : "bg-transparent border-white/[0.08] text-neutral-500 hover:text-neutral-300 hover:border-white/20"
+                              )}
+                            >
+                              <tool.icon size={12} />
+                              {tool.label}
+                              {tool.comingSoon && <span className="ml-0.5 text-[8px] bg-red-500/80 text-white px-1 py-0.5 rounded font-black uppercase tracking-wider">Soon</span>}
+                            </motion.button>
+                          );
+                        })}
+                      </AnimatePresence>
+                      <AnimatePresence>
+                        {outputFormat === 'flashcards' && (
+                          <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 'auto', opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="overflow-hidden shrink-0">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-purple-500/20 bg-purple-500/8 text-[11px] text-purple-400 font-bold ml-1">
+                              <IconBrain size={12} />
+                              <input type="number" min="1" max={hasPremiumAccess ? 30 : 5} value={flashcardCount}
+                                onChange={(e) => { let val = parseInt(e.target.value)||1; if (!hasPremiumAccess && val>5) val=5; if (hasPremiumAccess && val>30) val=30; setFlashcardCount(val); }}
+                                className="w-9 bg-transparent border-none outline-none text-center text-purple-400 font-bold text-[11px] p-0"
+                              />
+                              <span className="text-purple-500/60">cards</span>
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2 mb-3">
-                                 <IconSparkles size={14} className="text-yellow-500" />
-                                 <span className="text-[10px] uppercase text-neutral-400 font-black tracking-[0.2em]">Detail Depth</span>
-                              </div>
-                              <div className="flex flex-col gap-2">
-                                {DETAIL_LEVELS.map(l => (
-                                  <div key={l} onClick={() => setDetailLevel(l)} className={cn("w-full text-xs text-center py-2.5 rounded-xl cursor-pointer font-bold transition-all duration-200 border", detailLevel === l ? "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]" : "bg-neutral-900 border-white/5 hover:border-white/20 text-neutral-400 hover:text-white hover:bg-neutral-800")}>{l}</div>
-                                ))}
-                              </div>
-                            </div>
-                        </DropdownMenuContent>
-                     </DropdownMenu>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
 
-                  <button 
-                    onClick={handleGenerateClick}
-                    disabled={!isValidUrl || loading || isGenerating}
-                    className={cn(
-                      "group w-full md:w-auto h-12 px-8 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all",
-                      isValidUrl 
-                        ? "bg-white text-black hover:bg-neutral-200 shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95" 
-                        : "bg-neutral-900 text-neutral-500 cursor-not-allowed border border-white/5"
-                    )}
-                  >
-                     {isGenerating ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} fill="currentColor" />}
-                     <span>Generate</span>
-                  </button>
+                  {/* === BOTTOM ACTION BAR === */}
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-white/[0.05] bg-white/[0.01]">
+                    <div onWheel={handleHorizontalScroll} className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                      
+                      {/* Model Selector */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/15 text-[11px] font-bold text-neutral-400 hover:text-white transition-all duration-200 outline-none shrink-0 group">
+                          <IconRobot size={14} className="text-neutral-600 group-hover:text-blue-400 transition-colors" />
+                          <span>{selectedModel.name}</span>
+                          <ChevronDown size={11} className="text-neutral-600" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-black/95 backdrop-blur-2xl border-white/10 text-white min-w-[240px] p-2 rounded-[1.25rem] shadow-[0_10px_50px_-10px_rgba(0,0,0,1)] z-50">
+                          <div className="px-3 pb-2 pt-1 border-b border-white/5 mb-1.5">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 flex items-center gap-1.5"><IconBrain size={11} className="text-blue-500" /> Intelligence Array</p>
+                          </div>
+                          {AI_MODELS.map(m => {
+                            const isLocked = m.accessTier === 'Premium' && !hasPremiumAccess;
+                            const isVyavasthaPlanLocked = m.id === 'vyavastha' && hasPremiumAccess && userPlanId === 'scholar';
+                            return (
+                              <DropdownMenuItem key={m.id} onClick={() => {
+                                if (isLocked) { const t = localStorage.getItem('authToken'); if (!t) { setShowLoginModal(true); return; } setShowPremiumModal(true); return; }
+                                if (isVyavasthaPlanLocked) { setShowPremiumModal(true); return; }
+                                setSelectedModel(m);
+                              }} className={cn("cursor-pointer rounded-xl p-2.5 mb-0.5 transition-all duration-200 outline-none flex items-center gap-2.5 focus:bg-neutral-800/80 focus:text-white", m.id === selectedModel.id ? "bg-white/8 text-white" : "text-neutral-400 hover:bg-neutral-900/50")}>
+                                <div className="w-7 h-7 rounded-lg bg-neutral-900 border border-white/5 flex items-center justify-center shrink-0">
+                                  <IconRobot size={14} className={m.id === selectedModel.id ? "text-blue-400" : "text-neutral-600"} />
+                                </div>
+                                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                  <span className="font-bold text-[12px]">{m.name}</span>
+                                  <span className="text-[9px] text-neutral-600">{m.accessTier} Tier</span>
+                                </div>
+                                {isLocked && <span className="text-[9px] font-bold text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 px-1.5 py-0.5 rounded-md uppercase tracking-widest">PRO</span>}
+                                {isVyavasthaPlanLocked && <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded-md uppercase">SCHOLAR+</span>}
+                                {!isLocked && !isVyavasthaPlanLocked && m.id === selectedModel.id && <IconCheck size={13} className="text-blue-400 ml-auto shrink-0" />}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                          <div className="mt-1 pt-1.5 border-t border-white/5">
+                            <Link href="/models" className="block outline-none">
+                              <DropdownMenuItem className="cursor-pointer rounded-xl p-2.5 flex items-center justify-center gap-2 text-neutral-500 hover:text-blue-400 hover:bg-blue-500/5 font-bold text-[10px] uppercase tracking-wider outline-none focus:bg-blue-500/10 focus:text-blue-400 group transition-all">
+                                View all models <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
+                              </DropdownMenuItem>
+                            </Link>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {/* Options Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/15 text-[11px] font-bold text-neutral-400 hover:text-white transition-all duration-200 outline-none shrink-0 group">
+                          <IconSettings size={14} className="text-neutral-600 group-hover:text-neutral-300 transition-colors" />
+                          <span className="hidden sm:inline">{outputLanguage} &middot; {detailLevel}</span>
+                          <span className="sm:hidden">Options</span>
+                          <ChevronDown size={11} className="text-neutral-600" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-black/95 backdrop-blur-2xl border-white/10 text-white w-[270px] p-4 rounded-[1.25rem] shadow-[0_10px_50px_-10px_rgba(0,0,0,1)] z-50">
+                          <div className="mb-4">
+                            <div className="flex items-center gap-1.5 mb-2.5"><IconRobot size={12} className="text-purple-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Language</span></div>
+                            <div className="grid grid-cols-3 gap-1.5">
+                              {LANGUAGES.slice(0,6).map(l => (
+                                <div key={l} onClick={() => setOutputLanguage(l)} className={cn("text-[10px] text-center py-2 rounded-lg cursor-pointer font-bold transition-all border", outputLanguage === l ? "bg-white text-black border-white" : "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white")}>{l}</div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2.5"><IconSparkles size={12} className="text-yellow-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Detail Depth</span></div>
+                            <div className="flex gap-1.5">
+                              {DETAIL_LEVELS.map(l => (
+                                <div key={l} onClick={() => setDetailLevel(l)} className={cn("flex-1 text-[10px] text-center py-2 rounded-lg cursor-pointer font-bold transition-all border", detailLevel === l ? "bg-white text-black border-white" : "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white")}>{l}</div>
+                              ))}
+                            </div>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Generate Button */}
+                    <button 
+                      onClick={handleGenerateClick}
+                      disabled={!isValidUrl || loading || isGenerating}
+                      className={cn(
+                        "shrink-0 flex items-center gap-2 h-10 px-5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300",
+                        isValidUrl 
+                          ? "bg-white text-black hover:bg-neutral-100 shadow-[0_0_25px_rgba(255,255,255,0.15)] active:scale-95 active:shadow-none" 
+                          : "bg-white/5 text-neutral-600 cursor-not-allowed border border-white/5"
+                      )}
+                    >
+                      {isGenerating ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} fill="currentColor" />}
+                      <span>Generate</span>
+                    </button>
+                  </div>
+
                 </div>
               </div>
 
