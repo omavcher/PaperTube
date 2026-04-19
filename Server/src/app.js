@@ -41,7 +41,8 @@ app.use("/api/analytics", require("./routes/analyticsRoutes"));
 app.use("/api/support", supportRoutes);
 app.use("/api/promo", promoRoutes);
 app.use("/api/email", require("./routes/emailRoutes"));
-
+app.use("/api/test", require("./routes/testRoutes"));
+app.use("/api/code", require("./routes/codeRoutes"));
 
 // Optional: Add admin route to manually trigger token reset
 app.post("/api/admin/trigger-token-reset", async (req, res) => {

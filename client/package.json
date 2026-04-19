@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@codesandbox/sandpack-react": "^2.20.0",
     "@editorjs/code": "^2.9.3",
     "@editorjs/editorjs": "^2.30.8",
     "@editorjs/header": "^2.8.8",
@@ -54,6 +55,7 @@
     "@tsparticles/react": "^3.0.0",
     "@tsparticles/slim": "^3.9.1",
     "@uiw/react-md-editor": "^4.0.11",
+    "@xyflow/react": "^12.10.2",
     "axios": "^1.11.0",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
@@ -92,6 +94,7 @@
     "react-quill": "^2.0.0",
     "react-simple-star-rating": "^5.1.7",
     "react-syntax-highlighter": "^16.1.0",
+    "reactflow": "^11.11.4",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",

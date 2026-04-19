@@ -75,4 +75,19 @@ router.patch('/promo/toggle/:id', adminAuth, promoController.adminTogglePromoCod
 router.delete('/promo/delete/:id', adminAuth, promoController.adminDeletePromoCode);
 router.get('/promo/usage/:id', adminAuth, promoController.adminGetPromoUsage);
 
+
+// ─── Subscription & Token Management ────────────────────────────────────────
+// GET  /api/admin/users/details             → paginated user list with membership + token info
+// GET  /api/admin/user/:userId/details      → full profile of a single user
+// POST /api/admin/user/:userId/grant-subscription  → manually grant a subscription plan
+// POST /api/admin/user/:userId/grant-tokens         → add tokens to a user
+// POST /api/admin/user/:userId/set-tokens           → set exact token balance
+// POST /api/admin/user/:userId/revoke-subscription  → cancel active subscription
+router.get('/users/details',                       adminAuth, adminController.adminGetAllUsersDetailed);
+router.get('/user/:userId/details',                adminAuth, adminController.adminGetUserDetails);
+router.post('/user/:userId/grant-subscription',    adminAuth, adminController.adminGrantSubscription);
+router.post('/user/:userId/grant-tokens',          adminAuth, adminController.adminGrantTokens);
+router.post('/user/:userId/set-tokens',            adminAuth, adminController.adminSetTokenBalance);
+router.post('/user/:userId/revoke-subscription',   adminAuth, adminController.adminRevokeSubscription);
+
 module.exports = router;

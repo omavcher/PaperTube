@@ -1597,4 +1597,470 @@ exports.getPresignedUrl = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN SUBSCRIPTION & TOKEN MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Valid plan configs (mirrors paymentController)
+const ADMIN_SUBSCRIPTION_PLANS = {
+  scholar:       { name: "Scholar Plan",        durationDays: { monthly: 30,  yearly: 365 } },
+  pro:           { name: "Pro Scholar Plan",    durationDays: { monthly: 30,  yearly: 365 } },
+  power:         { name: "Power Scholar Plan",  durationDays: { monthly: 30,  yearly: 365 } },
+};
+
+/**
+ * GET /api/admin/users/details
+ * Returns ALL users with full membership + token info for admin panel.
+ */
+exports.adminGetAllUsersDetailed = async (req, res) => {
+  try {
+    const { search, page = 1, limit = 30 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    let filter = {};
+    if (search && search.trim()) {
+      const q = search.trim();
+      filter = {
+        $or: [
+          { name:  { $regex: q, $options: "i" } },
+          { email: { $regex: q, $options: "i" } },
+          { username: { $regex: q, $options: "i" } }
+        ]
+      };
+    }
+
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .select("name email username picture joinedAt tokens membership isFake")
+        .sort({ joinedAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      User.countDocuments(filter)
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: users,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages:  Math.ceil(total / parseInt(limit)),
+        totalItems:  total,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error("❌ Admin Get All Users Detailed Error:", error);
+    res.status(500).json({ success: false, message: "Server error while fetching users." });
+  }
+};
+
+/**
+ * GET /api/admin/user/:userId/details
+ * Full profile: membership, tokens, recent transactions.
+ */
+exports.adminGetUserDetails = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID format." });
+    }
+
+    const user = await User.findById(userId)
+      .select("name email username picture joinedAt tokens membership tokenUsageHistory transactions isFake")
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    // Sort transactions newest-first, return last 20
+    const recentTransactions = (user.transactions || [])
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 20);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        _id:         user._id,
+        name:        user.name,
+        email:       user.email,
+        username:    user.username,
+        picture:     user.picture,
+        joinedAt:    user.joinedAt,
+        tokens:      user.tokens ?? 0,
+        membership:  user.membership || null,
+        recentTransactions,
+        isFake:      user.isFake
+      }
+    });
+  } catch (error) {
+    console.error("❌ Admin Get User Details Error:", error);
+    res.status(500).json({ success: false, message: "Server error while fetching user details." });
+  }
+};
+
+/**
+ * POST /api/admin/user/:userId/grant-subscription
+ * Body: { planId, billingPeriod, durationDays?, note? }
+ *
+ * Grants (or extends) a subscription for a user manually.
+ * Creates an internal transaction record tagged as paymentMethod = "admin_grant".
+ */
+exports.adminGrantSubscription = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const {
+      planId,
+      billingPeriod = "monthly",
+      durationDays,          // optional override (in days)
+      note = ""              // optional admin note
+    } = req.body;
+
+    // ── Validation ──────────────────────────────────────────────
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID format." });
+    }
+
+    if (!planId) {
+      return res.status(400).json({ success: false, message: "planId is required." });
+    }
+
+    const planConfig = ADMIN_SUBSCRIPTION_PLANS[planId.toLowerCase()];
+    if (!planConfig) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid planId. Valid plans: ${Object.keys(ADMIN_SUBSCRIPTION_PLANS).join(", ")}`
+      });
+    }
+
+    const validPeriods = ["monthly", "yearly"];
+    if (!validPeriods.includes(billingPeriod)) {
+      return res.status(400).json({ success: false, message: "billingPeriod must be 'monthly' or 'yearly'." });
+    }
+
+    // Resolve duration
+    const resolvedDays = durationDays
+      ? parseInt(durationDays)
+      : planConfig.durationDays[billingPeriod];
+
+    if (isNaN(resolvedDays) || resolvedDays < 1) {
+      return res.status(400).json({ success: false, message: "durationDays must be a positive number." });
+    }
+
+    // ── Find User ────────────────────────────────────────────────
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    // ── Compute Expiry ───────────────────────────────────────────
+    const now        = new Date();
+    const currentExp = user.membership?.isActive && user.membership?.expiresAt
+      ? new Date(user.membership.expiresAt)
+      : null;
+    const baseDate   = currentExp && currentExp > now ? currentExp : now;
+    const expiresAt  = new Date(baseDate.getTime() + resolvedDays * 24 * 60 * 60 * 1000);
+
+    // ── Update Membership ────────────────────────────────────────
+    user.membership = {
+      isActive:      true,
+      planId:        planId.toLowerCase(),
+      planName:      planConfig.name,
+      billingPeriod: billingPeriod,
+      startedAt:     user.membership?.startedAt || now,
+      expiresAt:     expiresAt,
+      lastPaymentId: `admin_grant_${Date.now()}`,
+      autoRenew:     false
+    };
+
+    // ── Create Internal Transaction Record ───────────────────────
+    const txnRecord = {
+      paymentId:    `admin_grant_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      orderId:      `admin_order_${Date.now()}`,
+      signature:    "",
+      packageId:    planId.toLowerCase(),
+      packageName:  planConfig.name,
+      packageType:  "subscription",
+      billingPeriod: billingPeriod,
+      amount:       0,
+      baseAmount:   0,
+      discountAmount: 0,
+      gstAmount:    0,
+      tokens:       null,
+      status:       "success",
+      couponCode:   null,
+      paymentMethod: "admin_grant",
+      userEmail:    user.email,
+      userName:     user.name,
+      packageMeta:  {
+        adminGrantedBy: req.user?.email || "admin",
+        note:           note,
+        durationDays:   resolvedDays
+      },
+      timestamp:    now
+    };
+
+    if (!user.transactions) user.transactions = [];
+    user.transactions.push(txnRecord);
+
+    // Also log into tokenUsageHistory for timeline visibility
+    if (!user.tokenUsageHistory) user.tokenUsageHistory = [];
+    user.tokenUsageHistory.push({
+      name:   `[Admin Grant] ${planConfig.name} (${billingPeriod}) — ${resolvedDays} days`,
+      tokens: 0,
+      date:   now
+    });
+
+    await user.save();
+
+    // ── Save to Standalone Transaction collection ─────────────────
+    try {
+      await Transaction.create({ ...txnRecord, userId: user._id });
+    } catch (txnErr) {
+      console.warn("⚠️ Could not save standalone transaction for admin grant:", txnErr.message);
+    }
+
+    console.log(`✅ [Admin] Subscription granted → ${user.email} | Plan: ${planId} | Expires: ${expiresAt.toISOString()} | By: ${req.user?.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Subscription "${planConfig.name}" granted successfully.`,
+      data: {
+        userId:      user._id,
+        email:       user.email,
+        membership:  user.membership,
+        grantedBy:   req.user?.email,
+        durationDays: resolvedDays
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Admin Grant Subscription Error:", error);
+    res.status(500).json({ success: false, message: "Server error while granting subscription.", error: error.message });
+  }
+};
+
+/**
+ * POST /api/admin/user/:userId/grant-tokens
+ * Body: { amount, note? }
+ *
+ * Adds tokens to a user's balance manually.
+ */
+exports.adminGrantTokens = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount, note = "" } = req.body;
+
+    // ── Validation ──────────────────────────────────────────────
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID format." });
+    }
+
+    const tokenAmount = parseInt(amount);
+    if (isNaN(tokenAmount) || tokenAmount <= 0) {
+      return res.status(400).json({ success: false, message: "amount must be a positive integer." });
+    }
+
+    if (tokenAmount > 100000) {
+      return res.status(400).json({ success: false, message: "Cannot grant more than 100,000 tokens at once." });
+    }
+
+    // ── Find User ────────────────────────────────────────────────
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const previousBalance = user.tokens ?? 0;
+
+    // ── Add Tokens ───────────────────────────────────────────────
+    user.tokens = previousBalance + tokenAmount;
+
+    // ── Log to tokenUsageHistory ─────────────────────────────────
+    if (!user.tokenUsageHistory) user.tokenUsageHistory = [];
+    user.tokenUsageHistory.push({
+      name:   `[Admin Grant] +${tokenAmount} Tokens${note ? ` — ${note}` : ""}`,
+      tokens: tokenAmount,
+      date:   new Date()
+    });
+
+    // ── Create Internal Transaction Record ───────────────────────
+    const now = new Date();
+    const txnRecord = {
+      paymentId:    `admin_token_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      orderId:      `admin_token_order_${Date.now()}`,
+      signature:    "",
+      packageId:    "admin_token_grant",
+      packageName:  `Admin Token Grant (+${tokenAmount})`,
+      packageType:  "token",
+      amount:       0,
+      baseAmount:   0,
+      discountAmount: 0,
+      gstAmount:    0,
+      tokens:       tokenAmount,
+      status:       "success",
+      couponCode:   null,
+      paymentMethod: "admin_grant",
+      userEmail:    user.email,
+      userName:     user.name,
+      packageMeta:  {
+        adminGrantedBy: req.user?.email || "admin",
+        note:           note,
+        tokensGranted:  tokenAmount,
+        previousBalance
+      },
+      timestamp: now
+    };
+
+    if (!user.transactions) user.transactions = [];
+    user.transactions.push(txnRecord);
+
+    await user.save();
+
+    // ── Save to Standalone Transaction collection ─────────────────
+    try {
+      await Transaction.create({ ...txnRecord, userId: user._id });
+    } catch (txnErr) {
+      console.warn("⚠️ Could not save standalone transaction for token grant:", txnErr.message);
+    }
+
+    console.log(`✅ [Admin] Tokens granted → ${user.email} | +${tokenAmount} tokens | New balance: ${user.tokens} | By: ${req.user?.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `${tokenAmount} tokens granted successfully.`,
+      data: {
+        userId:          user._id,
+        email:           user.email,
+        tokensGranted:   tokenAmount,
+        previousBalance: previousBalance,
+        newBalance:      user.tokens,
+        grantedBy:       req.user?.email
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Admin Grant Tokens Error:", error);
+    res.status(500).json({ success: false, message: "Server error while granting tokens.", error: error.message });
+  }
+};
+
+/**
+ * POST /api/admin/user/:userId/revoke-subscription
+ * Body: { note? }
+ *
+ * Immediately cancels a user's active subscription.
+ */
+exports.adminRevokeSubscription = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { note = "" } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID format." });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    if (!user.membership?.isActive) {
+      return res.status(400).json({ success: false, message: "User does not have an active subscription." });
+    }
+
+    const previousPlan = { ...user.membership.toObject ? user.membership.toObject() : user.membership };
+
+    // ── Revoke ───────────────────────────────────────────────────
+    user.membership.isActive  = false;
+    user.membership.expiresAt = new Date(); // expire immediately
+
+    // ── Log ──────────────────────────────────────────────────────
+    if (!user.tokenUsageHistory) user.tokenUsageHistory = [];
+    user.tokenUsageHistory.push({
+      name:   `[Admin Revoke] ${previousPlan.planName} cancelled${note ? ` — ${note}` : ""}`,
+      tokens: 0,
+      date:   new Date()
+    });
+
+    await user.save();
+
+    console.log(`🚫 [Admin] Subscription revoked → ${user.email} | Plan: ${previousPlan.planName} | By: ${req.user?.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Subscription "${previousPlan.planName}" has been revoked.`,
+      data: {
+        userId:      user._id,
+        email:       user.email,
+        revokedPlan: previousPlan,
+        revokedBy:   req.user?.email
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Admin Revoke Subscription Error:", error);
+    res.status(500).json({ success: false, message: "Server error while revoking subscription.", error: error.message });
+  }
+};
+
+/**
+ * POST /api/admin/user/:userId/set-tokens
+ * Body: { amount, note? }
+ *
+ * Sets a user's token balance to an exact value (override, not increment).
+ */
+exports.adminSetTokenBalance = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount, note = "" } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID format." });
+    }
+
+    const tokenAmount = parseInt(amount);
+    if (isNaN(tokenAmount) || tokenAmount < 0) {
+      return res.status(400).json({ success: false, message: "amount must be a non-negative integer." });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const previousBalance = user.tokens ?? 0;
+    user.tokens = tokenAmount;
+
+    if (!user.tokenUsageHistory) user.tokenUsageHistory = [];
+    user.tokenUsageHistory.push({
+      name:   `[Admin Set] Balance set to ${tokenAmount}${note ? ` — ${note}` : ""}`,
+      tokens: tokenAmount - previousBalance,
+      date:   new Date()
+    });
+
+    await user.save();
+
+    console.log(`⚙️ [Admin] Token balance set → ${user.email} | ${previousBalance} → ${tokenAmount} | By: ${req.user?.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Token balance set to ${tokenAmount}.`,
+      data: {
+        userId:          user._id,
+        email:           user.email,
+        previousBalance,
+        newBalance:      user.tokens,
+        setBy:           req.user?.email
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Admin Set Token Balance Error:", error);
+    res.status(500).json({ success: false, message: "Server error while setting token balance.", error: error.message });
+  }
 };

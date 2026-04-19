@@ -259,11 +259,7 @@ export default function FlashcardPage({ params }: { params: Promise<{ slug: stri
   return (
     <div className="h-dvh w-screen bg-[#080808] text-white flex flex-col overflow-hidden select-none">
 
-      {/* ── Ambient glow (mobile-light, reduced blur) ─────────────────────── */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-red-900/15 rounded-full blur-[80px]" />
-        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-900/10 rounded-full blur-[80px]" />
-      </div>
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" />
 
       {/* ── Export progress bar ────────────────────────────────────────────── */}
       {isExporting && exportProgress > 0 && (
@@ -386,9 +382,8 @@ export default function FlashcardPage({ params }: { params: Promise<{ slug: stri
               className="absolute inset-0 rounded-[24px] flex flex-col overflow-hidden"
               style={{
                 backfaceVisibility: "hidden",
-                background: "linear-gradient(160deg, #141414 0%, #0c0c0c 100%)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05)",
+                background: "#0a0a0a",
+                border: "1px solid rgba(255,255,255,0.05)",
               }}
             >
               {/* Top label */}
@@ -438,9 +433,8 @@ export default function FlashcardPage({ params }: { params: Promise<{ slug: stri
               style={{
                 backfaceVisibility: "hidden",
                 transform: "rotateY(180deg)",
-                background: "linear-gradient(160deg, #0e0808 0%, #080808 100%)",
-                border: "1px solid rgba(239,68,68,0.12)",
-                boxShadow: "0 24px 60px rgba(0,0,0,0.8), 0 0 40px rgba(239,68,68,0.05)",
+                background: "#0a0a0a",
+                border: "1px solid rgba(239,68,68,0.15)",
               }}
             >
               {/* Top label */}

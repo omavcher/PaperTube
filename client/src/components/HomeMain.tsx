@@ -26,6 +26,15 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthLoginModal, PremiumUpgradeModal } from '@/components/AuthGuard';
 
+const getLogoUrl = (platform: string, domain: string) => {
+    const p = (platform || '').toLowerCase();
+    if (p === 'leetcode') return 'https://upload.wikimedia.org/wikipedia/commons/1/19/LeetCode_logo_black.png'; // Distinct orange Leetcode Logo
+    if (p === 'codechef') return 'https://upload.wikimedia.org/wikipedia/en/7/7b/Codechef%28new%29_logo.svg';
+    if (p === 'hackerrank') return 'https://upload.wikimedia.org/wikipedia/commons/4/40/HackerRank_Icon-1000px.png';
+    if (p === 'geeksforgeeks') return 'https://media.geeksforgeeks.org/wp-content/cdn-uploads/gfg_favicon.png';
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+};
+
 
 // --- Constants & Config ---
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
@@ -39,6 +48,14 @@ const AI_MODELS = [
   { id: "vyavastha", name: "Vyavastha", accessTier: "Premium", endpoint: "premium" },
 ];
 
+const TEST_TYPES = [
+  { id: 'MCQ', label: 'MCQ', isPremium: false },
+  { id: 'Fill in the Blanks', label: 'Fill Blanks', isPremium: false },
+  { id: 'MSQ', label: 'MSQ', isPremium: true },
+  { id: 'NAT', label: 'NAT', isPremium: true },
+  { id: 'Master All (Mix)', label: 'Master Mix', isPremium: true },
+];
+
 const HOME_CATEGORIES = [
   { id: 'youtube', label: 'YouTube AI', icon: IconBrandYoutube },
   { id: 'coding', label: 'Code & Job Prep', icon: Code },
@@ -50,10 +67,10 @@ const CATEGORY_TOOLS: Record<string, { id: string, label: string, icon: any, com
   youtube: [
     { id: 'notes', label: 'YT to Notes', icon: IconFileText },
     { id: 'flashcards', label: 'YT to Flashcards', icon: IconBrain },
-    { id: 'test', label: 'Practice Test', icon: CheckSquare, comingSoon: true, placeholder: 'Paste Video URL to Gen Test...' },
+    { id: 'test', label: 'Practice Test', icon: CheckSquare, placeholder: 'Paste Video URL to Gen Test...' },
   ],
   coding: [
-    { id: 'code_solution', label: 'Code Solution', icon: Code, comingSoon: true, placeholder: 'Paste Leetcode/Hackerrank URL...' },
+    { id: 'code_solution', label: 'Code Solution', icon: Code, placeholder: 'Paste Leetcode/Hackerrank URL...' },
     { id: 'code_flowchart', label: 'Flow Chart', icon: Map, comingSoon: true, placeholder: 'Paste Code or Repository URL...' },
     { id: 'interview', label: 'Interview Prep', icon: Users, comingSoon: true, placeholder: 'Paste Job Description...' },
     { id: 'resume', label: 'Resume Builder', icon: FileSignature, comingSoon: true, placeholder: 'Paste LinkedIn URL or Resume...' },
@@ -88,6 +105,13 @@ const FLASHCARDS_LOADING_STEPS = [
   { id: 4, label: "Building Spaced Deck", icon: IconSparkles },
 ];
 
+const CODE_LOADING_STEPS = [
+  { id: 1, label: "Fetching Problem constraints", icon: Code },
+  { id: 2, label: "Analyzing complexity", icon: IconBrain },
+  { id: 3, label: "Drafting Optimal approach", icon: FileText },
+  { id: 4, label: "Finalizing Code implementation", icon: IconSparkles },
+];
+
 export default function HomeMain() {
   const router = useRouter();
   
@@ -104,6 +128,8 @@ export default function HomeMain() {
   const [detailLevel, setDetailLevel] = useState('Standard');
   const [outputFormat, setOutputFormat] = useState<string>('notes');
   const [flashcardCount, setFlashcardCount] = useState<number>(5);
+  const [testType, setTestType] = useState<string>('MCQ');
+  const [codeLanguage, setCodeLanguage] = useState<string>('C++');
 
   // Logic & UI States
   const [loading, setLoading] = useState(false); 
@@ -171,13 +197,32 @@ export default function HomeMain() {
   };
 
   const fetchVideoInfo = useCallback(async () => {
-    if (isValidUrl && activeCategory === 'youtube') {
-      setLoading(true);
-      try {
-        const response = await api.post('/notes/ytinfo', { videoUrl });
-        setVideoInfo(response.data);
-      } catch (err) { console.error(err); } 
-      finally { setLoading(false); }
+    if (isValidUrl) {
+      if (activeCategory === 'youtube') {
+        setLoading(true);
+        try {
+          const response = await api.post('/notes/ytinfo', { videoUrl });
+          setVideoInfo(response.data);
+        } catch (err) { console.error(err); setVideoInfo(null); } 
+        finally { setLoading(false); }
+      } else if (activeCategory === 'coding') {
+        setLoading(true);
+        try {
+          const response = await api.post('/code/verify', { problemUrl: videoUrl });
+          if (response.data.success) {
+            let domain = 'coding.com';
+            try { 
+                domain = new URL(videoUrl.startsWith('http') ? videoUrl : `https://${videoUrl}`).hostname; 
+            } catch (e) {}
+            setVideoInfo({ title: response.data.title, platform: response.data.platform, domain, isCode: true });
+          } else {
+            setVideoInfo(null);
+          }
+        } catch (err) { console.error(err); setVideoInfo(null); }
+        finally { setLoading(false); }
+      }
+    } else {
+      setVideoInfo(null);
     }
   }, [videoUrl, isValidUrl, activeCategory]);
 
@@ -257,6 +302,53 @@ export default function HomeMain() {
           }
           setTimeout(() => {
             router.push(`/flashcards/${fcResponse.data.newFlashcardSet.slug}`);
+          }, 600);
+        }
+        return;
+      }
+
+      // ── TEST MODE: dedicated endpoint + route ──
+      if (outputFormat === 'test') {
+        const testPayload = {
+          videoUrl,
+          prompt,
+          model: selectedModel.id,
+          testType: testType,
+          settings: { language: outputLanguage, detailLevel }
+        };
+
+        const testResponse = await api.post('/test/generate', testPayload, { headers: { 'Auth': authToken } });
+
+        if (testResponse.data?.success && testResponse.data?.newTest?.slug) {
+          setCurrentStep(4);
+          if (!hasPremiumAccess && userTokens !== null) {
+            setUserTokens(prev => Math.max(0, (prev || 0) - (testResponse.data.tokenInfo?.tokensDeducted || 5)));
+          }
+          setTimeout(() => {
+            router.push(`/yt-practice-test/${testResponse.data.newTest.slug}`);
+          }, 600);
+        }
+        return;
+      }
+
+      // ── CODE SOLUTION MODE ──
+      if (outputFormat === 'code_solution') {
+        const codePayload = {
+          problemUrl: videoUrl,
+          prompt,
+          model: selectedModel.id,
+          settings: { language: outputLanguage, detailLevel, codeLanguage }
+        };
+
+        const codeResponse = await api.post('/code/generate', codePayload, { headers: { 'Auth': authToken } });
+
+        if (codeResponse.data?.success && codeResponse.data?.newSolution?.slug) {
+          setCurrentStep(4);
+          if (!hasPremiumAccess && userTokens !== null) {
+            setUserTokens(prev => Math.max(0, (prev || 0) - (codeResponse.data.tokenInfo?.tokensDeducted || 8)));
+          }
+          setTimeout(() => {
+            router.push(`/code-solution/${codeResponse.data.newSolution.slug}`);
           }, 600);
         }
         return;
@@ -628,7 +720,7 @@ export default function HomeMain() {
 
                   {/* === Video Preview === */}
                   <AnimatePresence>
-                    {videoInfo && !loading && activeCategory === 'youtube' && (
+                    {videoInfo && !loading && activeCategory === 'youtube' && !videoInfo.isCode && (
                       <motion.div key="vinfo" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
                         <div className="mx-4 mt-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06] flex items-center gap-3">
                           <img src={videoInfo.thumbnail} className="w-16 h-10 rounded-lg object-cover shrink-0 bg-neutral-800" alt="thumb" />
@@ -636,6 +728,39 @@ export default function HomeMain() {
                             <p className="text-xs font-semibold text-white truncate">{videoInfo.title}</p>
                             <p className="text-[10px] text-neutral-600 font-mono mt-0.5">{videoInfo.formattedDuration} &middot; {videoInfo.channel}</p>
                           </div>
+                        </div>
+                      </motion.div>
+                    )}
+                    {videoInfo && !loading && activeCategory === 'coding' && videoInfo.isCode && (
+                      <motion.div key="cinfo" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                        <div className="mx-4 mt-3 p-3.5 bg-gradient-to-r from-blue-500/10 to-indigo-500/5 rounded-xl border border-blue-500/15 flex items-center gap-3.5 relative overflow-hidden group">
+                          
+                          {/* Decorative gradient orb */}
+                          <div className="absolute top-1/2 left-4 w-12 h-12 bg-blue-500/10 rounded-full blur-xl -translate-y-1/2 group-hover:bg-blue-500/20 transition-colors" />
+
+                          <div className="w-11 h-11 rounded-xl bg-white/[0.04] flex flex-col items-center justify-center shrink-0 border border-white/10 relative z-10 shadow-[0_0_15px_rgba(0,0,0,0.5)] overflow-hidden p-[8px]">
+                            {videoInfo.domain ? (
+                              <img src={getLogoUrl(videoInfo.platform, videoInfo.domain)} alt={videoInfo.platform} className="w-full h-full object-contain drop-shadow-md rounded-[2px]" />
+                            ) : (
+                              <Code size={20} className="text-neutral-400" />
+                            )}
+                          </div>
+                          
+                          <div className="min-w-0 flex-1 relative z-10 flex flex-col justify-center">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-300 border border-blue-500/20">
+                                {videoInfo.platform}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
+                                <Zap size={8} className="fill-emerald-500/50" /> Sync Active
+                              </span>
+                            </div>
+                            <p className="text-sm font-bold text-white truncate drop-shadow-md">{videoInfo.title}</p>
+                            <p className="text-[10px] text-neutral-400 font-mono mt-0.5 flex items-center gap-1.5">
+                               Ready for Neural Code Generation
+                            </p>
+                          </div>
+
                         </div>
                       </motion.div>
                     )}
@@ -738,7 +863,7 @@ export default function HomeMain() {
                       <DropdownMenu>
                         <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 sm:py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/15 text-[11px] font-bold text-neutral-400 hover:text-white transition-all duration-200 outline-none shrink-0 group">
                           <IconSettings size={14} className="text-neutral-600 group-hover:text-neutral-300 transition-colors" />
-                          <span className="hidden sm:inline">{outputLanguage} &middot; {detailLevel}{outputFormat === 'flashcards' && ` · ${flashcardCount} cards`}</span>
+                          <span className="hidden sm:inline">{outputLanguage} &middot; {detailLevel}{outputFormat === 'flashcards' && ` · ${flashcardCount} cards`}{outputFormat === 'test' && ` · ${testType}`}{outputFormat === 'code_solution' && ` · ${codeLanguage}`}</span>
                           <span className="sm:hidden">Options</span>
                           <ChevronDown size={11} className="text-neutral-600" />
                         </DropdownMenuTrigger>
@@ -751,7 +876,7 @@ export default function HomeMain() {
                               ))}
                             </div>
                           </div>
-                          <div className={outputFormat === 'flashcards' ? "mb-4" : ""}>
+                          <div className={(outputFormat === 'flashcards' || outputFormat === 'test') ? "mb-4" : ""}>
                             <div className="flex items-center gap-1.5 mb-2.5"><IconSparkles size={12} className="text-yellow-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Detail Depth</span></div>
                             <div className="flex gap-1.5">
                               {DETAIL_LEVELS.map(l => (
@@ -782,6 +907,59 @@ export default function HomeMain() {
                               </div>
                             </div>
                           )}
+
+                          {outputFormat === 'test' && (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-2.5"><CheckSquare size={12} className="text-blue-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Test Format</span></div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {TEST_TYPES.map(t => {
+                                  const isLocked = t.isPremium && !hasPremiumAccess;
+                                  return (
+                                    <div 
+                                      key={t.id} 
+                                      onClick={() => {
+                                        if (isLocked) { const token = localStorage.getItem('authToken'); if (!token) { setShowLoginModal(true); return; } setShowPremiumModal(true); return; }
+                                        setTestType(t.id);
+                                      }} 
+                                      className={cn("relative flex items-center justify-center text-[10px] text-center py-2 px-1 rounded-lg cursor-pointer font-bold transition-all border", testType === t.id ? "bg-white text-black border-white" : "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white", isLocked && "opacity-75")}
+                                    >
+                                      {t.label}
+                                      {isLocked && <span className="absolute top-1 right-1 text-[7px] text-yellow-500 font-bold bg-yellow-500/10 px-1 rounded uppercase tracking-wider">Pro</span>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          {outputFormat === 'code_solution' && (
+                            <div className="mt-1 pt-4 border-t border-white/5">
+                              <div className="flex items-center gap-1.5 mb-2.5"><Code size={12} className="text-blue-400" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Code Language</span></div>
+                              <div className="grid grid-cols-3 gap-1.5">
+                                {['C++', 'Python', 'Java', 'JavaScript', 'Go', 'Rust'].map(l => {
+                                  const isLocked = !hasPremiumAccess && l !== 'C++';
+                                  return (
+                                    <div
+                                      key={l}
+                                      onClick={() => {
+                                        if (isLocked) { setShowPremiumModal(true); return; }
+                                        setCodeLanguage(l);
+                                      }}
+                                      className={cn(
+                                        "relative text-[10px] text-center py-2 rounded-lg cursor-pointer font-bold transition-all border font-mono",
+                                        codeLanguage === l && !isLocked ? "bg-blue-500 text-white border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.3)]" :
+                                        isLocked ? "bg-neutral-900/50 border-white/5 text-neutral-700 cursor-not-allowed" :
+                                        "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white"
+                                      )}
+                                    >
+                                      {l}
+                                      {isLocked && <span className="absolute -top-1 -right-1 text-[7px] text-yellow-500 font-black bg-yellow-500/10 border border-yellow-500/20 px-1 rounded uppercase tracking-wider">Pro</span>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -817,38 +995,91 @@ export default function HomeMain() {
               className="w-full flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 min-h-[60vh]"
             >
               
-              {/* Left: Elegant Thumbnail Card */}
+              {/* Left: Card — Paperxify logo for code, thumbnail for videos */}
               <div className="relative w-full md:w-[480px] aspect-video">
-                 <div className="absolute -inset-4 bg-blue-500/10 blur-2xl rounded-full opacity-50 transform-gpu"></div>
-                 
-                 <motion.div 
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="relative w-full h-full rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl z-10 bg-neutral-900"
-                 >
-                    <img 
-                      src={videoInfo?.thumbnail || "https://img.youtube.com/vi/placeholder/maxresdefault.jpg"} 
-                      className="w-full h-full object-cover opacity-50 scale-105" 
-                      alt="Processing Video"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
-                    
-                    <div className="absolute bottom-0 left-0 right-0 p-8">
-                       <div className="inline-flex items-center gap-3 mb-3">
-                         <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                         <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Processing Signal</span>
-                       </div>
-                       <h2 className="text-xl font-bold text-white line-clamp-2 leading-snug">
-                         {videoInfo?.title || "Parsing Video Data..."}
-                       </h2>
-                    </div>
-                 </motion.div>
+                <div className="absolute -inset-4 bg-blue-500/10 blur-2xl rounded-full opacity-50 transform-gpu"></div>
+                
+                <motion.div 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="relative w-full h-full rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl z-10 bg-neutral-900 flex flex-col items-center justify-center"
+                >
+                  {outputFormat === 'code_solution' ? (
+                    /* ── Animated Paperxify Code Logo Panel ── */
+                    <>
+                      {/* Ambient glow layers */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-indigo-500/5 to-purple-600/10" />
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+                      
+                      {/* Logo + name */}
+                      <div className="relative z-10 flex flex-col items-center gap-5">
+                        <motion.div
+                          animate={{ scale: [1, 1.05, 1], opacity:[0.85,1,0.85] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                          className="relative"
+                        >
+                          {/* Outer ring */}
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                            className="absolute -inset-4 rounded-full border border-dashed border-blue-500/30"
+                          />
+                          {/* Inner ring */}
+                          <motion.div
+                            animate={{ rotate: -360 }}
+                            transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+                            className="absolute -inset-2 rounded-full border border-blue-400/20"
+                          />
+                          <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(59,130,246,0.25)] border border-white/10">
+                            <img src="/paperxify.jpeg" alt="Paperxify" className="w-full h-full object-cover" />
+                          </div>
+                        </motion.div>
+
+                        <div className="text-center">
+                          <p className="text-white font-black text-lg tracking-tight">Paperxify</p>
+                          <p className="text-neutral-500 text-[11px] font-mono uppercase tracking-widest mt-0.5">Neural Code Engine</p>
+                        </div>
+                      </div>
+
+                      {/* Bottom info */}
+                      <div className="absolute bottom-0 left-0 right-0 p-7">
+                        <div className="inline-flex items-center gap-2 mb-2.5">
+                          <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Processing Signal</span>
+                        </div>
+                        <h2 className="text-white font-bold text-base leading-snug line-clamp-2">
+                          {videoInfo?.title || "Generating Code Solution…"}
+                        </h2>
+                      </div>
+                    </>
+                  ) : (
+                    /* ── YouTube Thumbnail ── */
+                    <>
+                      <img 
+                        src={videoInfo?.thumbnail || "https://img.youtube.com/vi/placeholder/maxresdefault.jpg"} 
+                        className="w-full h-full object-cover opacity-50 scale-105 absolute inset-0"
+                        alt="Processing Video"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-8">
+                        <div className="inline-flex items-center gap-3 mb-3">
+                          <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Processing Signal</span>
+                        </div>
+                        <h2 className="text-xl font-bold text-white line-clamp-2 leading-snug">
+                          {videoInfo?.title || "Parsing Video Data..."}
+                        </h2>
+                      </div>
+                    </>
+                  )}
+                </motion.div>
               </div>
+
 
               {/* Right: Minimal Vertical Stepper */}
               <div className="w-full md:w-80 flex flex-col justify-center space-y-8 z-10">
-                 {(outputFormat === 'flashcards' ? FLASHCARDS_LOADING_STEPS : NOTES_LOADING_STEPS).map((step, idx, arr) => {
+                 {(outputFormat === 'flashcards' ? FLASHCARDS_LOADING_STEPS : outputFormat === 'code_solution' ? CODE_LOADING_STEPS : NOTES_LOADING_STEPS).map((step, idx, arr) => {
                     const isCompleted = currentStep > idx;
                     const isActive = currentStep === idx;
 

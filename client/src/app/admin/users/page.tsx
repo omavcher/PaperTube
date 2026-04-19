@@ -1,536 +1,1027 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { 
-  Users, Search, Filter, Trash2, Edit2, 
-  UserPlus, Zap, Calendar, Globe, X, Check,
-  Mail, Crown, UserCircle, Clock, Shield
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  Users, Search, Trash2, Crown, Mail, Shield, Calendar,
+  Clock, Coins, ChevronRight, X, RefreshCw, Loader2,
+  CheckCircle2, AlertTriangle, Zap, Gift, Ban,
+  CreditCard, BarChart2, SlidersHorizontal, Tag,
+  ArrowUpRight, Info, ChevronDown, Plus, Minus
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import api from "@/config/api";
 
-export default function PersonnelPage() {
-  const [users, setUsers] = useState<any[]>([]);
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface Membership {
+  isActive: boolean;
+  planId?: string;
+  planName?: string;
+  billingPeriod?: string;
+  startedAt?: string;
+  expiresAt?: string;
+  lastPaymentId?: string;
+}
+
+interface Transaction {
+  _id: string;
+  paymentId: string;
+  packageName: string;
+  packageType: string;
+  amount: number;
+  tokens?: number;
+  status: string;
+  paymentMethod: string;
+  timestamp: string;
+}
+
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  username: string;
+  picture?: string;
+  joinedAt: string;
+  tokens: number;
+  membership: Membership | null;
+  isFake?: boolean;
+}
+
+interface UserDetail extends User {
+  recentTransactions: Transaction[];
+}
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const PLANS = [
+  { id: "scholar", name: "Scholar", color: "from-blue-500 to-cyan-500" },
+  { id: "pro", name: "Pro Scholar", color: "from-purple-500 to-pink-500" },
+  { id: "power", name: "Power Scholar", color: "from-orange-500 to-red-500" },
+];
+
+const adminToken = () =>
+  typeof window !== "undefined" ? localStorage.getItem("authToken") || "" : "";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const fmtDate = (d?: string) => {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+};
+
+const daysAgo = (d?: string) => {
+  if (!d) return "";
+  const diff = Date.now() - new Date(d).getTime();
+  return `${Math.ceil(diff / 86400000)} days ago`;
+};
+
+const isExpired = (expiresAt?: string) =>
+  expiresAt ? new Date(expiresAt) < new Date() : true;
+
+const planColor = (planId?: string) => {
+  if (planId === "power") return "text-orange-400";
+  if (planId === "pro") return "text-purple-400";
+  return "text-blue-400";
+};
+
+// ─── User Drawer ─────────────────────────────────────────────────────────────
+function UserDrawer({
+  userId,
+  onClose,
+  onRefresh,
+}: {
+  userId: string;
+  onClose: () => void;
+  onRefresh: () => void;
+}) {
+  const [user, setUser] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-
-  // Fetch real users data
-  useEffect(() => {
-    const fetchUsersData = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('authToken');
-        
-        const response = await api.get('/admin/users', {
-          headers: { 
-            'Authorization': `Bearer ${token}` 
-          }
-        });
-        
-        console.log('Users Data:', response.data);
-        setUsers(response.data.data || []);
-        setError(null);
-      } catch (error) {
-        console.error('Error fetching users data:', error);
-        setError('Failed to fetch users data');
-        toast.error("Failed to load personnel data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsersData();
-  }, []);
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      day: '2-digit',
-      month: 'short', 
-      year: 'numeric'
-    });
-  };
-
-  // Calculate days since joined
-  const getDaysSinceJoined = (dateString: string) => {
-    const joined = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - joined.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  // Get user initials
-  const getUserInitials = (name: string) => {
-    if (!name) return "??";
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
-  // Get membership status
-  const getMembershipStatus = (user: any) => {
-    if (user.membership?.isActive) {
-      return {
-        label: "Premium",
-        color: "bg-gradient-to-r from-red-500 to-pink-600",
-        textColor: "text-white",
-        icon: <Crown size={10} />
-      };
-    }
-    return {
-      label: "Free",
-      color: "bg-white/5",
-      textColor: "text-neutral-400",
-      icon: null
-    };
-  };
-
-  // Handle user deletion
-  const handleDelete = (id: string, name: string) => {
-    // In a real app, you would make an API call here
-    setUsers(users.filter((user: any) => user._id !== id));
-    toast.success(`User "${name}" terminated`, {
-      description: "User data has been removed from the system"
-    });
-  };
-
-  // Start editing user name
-  const startEdit = (id: string, currentName: string) => {
-    setEditingId(id);
-    setEditName(currentName);
-  };
-
-  // Save edited name
-  const saveEdit = (id: string) => {
-    // In a real app, you would make an API call here
-    setUsers(users.map((user: any) => 
-      user._id === id ? { ...user, name: editName } : user
-    ));
-    setEditingId(null);
-    toast.success("User profile updated", {
-      description: "Changes have been saved successfully"
-    });
-  };
-
-  // Filter users based on search query
-  const filteredUsers = users.filter((user: any) => 
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const [tab, setTab] = useState<"overview" | "subscription" | "tokens" | "history">(
+    "overview"
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500 mb-4"></div>
-          <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest">Loading Personnel Data...</p>
-        </div>
-      </div>
-    );
-  }
+  // Grant subscription form state
+  const [selPlan, setSelPlan] = useState("pro");
+  const [selPeriod, setSelPeriod] = useState<"monthly" | "yearly">("monthly");
+  const [custDays, setCustDays] = useState("");
+  const [grantNote, setGrantNote] = useState("");
+  const [grantingSubsc, setGrantingSubsc] = useState(false);
+  const [revokingSubsc, setRevokingSubsc] = useState(false);
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center p-10 rounded-3xl bg-red-600/5 border border-red-600/20 max-w-md">
-          <Shield size={24} className="text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-bold mb-2">Error Loading Data</h3>
-          <p className="text-sm text-neutral-500 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="text-sm font-medium text-red-500 hover:text-red-400 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Token form state
+  const [tokenAmt, setTokenAmt] = useState("");
+  const [tokenMode, setTokenMode] = useState<"add" | "set">("add");
+  const [tokenNote, setTokenNote] = useState("");
+  const [grantingTokens, setGrantingTokens] = useState(false);
+
+  const fetchUser = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/admin/user/${userId}/details`, {
+        headers: { Authorization: `Bearer ${adminToken()}` },
+      });
+      setUser(res.data.data);
+    } catch {
+      toast.error("Failed to fetch user details");
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => { fetchUser(); }, [fetchUser]);
+
+  // ── Grant Subscription ────────────────────────────────────────
+  const handleGrantSubscription = async () => {
+    setGrantingSubsc(true);
+    try {
+      const body: any = { planId: selPlan, billingPeriod: selPeriod, note: grantNote };
+      if (custDays) body.durationDays = parseInt(custDays);
+      const res = await api.post(`/admin/user/${userId}/grant-subscription`, body, {
+        headers: { Authorization: `Bearer ${adminToken()}` },
+      });
+      toast.success(res.data.message || "Subscription granted");
+      await fetchUser();
+      onRefresh();
+      setGrantNote("");
+      setCustDays("");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to grant subscription");
+    } finally {
+      setGrantingSubsc(false);
+    }
+  };
+
+  // ── Revoke Subscription ───────────────────────────────────────
+  const handleRevokeSubscription = async () => {
+    if (!confirm(`Revoke subscription for ${user?.name}?`)) return;
+    setRevokingSubsc(true);
+    try {
+      const res = await api.post(`/admin/user/${userId}/revoke-subscription`, { note: grantNote }, {
+        headers: { Authorization: `Bearer ${adminToken()}` },
+      });
+      toast.success(res.data.message || "Subscription revoked");
+      await fetchUser();
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to revoke subscription");
+    } finally {
+      setRevokingSubsc(false);
+    }
+  };
+
+  // ── Grant / Set Tokens ────────────────────────────────────────
+  const handleTokenAction = async () => {
+    const amt = parseInt(tokenAmt);
+    if (!amt || amt <= 0) return toast.error("Enter a valid token amount");
+    setGrantingTokens(true);
+    try {
+      const endpoint = tokenMode === "add" ? "grant-tokens" : "set-tokens";
+      const res = await api.post(
+        `/admin/user/${userId}/${endpoint}`,
+        { amount: amt, note: tokenNote },
+        { headers: { Authorization: `Bearer ${adminToken()}` } }
+      );
+      toast.success(res.data.message || "Tokens updated");
+      await fetchUser();
+      onRefresh();
+      setTokenAmt("");
+      setTokenNote("");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update tokens");
+    } finally {
+      setGrantingTokens(false);
+    }
+  };
 
   return (
-    <div className="space-y-6 md:space-y-8 pb-10">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
-        <div>
-          <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">Personnel_Registry</h2>
-          <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2">
-            <p className="text-[10px] font-bold text-neutral-600 uppercase tracking-[0.3em] flex items-center gap-2">
-              <span className="h-1.5 w-1.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_5px_red]" />
-              Active Personnel: {users.length} Accounts
-            </p>
-            <div className="hidden md:flex items-center gap-2">
-              <Badge className="text-[8px] font-black px-2 py-1 rounded-full bg-red-600/10 text-red-500 border-red-500/30">
-                {users.filter((u: any) => u.membership?.isActive).length} Premium
-              </Badge>
-              <Badge className="text-[8px] font-black px-2 py-1 rounded-full bg-white/5 text-neutral-400 border-white/10">
-                {users.filter((u: any) => !u.membership?.isActive).length} Free
-              </Badge>
+    <div className="fixed inset-0 z-[200] flex" onClick={onClose}>
+      {/* Backdrop */}
+      <div className="flex-1 bg-black/60 backdrop-blur-sm" />
+
+      {/* Panel */}
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", damping: 28, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-xl bg-[#080808] border-l border-white/8 flex flex-col h-full overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 bg-black/30 shrink-0">
+          <div className="flex items-center gap-3">
+            <Shield size={16} className="text-red-500" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">
+              User Management
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchUser}
+              className="p-2 hover:bg-white/5 rounded-lg text-neutral-500 hover:text-white transition-colors"
+            >
+              <RefreshCw size={14} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/5 rounded-lg text-neutral-500 hover:text-red-400 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 size={28} className="animate-spin text-red-500" />
+              <p className="text-[10px] uppercase tracking-widest text-neutral-600">Loading user data…</p>
             </div>
           </div>
+        ) : !user ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-neutral-500 text-sm">User not found.</p>
+          </div>
+        ) : (
+          <>
+            {/* User Identity */}
+            <div className="px-6 py-5 border-b border-white/5 bg-gradient-to-r from-white/[0.02] to-transparent shrink-0">
+              <div className="flex items-center gap-4">
+                {user.picture ? (
+                  <img src={user.picture} alt={user.name} className="h-14 w-14 rounded-2xl object-cover border border-white/10" />
+                ) : (
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-red-600 to-purple-600 flex items-center justify-center text-xl font-black text-white border border-white/10">
+                    {user.name?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-black text-white truncate">{user.name}</h3>
+                  <p className="text-[11px] text-neutral-500 font-mono truncate">{user.email}</p>
+                  <div className="flex items-center gap-3 mt-2">
+                    {user.membership?.isActive && !isExpired(user.membership?.expiresAt) ? (
+                      <span className={cn("text-[9px] font-black uppercase tracking-widest", planColor(user.membership.planId))}>
+                        ● {user.membership.planName}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-black uppercase tracking-widest text-neutral-600">● Free</span>
+                    )}
+                    <span className="text-[9px] font-mono text-neutral-600">
+                      <Coins size={9} className="inline mr-1" />{user.tokens ?? 0} tokens
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-1 px-4 pt-3 pb-0 shrink-0 overflow-x-auto border-b border-white/5">
+              {(["overview", "subscription", "tokens", "history"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={cn(
+                    "px-3 py-2 text-[9px] font-black uppercase tracking-widest rounded-t-lg transition-all whitespace-nowrap border-b-2",
+                    tab === t
+                      ? "text-red-400 border-red-500 bg-red-500/5"
+                      : "text-neutral-600 border-transparent hover:text-white"
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
+
+              {/* ─── OVERVIEW ─── */}
+              {tab === "overview" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Tokens", value: user.tokens ?? 0, icon: <Coins size={14} className="text-yellow-400" />, color: "text-yellow-400" },
+                      { label: "Joined", value: fmtDate(user.joinedAt), icon: <Calendar size={14} className="text-blue-400" />, color: "text-white" },
+                      { label: "Plan", value: user.membership?.isActive && !isExpired(user.membership?.expiresAt) ? user.membership.planName : "Free", icon: <Crown size={14} className="text-purple-400" />, color: planColor(user.membership?.planId) },
+                      { label: "Expires", value: user.membership?.isActive ? fmtDate(user.membership.expiresAt) : "—", icon: <Clock size={14} className="text-neutral-500" />, color: "text-white" },
+                    ].map((s) => (
+                      <div key={s.label} className="bg-white/[0.03] border border-white/5 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          {s.icon}
+                          <span className="text-[9px] font-black uppercase tracking-widest text-neutral-500">{s.label}</span>
+                        </div>
+                        <p className={cn("text-sm font-black", s.color)}>{s.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Membership card */}
+                  <div className={cn(
+                    "rounded-2xl p-5 border",
+                    user.membership?.isActive && !isExpired(user.membership?.expiresAt)
+                      ? "bg-gradient-to-br from-emerald-500/10 to-transparent border-emerald-500/20"
+                      : "bg-white/[0.02] border-white/5"
+                  )}>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Subscription Status</span>
+                      {user.membership?.isActive && !isExpired(user.membership?.expiresAt) ? (
+                        <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Active</span>
+                      ) : (
+                        <span className="text-[9px] font-black text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">Inactive</span>
+                      )}
+                    </div>
+                    {user.membership?.isActive ? (
+                      <div className="space-y-1.5">
+                        <p className="text-sm font-bold text-white">{user.membership.planName}</p>
+                        <p className="text-[10px] text-neutral-500">
+                          {user.membership.billingPeriod} · Expires {fmtDate(user.membership.expiresAt)}
+                        </p>
+                        {isExpired(user.membership.expiresAt) && (
+                          <p className="text-[10px] text-red-400 font-bold">⚠ Expired</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-600">No active subscription. Use the Subscription tab to grant one.</p>
+                    )}
+                  </div>
+
+                  {/* Quick actions */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setTab("subscription")}
+                      className="flex-1 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-xl text-[10px] font-black text-purple-400 hover:bg-purple-500/20 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Crown size={12} /> Manage Plan
+                    </button>
+                    <button
+                      onClick={() => setTab("tokens")}
+                      className="flex-1 py-2.5 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-[10px] font-black text-yellow-400 hover:bg-yellow-500/20 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Coins size={12} /> Manage Tokens
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── SUBSCRIPTION ─── */}
+              {tab === "subscription" && (
+                <div className="space-y-5">
+                  {/* Current status */}
+                  <div className={cn(
+                    "rounded-2xl p-4 border",
+                    user.membership?.isActive && !isExpired(user.membership?.expiresAt)
+                      ? "bg-emerald-500/5 border-emerald-500/20"
+                      : "bg-white/[0.02] border-white/5"
+                  )}>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-2">Current Subscription</p>
+                    {user.membership?.isActive ? (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={cn("font-black text-sm", planColor(user.membership.planId))}>{user.membership.planName}</p>
+                          <p className="text-[10px] text-neutral-500 mt-0.5">{user.membership.billingPeriod} · expires {fmtDate(user.membership.expiresAt)}</p>
+                          {isExpired(user.membership.expiresAt) && (
+                            <p className="text-[10px] text-red-400 font-bold mt-1">⚠ EXPIRED</p>
+                          )}
+                        </div>
+                        {!isExpired(user.membership.expiresAt) && (
+                          <button
+                            onClick={handleRevokeSubscription}
+                            disabled={revokingSubsc}
+                            className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 flex items-center gap-1.5 text-[10px] font-black uppercase"
+                          >
+                            {revokingSubsc ? <Loader2 size={12} className="animate-spin" /> : <Ban size={12} />}
+                            Revoke
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-600">No active subscription</p>
+                    )}
+                  </div>
+
+                  {/* Grant form */}
+                  <div className="bg-white/[0.02] border border-white/8 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Gift size={14} className="text-purple-400" />
+                      <p className="text-[10px] font-black uppercase tracking-widest text-neutral-300">
+                        {user.membership?.isActive && !isExpired(user.membership?.expiresAt) ? "Extend / Change Plan" : "Grant Subscription"}
+                      </p>
+                    </div>
+
+                    {/* Plan selector */}
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Select Plan</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {PLANS.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => setSelPlan(p.id)}
+                            className={cn(
+                              "py-2.5 px-2 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all",
+                              selPlan === p.id
+                                ? `bg-gradient-to-b ${p.color} text-white border-transparent shadow-lg`
+                                : "bg-white/[0.02] border-white/5 text-neutral-500 hover:text-white hover:border-white/10"
+                            )}
+                          >
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Billing period */}
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Billing Period</label>
+                      <div className="flex gap-2">
+                        {(["monthly", "yearly"] as const).map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setSelPeriod(p)}
+                            className={cn(
+                              "flex-1 py-2 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all",
+                              selPeriod === p
+                                ? "bg-white text-black border-transparent"
+                                : "bg-white/[0.02] border-white/5 text-neutral-500 hover:text-white"
+                            )}
+                          >
+                            {p} {p === "yearly" && <span className="text-emerald-400">— 365d</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Custom duration */}
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">
+                        Custom Duration (days) <span className="text-neutral-700">— optional override</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={custDays}
+                        onChange={(e) => setCustDays(e.target.value)}
+                        placeholder={selPeriod === "monthly" ? "30" : "365"}
+                        className="w-full bg-black/40 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-white font-mono outline-none focus:border-purple-500/40 transition-colors"
+                      />
+                    </div>
+
+                    {/* Note */}
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Admin Note (optional)</label>
+                      <input
+                        type="text"
+                        value={grantNote}
+                        onChange={(e) => setGrantNote(e.target.value)}
+                        placeholder="e.g. Granted for beta testing"
+                        className="w-full bg-black/40 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-purple-500/40 transition-colors"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleGrantSubscription}
+                      disabled={grantingSubsc}
+                      className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
+                    >
+                      {grantingSubsc ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle2 size={14} />
+                          {user.membership?.isActive && !isExpired(user.membership?.expiresAt)
+                            ? "Extend / Change Plan"
+                            : "Grant Subscription"}
+                        </>
+                      )}
+                    </button>
+
+                    <p className="text-[9px] text-neutral-600 text-center">
+                      If user already has an active plan, duration will be stacked on remaining time.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── TOKENS ─── */}
+              {tab === "tokens" && (
+                <div className="space-y-5">
+                  {/* Balance display */}
+                  <div className="bg-gradient-to-br from-yellow-500/10 to-transparent border border-yellow-500/20 rounded-2xl p-5 flex items-center justify-between">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-1">Current Balance</p>
+                      <p className="text-3xl font-black text-yellow-400">{user.tokens ?? 0}</p>
+                      <p className="text-[10px] text-neutral-600 mt-0.5">tokens</p>
+                    </div>
+                    <Coins size={36} className="text-yellow-400/30" />
+                  </div>
+
+                  {/* Mode toggle */}
+                  <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Operation Mode</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setTokenMode("add")}
+                        className={cn(
+                          "flex-1 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2",
+                          tokenMode === "add"
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                            : "bg-white/[0.02] border-white/5 text-neutral-500 hover:text-white"
+                        )}
+                      >
+                        <Plus size={12} /> Add Tokens
+                      </button>
+                      <button
+                        onClick={() => setTokenMode("set")}
+                        className={cn(
+                          "flex-1 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2",
+                          tokenMode === "set"
+                            ? "bg-orange-500/10 border-orange-500/30 text-orange-400"
+                            : "bg-white/[0.02] border-white/5 text-neutral-500 hover:text-white"
+                        )}
+                      >
+                        <SlidersHorizontal size={12} /> Set Balance
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick amounts */}
+                  <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Quick Amounts</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[10, 50, 100, 250, 500, 1000].map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => setTokenAmt(String(v))}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all",
+                            tokenAmt === String(v)
+                              ? "bg-yellow-500/20 border-yellow-500/30 text-yellow-400"
+                              : "bg-white/[0.02] border-white/5 text-neutral-500 hover:text-white"
+                          )}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Amount input */}
+                  <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">
+                      {tokenMode === "add" ? "Amount to Add" : "Set Balance To"}
+                    </label>
+                    <input
+                      type="number"
+                      value={tokenAmt}
+                      onChange={(e) => setTokenAmt(e.target.value)}
+                      placeholder="Enter amount..."
+                      min={tokenMode === "add" ? 1 : 0}
+                      className="w-full bg-black/40 border border-white/8 rounded-xl px-4 py-3 text-lg text-white font-mono font-bold outline-none focus:border-yellow-500/40 transition-colors"
+                    />
+                    {tokenMode === "add" && tokenAmt && (
+                      <p className="text-[10px] text-emerald-400 mt-1">
+                        New balance: {(user.tokens ?? 0) + (parseInt(tokenAmt) || 0)} tokens
+                      </p>
+                    )}
+                    {tokenMode === "set" && tokenAmt && (
+                      <p className="text-[10px] text-orange-400 mt-1">
+                        Will change from {user.tokens ?? 0} → {parseInt(tokenAmt) || 0} tokens
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Note */}
+                  <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Admin Note (optional)</label>
+                    <input
+                      type="text"
+                      value={tokenNote}
+                      onChange={(e) => setTokenNote(e.target.value)}
+                      placeholder="e.g. Compensation for outage"
+                      className="w-full bg-black/40 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-yellow-500/40 transition-colors"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleTokenAction}
+                    disabled={grantingTokens || !tokenAmt}
+                    className={cn(
+                      "w-full py-3 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg",
+                      tokenMode === "add"
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white"
+                        : "bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-500 hover:to-yellow-500 text-black"
+                    )}
+                  >
+                    {grantingTokens ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : tokenMode === "add" ? (
+                      <><Plus size={14} /> Add {tokenAmt || "?"} Tokens</>
+                    ) : (
+                      <><SlidersHorizontal size={14} /> Set to {tokenAmt || "?"} Tokens</>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* ─── HISTORY ─── */}
+              {tab === "history" && (
+                <div className="space-y-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500">
+                    Recent Transactions (last 20)
+                  </p>
+                  {user.recentTransactions?.length === 0 ? (
+                    <div className="py-12 text-center">
+                      <BarChart2 size={32} className="text-neutral-700 mx-auto mb-3" />
+                      <p className="text-xs text-neutral-600">No transactions yet</p>
+                    </div>
+                  ) : (
+                    user.recentTransactions?.map((txn) => (
+                      <div
+                        key={txn._id}
+                        className={cn(
+                          "p-4 rounded-2xl border",
+                          txn.paymentMethod === "admin_grant"
+                            ? "bg-purple-500/5 border-purple-500/15"
+                            : "bg-white/[0.02] border-white/5"
+                        )}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-bold text-white truncate">{txn.packageName}</p>
+                            <div className="flex items-center gap-3 mt-1 flex-wrap">
+                              <span className={cn(
+                                "text-[8px] font-black uppercase px-1.5 py-0.5 rounded",
+                                txn.packageType === "subscription" ? "bg-purple-500/20 text-purple-400" : "bg-yellow-500/20 text-yellow-400"
+                              )}>
+                                {txn.packageType}
+                              </span>
+                              {txn.paymentMethod === "admin_grant" && (
+                                <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                                  Admin Grant
+                                </span>
+                              )}
+                              <span className={cn(
+                                "text-[8px] font-black uppercase",
+                                txn.status === "success" ? "text-emerald-500" : "text-red-400"
+                              )}>
+                                {txn.status}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 ml-3">
+                            {txn.amount > 0 && (
+                              <p className="text-[10px] font-black text-white">₹{txn.amount}</p>
+                            )}
+                            {txn.tokens != null && txn.tokens > 0 && (
+                              <p className="text-[10px] text-yellow-400 font-mono">+{txn.tokens} tkn</p>
+                            )}
+                            <p className="text-[9px] text-neutral-600 mt-1">{fmtDate(txn.timestamp)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function AdminUsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [filterActive, setFilterActive] = useState<"all" | "premium" | "free">("all");
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/admin/users/details", {
+        headers: { Authorization: `Bearer ${adminToken()}` },
+        params: { search: debouncedSearch, page, limit: 25 },
+      });
+      setUsers(res.data.data || []);
+      setTotalPages(res.data.pagination?.totalPages || 1);
+      setTotalItems(res.data.pagination?.totalItems || 0);
+    } catch {
+      toast.error("Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, page]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  // Local filter (client-side supplement for plan filter)
+  const filtered = users.filter((u) => {
+    if (filterActive === "premium") return u.membership?.isActive && !isExpired(u.membership?.expiresAt);
+    if (filterActive === "free") return !u.membership?.isActive || isExpired(u.membership?.expiresAt);
+    return true;
+  });
+
+  const premiumCount = users.filter((u) => u.membership?.isActive && !isExpired(u.membership?.expiresAt)).length;
+  const freeCount = users.length - premiumCount;
+
+  return (
+    <div className="space-y-6 pb-16">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">
+            Personnel_Registry
+          </h2>
+          <p className="text-[10px] font-bold text-neutral-600 uppercase tracking-[0.3em] mt-1 flex items-center gap-2">
+            <span className="h-1.5 w-1.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_5px_red]" />
+            {totalItems} Total Accounts
+          </p>
         </div>
 
-        {/* Stats Summary - Mobile Only */}
-        <div className="md:hidden grid grid-cols-2 gap-3">
-          <div className="bg-black border border-white/5 p-3 rounded-xl">
-            <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Premium</p>
-            <p className="text-sm font-black text-red-500">
-              {users.filter((u: any) => u.membership?.isActive).length}
-            </p>
-          </div>
-          <div className="bg-black border border-white/5 p-3 rounded-xl">
-            <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Free</p>
-            <p className="text-sm font-black text-white">
-              {users.filter((u: any) => !u.membership?.isActive).length}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* SEARCH & FILTER SECTION */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        <div className="md:col-span-8 lg:col-span-9 relative">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search by name, email, or user ID..."
-              className="w-full bg-black border border-white/5 rounded-2xl py-3 md:py-4 pl-12 pr-4 text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-white focus:border-red-600/50 transition-all outline-none"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="md:col-span-4 lg:col-span-3">
-          <button className="w-full bg-black border border-white/5 rounded-2xl py-3 md:py-4 px-4 text-[10px] font-bold uppercase tracking-widest text-neutral-400 hover:text-white hover:border-white/10 transition-all flex items-center justify-center gap-2">
-            <Filter size={14} />
-            <span>Filter Results</span>
+        {/* Stat chips */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setFilterActive("all")}
+            className={cn(
+              "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all",
+              filterActive === "all" ? "bg-white text-black border-transparent" : "bg-black/40 border-white/8 text-neutral-400 hover:text-white"
+            )}
+          >
+            All ({users.length})
+          </button>
+          <button
+            onClick={() => setFilterActive("premium")}
+            className={cn(
+              "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5",
+              filterActive === "premium" ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white border-transparent" : "bg-black/40 border-white/8 text-neutral-400 hover:text-white"
+            )}
+          >
+            <Crown size={10} /> Premium ({premiumCount})
+          </button>
+          <button
+            onClick={() => setFilterActive("free")}
+            className={cn(
+              "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all",
+              filterActive === "free" ? "bg-white/10 border-white/20 text-white" : "bg-black/40 border-white/8 text-neutral-400 hover:text-white"
+            )}
+          >
+            Free ({freeCount})
           </button>
         </div>
       </div>
 
-      {/* USER STATS SUMMARY - Desktop Only */}
-      <div className="hidden md:grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="bg-black border border-white/5 p-4 rounded-2xl">
-          <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2">Total Accounts</p>
-          <div className="flex items-center justify-between">
-            <p className="text-xl font-black text-white">{users.length}</p>
-            <Users className="text-neutral-700" size={20} />
+      {/* Stats overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Total Users", value: totalItems, icon: <Users size={16} className="text-neutral-500" />, color: "text-white" },
+          { label: "Premium", value: premiumCount, icon: <Crown size={16} className="text-purple-400" />, color: "text-purple-400" },
+          { label: "Free Tier", value: freeCount, icon: <Tag size={16} className="text-neutral-500" />, color: "text-neutral-300" },
+          { label: "Page", value: `${page}/${totalPages}`, icon: <BarChart2 size={16} className="text-blue-400" />, color: "text-blue-400" },
+        ].map((s) => (
+          <div key={s.label} className="bg-black border border-white/5 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-2">{s.icon}<span className="text-[9px] font-black uppercase tracking-widest text-neutral-600">{s.label}</span></div>
+            <p className={cn("text-xl font-black", s.color)}>{s.value}</p>
           </div>
-        </div>
-        <div className="bg-black border border-white/5 p-4 rounded-2xl">
-          <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2">Premium Members</p>
-          <div className="flex items-center justify-between">
-            <p className="text-xl font-black text-red-500">{users.filter((u: any) => u.membership?.isActive).length}</p>
-            <Crown className="text-red-500" size={20} />
-          </div>
-        </div>
-        <div className="bg-black border border-white/5 p-4 rounded-2xl">
-          <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2">Avg. Account Age</p>
-          <div className="flex items-center justify-between">
-            <p className="text-xl font-black text-white">
-              {users.length > 0 
-                ? Math.round(users.reduce((sum: number, user: any) => 
-                    sum + getDaysSinceJoined(user.joinedAt), 0) / users.length
-                  )
-                : 0} days
-            </p>
-            <Clock className="text-neutral-700" size={20} />
-          </div>
-        </div>
-        <div className="bg-black border border-white/5 p-4 rounded-2xl">
-          <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2">Google Auth</p>
-          <div className="flex items-center justify-between">
-            <p className="text-xl font-black text-white">{users.length}</p>
-            <Globe className="text-neutral-700" size={20} />
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* PERSONNEL TABLE - Responsive Design */}
-      <div className="bg-black border border-white/5 rounded-3xl md:rounded-[3rem] overflow-hidden shadow-2xl">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={15} />
+        <input
+          type="text"
+          placeholder="Search by name, email, or username…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-black border border-white/5 rounded-2xl py-3.5 pl-11 pr-4 text-[11px] font-bold text-white placeholder:text-neutral-700 focus:border-red-500/30 outline-none transition-colors"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-600 hover:text-white">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="bg-black border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
         {/* Desktop Table */}
-        <div className="hidden md:block">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.01]">
-                <th className="p-6 text-[9px] font-black uppercase tracking-[0.3em] text-neutral-500">User_Profile</th>
-                <th className="p-6 text-[9px] font-black uppercase tracking-[0.3em] text-neutral-500 text-center">Membership_Status</th>
-                <th className="p-6 text-[9px] font-black uppercase tracking-[0.3em] text-neutral-500">Account_Created</th>
-                <th className="p-6 text-[9px] font-black uppercase tracking-[0.3em] text-neutral-500 text-right">Actions</th>
+                {["User", "Subscription", "Tokens", "Joined", "Actions"].map((h) => (
+                  <th key={h} className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-neutral-600 whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredUsers.map((user: any) => {
-                const membership = getMembershipStatus(user);
-                return (
-                  <tr key={user._id} className="group hover:bg-white/[0.02] transition-colors">
-                    <td className="p-6">
-                      <div className="flex items-center gap-4">
-                        {user.picture ? (
-                          <img 
-                            src={user.picture} 
-                            alt={user.name}
-                            className="h-10 w-10 rounded-xl border border-white/10"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-purple-600 border border-white/10 flex items-center justify-center text-[10px] font-black text-white">
-                            {getUserInitials(user.name)}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          {editingId === user._id ? (
-                            <input 
-                              autoFocus
-                              className="w-full bg-neutral-900 border border-red-500/50 rounded px-3 py-2 text-[10px] font-black text-white outline-none"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                              onKeyDown={(e) => e.key === "Enter" && saveEdit(user._id)}
-                              onBlur={() => saveEdit(user._id)}
-                            />
-                          ) : (
-                            <p className="text-[10px] font-black uppercase text-white tracking-widest truncate">
-                              {user.name}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 mt-1">
-                            <Mail size={10} className="text-neutral-600" />
-                            <p className="text-[9px] font-bold text-neutral-600 uppercase truncate">
-                              {user.email}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Shield size={10} className="text-neutral-600" />
-                            <p className="text-[8px] font-medium text-neutral-500 font-mono">
-                              ID: {user._id.substring(0, 8)}...
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-6 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <Badge className={cn(
-                          "text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest border flex items-center gap-1",
-                          membership.color,
-                          membership.textColor
-                        )}>
-                          {membership.icon}
-                          {membership.label}
-                        </Badge>
-                        {user.membership?.isActive && (
-                          <div className="text-[8px] text-neutral-500 font-medium">
-                            Expires: {formatDate(user.membership.expiresAt)}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-6">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2 text-neutral-400 text-[9px] font-bold uppercase">
-                          <Calendar size={12} className="text-neutral-600"/> 
-                          {formatDate(user.joinedAt)}
-                        </div>
-                        <div className="text-[8px] text-neutral-600 mt-1">
-                          {getDaysSinceJoined(user.joinedAt)} days ago
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-6 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {editingId === user._id ? (
-                          <button 
-                            onClick={() => saveEdit(user._id)}
-                            className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white transition-all"
-                            title="Save Changes"
-                          >
-                            <Check size={14}/>
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => startEdit(user._id, user.name)}
-                            className="p-2 hover:bg-white/10 rounded-lg text-neutral-600 hover:text-white transition-all"
-                            title="Edit User"
-                          >
-                            <Edit2 size={14}/>
-                          </button>
-                        )}
-                        
-                        <button 
-                          onClick={() => handleDelete(user._id, user.name)}
-                          className="p-2 hover:bg-red-500/10 rounded-lg text-neutral-600 hover:text-red-500 transition-all"
-                          title="Delete User"
-                        >
-                          <Trash2 size={14}/>
-                        </button>
-                      </div>
-                    </td>
+            <tbody className="divide-y divide-white/[0.04]">
+              {loading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <td key={j} className="px-6 py-4">
+                        <div className="h-4 bg-white/5 rounded-lg w-3/4" />
+                      </td>
+                    ))}
                   </tr>
-                );
-              })}
+                ))
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-16 text-center">
+                    <Users size={40} className="text-neutral-700 mx-auto mb-3" />
+                    <p className="text-sm text-neutral-600">No users found</p>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((user) => {
+                  const active = user.membership?.isActive && !isExpired(user.membership?.expiresAt);
+                  return (
+                    <tr
+                      key={user._id}
+                      className="group hover:bg-white/[0.015] transition-colors cursor-pointer"
+                      onClick={() => setSelectedUserId(user._id)}
+                    >
+                      {/* User */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {user.picture ? (
+                            <img src={user.picture} alt={user.name} className="h-9 w-9 rounded-xl object-cover border border-white/10 shrink-0" />
+                          ) : (
+                            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-red-600 to-purple-600 flex items-center justify-center text-[11px] font-black text-white shrink-0 border border-white/10">
+                              {user.name?.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-black text-white truncate max-w-[160px]">{user.name}</p>
+                            <p className="text-[9px] font-mono text-neutral-600 truncate max-w-[160px]">{user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Subscription */}
+                      <td className="px-6 py-4">
+                        {active ? (
+                          <div>
+                            <span className={cn("text-[9px] font-black uppercase tracking-wider", planColor(user.membership?.planId))}>
+                              {user.membership?.planName}
+                            </span>
+                            <p className="text-[8px] text-neutral-600 mt-0.5">
+                              Exp: {fmtDate(user.membership?.expiresAt)}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-[9px] font-black text-neutral-600 uppercase tracking-wider">Free</span>
+                        )}
+                      </td>
+
+                      {/* Tokens */}
+                      <td className="px-6 py-4">
+                        <span className={cn(
+                          "text-sm font-black font-mono",
+                          (user.tokens ?? 0) > 50 ? "text-yellow-400" : (user.tokens ?? 0) > 0 ? "text-neutral-300" : "text-red-400"
+                        )}>
+                          {user.tokens ?? 0}
+                        </span>
+                      </td>
+
+                      {/* Joined */}
+                      <td className="px-6 py-4">
+                        <p className="text-[10px] text-neutral-400">{fmtDate(user.joinedAt)}</p>
+                        <p className="text-[9px] text-neutral-700">{daysAgo(user.joinedAt)}</p>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedUserId(user._id); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-red-500/10 border border-white/8 hover:border-red-500/20 rounded-lg text-[9px] font-black uppercase text-neutral-400 hover:text-red-400 transition-all"
+                        >
+                          <SlidersHorizontal size={11} /> Manage
+                          <ChevronRight size={11} className="opacity-50 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Mobile Cards View */}
-        <div className="md:hidden">
-          <div className="divide-y divide-white/5">
-            {filteredUsers.map((user: any) => {
-              const membership = getMembershipStatus(user);
-              return (
-                <div key={user._id} className="p-4 hover:bg-white/[0.02] transition-colors">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start gap-3 flex-1">
-                      {user.picture ? (
-                        <img 
-                          src={user.picture} 
-                          alt={user.name}
-                          className="h-12 w-12 rounded-xl border border-white/10 flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-red-500 to-purple-600 border border-white/10 flex items-center justify-center text-xs font-black text-white flex-shrink-0">
-                          {getUserInitials(user.name)}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        {editingId === user._id ? (
-                          <input 
-                            autoFocus
-                            className="w-full bg-neutral-900 border border-red-500/50 rounded px-3 py-2 text-sm font-medium text-white outline-none mb-1"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && saveEdit(user._id)}
-                            onBlur={() => saveEdit(user._id)}
-                          />
-                        ) : (
-                          <p className="text-sm font-bold text-white truncate">
-                            {user.name}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-1 mt-1">
-                          <Mail size={10} className="text-neutral-600 flex-shrink-0" />
-                          <p className="text-xs text-neutral-500 truncate">
-                            {user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {editingId === user._id ? (
-                        <button 
-                          onClick={() => saveEdit(user._id)}
-                          className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg"
-                        >
-                          <Check size={14}/>
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => startEdit(user._id, user.name)}
-                          className="p-1.5 hover:bg-white/10 rounded-lg text-neutral-600"
-                        >
-                          <Edit2 size={14}/>
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => handleDelete(user._id, user.name)}
-                        className="p-1.5 hover:bg-red-500/10 rounded-lg text-neutral-600"
-                      >
-                        <Trash2 size={14}/>
-                      </button>
-                    </div>
+        {/* Mobile Cards */}
+        <div className="md:hidden divide-y divide-white/[0.04]">
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-xl bg-white/5" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-white/5 rounded w-1/2" />
+                    <div className="h-2 bg-white/5 rounded w-3/4" />
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Status</div>
-                      <Badge className={cn(
-                        "text-[8px] font-black px-2 py-1 rounded-full flex items-center gap-1 w-fit",
-                        membership.color,
-                        membership.textColor
-                      )}>
-                        {membership.icon}
-                        {membership.label}
-                      </Badge>
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Joined</div>
-                      <div className="flex items-center gap-1 text-xs text-neutral-400">
-                        <Calendar size={10} className="text-neutral-600"/>
-                        {formatDate(user.joinedAt)}
-                      </div>
-                      <div className="text-[10px] text-neutral-600 mt-1">
-                        {getDaysSinceJoined(user.joinedAt)} days
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {user.membership?.isActive && (
-                    <div className="mt-3 pt-3 border-t border-white/5">
-                      <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Premium Details</div>
-                      <div className="text-[10px] text-neutral-400">
-                        Expires: {formatDate(user.membership.expiresAt)}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-        
-        {/* FOOTER */}
-        <div className="p-4 md:p-6 bg-white/[0.01] flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-center md:text-left">
-            <p className="text-[9px] font-black uppercase text-neutral-600 tracking-widest">
-              Showing {filteredUsers.length} of {users.length} users
-            </p>
-            {searchQuery && (
-              <p className="text-[8px] text-neutral-500 mt-1">
-                Filtered by: "{searchQuery}"
-              </p>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <button className="h-8 w-8 flex items-center justify-center border border-white/5 rounded-lg text-[9px] font-black text-neutral-500 hover:text-white hover:border-white/10 transition-colors">
-              1
-            </button>
-            <div className="text-[9px] text-neutral-500 px-2">
-              Page 1 of 1
+              </div>
+            ))
+          ) : filtered.length === 0 ? (
+            <div className="py-12 text-center">
+              <Users size={36} className="text-neutral-700 mx-auto mb-3" />
+              <p className="text-sm text-neutral-600">No users found</p>
             </div>
+          ) : (
+            filtered.map((user) => {
+              const active = user.membership?.isActive && !isExpired(user.membership?.expiresAt);
+              return (
+                <motion.div
+                  key={user._id}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelectedUserId(user._id)}
+                  className="p-4 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start gap-3">
+                    {user.picture ? (
+                      <img src={user.picture} alt={user.name} className="h-11 w-11 rounded-xl object-cover border border-white/10 shrink-0" />
+                    ) : (
+                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-red-600 to-purple-600 flex items-center justify-center text-sm font-black text-white shrink-0">
+                        {user.name?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-black text-white truncate">{user.name}</p>
+                        <ChevronRight size={14} className="text-neutral-600 shrink-0 ml-2" />
+                      </div>
+                      <p className="text-[10px] text-neutral-600 font-mono truncate">{user.email}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        {active ? (
+                          <span className={cn("text-[9px] font-black uppercase", planColor(user.membership?.planId))}>
+                            ● {user.membership?.planName}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-black text-neutral-600 uppercase">● Free</span>
+                        )}
+                        <span className="text-[9px] text-yellow-500 font-mono">
+                          {user.tokens ?? 0} tkn
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Pagination */}
+        <div className="px-6 py-4 border-t border-white/5 bg-white/[0.01] flex items-center justify-between">
+          <p className="text-[9px] font-black uppercase tracking-widest text-neutral-600">
+            {filtered.length} shown · {totalItems} total
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="px-3 py-1.5 border border-white/8 rounded-lg text-[9px] font-black text-neutral-500 hover:text-white hover:border-white/20 disabled:opacity-30 transition-all"
+            >
+              Prev
+            </button>
+            <span className="text-[9px] text-neutral-500 px-1">{page} / {totalPages}</span>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-3 py-1.5 border border-white/8 rounded-lg text-[9px] font-black text-neutral-500 hover:text-white hover:border-white/20 disabled:opacity-30 transition-all"
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
 
-      {/* EMPTY STATE */}
-      {filteredUsers.length === 0 && (
-        <div className="text-center py-12">
-          <Users size={48} className="text-neutral-700 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-white mb-2">No Users Found</h3>
-          <p className="text-sm text-neutral-500 max-w-md mx-auto">
-            {searchQuery 
-              ? `No users match your search for "${searchQuery}"`
-              : "No users found in the system. Users will appear here once they register."
-            }
-          </p>
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery("")}
-              className="mt-4 text-sm text-red-500 hover:text-red-400 transition-colors"
-            >
-              Clear Search
-            </button>
-          )}
-        </div>
-      )}
+      {/* User Drawer */}
+      <AnimatePresence>
+        {selectedUserId && (
+          <UserDrawer
+            key={selectedUserId}
+            userId={selectedUserId}
+            onClose={() => setSelectedUserId(null)}
+            onRefresh={fetchUsers}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
