@@ -11,7 +11,8 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import api from '@/config/api';
 
-export default function PracticeTestPage({ params }: { params: { slug: string } }) {
+export default function PracticeTestPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = React.use(params);
   const [loading, setLoading] = useState(true);
   const [testData, setTestData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export default function PracticeTestPage({ params }: { params: { slug: string } 
     const fetchTest = async () => {
       try {
         const token = localStorage.getItem('authToken');
-        const res = await api.get(`/test/${params.slug}`, {
+        const res = await api.get(`/test/${slug}`, {
           headers: { 'Auth': token }
         });
         if (res.data?.success && res.data?.test) {
@@ -46,7 +47,7 @@ export default function PracticeTestPage({ params }: { params: { slug: string } 
       }
     };
     fetchTest();
-  }, [params.slug]);
+  }, [slug]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
