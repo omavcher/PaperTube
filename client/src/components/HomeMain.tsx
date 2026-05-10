@@ -79,6 +79,13 @@ const FLASHCARDS_LOADING_STEPS = [
   { id: 4, label: "Building Spaced Deck", icon: IconSparkles },
 ];
 
+const CODE_LOADING_STEPS = [
+  { id: 1, label: "Parsing Problem URL", icon: IconBrandYoutube },
+  { id: 2, label: "Analyzing Constraints", icon: IconFileText },
+  { id: 3, label: "Synthesizing Solution", icon: IconBrain },
+  { id: 4, label: "Finalizing Code Output", icon: IconSparkles },
+];
+
 
 
 export default function HomeMain() {
