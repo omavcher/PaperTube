@@ -1162,6 +1162,8 @@ exports.getUserNotes = async (req, res) => {
 // In your noteController.js, update the generatePDF function:
 
 
+const marked = require('marked');
+
 exports.generatePDF = async (req, res) => {
   try {
     const { noteId } = req.query;
@@ -1186,18 +1188,27 @@ exports.generatePDF = async (req, res) => {
     console.log("✅ Found note:", note.title);
     console.log("🔄 Generating new PDF with images...");
 
-    // Process content to embed images
-    let processedContent = note.content || '';
+    // Convert Markdown to HTML if needed
+    let rawContent = note.content || '';
+    let processedContent = '';
+
+    // Simple check: if it contains common HTML tags, assume it's HTML. Otherwise, treat as Markdown.
+    if (rawContent.includes('<h1') || rawContent.includes('<p>') || rawContent.includes('<div')) {
+      processedContent = rawContent;
+    } else {
+      processedContent = marked.parse(rawContent);
+    }
     
-    // Extract all image URLs from the content
-    const imgRegex = /<img[^>]+src="([^">]+)"/g;
+    // Extract all image URLs from the content (handles both HTML and Markdown style)
+    const imgRegex = /<img[^>]+src="([^">]+)"|!\[[^\]]*\]\(([^)]+)\)/g;
     const imgUrls = [];
     let match;
     
     while ((match = imgRegex.exec(processedContent)) !== null) {
-      imgUrls.push(match[1]);
+      // match[1] is for HTML, match[2] is for Markdown
+      const url = match[1] || match[2];
+      if (url) imgUrls.push(url);
     }
-    
     console.log(`📸 Found ${imgUrls.length} images in content`);
 
     // Download and convert images to base64

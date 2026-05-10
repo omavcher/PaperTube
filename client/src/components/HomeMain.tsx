@@ -56,12 +56,6 @@ const TEST_TYPES = [
   { id: 'Master All (Mix)', label: 'Master Mix', isPremium: true },
 ];
 
-const HOME_CATEGORIES = [
-  { id: 'youtube', label: 'YouTube AI', icon: IconBrandYoutube },
-  { id: 'coding', label: 'Code & Job Prep', icon: Code },
-  { id: 'document', label: 'Document Lab', icon: FileType },
-  { id: 'writing', label: 'AI Writing', icon: BookOpen },
-];
 
 const CATEGORY_TOOLS: Record<string, { id: string, label: string, icon: any, comingSoon?: boolean, placeholder?: string }[]> = {
   youtube: [
@@ -69,26 +63,6 @@ const CATEGORY_TOOLS: Record<string, { id: string, label: string, icon: any, com
     { id: 'flashcards', label: 'YT to Flashcards', icon: IconBrain },
     { id: 'test', label: 'Practice Test', icon: CheckSquare, placeholder: 'Paste Video URL to Gen Test...' },
   ],
-  coding: [
-    { id: 'code_solution', label: 'Code Solution', icon: Code, placeholder: 'Paste Leetcode/Hackerrank URL...' },
-    { id: 'code_flowchart', label: 'Flow Chart', icon: Map, comingSoon: true, placeholder: 'Paste Code or Repository URL...' },
-    { id: 'interview', label: 'Interview Prep', icon: Users, comingSoon: true, placeholder: 'Paste Job Description...' },
-    { id: 'resume', label: 'Resume Builder', icon: FileSignature, comingSoon: true, placeholder: 'Paste LinkedIn URL or Resume...' },
-  ],
-  document: [
-    { id: 'pdf_audio', label: 'PDF to Audio', icon: Headphones, comingSoon: true, placeholder: 'Upload or Paste PDF Link...' },
-    { id: 'pdf_summary', label: 'PDF Summarizer', icon: Search, comingSoon: true, placeholder: 'Upload or Paste PDF Link...' },
-    { id: 'word_summary', label: 'Word Summarizer', icon: FileText, comingSoon: true, placeholder: 'Upload Word Document...' },
-    { id: 'mind_map', label: 'Mind Map Gen', icon: BrainCircuit, comingSoon: true, placeholder: 'Upload Document or Paste Notes...' },
-  ],
-  writing: [
-    { id: 'detector', label: 'AI Detector', icon: Search, comingSoon: true, placeholder: 'Paste text to analyze...' },
-    { id: 'humanizer', label: 'AI Humanizer', icon: Users, comingSoon: true, placeholder: 'Paste AI generated text...' },
-    { id: 'paper', label: 'Paper Writer', icon: FileSignature, comingSoon: true, placeholder: 'Enter research topic...' },
-    { id: 'essay', label: 'Essay Writer', icon: PenTool, comingSoon: true, placeholder: 'Enter essay prompt...' },
-    { id: 'grader', label: 'Essay Grader', icon: GraduationCap, comingSoon: true, placeholder: 'Paste essay to grade...' },
-    { id: 'citation', label: 'Citation Gen', icon: LinkIcon, comingSoon: true, placeholder: 'Enter URL or DOI...' },
-  ]
 };
 
 const NOTES_LOADING_STEPS = [
@@ -105,12 +79,7 @@ const FLASHCARDS_LOADING_STEPS = [
   { id: 4, label: "Building Spaced Deck", icon: IconSparkles },
 ];
 
-const CODE_LOADING_STEPS = [
-  { id: 1, label: "Fetching Problem constraints", icon: Code },
-  { id: 2, label: "Analyzing complexity", icon: IconBrain },
-  { id: 3, label: "Drafting Optimal approach", icon: FileText },
-  { id: 4, label: "Finalizing Code implementation", icon: IconSparkles },
-];
+
 
 export default function HomeMain() {
   const router = useRouter();
@@ -204,21 +173,6 @@ export default function HomeMain() {
           const response = await api.post('/notes/ytinfo', { videoUrl });
           setVideoInfo(response.data);
         } catch (err) { console.error(err); setVideoInfo(null); } 
-        finally { setLoading(false); }
-      } else if (activeCategory === 'coding') {
-        setLoading(true);
-        try {
-          const response = await api.post('/code/verify', { problemUrl: videoUrl });
-          if (response.data.success) {
-            let domain = 'coding.com';
-            try { 
-                domain = new URL(videoUrl.startsWith('http') ? videoUrl : `https://${videoUrl}`).hostname; 
-            } catch (e) {}
-            setVideoInfo({ title: response.data.title, platform: response.data.platform, domain, isCode: true });
-          } else {
-            setVideoInfo(null);
-          }
-        } catch (err) { console.error(err); setVideoInfo(null); }
         finally { setLoading(false); }
       }
     } else {
@@ -331,28 +285,7 @@ export default function HomeMain() {
         return;
       }
 
-      // ── CODE SOLUTION MODE ──
-      if (outputFormat === 'code_solution') {
-        const codePayload = {
-          problemUrl: videoUrl,
-          prompt,
-          model: selectedModel.id,
-          settings: { language: outputLanguage, detailLevel, codeLanguage }
-        };
 
-        const codeResponse = await api.post('/code/generate', codePayload, { headers: { 'Auth': authToken } });
-
-        if (codeResponse.data?.success && codeResponse.data?.newSolution?.slug) {
-          setCurrentStep(4);
-          if (!hasPremiumAccess && userTokens !== null) {
-            setUserTokens(prev => Math.max(0, (prev || 0) - (codeResponse.data.tokenInfo?.tokensDeducted || 8)));
-          }
-          setTimeout(() => {
-            router.push(`/code-solution/${codeResponse.data.newSolution.slug}`);
-          }, 600);
-        }
-        return;
-      }
 
       // ── NOTES MODE: existing flow ──
       const endpoint = `/notes/${selectedModel.endpoint}`;
@@ -618,41 +551,12 @@ export default function HomeMain() {
                       className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-400 leading-[1.1] pb-2"
                     >
                       {activeCategory === 'youtube' && <><span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]">Turn YouTube</span> <br className="hidden sm:block"/> Into Knowledge.</>}
-                      {activeCategory === 'coding' && <><span className="text-transparent bg-clip-text bg-gradient-to-b from-blue-500 to-blue-700 drop-shadow-[0_0_20px_rgba(59,130,246,0.3)]">Master Coding</span> <br className="hidden sm:block"/> & Job Prep.</>}
-                      {activeCategory === 'document' && <><span className="text-transparent bg-clip-text bg-gradient-to-b from-purple-500 to-purple-700 drop-shadow-[0_0_20px_rgba(168,85,247,0.3)]">Analyze PDFs</span> <br className="hidden sm:block"/> In Seconds.</>}
-                      {activeCategory === 'writing' && <><span className="text-transparent bg-clip-text bg-gradient-to-b from-emerald-500 to-emerald-700 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]">AI Writing</span> <br className="hidden sm:block"/> Perfected.</>}
                     </motion.h1>
                   </AnimatePresence>
                 </div>
               </div>
 
-              {/* Top Level App Categories - Mobile Optimized Scroll container */}
-              <div onWheel={handleHorizontalScroll} className="flex relative w-full max-w-3xl overflow-x-auto p-1.5 bg-white/[0.03] border border-white/[0.08] backdrop-blur-md rounded-[1.2rem] sm:rounded-[1.8rem] mb-6 md:mb-8 no-scrollbar scroll-fade-x flex-nowrap shrink-0 shadow-xl z-20">
-                 {HOME_CATEGORIES.map(c => {
-                    const isActive = activeCategory === c.id;
-                    return (
-                        <button 
-                          key={c.id} 
-                          onClick={() => {
-                            setActiveCategory(c.id);
-                            setOutputFormat(CATEGORY_TOOLS[c.id][0].id);
-                            setVideoUrl(''); // Reset input between major sections
-                          }} 
-                          className={cn("flex-1 relative px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-[1.4rem] font-bold text-[12px] sm:text-[13px] flex items-center justify-center gap-2 transition-colors duration-200 whitespace-nowrap shrink-0", isActive ? "text-black" : "text-neutral-400 hover:text-white hover:bg-white/[0.06]")}
-                        >
-                           {isActive && (
-                             <motion.div 
-                               layoutId="activeTabIndicator"
-                               className="absolute inset-0 bg-white rounded-xl sm:rounded-[1.4rem] shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-                               transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                             />
-                           )}
-                           <c.icon size={16} className={cn("relative z-10 sm:w-[18px] sm:h-[18px]", isActive ? "text-black" : "text-neutral-500")} />
-                           <span className="relative z-10">{c.label}</span>
-                        </button>
-                    )
-                 })}
-              </div>
+            
 
               {/* ============ MAIN COMMAND CARD ============ */}
               <div className="w-full max-w-3xl relative z-10">
@@ -728,39 +632,6 @@ export default function HomeMain() {
                             <p className="text-xs font-semibold text-white truncate">{videoInfo.title}</p>
                             <p className="text-[10px] text-neutral-600 font-mono mt-0.5">{videoInfo.formattedDuration} &middot; {videoInfo.channel}</p>
                           </div>
-                        </div>
-                      </motion.div>
-                    )}
-                    {videoInfo && !loading && activeCategory === 'coding' && videoInfo.isCode && (
-                      <motion.div key="cinfo" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
-                        <div className="mx-4 mt-3 p-3.5 bg-gradient-to-r from-blue-500/10 to-indigo-500/5 rounded-xl border border-blue-500/15 flex items-center gap-3.5 relative overflow-hidden group">
-                          
-                          {/* Decorative gradient orb */}
-                          <div className="absolute top-1/2 left-4 w-12 h-12 bg-blue-500/10 rounded-full blur-xl -translate-y-1/2 group-hover:bg-blue-500/20 transition-colors" />
-
-                          <div className="w-11 h-11 rounded-xl bg-white/[0.04] flex flex-col items-center justify-center shrink-0 border border-white/10 relative z-10 shadow-[0_0_15px_rgba(0,0,0,0.5)] overflow-hidden p-[8px]">
-                            {videoInfo.domain ? (
-                              <img src={getLogoUrl(videoInfo.platform, videoInfo.domain)} alt={videoInfo.platform} className="w-full h-full object-contain drop-shadow-md rounded-[2px]" />
-                            ) : (
-                              <Code size={20} className="text-neutral-400" />
-                            )}
-                          </div>
-                          
-                          <div className="min-w-0 flex-1 relative z-10 flex flex-col justify-center">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-300 border border-blue-500/20">
-                                {videoInfo.platform}
-                              </span>
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
-                                <Zap size={8} className="fill-emerald-500/50" /> Sync Active
-                              </span>
-                            </div>
-                            <p className="text-sm font-bold text-white truncate drop-shadow-md">{videoInfo.title}</p>
-                            <p className="text-[10px] text-neutral-400 font-mono mt-0.5 flex items-center gap-1.5">
-                               Ready for Neural Code Generation
-                            </p>
-                          </div>
-
                         </div>
                       </motion.div>
                     )}
@@ -871,7 +742,7 @@ export default function HomeMain() {
                           <div className="mb-4">
                             <div className="flex items-center gap-1.5 mb-2.5"><IconRobot size={12} className="text-purple-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Language</span></div>
                             <div className="grid grid-cols-3 gap-1.5">
-                              {LANGUAGES.slice(0,6).map(l => (
+                              {LANGUAGES.map(l => (
                                 <div key={l} onClick={() => setOutputLanguage(l)} className={cn("text-[10px] text-center py-2 rounded-lg cursor-pointer font-bold transition-all border", outputLanguage === l ? "bg-white text-black border-white" : "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white")}>{l}</div>
                               ))}
                             </div>

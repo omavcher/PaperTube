@@ -12,7 +12,6 @@ const TOKEN_COST_PER_GENERATION = 5;
 
 // Free model OpenRouter queue
 let openRouterModelQueue = [
-  "nvidia/nemotron-3-nano-30b-a3b:free",
   "openrouter/free",
   "nvidia/nemotron-nano-12b-v2-vl:free",
   "tngtech/deepseek-r1t-chimera:free"
@@ -106,7 +105,7 @@ function parseJSONOutput(raw) {
   return parsed;
 }
 
-function buildTestPrompt(transcript, testType, userPrompt) {
+function buildTestPrompt(transcript, testType, userPrompt, language = 'English') {
   let instructions = "";
   if (testType === 'MCQ') {
     instructions = `Generate exactly 10 Multiple Choice Questions (type: 'MCQ'). Each has 4 options, 1 correctAnswer.`;
@@ -121,7 +120,19 @@ function buildTestPrompt(transcript, testType, userPrompt) {
     instructions = `Generate exactly 15 questions mixed equally across 'MCQ', 'MSQ', 'FITB', 'NAT'. Follow the data schemas carefully for each type.`;
   }
 
+  const languageInstruction = `
+═══ CRITICAL LANGUAGE & QUALITY RULES ═══
+1. MULTI-LANGUAGE COMPREHENSION: The source transcript may be in any language. You must accurately extract every single concept and nuance regardless of the transcript's original language.
+2. NATIVE-LEVEL ${language.toUpperCase()} OUTPUT: You MUST write the ENTIRE practice test (questions, options, correct answers, and detailed explanations) strictly in ${language}. 
+3. PROPER ACADEMIC TONE: Use professional, high-quality, and grammatically perfect ${language}. The test must read like it was written by a native expert examiner in ${language}.
+4. NO LANGUAGE MIXING: Do not mix languages. Do not use English words in ${language} text unless they are universal technical terms with no equivalent.
+5. COMPREHENSIVE EXPLANATION: Explain every answer thoroughly in ${language}. Ensure no meaning is lost in translation from the source transcript.
+`;
+
   return `You are a master examiner. Generate a rigorous Practice Test based SOLELY on the transcript below.
+
+${languageInstruction}
+
 ${instructions}
 ${userPrompt ? `User constraints: "${userPrompt}"\n` : ''}
 
@@ -168,7 +179,7 @@ exports.createPracticeTest = async (req, res) => {
     const maxTokens = (isPremiumModel ? 80000 : 10000) * 4;
     transcript = transcript.substring(0, maxTokens);
 
-    const aiPrompt = buildTestPrompt(transcript, testType, prompt);
+    const aiPrompt = buildTestPrompt(transcript, testType, prompt, settings?.language || 'English');
     const messages = [
       { role: 'system', content: 'You only output raw JSON arrays starting with [ and ending with ].' },
       { role: 'user', content: aiPrompt }

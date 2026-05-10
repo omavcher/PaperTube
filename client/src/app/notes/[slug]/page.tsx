@@ -4,37 +4,38 @@ import React, { useState, useRef, useEffect, useCallback, use } from "react";
 import { Editor } from "@tinymce/tinymce-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 
 import {
   Download,
-  FileDown,
   Bold,
   Italic,
   List as ListIcon,
-  Undo,
-  Redo,
   Send,
   Save,
   Loader2,
   ThumbsUp,
   ThumbsDown,
-  Check,
   Eye,
   Edit,
   Lock,
   AlertCircle,
   X,
-  Menu,
   FileText,
   Sparkles,
   ArrowLeft,
   ExternalLink,
   MessageSquare,
   Home,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  ChevronDown,
+  BookOpen,
+  Brain,
+  HelpCircle,
+  Lightbulb,
+  Zap
 } from "lucide-react";
 
 
@@ -56,9 +57,9 @@ const getAuthToken = () => {
 const isAuthenticated = () => !!getAuthToken();
 
 // --- TYPES ---
-interface ApiMessage { _id: string; role: string; content: string; timestamp: string; videoLink?: string; feedback?: "good" | "bad" | null; }
+interface ApiMessage { _id: string; role: string; content: string; timestamp: string; videoLink?: string; feedback?: "good" | "bad" | null; mode?: string; }
 interface ApiMessagesResponse { messages: ApiMessage[]; }
-interface NoteData { _id: string; title: string; content: string; thumbnail?: string; generationDetails?: any; }
+interface NoteData { _id: string; title: string; content: string; thumbnail?: string; generationDetails?: any; videoUrl?: string; }
 
 // --- STYLES ---
 const iphoneStyles = `
@@ -67,12 +68,15 @@ const iphoneStyles = `
 @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes bounceFeedback { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.95); } }
 @keyframes gradient-x { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes glow-pulse { 0%, 100% { box-shadow: 0 0 8px rgba(220,38,38,0.4); } 50% { box-shadow: 0 0 20px rgba(220,38,38,0.8), 0 0 40px rgba(220,38,38,0.3); } }
 
 .animate-fade-in-up { animation: fadeInUp 0.4s ease-out; }
 .animate-scale-in { animation: scaleIn 0.3s ease-out; }
 .animate-slide-in-right { animation: slideInRight 0.4s ease-out; }
 .animate-bounce-feedback { animation: bounceFeedback 0.2s ease-in-out; }
 .animate-gradient-x { background-size: 200% 200%; animation: gradient-x 3s ease infinite; }
+.animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
 
 .glass-effect { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 .smooth-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -86,7 +90,147 @@ const iphoneStyles = `
 
 /* Mobile Optimizations */
 .mobile-safe-bottom { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
-.h-dvh-screen { height: 100dvh; } /* Dynamic viewport height */
+.h-dvh-screen { height: 100dvh; }
+
+/* PaperChat Input */
+.paperchat-textarea {
+  resize: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e5e5e5;
+  font-size: 14px;
+  line-height: 1.6;
+  width: 100%;
+  min-height: 22px;
+  max-height: 140px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+.paperchat-textarea::placeholder { color: #555; }
+.paperchat-textarea::-webkit-scrollbar { width: 4px; }
+.paperchat-textarea::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+.paperchat-input-box {
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.paperchat-input-box:focus-within {
+  border-color: #3f3f3f;
+  box-shadow: 0 0 0 1px rgba(220,38,38,0.15), 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* Chat prose overflow fix */
+.chat-prose { word-break: break-word; overflow-wrap: anywhere; min-width: 0; }
+.chat-prose pre { white-space: pre-wrap; word-break: break-word; overflow-x: auto; max-width: 100%; }
+.chat-prose table { display: block; overflow-x: auto; max-width: 100%; }
+.chat-prose img { max-width: 100%; }
+.chat-prose * { max-width: 100%; }
+
+.mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 20px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  color: #888;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+.mode-chip:hover { background: #222; border-color: #3a3a3a; color: #aaa; }
+.mode-chip.active { background: #1e0a0a; border-color: #dc2626; color: #f87171; }
+
+.plus-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  display: flex; align-items: center; justify-content: center;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.plus-btn:hover { background: #222; border-color: #444; color: #ccc; }
+
+.send-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(220,38,38,0.3);
+}
+.send-btn:hover:not(:disabled) { transform: scale(1.08); box-shadow: 0 4px 16px rgba(220,38,38,0.5); }
+.send-btn:active:not(:disabled) { transform: scale(0.95); }
+.send-btn:disabled { background: #2a2a2a; box-shadow: none; cursor: not-allowed; color: #555; }
+
+.action-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  z-index: 100;
+}
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.action-menu-item:hover { background: #1a1a1a; color: #fff; }
+.action-menu-item .icon-wrap { width: 24px; height: 24px; border-radius: 6px; background: #1a1a1a; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+.mode-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 40px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 220px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  z-index: 100;
+}
+.mode-menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.mode-menu-item:hover { background: #1a1a1a; }
+.mode-menu-item.selected { background: #1e0a0a; color: #f87171; }
+.mode-menu-item .check-icon { width: 14px; height: 14px; margin-left: auto; opacity: 0; color: #dc2626; flex-shrink: 0; }
+.mode-menu-item.selected .check-icon { opacity: 1; }
 
 @media (max-width: 1023px) {
   .tinymce-mobile-height { height: calc(100dvh - 180px) !important; }
@@ -103,6 +247,26 @@ const PDFPreviewWithThumbnail: React.FC<{
 }> = ({ content, isGenerating = false, onGeneratePDF }) => {
   const [showFullPreview, setShowFullPreview] = useState(false);
 
+  // Simple check for HTML
+  const isHtml = content.includes('<h1') || content.includes('<p>') || content.includes('<div');
+
+  const renderContent = (className: string, style: React.CSSProperties) => {
+    if (isHtml) {
+      return (
+        <div 
+          dangerouslySetInnerHTML={{ __html: content }} 
+          className={className}
+          style={style} 
+        />
+      );
+    }
+    return (
+      <div className={className} style={style}>
+        <ReactMarkdown>{content}</ReactMarkdown>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full h-full border border-neutral-800 shadow-2xl overflow-hidden rounded-lg bg-white relative group animate-scale-in flex flex-col">
       {/* Content */}
@@ -113,11 +277,7 @@ const PDFPreviewWithThumbnail: React.FC<{
             <p className="text-neutral-600 text-sm">Creating PDF...</p>
           </div>
         ) : (
-          <div 
-            dangerouslySetInnerHTML={{ __html: content }} 
-            className="prose max-w-none text-black"
-            style={{ fontFamily: "'Times New Roman', serif", fontSize: '14px', lineHeight: '1.5' }} 
-          />
+          renderContent("prose max-w-none text-black", { fontFamily: "'Times New Roman', serif", fontSize: '14px', lineHeight: '1.5' })
         )}
       </div>
 
@@ -133,7 +293,7 @@ const PDFPreviewWithThumbnail: React.FC<{
               <X className="h-5 w-5" />
             </button>
             <div className="flex-1 overflow-auto p-8 custom-scrollbar">
-              <div dangerouslySetInnerHTML={{ __html: content }} style={{ fontFamily: "'Times New Roman', serif", fontSize: '16px', lineHeight: '1.6', maxWidth: '800px', margin: '0 auto', color: 'black' }} />
+              {renderContent("prose max-w-none text-black", { fontFamily: "'Times New Roman', serif", fontSize: '16px', lineHeight: '1.6', maxWidth: '800px', margin: '0 auto' })}
             </div>
           </div>
         </div>
@@ -254,6 +414,351 @@ const TokenExpiredBanner = ({ onLogin }: any) => {
   );
 };
 
+// --- MODE-AWARE MESSAGE RENDERER ---
+const ModeMessageRenderer: React.FC<{ content: string; mode?: string }> = ({ content, mode }) => {
+  if (!content) return null;
+
+  if (mode === 'quiz') {
+    // Quiz: render with reveal-answer interactive UI
+    return <QuizRenderer content={content} />;
+  }
+
+  if (mode === 'summarize') {
+    return (
+      <div style={{ fontFamily: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '6px 10px', background: 'linear-gradient(90deg,#7c3aed22,#dc262622)', borderRadius: 8, border: '1px solid #7c3aed33' }}>
+          <BookOpen size={13} style={{ color: '#a78bfa' }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Summary Mode</span>
+        </div>
+        <div className="prose prose-invert prose-sm max-w-none chat-prose">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'explain') {
+    return (
+      <div style={{ fontFamily: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '6px 10px', background: 'linear-gradient(90deg,#d9770622,#dc262622)', borderRadius: 8, border: '1px solid #d9770633' }}>
+          <Lightbulb size={13} style={{ color: '#fbbf24' }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Explain Mode</span>
+        </div>
+        <div className="prose prose-invert prose-sm max-w-none chat-prose">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
+      </div>
+    );
+  }
+
+  // Default (ask mode)
+  return (
+    <div className="prose prose-invert prose-sm max-w-none chat-prose">
+      <ReactMarkdown>{content}</ReactMarkdown>
+    </div>
+  );
+};
+
+// --- QUIZ RENDERER ---
+const QuizRenderer: React.FC<{ content: string }> = ({ content }) => {
+  const [revealed, setRevealed] = useState<Set<number>>(new Set());
+
+  const toggleReveal = (idx: number) => {
+    setRevealed(prev => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  };
+
+  // Parse quiz questions from markdown (Q1. ... ✅ Answer:)
+  const sections = content.split(/\n(?=\*\*Q\d+\.)/).filter(Boolean);
+  const hasStructure = sections.length > 1;
+
+  if (!hasStructure) {
+    // Fallback: just render markdown
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '6px 10px', background: 'linear-gradient(90deg,#05966922,#dc262622)', borderRadius: 8, border: '1px solid #05966933' }}>
+          <Brain size={13} style={{ color: '#34d399' }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Quiz Mode</span>
+        </div>
+        <div className="prose prose-invert prose-sm max-w-none chat-prose">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: '6px 10px', background: 'linear-gradient(90deg,#05966922,#0891b222)', borderRadius: 8, border: '1px solid #05966933' }}>
+        <Brain size={13} style={{ color: '#34d399' }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Quiz Mode — {sections.length} Questions</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {sections.map((section, idx) => {
+          const isRevealed = revealed.has(idx);
+          const answerMatch = section.match(/\u2705\s*\*\*Answer:\*\*([\s\S]*?)(?=\n---|$)/);
+          const answerText = answerMatch ? answerMatch[1].trim() : null;
+          const questionBody = answerText
+            ? section.replace(/\u2705\s*\*\*Answer:\*\*[\s\S]*?(?=\n---|$)/, '').trim()
+            : section.trim();
+
+          return (
+            <div key={idx} style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 12px' }}>
+                <div className="prose prose-invert prose-sm max-w-none chat-prose" style={{ marginBottom: answerText ? 8 : 0 }}>
+                  <ReactMarkdown>{questionBody.replace(/^---\n/, '')}</ReactMarkdown>
+                </div>
+                {answerText && (
+                  <button
+                    onClick={() => toggleReveal(idx)}
+                    style={{
+                      marginTop: 6, padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                      background: isRevealed ? '#059669' : '#1a1a1a',
+                      color: isRevealed ? '#fff' : '#888',
+                      transition: 'all 0.2s',
+                      display: 'flex', alignItems: 'center', gap: 5
+                    }}
+                  >
+                    {isRevealed ? '✅ Answer revealed' : '👁 Reveal Answer'}
+                  </button>
+                )}
+              </div>
+              <AnimatePresence>
+                {isRevealed && answerText && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ background: '#0a1a12', borderTop: '1px solid #059669/30', padding: '8px 12px', overflow: 'hidden' }}
+                  >
+                    <div className="prose prose-invert prose-sm max-w-none chat-prose">
+                      <ReactMarkdown>{`✅ **Answer:** ${answerText}`}</ReactMarkdown>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </div>
+      <p style={{ fontSize: 10, color: '#555', marginTop: 10, textAlign: 'center' }}>🎯 Click "Reveal Answer" after attempting each question</p>
+    </div>
+  );
+};
+
+// --- PAPERCHAT INPUT COMPONENT ---
+interface PaperChatInputProps {
+  input: string;
+  setInput: (v: string) => void;
+  isThinking: boolean;
+  isSubscribed: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+  selectedMode: typeof CHAT_MODES[0];
+  setSelectedMode: (m: typeof CHAT_MODES[0]) => void;
+}
+
+const CHAT_MODES = [
+  { id: 'ask', label: 'Ask', description: 'Ask questions about the note', icon: HelpCircle },
+  { id: 'summarize', label: 'Summarize', description: 'Summarize sections of the note', icon: BookOpen },
+  { id: 'quiz', label: 'Quiz Me', description: 'Test your knowledge from the note', icon: Brain },
+  { id: 'explain', label: 'Explain', description: 'Get a simpler explanation', icon: Lightbulb },
+];
+
+const QUICK_ACTIONS = [
+  { label: 'Summarize this note', icon: BookOpen, color: '#7c3aed' },
+  { label: 'What are the key concepts?', icon: Zap, color: '#0891b2' },
+  { label: 'Quiz me on this topic', icon: Brain, color: '#059669' },
+  { label: 'Explain in simple terms', icon: Lightbulb, color: '#d97706' },
+  { label: 'List all important points', icon: FileText, color: '#dc2626' },
+];
+
+const PaperChatInput: React.FC<PaperChatInputProps> = ({
+  input, setInput, isThinking, isSubscribed, onSubmit, selectedMode, setSelectedMode
+}) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [showModeMenu, setShowModeMenu] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+  }, [input]);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowActionMenu(false);
+        setShowModeMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (input.trim() && !isThinking && isSubscribed) {
+        onSubmit(e as any);
+      }
+    }
+  };
+
+  const applyQuickAction = (label: string) => {
+    setInput(label);
+    setShowActionMenu(false);
+    textareaRef.current?.focus();
+  };
+
+  const canSend = input.trim().length > 0 && !isThinking && isSubscribed;
+
+  return (
+    <div
+      className="p-3 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur shrink-0 mb-16 lg:mb-0 relative z-10"
+      ref={wrapperRef}
+    >
+      {/* Input Box */}
+      <div className="paperchat-input-box px-4 pt-3 pb-2">
+        {/* Textarea */}
+        <textarea
+          ref={textareaRef}
+          className="paperchat-textarea"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={isSubscribed ? `${selectedMode.description}... (Enter to send, Shift+Enter for newline)` : 'Upgrade to Pro to use PaperChat...'}
+          disabled={!isSubscribed}
+          rows={1}
+        />
+
+        {/* Bottom Toolbar */}
+        <div className="flex items-center justify-between mt-2 gap-2">
+          {/* Left controls */}
+          <div className="flex items-center gap-2">
+            {/* + Actions button */}
+            <div className="relative">
+              <button
+                className="plus-btn"
+                onClick={() => { setShowActionMenu(p => !p); setShowModeMenu(false); }}
+                disabled={!isSubscribed}
+                title="Quick actions"
+              >
+                <Plus size={15} />
+              </button>
+
+              {/* Actions dropdown */}
+              <AnimatePresence>
+                {showActionMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="action-menu"
+                  >
+                    <p style={{ fontSize: 11, color: '#666', padding: '4px 12px 6px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                      Quick Prompts
+                    </p>
+                    {QUICK_ACTIONS.map(action => (
+                      <div
+                        key={action.label}
+                        className="action-menu-item"
+                        onClick={() => applyQuickAction(action.label)}
+                      >
+                        <span className="icon-wrap" style={{ background: action.color + '22' }}>
+                          <action.icon size={13} style={{ color: action.color }} />
+                        </span>
+                        {action.label}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Mode Selector */}
+            <div className="relative">
+              <button
+                className={`mode-chip ${selectedMode.id !== 'ask' ? 'active' : ''}`}
+                onClick={() => { setShowModeMenu(p => !p); setShowActionMenu(false); }}
+                disabled={!isSubscribed}
+              >
+                <selectedMode.icon size={11} />
+                {selectedMode.label}
+                <ChevronDown size={10} style={{ opacity: 0.6 }} />
+              </button>
+
+              {/* Mode dropdown */}
+              <AnimatePresence>
+                {showModeMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="mode-menu"
+                  >
+                    <p style={{ fontSize: 11, color: '#666', padding: '4px 12px 6px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                      Chat Mode
+                    </p>
+                    {CHAT_MODES.map(mode => (
+                      <div
+                        key={mode.id}
+                        className={`mode-menu-item ${selectedMode.id === mode.id ? 'selected' : ''}`}
+                        onClick={() => { setSelectedMode(mode); setShowModeMenu(false); }}
+                      >
+                        <mode.icon size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, marginBottom: 1 }}>{mode.label}</div>
+                          <div style={{ fontSize: 11, opacity: 0.5 }}>{mode.description}</div>
+                        </div>
+                        <svg className="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M20 6L9 17l-5-5"/></svg>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Right controls */}
+          <div className="flex items-center gap-2">
+
+            {/* Send button */}
+            <button
+              className="send-btn"
+              disabled={!canSend}
+              onClick={e => { if (canSend) onSubmit(e as any); }}
+              title="Send (Enter)"
+            >
+              {isThinking
+                ? <Loader2 size={14} className="animate-spin" />
+                : <Send size={14} style={{ transform: 'translateX(1px)' }} />
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Hint text */}
+      {isSubscribed && (
+        <p style={{ textAlign: 'center', fontSize: 10, color: '#444', marginTop: 6 }}>
+          Enter ↵ to send · Shift+Enter for new line · Context-aware AI
+        </p>
+      )}
+    </div>
+  );
+};
+
 // --- MAIN PAGE COMPONENT ---
 export default function NotePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -280,6 +785,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   // Chat State
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  const [selectedMode, setSelectedMode] = useState(CHAT_MODES[0]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -335,6 +841,8 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
   useEffect(() => { loadNoteData(); }, [loadNoteData]);
   
+  const [thinkingMessage, setThinkingMessage] = useState("Thinking...");
+
   // Auto-scroll effect
   useEffect(() => {
     if (mobileView === 'chat' || window.innerWidth >= 1024) {
@@ -349,6 +857,20 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     }
   }, [messages, isThinking, mobileView]);
 
+  // Thinking Message Cycler
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isThinking) {
+      const messages = ["Analyzing...", "Thinking...", "Reasoning...", "Synthesizing...", "Crafting Response..."];
+      let i = 0;
+      interval = setInterval(() => {
+        setThinkingMessage(messages[i % messages.length]);
+        i++;
+      }, 1500);
+    }
+    return () => clearInterval(interval);
+  }, [isThinking]);
+
   // Actions
   const handleSave = async () => {
     if (!data?._id) return;
@@ -361,27 +883,117 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
+  const handleFeedback = async (messageId: string, feedback: "good" | "bad") => {
+    if (!data?._id) return;
+    try {
+      // Optimistic update
+      setMessages(prev => prev.map(msg => 
+        msg._id === messageId ? { ...msg, feedback } : msg
+      ));
+
+      await api.post('/chat/feedback', {
+        noteId: data._id,
+        messageId,
+        feedback
+      });
+      
+      toast.success(feedback === 'good' ? 'Great! Glad you liked it.' : 'Thanks for the feedback. We will improve.');
+    } catch (err) {
+      console.error("Feedback error:", err);
+      toast.error("Failed to save feedback");
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isThinking || !isSubscribed) return;
     
-    const userMsg = { _id: Date.now().toString(), role: "user", content: input, timestamp: new Date().toISOString() };
+    const currentMode = selectedMode.id;
+    const userMsg: ApiMessage = { 
+      _id: Date.now().toString(), 
+      role: "user", 
+      content: input, 
+      timestamp: new Date().toISOString(),
+      mode: currentMode
+    };
+    
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsThinking(true);
 
     try {
-      const res = await api.post(`/chat/message`, { noteId: data?._id, message: userMsg.content }, { headers: { 'Auth': getAuthToken() } });
-      const aiMsg = { 
-        _id: (Date.now() + 1).toString(), 
-        role: "assistant", 
-        content: res.data.assistantMessage, 
+      const authToken = getAuthToken();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Auth': authToken || '',
+        },
+        body: JSON.stringify({ 
+          noteId: data?._id, 
+          message: userMsg.content,
+          mode: currentMode
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to connect to chat service');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      // Initial empty AI message
+      const aiMsgId = (Date.now() + 1).toString();
+      const initialAiMsg: ApiMessage = {
+        _id: aiMsgId,
+        role: "assistant",
+        content: "",
         timestamp: new Date().toISOString(),
-        videoLink: res.data.videoLink 
+        videoLink: data?.videoUrl,
+        mode: currentMode
       };
-      setMessages(prev => [...prev, aiMsg]);
+      
+      setMessages(prev => [...prev, initialAiMsg]);
+      setIsThinking(false); // Stop thinking once stream starts
+
+      let accumulatedContent = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6);
+              if (dataStr === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.content) {
+                  accumulatedContent += parsed.content;
+                  // Update the specific AI message with accumulated content
+                  setMessages(prev => prev.map(msg => 
+                    msg._id === aiMsgId ? { ...msg, content: accumulatedContent } : msg
+                  ));
+                }
+              } catch (e) {
+                console.warn("Error parsing chunk", e);
+              }
+            }
+          }
+        }
+      }
     } catch (e) {
-      setMessages(prev => [...prev, { _id: "err", role: "assistant", content: "Error processing request.", timestamp: new Date().toISOString() }]);
+      console.error("Chat Error:", e);
+      setMessages(prev => [...prev, { 
+        _id: "err-" + Date.now(), 
+        role: "assistant", 
+        content: "Sorry, I encountered an error. Please try again.", 
+        timestamp: new Date().toISOString() 
+      }]);
     } finally {
       setIsThinking(false);
     }
@@ -586,53 +1198,83 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                      key={idx} 
                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                    >
-                      <div className={`max-w-[85%] rounded-2xl p-3 text-sm shadow-sm ${
-                        msg.role === 'user' 
-                          ? 'bg-red-600 text-white rounded-br-none' 
-                          : 'bg-neutral-800 border border-neutral-700 text-neutral-200 rounded-bl-none'
-                      }`}>
-                         <div className="prose prose-invert prose-sm max-w-none">
-                           <ReactMarkdown>{msg.content}</ReactMarkdown>
-                         </div>
-                         {msg.videoLink && (
-                           <a href={msg.videoLink} target="_blank" className="mt-2 block p-2 bg-black/20 rounded flex items-center gap-2 hover:bg-black/40 transition">
-                              <ExternalLink className="h-3 w-3 text-red-400"/>
-                              <span className="text-xs text-red-300">Watch Related Video</span>
-                           </a>
-                         )}
-                         <div className="mt-1 text-[10px] opacity-50 text-right">{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                      </div>
+                      {msg.role === 'user' ? (
+                        <div style={{ maxWidth: '85%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          <div style={{
+                            background: '#dc2626', color: '#fff', borderRadius: '16px 16px 2px 16px',
+                            padding: '10px 14px', fontSize: 13, lineHeight: 1.5,
+                            wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap'
+                          }}>
+                            {msg.content}
+                          </div>
+                          {msg.mode && msg.mode !== 'ask' && (
+                            <span style={{ fontSize: 9, color: '#666', display: 'flex', alignItems: 'center', gap: 3, paddingRight: 2 }}>
+                              {msg.mode === 'summarize' && <><BookOpen size={9}/> Summarize</>}
+                              {msg.mode === 'quiz' && <><Brain size={9}/> Quiz Me</>}
+                              {msg.mode === 'explain' && <><Lightbulb size={9}/> Explain</>}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{
+                          maxWidth: '92%', background: '#1a1a1a', border: '1px solid #2a2a2a',
+                          borderRadius: '2px 16px 16px 16px', padding: '12px 14px', fontSize: 13,
+                          wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0, flex: '0 1 auto'
+                        }}>
+                          <ModeMessageRenderer content={msg.content} mode={msg.mode} />
+                          {msg.videoLink && (
+                            <a href={msg.videoLink} target="_blank" className="mt-2 block p-2 bg-black/20 rounded flex items-center gap-2 hover:bg-black/40 transition">
+                               <ExternalLink className="h-3 w-3 text-red-400"/>
+                               <span className="text-xs text-red-300">Watch Related Video</span>
+                            </a>
+                          )}
+                          <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #ffffff08', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              <button
+                                onClick={() => handleFeedback(msg._id, 'good')}
+                                style={{ padding: 4, borderRadius: 4, background: 'none', border: 'none', cursor: 'pointer', color: msg.feedback === 'good' ? '#4ade80' : '#555' }}
+                              ><ThumbsUp size={11} /></button>
+                              <button
+                                onClick={() => handleFeedback(msg._id, 'bad')}
+                                style={{ padding: 4, borderRadius: 4, background: 'none', border: 'none', cursor: 'pointer', color: msg.feedback === 'bad' ? '#f87171' : '#555' }}
+                              ><ThumbsDown size={11} /></button>
+                            </div>
+                            <span style={{ fontSize: 9, color: '#444' }}>
+                              {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                    </motion.div>
                  ))}
-                 {isThinking && (
-                   <div className="flex items-center gap-2 text-neutral-500 text-xs ml-2">
-                     <Loader2 className="h-3 w-3 animate-spin"/> Thinking...
-                   </div>
-                 )}
+                  {isThinking && (
+                    <div className="flex justify-start">
+                      <div className="bg-neutral-800 rounded-2xl p-3 shadow-sm border border-neutral-700 rounded-bl-none">
+                        <div className="flex items-center gap-3">
+                          <div className="flex gap-1">
+                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce"></span>
+                          </div>
+                          <span className="text-xs font-medium text-neutral-400 animate-pulse">{thinkingMessage}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                  <div ref={messagesEndRef} />
                </div>
             </div>
 
             {/* Input Area */}
-            <div className="p-3 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur shrink-0 mb-16 lg:mb-0 relative z-10">
-               <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
-                  <Input 
-                    value={input} 
-                    onChange={(e) => setInput(e.target.value)} 
-                    placeholder="Ask a question..." 
-                    disabled={!isSubscribed}
-                    className="bg-neutral-900 border-neutral-700 text-white rounded-full pl-4 pr-12 focus-visible:ring-red-500 disabled:opacity-50"
-                  />
-                  <Button 
-                    type="submit" 
-                    size="icon" 
-                    disabled={!input.trim() || isThinking || !isSubscribed}
-                    className="absolute right-1 top-1 bottom-1 h-8 w-8 rounded-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
-                  >
-                    {isThinking ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4"/>}
-                  </Button>
-               </form>
-            </div>
+            <PaperChatInput
+              input={input}
+              setInput={setInput}
+              isThinking={isThinking}
+              isSubscribed={isSubscribed}
+              onSubmit={handleSendMessage}
+              selectedMode={selectedMode}
+              setSelectedMode={setSelectedMode}
+            />
           </div>
         </div>
       </div>

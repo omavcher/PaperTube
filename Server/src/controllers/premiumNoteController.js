@@ -374,9 +374,14 @@ ${transcript}
 const getPremiumModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, settings = {}) => {
   const { language = 'English', detailLevel = 'Standard Notes' } = settings;
 
-  const languageInstruction = language !== 'English'
-    ? `IMPORTANT: Write ALL content — headings, explanations, bullets, labels, questions — entirely in ${language}. Do not mix languages.`
-    : 'Write all content in precise, academic English.';
+  const languageInstruction = `
+═══ CRITICAL LANGUAGE & QUALITY RULES ═══
+1. MULTI-LANGUAGE COMPREHENSION: The source transcript may be in any language. You must accurately extract every single concept and nuance regardless of the transcript's original language.
+2. NATIVE-LEVEL ${language.toUpperCase()} OUTPUT: You MUST write the ENTIRE premium study guide (headings, explanations, exam tips, Q&A, labels, and captions) strictly in ${language}. 
+3. PROPER ACADEMIC TONE: Use professional, high-quality, and grammatically perfect ${language}. The notes must read like they were written by a native expert educator in ${language}.
+4. NO LANGUAGE MIXING: Do not mix languages. Do not use English words in ${language} text unless they are universal technical terms with no equivalent.
+5. COMPREHENSIVE EXPLANATION: Explain every concept thoroughly. If the transcript is in one language and the output is in another, ensure no meaning is lost in translation.
+`;
 
   const userInstructions = userPrompt
     ? `\nThe user provided these extra instructions — follow them precisely: "${userPrompt}"`
@@ -396,6 +401,8 @@ const getPremiumModelPrompt = (model, transcript, userPrompt, images_json, video
 **YOUR ROLE: Expert Academic Flashcard Architect**
 
 You have been given a raw video transcript. Your task is to generate EXACTLY ${cardLimit} premium flashcards that cover the most important concepts, avoiding trivial details.
+
+${languageInstruction}
 
 STEP 1 — DEEP UNDERSTANDING
 Identify the core principles and concepts from the transcript.

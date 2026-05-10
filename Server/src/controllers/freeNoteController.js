@@ -40,7 +40,6 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 // OpenRouter model priority queue - higher priority first
 let openRouterModelQueue = [
-  "nvidia/nemotron-3-nano-30b-a3b:free",
   "openrouter/free",
   "nvidia/nemotron-nano-12b-v2-vl:free",
   "tngtech/deepseek-r1t-chimera:free"
@@ -638,9 +637,14 @@ const fetchTranscript = async (videoId) => {
 const getModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, settings = {}) => {
   const { language = 'English', detailLevel = 'Standard Notes' } = settings;
 
-  const languageInstruction = language !== 'English'
-    ? `IMPORTANT: Write ALL content — headings, explanations, bullets, labels — entirely in ${language}. Do not mix languages.`
-    : 'Write all content in clear, academic English.';
+  const languageInstruction = `
+═══ CRITICAL LANGUAGE & QUALITY RULES ═══
+1. MULTI-LANGUAGE COMPREHENSION: The source transcript may be in any language. You must accurately extract every single concept and nuance regardless of the transcript's original language.
+2. NATIVE-LEVEL ${language.toUpperCase()} OUTPUT: You MUST write the ENTIRE document (headings, detailed explanations, bullet points, labels, and figure captions) strictly in ${language}. 
+3. PROPER ACADEMIC TONE: Use professional, high-quality, and grammatically perfect ${language}. The notes must read like they were written by a native expert educator in ${language}.
+4. NO LANGUAGE MIXING: Do not mix languages. Do not use English words in ${language} text unless they are universal technical terms with no equivalent.
+5. COMPREHENSIVE EXPLANATION: Explain every concept thoroughly. If the transcript is in one language and the output is in another, ensure no meaning is lost in translation.
+`;
 
   const userInstructions = userPrompt
     ? `\nThe user has given these additional instructions — follow them precisely: "${userPrompt}"`
@@ -675,6 +679,8 @@ const getModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, se
 You are an expert educator creating high-yield flashcards from a video transcript.
 Generate EXACTLY ${cardLimit} flashcards that cover the most important concepts.
 
+${languageInstruction}
+
 STEP 1 — UNDERSTAND
 Read the transcript and extract the ${cardLimit} most critical terms, questions, or concepts.
 
@@ -700,18 +706,18 @@ ${transcript}
   // It must NOT copy-paste or paraphrase the transcript.
   const coreIntelligenceRules = `
 **YOUR TASK — READ THIS CAREFULLY:**
-You are an expert educator and academic writer. You have been given a raw video transcript.
+You are an expert educator and academic writer. You have been given a raw video transcript from a YouTube video.
 Your job is NOT to convert the transcript into notes. Your job is to:
 
 STEP 1 — UNDERSTAND: Read the entire transcript and identify:
-  • The subject domain (e.g., mathematics, history, biology, programming, finance, etc.)
+  • The subject domain
   • The central topic or problem being addressed
   • All key concepts, terms, principles, formulas, or processes taught
   • The logical flow and structure of the ideas
   • Real-world applications or examples mentioned
 
 STEP 2 — SYNTHESIZE: From your understanding, write ORIGINAL study material that a student
-  can use to learn this topic from scratch, even without watching the video. This means:
+  can use to learn this topic from scratch. This means:
   • Use your own explanations — do NOT copy sentences from the transcript
   • Define every key term properly
   • Explain the "why" behind concepts, not just the "what"
@@ -719,16 +725,16 @@ STEP 2 — SYNTHESIZE: From your understanding, write ORIGINAL study material th
   • Show connections between concepts
   • ${depthInstruction}
 
-STEP 3 — FORMAT: Present the synthesized knowledge as a beautiful, well-structured HTML document.
+STEP 3 — FORMAT: Present the synthesized knowledge as a beautiful, well-structured Markdown document.
 
 **ABSOLUTE RULES:**
-• NEVER copy raw transcript text into the output
-• NEVER write "the speaker says" or "in this video"
-• NEVER start with "This transcript covers..." 
-• ALWAYS write as if YOU are the expert author of a textbook
-• Output ONLY valid HTML with inline styles — no <html>, <head>, <body>, <style> tags
-• No markdown syntax — use <b>, <h2>, <ul>, <table> etc.
-• Every HTML tag must have a style="..." attribute
+• Use **Markdown** (Headings, Bold, Lists, Tables, Blockquotes)
+• Use '###' for sub-sections. Use '##' for main sections.
+• Use tables for any comparisons or technical specifications.
+• NEVER copy raw transcript text into the output.
+• NEVER write "the speaker says" or "in this video".
+• ALWAYS write as if YOU are the expert author of a textbook.
+• Output ONLY the Markdown content.
 `;
 
   // ─── SANKSHIPTA: Clean Academic Notes ────────────────────────────────────
@@ -780,24 +786,25 @@ For each image: <div style="text-align:center;margin:20px 0">
      <span style="color:#374151;font-size:14px">[concrete example that illustrates the concept]</span>
    </div>
    
-   Key points: <ul style="padding-left:20px;margin:10px 0">
-     <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:8px">[point]</li>
-   </ul>
+**STRUCTURE — produce these sections in Markdown:**
 
-4. KEY TERMS GLOSSARY (if applicable)
-   <h2 style="font-size:20px;font-weight:700;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:8px;margin:28px 0 14px">📖 Key Terms</h2>
-   <dl style="margin:0">
-     <dt style="font-weight:700;color:#1e293b;font-size:15px;margin:12px 0 4px">[Term]</dt>
-     <dd style="color:#374151;font-size:14px;line-height:1.65;margin-left:16px">[Definition and context]</dd>
-   </dl>
+# [TOPIC TITLE]
+*Subject: [Subject Domain] • [Source Video](${videoUrl})*
 
-5. SUMMARY TAKEAWAYS
-   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-top:32px">
-     <h3 style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 12px">✅ Key Takeaways</h3>
-     <ul style="margin:0;padding-left:18px">
-       <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:8px">[takeaway]</li>
-     </ul>
-   </div>
+## Executive Summary
+[A concise 2-3 sentence overview of the core topic]
+
+## Learning Objectives
+- [objective 1]
+- [objective 2]
+...
+
+## Detailed Concepts
+[Break down the topic into logical sections using '##' and '###' headings. Use tables for comparisons. Use blockquotes for definitions.]
+
+## Key Takeaways
+- [takeaway 1]
+- [takeaway 2]
 
 **NOW PROCESS THIS TRANSCRIPT AND GENERATE THE COMPLETE STUDY DOCUMENT:**
 ${transcript}
@@ -810,116 +817,37 @@ ${coreIntelligenceRules}
 
 **${languageInstruction}**${userInstructions}
 
-**DESIGN SYSTEM — BHASHASETU (Premium Visual Study Guide):**
-Font: "Segoe UI, Roboto, Helvetica Neue, sans-serif" | Line-height: 1.75
-Primary: #2563eb | Success: #059669 | Warning: #d97706 | Danger: #dc2626 | Dark: #1e293b
-Background: #f8fafc | Card background: #ffffff
-
 **AVAILABLE IMAGES:**
 You have these AI-generated images to embed — use them contextually near relevant concepts:
 ${images_json}
-For each image: <div style="text-align:center;margin:20px 0">
-  <img src="[img_url]" alt="[title]" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">
-  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: [descriptive caption]</p>
-</div>
+To embed an image: ![title](img_url)
 
-**DOCUMENT STRUCTURE — produce ALL of these sections:**
+**STRUCTURE — produce these sections in Markdown:**
 
-1. HERO HEADER
-   <div style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);border-radius:14px;padding:32px;margin-bottom:28px;color:#fff">
-     <div style="font-size:11px;font-weight:700;letter-spacing:2px;opacity:0.75;text-transform:uppercase;margin-bottom:8px">[SUBJECT DOMAIN]</div>
-     <h1 style="font-size:30px;font-weight:800;margin:0 0 10px;line-height:1.25">[TOPIC TITLE]</h1>
-     <p style="opacity:0.85;font-size:14px;margin:0">Comprehensive study guide • <a href="${videoUrl}" style="color:#93c5fd;text-decoration:none">Source Video ↗</a></p>
-   </div>
+# [TOPIC TITLE]
+*Comprehensive Visual Guide • [Watch Video](${videoUrl})*
 
-2. LEARNING OBJECTIVES CARD
-   <div style="background:#fff;border:1px solid #bbf7d0;border-radius:12px;padding:20px 24px;margin-bottom:24px;box-shadow:0 2px 8px rgba(5,150,105,0.08)">
-     <h3 style="color:#065f46;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 12px">📋 What You Will Learn</h3>
-     <ul style="margin:0;padding-left:20px">
-       <li style="color:#047857;font-size:14px;line-height:1.65;margin-bottom:7px">[objective]</li>
-     </ul>
-   </div>
+## 📋 Learning Objectives
+- [objective]
 
-3. CONCEPT CARDS — for EACH major concept, create a styled card:
-   <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
-     <h2 style="font-size:19px;font-weight:700;color:#1e293b;margin:0 0 14px;display:flex;align-items:center;gap:8px">
-       <span style="background:#dbeafe;color:#2563eb;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">CONCEPT</span>
-       [Concept Name]
-     </h2>
-     <p style="color:#374151;font-size:15px;line-height:1.75;margin:0 0 14px">[Clear, original explanation of the concept]</p>
-     
-     [Insert image here if relevant — use the provided images_json]
-     
-     <!-- Definition box if needed -->
-     <div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0">
-       <span style="font-weight:700;color:#1d4ed8;font-size:13px">Definition: </span>
-       <span style="color:#1e40af;font-size:14px">[precise definition]</span>
-     </div>
-     
-     <!-- Example box if needed -->
-     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin:12px 0">
-       <b style="color:#92400e;font-size:13px">💡 Example</b><br>
-       <span style="color:#374151;font-size:14px;line-height:1.65">[concrete example]</span>
-     </div>
-     
-     <!-- Key points -->
-     <ul style="padding-left:18px;margin:12px 0 0">
-       <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:7px">[key point]</li>
-     </ul>
-     
-     <!-- Timestamp link if extractable from transcript -->
-     <div style="margin-top:14px">
-       <a href="${videoUrl}&t=0s" style="background:#f1f5f9;color:#64748b;padding:4px 12px;border-radius:20px;text-decoration:none;font-size:12px;font-weight:500">▶ Watch in video</a>
-     </div>
-   </div>
+## 🧠 Concept Breakdown
+[For each major concept, use '##' and '###'. Embed images where they fit naturally. Use tables for data and blockquotes for definitions.]
 
-4. COMPARISON TABLE (use when comparing 2+ related concepts or approaches)
-   <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow-x:auto">
-     <h2 style="font-size:18px;font-weight:700;color:#1e293b;margin:0 0 16px">Comparison / Overview</h2>
-     <table style="width:100%;border-collapse:collapse;font-size:14px">
-       <thead>
-         <tr style="background:#f1f5f9">
-           <th style="padding:10px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0">[Column]</th>
-           <th style="padding:10px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0">[Column]</th>
-         </tr>
-       </thead>
-       <tbody>
-         <tr style="border-bottom:1px solid #f1f5f9">
-           <td style="padding:10px 14px;color:#374151">[value]</td>
-           <td style="padding:10px 14px;color:#374151">[value]</td>
-         </tr>
-       </tbody>
-     </table>
-   </div>
+## 💡 Examples & Applications
+[Provide concrete examples to illustrate the concepts]
 
-5. CRITICAL POINTS ALERT (for must-know facts)
-   <div style="background:#fff7ed;border-left:5px solid #f97316;border-radius:0 10px 10px 0;padding:16px 20px;margin:20px 0">
-     <b style="color:#ea580c;font-size:14px">🚨 Important to Remember</b>
-     <ul style="margin:8px 0 0;padding-left:18px">
-       <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:6px">[critical point]</li>
-     </ul>
-   </div>
+## 🚨 Critical Points
+- [Important fact or warning]
 
-6. KEY TERMS GLOSSARY
-   <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
-     <h2 style="font-size:18px;font-weight:700;color:#1e293b;margin:0 0 16px">📖 Glossary of Key Terms</h2>
-     <dl style="margin:0">
-       <dt style="font-weight:700;color:#2563eb;font-size:15px;margin:12px 0 3px">[Term]</dt>
-       <dd style="color:#374151;font-size:14px;line-height:1.65;margin-left:0;padding-left:14px;border-left:2px solid #dbeafe">[Definition with context]</dd>
-     </dl>
-   </div>
+## 📖 Glossary
+**[Term]**: [Definition]
 
-7. SUMMARY + REVIEW QUESTIONS
-   <div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid #a7f3d0;border-radius:12px;padding:22px 26px;margin-top:28px">
-     <h3 style="color:#065f46;font-size:17px;font-weight:700;margin:0 0 14px">✅ Summary & Key Takeaways</h3>
-     <ul style="margin:0 0 18px;padding-left:20px">
-       <li style="color:#047857;font-size:14px;line-height:1.65;margin-bottom:8px">[takeaway]</li>
-     </ul>
-     <h3 style="color:#065f46;font-size:15px;font-weight:700;margin:0 0 10px">🧠 Review Questions</h3>
-     <ol style="margin:0;padding-left:20px">
-       <li style="color:#374151;font-size:14px;line-height:1.65;margin-bottom:7px">[thought-provoking question based on content]</li>
-     </ol>
-   </div>
+## ✅ Summary & Review
+### Key Takeaways
+- [takeaway]
+
+### Review Questions
+1. [question]
 
 **NOW PROCESS THIS TRANSCRIPT AND GENERATE THE COMPLETE VISUAL STUDY GUIDE:**
 ${transcript}

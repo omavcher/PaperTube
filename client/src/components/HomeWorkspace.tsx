@@ -23,7 +23,8 @@ import {
   Eye,
   Clock,
   ChevronRight,
-  Layers
+  Layers,
+  X
 } from "lucide-react";
 import { IconFolderCode } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -144,29 +145,17 @@ const formatTimeAgo = (dateString: string): string => {
 
 
 // --- Sub-Component: Grid Card ---
-const GridCard = React.memo(({ 
-  note, 
-  searchQuery, 
-  onClick, 
-  onProfileClick, 
-  highlightText, 
-  showCreator = false,
-  isPersonal = false
+const GridCard = React.memo(({
+  note, searchQuery, onClick, onProfileClick, highlightText, showCreator = false, isPersonal = false
 }: {
-  note: Note;
-  searchQuery: string;
+  note: Note; searchQuery: string;
   onClick: (note: Note, isPersonal: boolean) => void;
   onProfileClick: (creatorName: string) => void;
   highlightText: (text: string, highlight: string) => string | JSX.Element;
-  showCreator?: boolean;
-  isPersonal?: boolean;
+  showCreator?: boolean; isPersonal?: boolean;
 }) => {
   const thumbnailUrl = note.thumbnail || getYouTubeThumbnail(note.videoUrl);
-  
-  const handleCardClick = () => {
-    onClick(note, isPersonal);
-  };
-
+  const handleCardClick = () => onClick(note, isPersonal);
   const handleCreatorClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (note.creator?.username) onProfileClick(note.creator.username);
@@ -174,81 +163,79 @@ const GridCard = React.memo(({
   };
 
   return (
-    <div
+    <motion.div
       onClick={handleCardClick}
-      className="group cursor-pointer bg-neutral-900/40 border border-white/[0.06] hover:border-red-500/25 hover:bg-neutral-900/70 active:scale-[0.97] transition-all duration-300 rounded-2xl md:rounded-[1.5rem] overflow-hidden flex flex-col relative h-full animate-in fade-in slide-in-from-bottom-2 duration-300"
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className="group cursor-pointer flex flex-col h-full relative rounded-2xl overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', border: '1px solid rgba(255,255,255,0.06)' }}
     >
-      {/* Thumbnail */}
-      <div className="relative overflow-hidden bg-neutral-950 w-full aspect-video border-b border-white/[0.04] flex-shrink-0">
-        {/* Hover glow */}
-        <div className="absolute inset-0 bg-red-600/8 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10 pointer-events-none mix-blend-overlay" />
+      {/* Hover border glow */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style={{ boxShadow: 'inset 0 0 0 1px rgba(220,38,38,0.3), 0 8px 32px rgba(220,38,38,0.08)' }} />
 
+      {/* Thumbnail */}
+      <div className="relative overflow-hidden bg-neutral-950 w-full aspect-video flex-shrink-0">
         {thumbnailUrl ? (
-          <img 
-            src={thumbnailUrl} 
-            alt={note.title} 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
-            loading="lazy"
-          />
+          <img src={thumbnailUrl} alt={note.title}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.06] opacity-80 group-hover:opacity-100" loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-black">
-             <div className="w-10 h-10 rounded-full bg-neutral-800/60 flex items-center justify-center text-neutral-600">
-                <PlayCircle size={20} />
-             </div>
+          <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#111,#0a0a0a)' }}>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.15)' }}>
+              <FileText size={20} style={{ color: '#dc2626', opacity: 0.6 }} />
+            </div>
           </div>
         )}
-        
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
 
-        {/* Desktop hover play */}
-        <div className="hidden md:flex absolute inset-0 bg-black/40 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-           <div className="rounded-full p-3 bg-red-600/20 backdrop-blur-md text-red-500 border border-red-500/30 scale-90 group-hover:scale-100 transition-transform duration-300 shadow-lg">
-             {note.type === 'flashcard' ? <Layers size={16} /> : <FileText size={16} />}
-           </div>
+        {/* Top badges row */}
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10">
+          {note.type === 'flashcard' && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#fbbf24' }}>
+              <Layers size={8} /> Cards
+            </span>
+          )}
+          <span className="ml-auto text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {formatTimeAgo(note.updatedAt || note.createdAt)}
+          </span>
         </div>
 
-        {/* Timestamp */}
-        <div className="absolute top-2 right-2 md:top-2.5 md:right-2.5 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[8px] md:text-[9px] text-white/80 font-bold uppercase tracking-wider border border-white/[0.06] z-20">
-          {formatTimeAgo(note.updatedAt || note.createdAt)} 
+        {/* Hover overlay */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs" style={{ background: 'rgba(220,38,38,0.9)', color: '#fff', backdropFilter: 'blur(8px)' }}>
+            <FileText size={13} /> Open Note
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex flex-col flex-1 p-3 md:p-4">
-        <h3 className="font-bold text-white mb-auto leading-snug group-hover:text-red-400 transition-colors text-xs md:text-sm line-clamp-2">
-          {note.type === 'flashcard' && <span className="inline-flex items-center text-amber-500 border border-amber-500/30 bg-amber-500/10 px-1 py-0.5 rounded text-[8px] mr-1.5 uppercase tracking-wider mb-1 align-middle">Flashcards</span>}
+      <div className="flex flex-col flex-1 p-3.5">
+        <h3 className="font-semibold text-white leading-snug group-hover:text-red-400 transition-colors duration-200 text-[13px] line-clamp-2 mb-3">
           {searchQuery ? highlightText(note.title, searchQuery) : note.title}
         </h3>
 
         {/* Footer */}
-        <div className="mt-3 pt-2.5 border-t border-white/[0.04] flex items-center justify-between text-[8px] md:text-[9px] font-bold text-neutral-500 uppercase tracking-widest">
-           {showCreator ? (
-             <div className="flex items-center gap-1.5 max-w-[70%] hover:text-white transition-colors cursor-pointer" onClick={handleCreatorClick}>
-               {note.creator?.avatarUrl ? (
-                 <img src={note.creator.avatarUrl} alt="" className="w-4 h-4 md:w-5 md:h-5 rounded-md border border-white/10 flex-shrink-0" />
-               ) : (
-                 <div className="w-4 h-4 md:w-5 md:h-5 rounded-md bg-neutral-800 flex items-center justify-center text-white text-[8px] border border-white/10 flex-shrink-0">
-                   {getCreatorInitial(note.creator)}
-                 </div>
-               )}
-               <span className="truncate">{getCreatorName(note.creator)}</span>
-             </div>
-           ) : (
-             <span className="flex items-center gap-1">
-               <User size={10} className="text-red-500" /> Personal
-             </span>
-           )}
-
-           {note.views !== undefined && note.views > 0 && (
-             <span className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-               <Eye size={10} />
-               {note.views}
-             </span>
-           )}
+        <div className="mt-auto flex items-center justify-between gap-2">
+          {showCreator ? (
+            <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCreatorClick}>
+              {note.creator?.avatarUrl
+                ? <img src={note.creator.avatarUrl} alt="" className="w-5 h-5 rounded-full border border-white/10 flex-shrink-0" />
+                : <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0" style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.2)', color: '#f87171' }}>{getCreatorInitial(note.creator)}</div>
+              }
+              <span className="text-[10px] font-medium text-neutral-400 truncate max-w-[80px]">{getCreatorName(note.creator)}</span>
+            </div>
+          ) : (
+            <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: 'rgba(220,38,38,0.7)' }}>
+              <User size={10} /> Mine
+            </span>
+          )}
+          {note.views !== undefined && note.views > 0 && (
+            <span className="flex items-center gap-1 text-[10px] text-neutral-600 group-hover:text-neutral-400 transition-colors">
+              <Eye size={10} /> {note.views.toLocaleString()}
+            </span>
+          )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 });
 GridCard.displayName = "GridCard";
@@ -273,11 +260,7 @@ const ListCard = React.memo(({
   isPersonal?: boolean;
 }) => {
   const thumbnailUrl = note.thumbnail || getYouTubeThumbnail(note.videoUrl);
-  
-  const handleCardClick = () => {
-    onClick(note, isPersonal);
-  };
-
+  const handleCardClick = () => onClick(note, isPersonal);
   const handleCreatorClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (note.creator?.username) onProfileClick(note.creator.username);
@@ -285,101 +268,82 @@ const ListCard = React.memo(({
   };
 
   return (
-    <div
+    <motion.div
       onClick={handleCardClick}
-      className="group cursor-pointer bg-neutral-900/30 border border-white/[0.06] hover:border-red-500/20 hover:bg-neutral-900/60 active:scale-[0.99] transition-all duration-300 rounded-xl md:rounded-2xl overflow-hidden flex flex-row items-stretch relative animate-in fade-in slide-in-from-bottom-1 duration-300"
+      whileHover={{ x: 2 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+      className="group cursor-pointer flex flex-row items-stretch relative rounded-xl overflow-hidden"
+      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
     >
-      {/* Thumbnail Section */}
-      <div className="relative overflow-hidden bg-neutral-950 w-24 sm:w-36 md:w-48 flex-shrink-0 border-r border-white/[0.04]">
-        {/* Hover glow */}
-        <div className="absolute inset-0 bg-red-600/8 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10 pointer-events-none mix-blend-overlay" />
+      {/* Left accent line on hover */}
+      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
 
+      {/* Thumbnail */}
+      <div className="relative overflow-hidden bg-neutral-950 w-20 sm:w-32 md:w-44 flex-shrink-0" style={{ borderRight: '1px solid rgba(255,255,255,0.04)' }}>
         {thumbnailUrl ? (
-          <img 
-            src={thumbnailUrl} 
-            alt={note.title} 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-75 group-hover:opacity-100"
-            loading="lazy"
-          />
+          <img src={thumbnailUrl} alt={note.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-70 group-hover:opacity-90" loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-black min-h-[72px]">
-            <PlayCircle size={18} className="text-neutral-600" />
+          <div className="w-full h-full flex items-center justify-center min-h-[70px]" style={{ background: 'linear-gradient(135deg,#0d0d0d,#111)' }}>
+            <FileText size={16} style={{ color: '#dc2626', opacity: 0.4 }} />
           </div>
         )}
-        
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/50 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/40 pointer-events-none" />
+        {note.type === 'flashcard' && (
+          <div className="absolute top-1.5 left-1.5">
+            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-bold uppercase" style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>
+              <Layers size={7} /> Cards
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Content Section */}
-      <div className="flex-1 min-w-0 flex items-center px-3 sm:px-4 md:px-5 py-3 md:py-4 gap-3 md:gap-4">
-        
-        {/* Main Info */}
-        <div className="flex-1 min-w-0 space-y-1.5 md:space-y-2">
-          {/* Title */}
-          <h3 className="font-bold text-white leading-snug group-hover:text-red-400 transition-colors text-xs sm:text-sm md:text-base line-clamp-1 md:line-clamp-2 flex items-center gap-1.5">
-            {note.type === 'flashcard' && <span className="inline-flex items-center text-amber-500 border border-amber-500/30 bg-amber-500/10 px-1 py-0.5 rounded text-[8px] uppercase tracking-wider align-middle shrink-0">Flashcards</span>}
-            <span className="truncate">{searchQuery ? highlightText(note.title, searchQuery) : note.title}</span>
+      {/* Content */}
+      <div className="flex-1 min-w-0 flex items-center px-4 py-3 gap-4">
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <h3 className="font-semibold text-white leading-snug group-hover:text-red-400 transition-colors duration-200 text-sm line-clamp-1">
+            {searchQuery ? highlightText(note.title, searchQuery) : note.title}
           </h3>
-          
-          {/* Meta row */}
-          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-            {/* Creator or Personal badge */}
+
+          <div className="flex items-center gap-2 flex-wrap">
             {showCreator ? (
-              <div 
-                className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer"
-                onClick={handleCreatorClick}
-              >
-                {note.creator?.avatarUrl ? (
-                  <img src={note.creator.avatarUrl} alt="" className="w-4 h-4 rounded-full border border-white/10 flex-shrink-0" />
-                ) : (
-                  <div className="w-4 h-4 rounded-full bg-neutral-800 flex items-center justify-center text-white text-[7px] font-bold border border-white/10 flex-shrink-0">
-                    {getCreatorInitial(note.creator)}
-                  </div>
-                )}
-                <span className="text-[9px] md:text-[10px] font-bold text-neutral-400 uppercase tracking-wider truncate max-w-[100px] md:max-w-[160px]">
-                  {getCreatorName(note.creator)}
-                </span>
+              <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCreatorClick}>
+                {note.creator?.avatarUrl
+                  ? <img src={note.creator.avatarUrl} alt="" className="w-4 h-4 rounded-full border border-white/10 flex-shrink-0" />
+                  : <div className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold flex-shrink-0" style={{ background: 'rgba(220,38,38,0.15)', color: '#f87171' }}>{getCreatorInitial(note.creator)}</div>
+                }
+                <span className="text-[10px] font-medium text-neutral-400 truncate max-w-[120px]">{getCreatorName(note.creator)}</span>
               </div>
             ) : (
-              <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
-                <User size={10} className="text-red-500" /> Personal
+              <span className="text-[10px] font-medium flex items-center gap-1" style={{ color: 'rgba(220,38,38,0.6)' }}>
+                <User size={9} /> Personal
               </span>
             )}
-
-            {/* Divider dot */}
-            <span className="w-1 h-1 rounded-full bg-neutral-700 hidden sm:block" />
-
-            {/* Time */}
-            <span className="hidden sm:flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
-              <Clock size={10} className="text-neutral-600" />
-              {formatTimeAgo(note.updatedAt || note.createdAt)}
+            <span className="w-0.5 h-0.5 rounded-full bg-neutral-700 hidden sm:block" />
+            <span className="hidden sm:flex items-center gap-1 text-[10px] text-neutral-600">
+              <Clock size={9} /> {formatTimeAgo(note.updatedAt || note.createdAt)}
             </span>
-
-            {/* Views */}
             {note.views !== undefined && note.views > 0 && (
               <>
-                <span className="w-1 h-1 rounded-full bg-neutral-700 hidden md:block" />
-                <span className="hidden md:flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
-                  <Eye size={10} className="text-neutral-600" />
-                  {note.views.toLocaleString()} views
+                <span className="w-0.5 h-0.5 rounded-full bg-neutral-700 hidden md:block" />
+                <span className="hidden md:flex items-center gap-1 text-[10px] text-neutral-600">
+                  <Eye size={9} /> {note.views.toLocaleString()}
                 </span>
               </>
             )}
           </div>
         </div>
 
-        {/* Mobile time badge */}
-        <div className="sm:hidden text-[8px] font-bold text-neutral-600 uppercase tracking-wider flex-shrink-0">
-          {formatTimeAgo(note.updatedAt || note.createdAt)}
-        </div>
-
-        {/* Arrow indicator */}
-        <div className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg bg-white/[0.03] text-neutral-600 group-hover:text-red-500 group-hover:bg-red-500/10 transition-all flex-shrink-0">
-          <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+        {/* Arrow */}
+        <div className="hidden md:flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0 transition-all duration-200"
+          style={{ background: 'rgba(255,255,255,0.03)', color: '#555' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.1)'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLElement).style.color = '#555'; }}
+        >
+          <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 });
 ListCard.displayName = "ListCard";
@@ -543,152 +507,186 @@ export default function NotesWorkspace() {
       
       {/* Subtle Background Atmosphere */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-950/20 via-transparent to-transparent pointer-events-none opacity-60" />
-      
-      {/* --- HEADER BAR --- */}
-      <div className="sticky top-0 z-40 w-full bg-black/80 backdrop-blur-md border-b border-white/[0.06] transform-gpu">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 md:py-4 flex items-center justify-between gap-3 md:gap-4">
-            
-            {/* Logo/Title */}
-            <div className="flex items-center gap-2.5 md:gap-3">
-               <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-xl md:rounded-[0.85rem] flex items-center justify-center text-black shrink-0 shadow-[0_0_20px_rgba(255,255,255,0.08)]">
-                  <Database size={16} className="md:w-5 md:h-5" />
-               </div>
-               <div>
-                  <h1 className="text-base md:text-xl font-bold tracking-tight text-white leading-tight">My Library</h1>
-                  <p className="text-[8px] md:text-[9px] text-neutral-500 font-bold uppercase tracking-[0.2em]">Personal Workspace</p>
-               </div>
-            </div>
+           {/* --- HEADER BAR --- */}
+      <div className="sticky top-0 z-40 w-full transform-gpu" style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
 
-            {/* Desktop Tabs & Search */}
-            <div className="hidden md:flex flex-1 max-w-2xl gap-3 ml-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-                    <TabsList className="bg-neutral-900/60 border border-white/[0.08] h-10 p-1 rounded-xl">
-                        <TabsTrigger value="explore" className="text-[10px] font-bold uppercase tracking-wider px-5 rounded-lg data-[state=active]:bg-white data-[state=active]:text-black transition-all data-[state=active]:shadow-sm">Community</TabsTrigger>
-                        <TabsTrigger value="my-bag" className="text-[10px] font-bold uppercase tracking-wider px-5 rounded-lg data-[state=active]:bg-white data-[state=active]:text-black transition-all data-[state=active]:shadow-sm">Personal</TabsTrigger>
-                    </TabsList>
-                </Tabs>
-                <div className="relative flex-1 group">
-                   <div className="absolute -inset-0.5 bg-red-600/15 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
-                   <div className="relative flex items-center bg-black border border-white/[0.08] rounded-xl h-10 px-3.5">
-                      <Search className="text-neutral-500 mr-2 group-focus-within:text-red-500 transition-colors" size={14} />
-                      <input 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search notes..."
-                        className="w-full bg-transparent border-none focus:outline-none text-xs font-medium text-white placeholder:text-neutral-600"
-                      />
-                   </div>
+        {/* Top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.5) 40%, rgba(220,38,38,0.5) 60%, transparent)' }} />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+
+          {/* === MAIN HEADER ROW === */}
+          <div className="flex items-center gap-3 py-3 md:py-3.5">
+
+            {/* Brand */}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-xl blur-md" style={{ background: 'rgba(220,38,38,0.4)' }} />
+                <div className="relative w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'linear-gradient(135deg,#dc2626,#7f1d1d)', boxShadow: '0 0 0 1px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
+                  <Database size={15} style={{ color: '#fff' }} />
                 </div>
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-[15px] font-bold tracking-tight text-white leading-none mb-0.5">My Library</h1>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full" style={{ background: '#dc2626' }} />
+                  <p className="text-[9px] font-semibold tracking-[0.18em] uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>Personal Workspace</p>
+                </div>
+              </div>
             </div>
 
-            {/* Right Actions */}
-            <div className="flex items-center gap-2">
-               {/* View Mode Toggle */}
-               <div className="hidden md:flex items-center bg-neutral-900/50 border border-white/[0.06] rounded-lg p-0.5">
-                  <button 
-                    onClick={() => setViewMode("grid")} 
-                    className={cn(
-                      "p-1.5 rounded-md transition-all",
-                      viewMode === "grid" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-white"
-                    )}
+            {/* === CENTRE: Tab switcher (desktop) === */}
+            <div className="hidden md:flex flex-1 justify-center">
+              <div className="flex items-center p-1 rounded-xl gap-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {[
+                  { id: 'explore', label: 'Community', icon: Globe },
+                  { id: 'my-bag',  label: 'Personal',  icon: User  },
+                ].map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className="flex items-center gap-2 px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all duration-200"
+                    style={activeTab === id
+                      ? { background: '#fff', color: '#000', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }
+                      : { color: 'rgba(255,255,255,0.35)' }
+                    }
+                    onMouseEnter={e => { if (activeTab !== id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'; }}
+                    onMouseLeave={e => { if (activeTab !== id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}
                   >
-                    <Grid size={14} />
-                  </button>
-                  <button 
-                    onClick={() => setViewMode("list")} 
-                    className={cn(
-                      "p-1.5 rounded-md transition-all",
-                      viewMode === "list" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-white"
+                    <Icon size={12} />
+                    {label}
+                    {id === 'my-bag' && notes.length > 0 && (
+                      <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold"
+                        style={activeTab === id
+                          ? { background: 'rgba(0,0,0,0.15)', color: '#000' }
+                          : { background: 'rgba(220,38,38,0.2)', color: '#f87171' }
+                        }>
+                        {notes.length}
+                      </span>
                     )}
-                  >
-                    <List size={14} />
                   </button>
-               </div>
-
-               {/* Sort */}
-               <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                     <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg border border-white/[0.06] bg-neutral-900/50 h-8 md:h-9 px-2.5 md:px-3 text-[10px] font-bold uppercase tracking-wider gap-1.5">
-                        <ArrowUpDown size={12} />
-                        <span className="hidden md:inline">{sortLabel}</span>
-                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-[#0a0a0a] border-white/10 text-white rounded-xl p-1.5 w-44 shadow-2xl">
-                      <DropdownMenuItem onClick={() => setSortBy("updatedAt")} className={cn("text-xs font-medium focus:bg-white/10 rounded-lg cursor-pointer gap-2", sortBy === "updatedAt" && "text-red-400")}>
-                        <Clock size={12} /> Newest First
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy("title")} className={cn("text-xs font-medium focus:bg-white/10 rounded-lg cursor-pointer gap-2", sortBy === "title" && "text-red-400")}>
-                        <ArrowUpDown size={12} /> Alphabetical
-                      </DropdownMenuItem>
-                  </DropdownMenuContent>
-               </DropdownMenu>
-
-               {/* Mobile View Toggle */}
-               <div className="md:hidden flex items-center bg-neutral-900/50 border border-white/[0.06] rounded-lg p-0.5">
-                  <button 
-                    onClick={() => setViewMode("grid")} 
-                    className={cn(
-                      "p-1.5 rounded-md transition-all",
-                      viewMode === "grid" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"
-                    )}
-                  >
-                    <Grid size={13} />
-                  </button>
-                  <button 
-                    onClick={() => setViewMode("list")} 
-                    className={cn(
-                      "p-1.5 rounded-md transition-all",
-                      viewMode === "list" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"
-                    )}
-                  >
-                    <List size={13} />
-                  </button>
-               </div>
-
-               {/* Generate Button (Desktop) */}
-               <Button 
-                  onClick={() => router.push('/')}
-                  className="hidden md:flex bg-red-600 hover:bg-red-700 text-white rounded-xl h-9 text-[10px] font-bold uppercase tracking-widest px-5 shadow-[0_0_15px_rgba(220,38,38,0.3)] transition-all"
-               >
-                  <Plus size={14} className="mr-1.5" /> New Note
-               </Button>
+                ))}
+              </div>
             </div>
-         </div>
-      </div>
 
-      {/* --- MOBILE: Sub-Header (Tabs & Search) --- */}
-      <div className="md:hidden px-4 py-2.5 sticky top-[57px] z-30 bg-black/95 backdrop-blur-sm border-b border-white/[0.04] space-y-2.5 transform-gpu">
-         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="bg-neutral-900 border border-white/[0.08] h-9 p-0.5 rounded-xl w-full grid grid-cols-2">
-                <TabsTrigger value="explore" className="text-[9px] font-bold uppercase tracking-widest rounded-lg data-[state=active]:bg-white data-[state=active]:text-black transition-all">Community</TabsTrigger>
-                <TabsTrigger value="my-bag" className="text-[9px] font-bold uppercase tracking-widest rounded-lg data-[state=active]:bg-white data-[state=active]:text-black transition-all">Personal</TabsTrigger>
-            </TabsList>
-         </Tabs>
-         
-         <div className="relative group">
-            <div className="absolute -inset-0.5 bg-red-600/15 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
-            <div className="relative flex items-center bg-black border border-white/[0.08] rounded-xl h-9 px-3">
-                <Search className="text-neutral-500 mr-2 group-focus-within:text-red-500 transition-colors" size={13} />
-                <input 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search notes..."
-                  className="w-full bg-transparent border-none focus:outline-none text-[11px] font-medium text-white placeholder:text-neutral-600"
-                />
+            {/* === RIGHT: Search + Controls === */}
+            <div className="flex items-center gap-2 flex-1 md:flex-none justify-end">
+
+              {/* Search bar */}
+              <div className="relative group hidden md:flex w-52 lg:w-64">
+                <div className="flex items-center w-full h-9 px-3 rounded-xl transition-all duration-200 gap-2"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'rgba(220,38,38,0.45)'; e.currentTarget.style.background = 'rgba(220,38,38,0.04)'; }}
+                  onBlur={e =>  { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                >
+                  <Search size={13} style={{ color: '#555', flexShrink: 0 }} className="group-focus-within:!text-red-500 transition-colors" />
+                  <input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search notes…"
+                    className="w-full bg-transparent border-none focus:outline-none text-[12px] text-white placeholder:text-neutral-600"
+                    style={{ lineHeight: 1 }}
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="flex-shrink-0 text-neutral-600 hover:text-white transition-colors">
+                      <X size={11} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* View mode pills */}
+              <div className="flex items-center rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                {([['grid', Grid], ['list', List]] as const).map(([mode, Icon]) => (
+                  <button key={mode} onClick={() => setViewMode(mode as 'grid' | 'list')}
+                    className="p-2 transition-all duration-150"
+                    style={viewMode === mode
+                      ? { background: 'rgba(220,38,38,0.2)', color: '#f87171' }
+                      : { color: 'rgba(255,255,255,0.3)' }
+                    }
+                  >
+                    <Icon size={13} />
+                  </button>
+                ))}
+              </div>
+
+              {/* Sort dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-150"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+                  >
+                    <ArrowUpDown size={11} />
+                    <span className="hidden sm:inline">{sortLabel}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/[0.08] text-white rounded-xl p-1.5 w-48 shadow-2xl">
+                  <DropdownMenuItem onClick={() => setSortBy('updatedAt')}
+                    className={cn('text-[11px] font-medium rounded-lg cursor-pointer gap-2 px-3 py-2 focus:bg-white/5', sortBy === 'updatedAt' ? 'text-red-400' : 'text-neutral-400')}>
+                    <Clock size={12} /> Newest First
+                    {sortBy === 'updatedAt' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-red-500" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('title')}
+                    className={cn('text-[11px] font-medium rounded-lg cursor-pointer gap-2 px-3 py-2 focus:bg-white/5', sortBy === 'title' ? 'text-red-400' : 'text-neutral-400')}>
+                    <ArrowUpDown size={12} /> A → Z
+                    {sortBy === 'title' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-red-500" />}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* New Note CTA */}
+              <button
+                onClick={() => router.push('/')}
+                className="hidden md:flex items-center gap-1.5 h-9 px-4 rounded-xl text-[10px] font-bold uppercase tracking-widest text-white transition-all duration-200 active:scale-95 shrink-0"
+                style={{ background: 'linear-gradient(135deg,#dc2626,#9f1c1c)', boxShadow: '0 0 18px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.12)' }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 0 28px rgba(220,38,38,0.55), inset 0 1px 0 rgba(255,255,255,0.12)')}
+                onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 18px rgba(220,38,38,0.3),  inset 0 1px 0 rgba(255,255,255,0.12)')}
+              >
+                <Plus size={13} /> New Note
+              </button>
             </div>
-         </div>
+          </div>
+
+          {/* === MOBILE: Tab switcher row === */}
+          <div className="md:hidden pb-2.5 flex items-center gap-2">
+            <div className="flex flex-1 items-center p-0.5 rounded-xl gap-0.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              {[
+                { id: 'explore', label: 'Community' },
+                { id: 'my-bag',  label: 'Personal' },
+              ].map(({ id, label }) => (
+                <button key={id} onClick={() => setActiveTab(id)}
+                  className="flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all duration-150"
+                  style={activeTab === id ? { background: '#fff', color: '#000' } : { color: 'rgba(255,255,255,0.35)' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Mobile search */}
+            <div className="flex items-center h-8 px-2.5 rounded-xl gap-1.5 flex-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <Search size={12} style={{ color: '#555', flexShrink: 0 }} />
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search…"
+                className="w-full bg-transparent border-none focus:outline-none text-[11px] text-white placeholder:text-neutral-600" />
+            </div>
+          </div>
+
+        </div>
       </div>
 
       {/* --- CONTENT AREA --- */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8 min-h-[50vh] relative z-10">
          
-         {/* Results Count Badge */}
+         {/* Results Count */}
          {!loading && currentItems.length > 0 && (
-           <div className="mb-4 md:mb-6 flex items-center gap-2">
-             <span className="text-[9px] md:text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em]">
-               {currentItems.length} {currentItems.length === 1 ? 'Note' : 'Notes'}
+           <div className="mb-5 flex items-center gap-3">
+             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#dc2626', boxShadow: '0 0 6px rgba(220,38,38,0.6)' }} />
+             <span className="text-[10px] font-semibold tracking-wider" style={{ color: 'rgba(255,255,255,0.3)' }}>
+               {currentItems.length} {currentItems.length === 1 ? 'note' : 'notes'}
              </span>
-             <div className="flex-1 h-px bg-white/[0.04]" />
+             <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(255,255,255,0.06), transparent)' }} />
            </div>
          )}
 
@@ -699,11 +697,12 @@ export default function NotesWorkspace() {
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center min-h-[40vh] space-y-4"
+                className="flex flex-col items-center justify-center min-h-[40vh] space-y-5"
               >
                 <div className="relative">
-                  <div className="absolute inset-0 bg-red-600/20 blur-xl rounded-full animate-pulse" />
-                  <Loader2 className="w-8 h-8 text-red-500 animate-spin relative z-10" />
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.15)' }}>
+                    <Loader2 className="w-6 h-6 text-red-500 animate-spin" />
+                  </div>
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">Loading Notes...</p>
               </motion.div>
