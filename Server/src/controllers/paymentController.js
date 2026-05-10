@@ -6,11 +6,20 @@ const Transaction = require("../models/Transaction");
 const { consumePromoCode } = require("./promoController");
 const emailService = require("../utils/emailService");
 
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// Initialize Razorpay lazily so missing env vars don't crash the server on startup
+let _razorpay = null;
+const getRazorpay = () => {
+  if (!_razorpay) {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      throw new Error('Razorpay keys not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET env vars.');
+    }
+    _razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+  }
+  return _razorpay;
+};
 
 // Package configurations
 const SUBSCRIPTION_PLANS = {
@@ -89,7 +98,7 @@ exports.createOrder = async (req, res) => {
     };
 
     // Create order with Razorpay
-    const order = await razorpay.orders.create(options);
+    const order = await getRazorpay().orders.create(options);
 
     console.log("✅ Order created:", {
       orderId: order.id,
