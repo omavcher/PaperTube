@@ -3,11 +3,17 @@ import HomeMain from "@/components/HomeMain";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Engineering YouTube Notes | AI PDF Converter - Paperxify",
-  description: "Convert 3-hour engineering YouTube lectures and complex tutorials into structured PDF notes instantly. Perfect for engineering students and developers.",
+  title: "Engineering YouTube Notes AI | YouTube to Notes AI for Students",
+  description: "Convert 3-hour engineering YouTube lectures into structured notes instantly. Paperxify is the best AI YouTube note taker and video summarizer for Indian students.",
   keywords: [
     "engineering youtube notes",
+    "youtube to notes ai",
+    "ai youtube note taker",
     "youtube to notes for engineering",
+    "ai notes for youtube lectures",
+    "youtube study notes ai",
+    "best ai youtube summarizer in india",
+    "youtube to notes ai for indian students",
     "convert engineering lecture to pdf",
     "best ai for engineering students"
   ]

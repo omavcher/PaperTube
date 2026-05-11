@@ -72,7 +72,7 @@ export default function HowToUse() {
             transition={{ delay: 0.08 }}
             className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 leading-none"
           >
-            YouTube to PDF<br />
+            YouTube to Notes AI<br />
             <span className="text-white">in 3 steps.</span>
           </motion.h2>
 
@@ -83,7 +83,7 @@ export default function HowToUse() {
             transition={{ delay: 0.15 }}
             className="text-neutral-400 text-sm max-w-lg mx-auto leading-relaxed"
           >
-            Watch the demo below — see exactly how PaperXify converts any YouTube video into a clean, exam-ready PDF.
+            Watch the demo below — see exactly how our free AI YouTube note taker converts any video into clean, exam-ready study notes instantly.
           </motion.p>
         </div>
 

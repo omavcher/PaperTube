@@ -22,8 +22,8 @@ import { Badge } from "@/components/ui/badge";
 const features = [
   {
     id: "FEAT-001",
-    title: "Neural AI Models",
-    description: "Access 5 specialized LLMs architected for distinct academic and technical note-taking styles.",
+    title: "YouTube Summarizer AI",
+    description: "Access specialized LLMs architected to be the ultimate YouTube to notes AI for academic lectures and technical videos.",
     icon: <Cpu className="h-4 w-4 md:h-6 md:w-6" />,
     tag: "Processing",
     accent: "blue"
