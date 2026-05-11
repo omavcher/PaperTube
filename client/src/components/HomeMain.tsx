@@ -560,17 +560,6 @@ export default function HomeMain() {
                       {activeCategory === 'youtube' && <><span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]">Turn YouTube</span> <br className="hidden sm:block"/> Into Knowledge.</>}
                     </motion.h1>
                   </AnimatePresence>
-                  
-                  {activeCategory === 'youtube' && (
-                    <motion.h2 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2, duration: 0.4 }}
-                      className="text-neutral-400 text-sm md:text-base font-medium text-center max-w-xl mx-auto leading-relaxed"
-                    >
-                      The ultimate <span className="text-white font-bold">AI YouTube note taker</span>. Use our <span className="text-white font-bold">YouTube to notes AI</span> to convert any video into structured study guides instantly—your premier <span className="text-white font-bold">NoteGPT alternative</span>.
-                    </motion.h2>
-                  )}
                 </div>
               </div>
 
