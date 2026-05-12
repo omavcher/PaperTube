@@ -399,7 +399,69 @@ export default function MergePDFPage() {
               </CardContent>
             </Card>
           </div>
-        </div>            <CorePromo/>
+        </div>
+
+        {/* --- SEO Content Section --- */}
+        <div className="mt-24 space-y-16">
+          <div className="text-center space-y-6 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
+              Why Use Our <span className="text-red-500">Merge PDF Tool?</span>
+            </h2>
+            <p className="text-neutral-400 font-medium leading-relaxed">
+              Paperxify offers the fastest, most secure way to combine PDF documents online. Unlike other platforms like iLovePDF or Adobe Acrobat, our tool operates entirely in your browser using secure client-side processing. Your private documents never touch our servers, ensuring 100% data privacy.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <ShieldCheck className="h-6 w-6 text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Secure & Private</h3>
+              <p className="text-sm text-neutral-400">All PDF merging happens locally on your device. We don't upload, store, or see your files, giving you absolute peace of mind.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <Merge className="h-6 w-6 text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold text-white">No File Limits</h3>
+              <p className="text-sm text-neutral-400">Combine as many PDF documents as you need. There are no strict file size limits or paywalls blocking your workflow.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <Zap className="h-6 w-6 text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Lightning Fast</h3>
+              <p className="text-sm text-neutral-400">Because it runs directly in your browser, the merge process is nearly instant. No waiting for uploads or server processing queues.</p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-8 mt-16 p-8 rounded-3xl bg-neutral-900/20 border border-white/10">
+            <h2 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">How do I merge PDF files for free?</h4>
+                <p className="text-neutral-400">Simply drag and drop your PDF files into the designated upload area above. You can rearrange the order of the files by dragging them up or down. Once you're satisfied with the order, click "Execute Merge" to instantly combine them into a single PDF document.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Is Paperxify better than iLovePDF or Adobe Acrobat?</h4>
+                <p className="text-neutral-400">Paperxify stands out by prioritizing your privacy and speed. While tools like iLovePDF or Acrobat often require you to upload files to their servers, Paperxify processes everything locally. This means zero upload time and zero risk of your sensitive documents being stored on third-party servers. Plus, it's completely free without annoying premium tier restrictions.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Can I merge PDFs on my phone?</h4>
+                <p className="text-neutral-400">Yes! Our tool is fully responsive and works beautifully on any device, including iOS and Android smartphones. You can select PDF files directly from your mobile device and merge them instantly in your mobile browser.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-16">
+          <CorePromo/>
+        </div>
 
       </main>
 

@@ -354,7 +354,69 @@ export default function MatrixCalculatorClient() {
 
         {/* --- CORE PROMO --- */}
         <div className="mt-20 mb-10">
-           <CorePromo />
+           
+        {/* --- SEO Content Section --- */}
+        <div className="mt-24 space-y-16 px-4">
+          <div className="text-center space-y-6 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
+              Why Use Our Matrix Calculator?
+            </h2>
+            <p className="text-neutral-400 font-medium leading-relaxed">
+              Built for engineering students and professionals, our calculator simplifies complex linear algebra problems with an intuitive, fast UI.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">1</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Up to 5x5 Support</h3>
+              <p className="text-sm text-neutral-400">Handle large matrices with ease.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">2</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Step-by-Step</h3>
+              <p className="text-sm text-neutral-400">Instant results for complex linear algebra.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">3</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Client-Side Speed</h3>
+              <p className="text-sm text-neutral-400">Calculations happen in milliseconds.</p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-8 mt-16 p-8 rounded-3xl bg-neutral-900/20 border border-white/10">
+            <h2 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">What matrix operations are supported?</h4>
+                <p className="text-neutral-400">You can perform addition, subtraction, multiplication, find the determinant, and calculate the inverse of matrices.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">What is the maximum matrix size?</h4>
+                <p className="text-neutral-400">Our tool supports square and rectangular matrices up to 5x5 dimensions.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Is this matrix calculator free?</h4>
+                <p className="text-neutral-400">Yes, it is 100% free to use for students, engineers, and mathematicians.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-16">
+          <CorePromo/>
+        </div>
+
         </div>
 
       </main>

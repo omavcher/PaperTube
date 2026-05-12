@@ -262,7 +262,69 @@ export default function GithubWrappedClient() {
             </motion.div>
           )}
         </AnimatePresence>
-        <CorePromo/>
+        
+        {/* --- SEO Content Section --- */}
+        <div className="mt-24 space-y-16 px-4">
+          <div className="text-center space-y-6 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
+              Why Use GitHub Wrapped?
+            </h2>
+            <p className="text-neutral-400 font-medium leading-relaxed">
+              Showcasing your coding activity helps you stand out to recruiters. Our tool turns raw Git data into a stunning visual portfolio piece.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">1</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">No Auth Needed</h3>
+              <p className="text-sm text-neutral-400">Works with any public username.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">2</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Export as Image</h3>
+              <p className="text-sm text-neutral-400">Perfect for social media sharing.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">3</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Beautiful Design</h3>
+              <p className="text-sm text-neutral-400">Premium glassmorphic aesthetics.</p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-8 mt-16 p-8 rounded-3xl bg-neutral-900/20 border border-white/10">
+            <h2 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">What stats are included?</h4>
+                <p className="text-neutral-400">It pulls your total commits, PRs, top languages, and most active repositories over the past year.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Do I need to authenticate?</h4>
+                <p className="text-neutral-400">No, you only need to enter your public GitHub username. We fetch public API data.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Can I share the result?</h4>
+                <p className="text-neutral-400">Yes, you can download the generated dashboard as an image to share on LinkedIn or Twitter.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-16">
+          <CorePromo/>
+        </div>
+
 
       </main>
       <Footer />

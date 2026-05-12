@@ -262,7 +262,69 @@ export default function LogicLabClient() {
 
         {/* --- CORE PROMO --- */}
         <div className="mt-20 mb-10">
-           <CorePromo />
+           
+        {/* --- SEO Content Section --- */}
+        <div className="mt-24 space-y-16 px-4">
+          <div className="text-center space-y-6 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
+              Why Use Our Logic Gate Lab?
+            </h2>
+            <p className="text-neutral-400 font-medium leading-relaxed">
+              Understanding digital electronics is crucial. Our simulator provides a real-time sandbox to test truth tables and circuit designs.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">1</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Visual Feedback</h3>
+              <p className="text-sm text-neutral-400">See signals propagate in real-time.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">2</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">All Standard Gates</h3>
+              <p className="text-sm text-neutral-400">Complete toolkit for digital logic design.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">3</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Educational</h3>
+              <p className="text-sm text-neutral-400">Perfect for learning boolean algebra.</p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-8 mt-16 p-8 rounded-3xl bg-neutral-900/20 border border-white/10">
+            <h2 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">What logic gates are available?</h4>
+                <p className="text-neutral-400">We support all standard gates: AND, OR, NOT, NAND, NOR, XOR, and XNOR.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Can I simulate complex circuits?</h4>
+                <p className="text-neutral-400">Yes, you can build and test boolean expressions by linking multiple gates together.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Is the simulator suitable for students?</h4>
+                <p className="text-neutral-400">Absolutely, it's designed to help computer science and engineering students visualize boolean logic.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-16">
+          <CorePromo/>
+        </div>
+
         </div>
 
       </main>

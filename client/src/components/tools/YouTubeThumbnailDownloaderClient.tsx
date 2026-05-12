@@ -219,7 +219,69 @@ export default function YouTubeThumbnailDownloaderClient() {
 
         {/* --- CORE PROMO --- */}
         <div className="mt-20 mb-10">
-           <CorePromo />
+           
+        {/* --- SEO Content Section --- */}
+        <div className="mt-24 space-y-16 px-4">
+          <div className="text-center space-y-6 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
+              Why Use Our Thumbnail Grabber?
+            </h2>
+            <p className="text-neutral-400 font-medium leading-relaxed">
+              Content creators often need to analyze competitor thumbnails or recover their own. Our tool fetches the highest quality images instantly.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">1</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">High Definition</h3>
+              <p className="text-sm text-neutral-400">Extract up to 4K resolution thumbnails.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">2</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">No Watermarks</h3>
+              <p className="text-sm text-neutral-400">Clean, original images directly from YouTube.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">3</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Fast Extraction</h3>
+              <p className="text-sm text-neutral-400">Just paste the URL and click download.</p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-8 mt-16 p-8 rounded-3xl bg-neutral-900/20 border border-white/10">
+            <h2 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">How do I download a YouTube thumbnail?</h4>
+                <p className="text-neutral-400">Paste the YouTube video URL into the input field, and we will instantly extract all available thumbnail resolutions for you to download.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Can I get HD and 4K thumbnails?</h4>
+                <p className="text-neutral-400">Yes, we fetch the maximum resolution (MaxRes) available for the video.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Is it legal to download thumbnails?</h4>
+                <p className="text-neutral-400">Thumbnails are copyrighted by their creators. You should only use them for fair use, inspiration, or personal reference.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-16">
+          <CorePromo/>
+        </div>
+
         </div>
 
       </main>

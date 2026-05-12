@@ -244,7 +244,69 @@ export default function JsonFormatterClient() {
 
         {/* --- CORE PROMO --- */}
         <div className="mt-24 mb-10">
-           <CorePromo />
+           
+        {/* --- SEO Content Section --- */}
+        <div className="mt-24 space-y-16 px-4">
+          <div className="text-center space-y-6 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
+              Why Use Our JSON Formatter?
+            </h2>
+            <p className="text-neutral-400 font-medium leading-relaxed">
+              Developers need fast, reliable, and secure tools. Our JSON formatter runs entirely in your browser, meaning no data leaks and zero latency.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">1</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Instant Validation</h3>
+              <p className="text-sm text-neutral-400">Find missing commas and syntax errors instantly.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">2</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Auto-Formatting</h3>
+              <p className="text-sm text-neutral-400">Clean up messy JSON strings with one click.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">3</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Dark Mode UI</h3>
+              <p className="text-sm text-neutral-400">Built for developers with a beautiful dark interface.</p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-8 mt-16 p-8 rounded-3xl bg-neutral-900/20 border border-white/10">
+            <h2 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">How do I format JSON data?</h4>
+                <p className="text-neutral-400">Simply paste your raw JSON string into the input area. The tool will automatically validate, beautify, and highlight the syntax.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Can I validate broken JSON?</h4>
+                <p className="text-neutral-400">Yes, our tool highlights syntax errors and helps you pinpoint exactly where your JSON structure is invalid.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Is my JSON data kept private?</h4>
+                <p className="text-neutral-400">Absolutely. We do not store or track the data you format. Everything runs inside your browser locally.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-16">
+          <CorePromo/>
+        </div>
+
         </div>
 
       </main>

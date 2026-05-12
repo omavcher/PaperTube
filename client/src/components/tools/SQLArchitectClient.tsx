@@ -253,7 +253,69 @@ ORDER BY o.date DESC;`);
             </div>
           </div>
         </div>
-        <CorePromo/>
+        
+        {/* --- SEO Content Section --- */}
+        <div className="mt-24 space-y-16 px-4">
+          <div className="text-center space-y-6 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
+              Why Use SQL Architect?
+            </h2>
+            <p className="text-neutral-400 font-medium leading-relaxed">
+              Database design can get messy. Our visual tool helps you map out complex joins and schemas before writing a single line of code.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">1</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Visual Joins</h3>
+              <p className="text-sm text-neutral-400">Map foreign keys visually.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">2</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">No DB Connection Needed</h3>
+              <p className="text-sm text-neutral-400">Safe, offline sandbox design.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">3</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Export Ready</h3>
+              <p className="text-sm text-neutral-400">Generate SQL scaffolding instantly.</p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-8 mt-16 p-8 rounded-3xl bg-neutral-900/20 border border-white/10">
+            <h2 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">What databases does it support?</h4>
+                <p className="text-neutral-400">The architect is agnostic and can be used to visualize standard relational SQL structures like MySQL, PostgreSQL, and SQLite.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Can I export my schemas?</h4>
+                <p className="text-neutral-400">Yes, you can export your query blueprints and ER diagram definitions.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Do I need to connect my actual database?</h4>
+                <p className="text-neutral-400">No, this is a secure sandbox for designing and visualizing queries without needing live database credentials.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-16">
+          <CorePromo/>
+        </div>
+
       </main>
 
       {/* Trust Metrics */}

@@ -267,7 +267,69 @@ export default function AIDetectorClient() {
              </AnimatePresence>
           </div>
         </div>
-        <CorePromo/>
+        
+        {/* --- SEO Content Section --- */}
+        <div className="mt-24 space-y-16 px-4">
+          <div className="text-center space-y-6 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
+              Why Use Sentinel AI Detector?
+            </h2>
+            <p className="text-neutral-400 font-medium leading-relaxed">
+              With the rise of deepfakes and AI art, verifying the authenticity of images is crucial for journalists, creators, and consumers.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">1</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Deep Analysis</h3>
+              <p className="text-sm text-neutral-400">Checks compression artifacts.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">2</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Local Processing</h3>
+              <p className="text-sm text-neutral-400">Your files remain completely private.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/5 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <span className="text-red-500 font-bold">3</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Confidence Score</h3>
+              <p className="text-sm text-neutral-400">Clear percentage probability.</p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-8 mt-16 p-8 rounded-3xl bg-neutral-900/20 border border-white/10">
+            <h2 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">How does it detect AI?</h4>
+                <p className="text-neutral-400">It analyzes pixel anomalies, noise patterns, and metadata inconsistencies commonly found in Midjourney, DALL-E, and Stable Diffusion outputs.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Is it 100% accurate?</h4>
+                <p className="text-neutral-400">No AI detector is perfect, but it provides a strong probability score based on forensic heuristics.</p>
+              </div>
+              <div className="w-full h-px bg-white/5"></div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">Are my scanned images saved?</h4>
+                <p className="text-neutral-400">No, all forensic analysis is performed locally in your browser.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-16">
+          <CorePromo/>
+        </div>
+
       </main>
 <Footer />
     </div>
