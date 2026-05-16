@@ -8,7 +8,7 @@ const FREE_MODELS = [
   "openrouter/free",
   "nvidia/nemotron-nano-12b-v2-vl:free"
 ];
-const PREMIUM_MODEL_ID = "x-ai/grok-4.1-fast";
+const PREMIUM_MODEL_ID = "x-ai/grok-4.3";
 
 async function generateWithOpenRouter(systemPrompt, userPrompt, model) {
     const isFreeModel = model === 'sankshipta' || model === 'bhashasetu';

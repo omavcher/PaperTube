@@ -20,7 +20,7 @@ let openRouterModelQueue = [
 ];
 
 // Premium model
-const PREMIUM_MODEL_ID = "x-ai/grok-4.1-fast";
+const PREMIUM_MODEL_ID = "x-ai/grok-4.3";
 
 // ─── OPENROUTER CALLS ────────────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ async function callFreeModel(messages, options = {}) {
   throw new Error(`All free models failed. Last error: ${lastError?.message}`);
 }
 
-// Premium tier: use grok-4.1-fast with retries
+// Premium tier: use grok-4.3 with retries
 async function callPremiumModel(messages, options = {}) {
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt++) {

@@ -18,7 +18,7 @@ let openRouterModelQueue = [
 ];
 
 // Premium model
-const PREMIUM_MODEL_ID = "x-ai/grok-4.1-fast";
+const PREMIUM_MODEL_ID = "x-ai/grok-4.3";
 
 async function callOpenRouter(messages, modelId, options = {}) {
   const { temperature = 0.5, max_tokens = 4000, timeout = 120000 } = options;

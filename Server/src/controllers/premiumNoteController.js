@@ -67,7 +67,7 @@ async function openRouterChatCompletion(messages, options = {}) {
     timeout = 120000 // 2 minute timeout
   } = options;
 
-  const model = "x-ai/grok-4.1-fast";
+  const model = "x-ai/grok-4.3";
   let lastError = null;
   let retries = 3;
   

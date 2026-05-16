@@ -140,7 +140,7 @@ const extractVideoId = (url) => {
   }
 };
 
-// Premium OpenRouter call for x-ai/grok-4.1-fast (for subscribers)
+// Premium OpenRouter call for x-ai/grok-4.3 (for subscribers)
 async function premiumOpenRouterChatCompletion(messages, options = {}) {
   const {
     temperature = 0.7,
@@ -149,7 +149,7 @@ async function premiumOpenRouterChatCompletion(messages, options = {}) {
     timeout = 120000
   } = options;
 
-  const model = "x-ai/grok-4.1-fast";
+  const model = "x-ai/grok-4.3";
   let retries = 3;
   let lastError = null;
   
