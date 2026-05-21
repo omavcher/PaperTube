@@ -232,8 +232,133 @@ const iphoneStyles = `
 .mode-menu-item .check-icon { width: 14px; height: 14px; margin-left: auto; opacity: 0; color: #dc2626; flex-shrink: 0; }
 .mode-menu-item.selected .check-icon { opacity: 1; }
 
-@media (max-width: 1023px) {
-  .tinymce-mobile-height { height: calc(100dvh - 180px) !important; }
+
+/* ── Premium Colorful Note Renderer (PDF Matching Styles) ── */
+.premium-note-render {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+  line-height: 1.7;
+}
+.premium-note-render h1 {
+  color: #0f172a; 
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 14px;
+  line-height: 1.2;
+}
+.premium-note-render h2 {
+  color: #1d4ed8 !important; 
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 32px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+.premium-note-render h3 {
+  color: #334155; 
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 10px;
+}
+.premium-note-render h4 {
+  color: #475569;
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+.premium-note-render p {
+  margin-bottom: 16px;
+  font-size: 15px;
+  color: #334155;
+}
+.premium-note-render img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  margin: 20px auto;
+  display: block;
+  border: 1px solid #e2e8f0;
+}
+.premium-note-render code {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  border: 1px solid #e2e8f0;
+}
+.premium-note-render pre {
+  background-color: #0f172a;
+  color: #f8fafc;
+  padding: 16px;
+  border-radius: 12px;
+  overflow-x: auto;
+  margin: 20px 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.premium-note-render pre code {
+  background-color: transparent;
+  color: inherit;
+  border: none;
+  padding: 0;
+}
+.premium-note-render blockquote {
+  background-color: #f8fafc;
+  border-left: 4px solid #3b82f6 !important;
+  padding: 14px 18px;
+  border-radius: 0 12px 12px 0;
+  margin: 20px 0;
+  color: #475569;
+  font-style: italic;
+}
+.premium-note-render table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  margin: 20px 0;
+  font-size: 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+.premium-note-render th, .premium-note-render td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 12px;
+  text-align: left;
+}
+.premium-note-render th {
+  background-color: #f8fafc;
+  font-weight: 600;
+  color: #0f172a;
+}
+.premium-note-render tr:last-child td {
+  border-bottom: none;
+}
+.premium-note-render ul, .premium-note-render ol {
+  margin: 16px 0;
+  padding-left: 20px;
+  color: #334155;
+}
+.premium-note-render li {
+  margin-bottom: 6px;
+  font-size: 15px;
+}
+.premium-note-render li::marker {
+  color: #3b82f6 !important;
+  font-weight: 600;
+}
+.premium-note-render hr {
+  border: none;
+  border-top: 2px solid #e2e8f0;
+  margin: 32px 0;
 }
 `;
 
@@ -250,18 +375,17 @@ const PDFPreviewWithThumbnail: React.FC<{
   // Simple check for HTML
   const isHtml = content.includes('<h1') || content.includes('<p>') || content.includes('<div');
 
-  const renderContent = (className: string, style: React.CSSProperties) => {
+  const renderContent = (className: string) => {
     if (isHtml) {
       return (
         <div 
           dangerouslySetInnerHTML={{ __html: content }} 
           className={className}
-          style={style} 
         />
       );
     }
     return (
-      <div className={className} style={style}>
+      <div className={className}>
         <ReactMarkdown>{content}</ReactMarkdown>
       </div>
     );
@@ -270,14 +394,14 @@ const PDFPreviewWithThumbnail: React.FC<{
   return (
     <div className="w-full h-full border border-neutral-800 shadow-2xl overflow-hidden rounded-lg bg-white relative group animate-scale-in flex flex-col">
       {/* Content */}
-      <div className="flex-1 overflow-auto bg-white p-4 custom-scrollbar">
+      <div className="flex-1 overflow-auto bg-white p-6 custom-scrollbar">
         {isGenerating ? (
           <div className="h-full flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-red-500 animate-spin mb-2" />
             <p className="text-neutral-600 text-sm">Creating PDF...</p>
           </div>
         ) : (
-          renderContent("prose max-w-none text-black", { fontFamily: "'Times New Roman', serif", fontSize: '14px', lineHeight: '1.5' })
+          renderContent("premium-note-render max-w-none")
         )}
       </div>
 
@@ -293,7 +417,7 @@ const PDFPreviewWithThumbnail: React.FC<{
               <X className="h-5 w-5" />
             </button>
             <div className="flex-1 overflow-auto p-8 custom-scrollbar">
-              {renderContent("prose max-w-none text-black", { fontFamily: "'Times New Roman', serif", fontSize: '16px', lineHeight: '1.6', maxWidth: '800px', margin: '0 auto' })}
+              {renderContent("premium-note-render max-w-none")}
             </div>
           </div>
         </div>

@@ -1200,86 +1200,55 @@ exports.generatePDF = async (req, res) => {
     }
     
     // Extract all image URLs from the content (handles both HTML and Markdown style)
-    const imgRegex = /<img[^>]+src="([^">]+)"|!\[[^\]]*\]\(([^)]+)\)/g;
+    const imgRegex = /<img[^>]+src="([^">]+)"|!\\[[^\\]]*\\]\\(([^)]+)\\)/g;
     const imgUrls = [];
     let match;
     
     while ((match = imgRegex.exec(processedContent)) !== null) {
       // match[1] is for HTML, match[2] is for Markdown
       const url = match[1] || match[2];
-      if (url) imgUrls.push(url);
-    }
-    console.log(`📸 Found ${imgUrls.length} images in content`);
-
-    // Download and convert images to base64
-    for (let i = 0; i < imgUrls.length; i++) {
-      const imgUrl = imgUrls[i];
-      try {
-        console.log(`🔄 Downloading image ${i + 1}/${imgUrls.length}:`, imgUrl.substring(0, 50) + '...');
-        
-        // Download image with proper headers
-        const imageResponse = await axios.get(imgUrl, {
-          responseType: 'arraybuffer',
-          timeout: 10000,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        });
-        
-        // Convert to base64
-        const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
-        
-        // Determine content type
-        const contentType = imageResponse.headers['content-type'] || 'image/jpeg';
-        
-        // Create data URL
-        const dataUrl = `data:${contentType};base64,${base64Image}`;
-        
-        // Replace the URL in content with data URL
-        processedContent = processedContent.replace(imgUrl, dataUrl);
-        
-        console.log(`✅ Image ${i + 1} embedded successfully`);
-      } catch (imgError) {
-        console.error(`❌ Failed to download image ${imgUrl}:`, imgError.message);
-        
-        // Replace with a placeholder or remove the img tag
-        processedContent = processedContent.replace(
-          `<img src="${imgUrl}"`,
-          `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-family='Arial' font-size='16'%3EImage failed to load%3C/text%3E%3C/svg%3E"`,
-          processedContent
-        );
-      }
+      if (url && !imgUrls.includes(url)) imgUrls.push(url);
     }
 
-    // Also process img_with_url if present
-    if (note.img_with_url && note.img_with_url.length > 0) {
-      for (let i = 0; i < note.img_with_url.length; i++) {
-        const imgItem = note.img_with_url[i];
-        if (imgItem.img_url && !processedContent.includes(imgItem.img_url)) {
-          try {
-            console.log(`🔄 Downloading additional image:`, imgItem.img_url);
-            
-            const imageResponse = await axios.get(imgItem.img_url, {
-              responseType: 'arraybuffer',
-              timeout: 10000
-            });
-            
-            const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
-            const contentType = imageResponse.headers['content-type'] || 'image/jpeg';
-            const dataUrl = `data:${contentType};base64,${base64Image}`;
-            
-            // Add to content if not already there
-            if (!processedContent.includes(dataUrl)) {
-              processedContent += `<div style="margin: 20px 0;"><img src="${dataUrl}" alt="${imgItem.title || 'Image'}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" /></div>`;
+    console.log(`📸 Found ${imgUrls.length} images to process`);
+
+    // Download and convert images to base64 concurrently for faster PDF generation
+    const imageMap = {};
+    
+    if (imgUrls.length > 0) {
+      console.log(`🔄 Downloading ${imgUrls.length} images concurrently...`);
+      await Promise.allSettled(imgUrls.map(async (imgUrl) => {
+        try {
+          const imageResponse = await axios.get(imgUrl, {
+            responseType: 'arraybuffer',
+            timeout: 10000,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
             }
-          } catch (imgError) {
-            console.error(`❌ Failed to download additional image:`, imgError.message);
-          }
+          });
+          
+          const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
+          const contentType = imageResponse.headers['content-type'] || 'image/jpeg';
+          imageMap[imgUrl] = `data:${contentType};base64,${base64Image}`;
+        } catch (imgError) {
+          console.error(`❌ Failed to download image ${imgUrl.substring(0, 50)}...:`, imgError.message);
+          // Fallback placeholder
+          imageMap[imgUrl] = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-family='Arial' font-size='16'%3EImage failed to load%3C/text%3E%3C/svg%3E`;
         }
-      }
+      }));
+      console.log(`✅ Image downloading complete.`);
     }
 
-    // Create HTML with embedded images
+    // Replace the URLs in content with data URLs
+    imgUrls.forEach(url => {
+      if (imageMap[url]) {
+        // Use split/join to replace all occurrences without regex escaping issues
+        processedContent = processedContent.split(url).join(imageMap[url]);
+      }
+    });
+
+    // Create HTML with embedded images and premium styling
     const completeHTML = `
       <!DOCTYPE html>
       <html>
@@ -1288,128 +1257,172 @@ exports.generatePDF = async (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${note.title}</title>
         <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+          
           * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
           }
           body { 
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; 
-            color: #1a1a1a; 
-            padding: 40px;
-            line-height: 1.6;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            color: #1e293b; 
+            padding: 50px 60px;
+            line-height: 1.7;
             max-width: 1000px;
             margin: 0 auto;
-            background: white;
+            background: #ffffff;
           }
           h1 { 
-            color: #2563eb; 
-            font-size: 28px;
-            font-weight: 700;
-            border-bottom: 2px solid #e5e7eb;
-            padding-bottom: 16px;
-            margin-bottom: 24px;
+            color: #0f172a; 
+            font-size: 36px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 8px;
+            line-height: 1.2;
           }
           h2 { 
-            color: #1f2937; 
-            font-size: 22px;
-            font-weight: 600;
-            margin-top: 28px;
+            color: #1d4ed8; 
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 40px;
             margin-bottom: 16px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
           }
           h3 { 
-            color: #374151; 
-            font-size: 18px;
+            color: #334155; 
+            font-size: 20px;
             font-weight: 600;
-            margin-top: 24px;
+            margin-top: 30px;
             margin-bottom: 12px;
           }
+          h4 {
+            color: #475569;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 10px;
+          }
           p { 
-            margin-bottom: 16px;
-            font-size: 14px;
+            margin-bottom: 18px;
+            font-size: 15px;
+            color: #334155;
           }
           img {
             max-width: 100%;
             height: auto;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin: 20px 0;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            margin: 24px auto;
             display: block;
+            border: 1px solid #e2e8f0;
           }
           .content {
-            margin-top: 20px;
-          }
-          .footer {
-            margin-top: 60px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            font-size: 12px;
-            color: #6b7280;
-            text-align: center;
+            margin-top: 32px;
           }
           code {
-            background-color: #f3f4f6;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            border: 1px solid #e2e8f0;
           }
           pre {
-            background-color: #f8fafc;
-            padding: 16px;
-            border-radius: 8px;
+            background-color: #0f172a;
+            color: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
             overflow-x: auto;
-            border-left: 4px solid #2563eb;
-            margin: 16px 0;
+            margin: 24px 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          }
+          pre code {
+            background-color: transparent;
+            color: inherit;
+            border: none;
+            padding: 0;
           }
           blockquote {
-            border-left: 4px solid #d1d5db;
-            padding-left: 20px;
-            margin: 16px 0;
-            color: #4b5563;
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 16px 20px;
+            border-radius: 0 12px 12px 0;
+            margin: 24px 0;
+            color: #475569;
             font-style: italic;
           }
           table {
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             width: 100%;
-            margin: 20px 0;
-            font-size: 14px;
+            margin: 24px 0;
+            font-size: 15px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
           }
           th, td {
-            border: 1px solid #e5e7eb;
-            padding: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 14px 16px;
             text-align: left;
           }
           th {
-            background-color: #f9fafb;
+            background-color: #f8fafc;
             font-weight: 600;
+            color: #0f172a;
+          }
+          tr:last-child td {
+            border-bottom: none;
           }
           ul, ol {
-            margin: 16px 0;
-            padding-left: 24px;
+            margin: 18px 0;
+            padding-left: 28px;
+            color: #334155;
           }
           li {
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 10px;
+            font-size: 15px;
           }
-          .image-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
+          li::marker {
+            color: #3b82f6;
+            font-weight: 600;
           }
-          .image-grid img {
-            margin: 0;
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
+          hr {
+            border: none;
+            border-top: 2px solid #e2e8f0;
+            margin: 40px 0;
+          }
+          .header-meta {
+            color: #64748b; 
+            font-size: 14px; 
+            margin-bottom: 32px; 
+            display: flex; 
+            gap: 24px;
+            font-weight: 500;
           }
           @media print {
             body {
-              padding: 20px;
+              padding: 0;
             }
             img {
               max-width: 100% !important;
+              page-break-inside: avoid;
+            }
+            h2, h3, h4 {
+              page-break-after: avoid;
+            }
+            p, ul, ol, blockquote, pre {
+              page-break-inside: avoid;
+            }
+            table {
+              page-break-inside: auto;
+            }
+            tr, td, th {
               page-break-inside: avoid;
             }
           }
@@ -1418,7 +1431,7 @@ exports.generatePDF = async (req, res) => {
       <body>
         <header>
           <h1>${note.title}</h1>
-          <div style="color: #6b7280; font-size: 13px; margin-bottom: 24px; display: flex; gap: 20px;">
+          <div class="header-meta">
             <span>Created: ${new Date(note.createdAt).toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'long',
@@ -1432,16 +1445,16 @@ exports.generatePDF = async (req, res) => {
           ${processedContent}
         </main>
         
-        <div style="margin-top: 40px; padding: 20px 30px; border-top: 2px solid #f1f5f9; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; background-color: #fafafa; page-break-inside: avoid;">
+        <div style="margin-top: 60px; padding: 24px 32px; border-top: 2px solid #f1f5f9; font-family: 'Inter', sans-serif; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; background-color: #f8fafc; border-radius: 16px; page-break-inside: avoid;">
           <div>
             <a href="https://paperxify.com" style="text-decoration: none;">
-              <span style="font-size: 18px; font-weight: 900; font-style: italic; letter-spacing: -0.5px; text-transform: uppercase; color: #0a0a0a;">Paper<span style="color: #dc2626;">Xify</span></span>
+              <span style="font-size: 20px; font-weight: 800; font-style: italic; letter-spacing: -0.5px; text-transform: uppercase; color: #0f172a;">Paper<span style="color: #dc2626;">Xify</span></span>
             </a>
-            <div style="font-size: 9px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">AI Knowledge Synthesis</div>
+            <div style="font-size: 10px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">AI Knowledge Synthesis</div>
           </div>
           <div>
-            <a href="https://paperxify.com" style="color: #475569; font-size: 11px; text-decoration: none; font-weight: 500;">
-              Convert any YouTube Video to PDF <span style="color: #dc2626; font-weight: 900; margin-left: 4px;">&#8594;</span>
+            <a href="https://paperxify.com" style="color: #475569; font-size: 12px; text-decoration: none; font-weight: 600;">
+              Convert any YouTube Video to PDF <span style="color: #dc2626; font-weight: 900; margin-left: 6px;">&#8594;</span>
             </a>
           </div>
         </div>

@@ -371,7 +371,7 @@ ${transcript}
 }
 
 // Premium Model-specific prompt templates
-const getPremiumModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, settings = {}) => {
+const getPremiumModelPrompt = (model, transcript, userPrompt, image_titles, videoUrl, settings = {}) => {
   const { language = 'English', detailLevel = 'Standard Notes' } = settings;
 
   const languageInstruction = `
@@ -539,12 +539,10 @@ Background: #faf5ff (light purple tint)
 </div>
 
 ━━━ SECTION 5: IMAGES ━━━
-Embed images from: ${images_json}
-Place each image inside a relevant concept card like:
-<div style="text-align:center;margin:16px 0">
-  <img src="[img_url]" alt="[concept]" style="max-width:100%;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.10)">
-  <p style="color:#9ca3af;font-size:12px;font-style:italic;margin:6px 0 0">Visual: [descriptive caption]</p>
-</div>
+Available Images (by title): ${image_titles}
+To place an image inside a relevant concept card, you MUST use the exact placeholder format:
+[IMAGE_PLACEHOLDER: exact_image_title]
+Do not write HTML or markdown for images, ONLY use this exact placeholder. Our system will replace it with the correct image HTML.
 
 ━━━ SECTION 6: HIGH-YIELD SUMMARY ━━━
 <div style="background:linear-gradient(135deg,#1e1b4b,#4c1d95);color:#fff;border-radius:14px;padding:26px 30px;margin-top:30px">
@@ -612,11 +610,11 @@ Background: #ffffff | Print-optimized, formal academic aesthetic
   </div>
 
   <!-- Image placement if relevant -->
-  ${images_json ? `
-  <div style="text-align:center;margin:20px 0">
-    <img src="[relevant img_url from images_json]" alt="[concept]" style="max-width:90%;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.12)">
-    <p style="color:#64748b;font-size:12px;font-style:italic;margin:8px 0 0">Figure [N]. [Descriptive caption explaining what the image shows]</p>
-  </div>` : ''}
+  ${image_titles ? `
+  To place an image, you MUST use the exact placeholder format:
+  [IMAGE_PLACEHOLDER: exact_image_title]
+  Do not write HTML or markdown for images, ONLY use this exact placeholder. Our system will replace it with the correct image HTML.
+  ` : ''}
 
   <!-- Key points -->
   <ul style="padding-left:22px;margin:14px 0">
@@ -925,8 +923,8 @@ exports.createNote = async (req, res) => {
     // STEP 3: Generate premium PDF content using OpenRouter
     console.log(`Generating premium PDF content with ${model} model using OpenRouter...`);
     
-    const images_json = JSON.stringify(img_with_url);
-    const ai_prompt = getPremiumModelPrompt(model, transcript, prompt, images_json, videoUrl, settings);
+    const image_titles = img_with_url.map(img => img.title).join(', ');
+    const ai_prompt = getPremiumModelPrompt(model, transcript, prompt, image_titles, videoUrl, settings);
 
     const messages = [
       {
@@ -974,7 +972,19 @@ exports.createNote = async (req, res) => {
       title: videoTitle,
       slug: note_slug,
       transcript: transcript,
-      content: stripMarkdownFences(content),
+      content: (() => {
+        let finalContent = stripMarkdownFences(content);
+        if (img_with_url && img_with_url.length > 0) {
+          img_with_url.forEach(img => {
+            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+            const regex = new RegExp(`\\\\[IMAGE_PLACEHOLDER:\\\\s*${escapeRegExp(img.title)}\\\\]`, 'gi');
+            
+            const imgHtml = `\\n<div style="text-align:center;margin:20px 0">\\n  <img src="${img.img_url}" alt="${img.title}" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">\\n  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: ${img.title}</p>\\n</div>\\n`;
+            finalContent = finalContent.replace(regex, imgHtml);
+          });
+        }
+        return finalContent;
+      })(),
       status: 'completed',
       visibility: 'private',
       img_with_url: img_with_url,

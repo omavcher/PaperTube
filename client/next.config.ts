@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
   },
 
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -33,7 +33,35 @@ const nextConfig: NextConfig = {
         encoding: false,
       };
     }
+
+    if (!dev && !isServer) {
+      // In production, enable deterministic chunk IDs for better long-term caching
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: "deterministic",
+        chunkIds: "deterministic",
+      };
+    }
+
     return config;
+  },
+
+  // Avoid full-page reload on 404 (use soft navigation)
+  skipTrailingSlashRedirect: true,
+
+  // Custom headers to allow Googlebot, Bingbot, and all automated tools
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+          },
+        ],
+      },
+    ];
   },
 };
 

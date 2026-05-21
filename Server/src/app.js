@@ -26,6 +26,12 @@ app.use(cors(
 ));
 app.use(express.json());
 
+// Set X-Robots-Tag header to allow bots/crawlers
+app.use((req, res, next) => {
+  res.setHeader("X-Robots-Tag", "index, follow");
+  next();
+});
+
 // Routes
 app.use("/api/notes", noteRoutes);
 app.use("/api/chat", chatRoutes);

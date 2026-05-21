@@ -634,7 +634,7 @@ const fetchTranscript = async (videoId) => {
   }
 };
 
-const getModelPrompt = (model, transcript, userPrompt, images_json, videoUrl, settings = {}) => {
+const getModelPrompt = (model, transcript, userPrompt, image_titles, videoUrl, settings = {}) => {
   const { language = 'English', detailLevel = 'Standard Notes' } = settings;
 
   const languageInstruction = `
@@ -750,12 +750,12 @@ Colors: Primary headings #1e293b, Section headings #2563eb, Accents #059669, Bod
 Background: #ffffff | Max-width: 800px | Padding: 40px
 
 **AVAILABLE IMAGES:**
-You have these image links to embed — use them contextually near relevant concepts:
-\${images_json}
-For each image: <div style="text-align:center;margin:20px 0">
-  <img src="[img_url]" alt="[title]" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">
-  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: [descriptive caption]</p>
-</div>
+You have these images available (by title) — use them contextually near relevant concepts:
+${image_titles}
+
+To insert an image, you MUST use the exact placeholder format:
+[IMAGE_PLACEHOLDER: exact_image_title]
+Do not write HTML or markdown for images, ONLY use this exact placeholder format. Our system will automatically replace it with the correct image HTML.
 
 **DOCUMENT STRUCTURE — produce ALL of these sections:**
 
@@ -818,9 +818,12 @@ ${coreIntelligenceRules}
 **${languageInstruction}**${userInstructions}
 
 **AVAILABLE IMAGES:**
-You have these AI-generated images to embed — use them contextually near relevant concepts:
-${images_json}
-To embed an image: ![title](img_url)
+You have these images available (by title) — use them contextually near relevant concepts:
+${image_titles}
+
+To insert an image, you MUST use the exact placeholder format:
+[IMAGE_PLACEHOLDER: exact_image_title]
+Do not write HTML or markdown for images, ONLY use this exact placeholder format. Our system will automatically replace it with the correct image HTML.
 
 **STRUCTURE — produce these sections in Markdown:**
 
@@ -1101,8 +1104,8 @@ exports.createNote = async (req, res) => {
     console.log(`Generating PDF content with ${model} model...`);
     console.log(`Language: ${settings?.language || 'English'}, Detail Level: ${settings?.detailLevel || 'Standard Notes'}`);
     
-    const images_json = JSON.stringify(img_with_url);
-    const ai_prompt = getModelPrompt(model, transcript, prompt, images_json, videoUrl, settings);
+    const image_titles = img_with_url.map(img => img.title).join(', ');
+    const ai_prompt = getModelPrompt(model, transcript, prompt, image_titles, videoUrl, settings);
 
     const messages = [
       {
@@ -1160,7 +1163,19 @@ exports.createNote = async (req, res) => {
       title: videoTitle,
       slug: note_slug,
       transcript: transcript,
-      content: stripMarkdownFences(response.content),
+      content: (() => {
+        let finalContent = stripMarkdownFences(response.content);
+        if (img_with_url && img_with_url.length > 0) {
+          img_with_url.forEach(img => {
+            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+            const regex = new RegExp(`\\\\[IMAGE_PLACEHOLDER:\\\\s*${escapeRegExp(img.title)}\\\\]`, 'gi');
+            
+            const imgHtml = `\\n<div style="text-align:center;margin:20px 0">\\n  <img src="${img.img_url}" alt="${img.title}" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">\\n  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: ${img.title}</p>\\n</div>\\n`;
+            finalContent = finalContent.replace(regex, imgHtml);
+          });
+        }
+        return finalContent;
+      })(),
       status: 'completed',
       visibility: 'public',
       img_with_url: img_with_url,
