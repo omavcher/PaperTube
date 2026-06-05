@@ -39,10 +39,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/share-story',
     '/success-stories',
     '/support',
-    '/games',
     '/blog',
     '/explore',
-    '/leaderboard'
+    '/leaderboard',
+    '/notegpt-alternative',
+    '/youtube-to-notes',
+    '/ai-study-notes'
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
@@ -57,16 +59,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     'resume-checker', 'sentinel', 'split', 'sql-architect', 'syllabus-tracker', 'typing-test'
   ].map((tool) => ({
     url: `${baseUrl}/tools/${tool}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly' as const,
-    priority: 0.7,
-  }));
-
-  const games = [
-    'binary-blitz', 'circuit-breaker', 'complexity-dash', 'flag-mastery', 'keyword-crypt',
-    'logic-leap', 'sort-fu', 'sql-sniper', 'symbol-strike'
-  ].map((game) => ({
-    url: `${baseUrl}/games/${game}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.7,
@@ -92,7 +84,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...baseRoutes,
     ...tools,
-    ...games,
     ...storyRoutes,
     ...blogRoutes
   ];

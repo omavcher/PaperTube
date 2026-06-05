@@ -426,6 +426,24 @@ const sendBulkMarketing = async ({ recipients, ...templateOpts }) => {
   return results;
 };
 
+/**
+ * sendVerificationOtp(email, otpCode, purpose)
+ */
+const sendVerificationOtp = async (email, otpCode, purpose = "signup") => {
+  try {
+    const { subject, html } = templates.verificationOtp({ otpCode, purpose });
+    return await sendEmail({
+      to: email,
+      subject,
+      html,
+      templateType: "otp",
+    });
+  } catch (e) {
+    console.error("❌ [EmailService] sendVerificationOtp error:", e.message);
+    return { success: false, error: e.message };
+  }
+};
+
 module.exports = {
   sendEmail,
   sendWelcome,
@@ -439,4 +457,5 @@ module.exports = {
   sendMarketing,
   sendBulkMarketing,
   sendAdminAlert,
+  sendVerificationOtp,
 };

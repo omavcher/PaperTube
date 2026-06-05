@@ -13,8 +13,6 @@ import {
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useGoogleLogin } from "@react-oauth/google";
-import { FcGoogle } from "react-icons/fc";
 import api from "@/config/api";
 import axios from "axios";
 import { toast } from "sonner";
@@ -116,7 +114,7 @@ export const Navbar = ({
                 {isLoggedIn ? (
                   <UserHUD user={user} onLogout={handleLogout} />
                 ) : (
-                  <GoogleLoginBtn onSuccess={onLoginSuccess} loading={authLoading} />
+                  <SignInBtn loading={authLoading} />
                 )}
               </div>
             </div>
@@ -161,13 +159,22 @@ export const Navbar = ({
         </Link>
       </div>
 
-      {/* 4. Rank Tab */}
-      <Link href="/leaderboard" className="flex flex-col items-center justify-center gap-1.5 group w-full h-full pt-2">
-        <div className="p-1 rounded-xl group-active:bg-white/5 transition-colors">
-          <Trophy size={22} strokeWidth={1.5} className="text-neutral-500 group-hover:text-white transition-colors" />
-        </div>
-        <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-600 group-hover:text-neutral-300">Rank</span>
-      </Link>
+      {/* 4. Rank / Pricing Tab */}
+      {isLoggedIn ? (
+        <Link href="/leaderboard" className="flex flex-col items-center justify-center gap-1.5 group w-full h-full pt-2">
+          <div className="p-1 rounded-xl group-active:bg-white/5 transition-colors">
+            <Trophy size={22} strokeWidth={1.5} className="text-neutral-500 group-hover:text-white transition-colors" />
+          </div>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-600 group-hover:text-neutral-300">Rank</span>
+        </Link>
+      ) : (
+        <Link href="/pricing" className="flex flex-col items-center justify-center gap-1.5 group w-full h-full pt-2">
+          <div className="p-1 rounded-xl group-active:bg-white/5 transition-colors">
+            <Zap size={22} strokeWidth={1.5} className="text-neutral-500 group-hover:text-white transition-colors" />
+          </div>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-600 group-hover:text-neutral-300">Pricing</span>
+        </Link>
+      )}
       
       {/* 5. Profile Tab */}
       <button 
@@ -407,7 +414,7 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
                         <h3 className="text-2xl font-bold text-white">Guest User</h3>
                         <p className="text-sm text-neutral-500 mt-2">Log in to sync your neural data.</p>
                     </div>
-                    <GoogleLoginBtn onSuccess={onLoginSuccess} loading={authLoading} />
+                    <SignInBtn loading={authLoading} />
                 </div>
             )}
           </div>
@@ -421,7 +428,6 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
 
 const SUPPORT_TOOLS = [
     { title: "Tools", desc: "Paperxify Tools.", href: "/tools", icon: <ToolCase size={18} /> },
-    { title: "Games", desc: "Educational Games.", href: "/games", icon: <Gamepad size={18} /> },
     { title: "Success Stories", desc: "Inspiring Students Stories.", href: "/success-stories", icon: <NotebookTabsIcon size={18} /> },
     { title: "Blogs", desc: "Paperxify Blogs.", href: "/blog", icon: <IconSquareLetterB size={18} /> },
 ];
@@ -467,49 +473,14 @@ const NavDropdown = ({ label, items }: any) => {
     );
 };
 
-function GoogleLoginBtn({ onSuccess, loading }: any) {
-    const login = useGoogleLogin({
-        onSuccess: async (tokenResponse) => {
-            try {
-                const accessToken = tokenResponse.access_token;
-
-                // Get user info from Google
-                const { data: userInfo } = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
-                    headers: { Authorization: `Bearer ${accessToken}` }
-                });
-
-                // Send to backend
-                const res = await api.post("/auth/google", { 
-                    googleAccessToken: accessToken, 
-                    authType: 'access_token' 
-                });
-
-                if (!res.data.success || !res.data.data) {
-                    throw new Error(res.data.message || "Authentication failed");
-                }
-
-                // Store auth data in localStorage
-                localStorage.setItem("authToken", res.data.data.token);
-                localStorage.setItem("user", JSON.stringify(res.data.data.user));
-
-                onSuccess(accessToken, userInfo, res.data);
-            } catch (error: any) {
-                console.error("Google login error:", error);
-                toast.error(error.response?.data?.message || "Google login failed. Please try again.");
-            }
-        },
-        onError: (error) => {
-            console.error("Google OAuth error:", error);
-            toast.error("Google login failed. Please try again.");
-        },
-        scope: 'openid email profile',
-        flow: 'implicit',
-    });
-    
-    return (
-        <button onClick={() => login()} disabled={loading} className="flex items-center gap-2 px-5 py-2 text-xs font-bold uppercase tracking-wide bg-white text-black rounded-xl hover:bg-neutral-200 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-white/5">
-            {loading ? <div className="h-3 w-3 border-2 border-t-transparent border-black rounded-full animate-spin" /> : <FcGoogle size={16} />}
-            Sign In
-        </button>
-    );
+function SignInBtn({ loading }: any) {
+  const handleOpenLogin = () => {
+    window.dispatchEvent(new Event("open-login"));
+  };
+  
+  return (
+    <button onClick={handleOpenLogin} disabled={loading} className="flex items-center gap-2 px-5 py-2 text-xs font-bold uppercase tracking-wide bg-white text-black rounded-xl hover:bg-neutral-200 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-white/5">
+      Sign In
+    </button>
+  );
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
-  Users, FileText, IndianRupee, 
+  Users, FileText, DollarSign,
   Activity, ShieldCheck, Link, User, Mail
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
           label="Total Revenue" 
           value={diagnostics?.totalRevenue || 0} 
           sub="Platform earnings" 
-          icon={IndianRupee} 
+          icon={DollarSign}
           color="text-emerald-500" 
           isCurrency={true}
         />
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
-              Total Revenue: <span className="text-white">₹{diagnostics?.totalRevenue || 0}</span>
+              Total Revenue: <span className="text-white">${diagnostics?.totalRevenue || 0}</span>
             </div>
             <div className="text-[9px] font-medium text-neutral-600 bg-white/5 px-3 py-1 rounded-full">
                Total Notes: {diagnostics?.totalNotes || 0}
@@ -324,7 +324,7 @@ function AdminStatCard({ label, value, sub, icon: Icon, color, isCurrency = fals
         {label}
       </p>
       <h4 className="text-xl md:text-3xl font-black italic tracking-tighter text-white mb-1 md:mb-2">
-        {isCurrency && "₹"}{typeof value === 'number' ? value.toLocaleString() : value}
+        {isCurrency && "$"}{typeof value === 'number' ? value.toLocaleString() : value}
       </h4>
       <p className="text-[8px] md:text-[9px] font-bold text-neutral-500 uppercase tracking-[0.2em] flex items-center gap-1">
         {sub}

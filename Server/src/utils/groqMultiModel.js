@@ -64,10 +64,10 @@ class GroqMultiModel {
 
     while (this.modelIndex < FREE_MODELS.length) {
       const currentModel = FREE_MODELS[this.modelIndex];
-      
+
       try {
         console.log(`🔄 Trying model: ${currentModel} (${this.modelIndex + 1}/${FREE_MODELS.length})`);
-        
+
         // Create timeout promise
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error(`Request timeout after ${timeout}ms`)), timeout);
@@ -88,7 +88,7 @@ class GroqMultiModel {
 
         console.log(`✅ Success with model: ${currentModel}`);
         this.retryCount = 0; // Reset retry count on success
-        
+
         return {
           success: true,
           model: currentModel,
@@ -99,7 +99,7 @@ class GroqMultiModel {
 
       } catch (error) {
         console.log(`❌ Model ${currentModel} failed: ${error.message}`);
-        
+
         // Check if it's a rate limit error
         if (error.status === 429) {
           const retryAfter = error.headers?.['retry-after'] || 2;
@@ -117,13 +117,13 @@ class GroqMultiModel {
         }
 
         // Check if it's a token limit error or model-specific error
-        if (error.message.includes('token') || 
-            error.message.includes('model') || 
-            error.message.includes('overload') ||
-            error.message.includes('capacity') ||
-            error.message.includes('not found') ||
-            error.message.includes('unavailable')) {
-          
+        if (error.message.includes('token') ||
+          error.message.includes('model') ||
+          error.message.includes('overload') ||
+          error.message.includes('capacity') ||
+          error.message.includes('not found') ||
+          error.message.includes('unavailable')) {
+
           this.modelIndex++;
           this.retryCount = 0;
           console.log(`🔄 Switching to next model due to: ${error.message}`);
@@ -167,7 +167,7 @@ class GroqMultiModel {
     for (const model of AUDIO_MODELS) {
       try {
         console.log(`🎵 Trying audio model: ${model}`);
-        
+
         // Create timeout promise
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error(`Audio transcription timeout after ${timeout}ms`)), timeout);
@@ -196,7 +196,7 @@ class GroqMultiModel {
 
       } catch (error) {
         console.log(`❌ Audio model ${model} failed: ${error.message}`);
-        
+
         // If it's a rate limit, wait and continue with next model
         if (error.status === 429) {
           const retryAfter = error.headers?.['retry-after'] || 2;
@@ -228,7 +228,7 @@ class GroqMultiModel {
     for (const model of TTS_MODELS) {
       try {
         console.log(`🔊 Trying TTS model: ${model}`);
-        
+
         // Create timeout promise
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error(`TTS timeout after ${timeout}ms`)), timeout);
@@ -256,7 +256,7 @@ class GroqMultiModel {
 
       } catch (error) {
         console.log(`❌ TTS model ${model} failed: ${error.message}`);
-        
+
         // If it's a rate limit, wait and continue with next model
         if (error.status === 429) {
           const retryAfter = error.headers?.['retry-after'] || 2;
@@ -279,12 +279,12 @@ class GroqMultiModel {
    */
   async batchChatCompletion(requests) {
     const results = [];
-    
+
     for (const request of requests) {
       try {
         const result = await this.chatCompletion(request.messages, request.options);
         results.push(result);
-        
+
         // Small delay between batch requests to avoid rate limits
         await this.delay(100);
       } catch (error) {
@@ -294,7 +294,7 @@ class GroqMultiModel {
         });
       }
     }
-    
+
     return results;
   }
 
@@ -304,17 +304,17 @@ class GroqMultiModel {
   getModelInfo(modelName) {
     const allModels = [...FREE_MODELS, ...AUDIO_MODELS, ...TTS_MODELS];
     const model = allModels.find(m => m === modelName);
-    
+
     if (!model) {
       return null;
     }
-    
+
     const info = {
       name: model,
       type: this.getModelType(model),
       status: 'available'
     };
-    
+
     // Add specific capabilities based on model type
     if (info.type === 'chat') {
       info.capabilities = ['text-generation', 'chat'];
@@ -324,7 +324,7 @@ class GroqMultiModel {
     } else if (info.type === 'tts') {
       info.capabilities = ['text-to-speech'];
     }
-    
+
     return info;
   }
 
@@ -342,7 +342,7 @@ class GroqMultiModel {
       'groq/compound-mini': 4096,
       'default': 4096
     };
-    
+
     return tokenLimits[modelName] || tokenLimits.default;
   }
 
@@ -400,18 +400,18 @@ class GroqMultiModel {
       tts: {},
       overall: 'healthy'
     };
-    
+
     // Test chat models with a simple request
     const testMessages = [
       { role: "user", content: "Say 'OK' if you're working." }
     ];
-    
+
     try {
       const testResult = await this.chatCompletion(testMessages, {
         max_tokens: 10,
         timeout: 10000
       });
-      
+
       health.chat.status = testResult.success ? 'healthy' : 'unhealthy';
       health.chat.active_model = testResult.model;
     } catch (error) {
@@ -419,7 +419,7 @@ class GroqMultiModel {
       health.chat.error = error.message;
       health.overall = 'degraded';
     }
-    
+
     return health;
   }
 
@@ -427,39 +427,39 @@ class GroqMultiModel {
    * Set custom model priority
    */
   setModelPriority(priorityList) {
-    const validModels = priorityList.filter(model => 
-      FREE_MODELS.includes(model) || 
-      AUDIO_MODELS.includes(model) || 
+    const validModels = priorityList.filter(model =>
+      FREE_MODELS.includes(model) ||
+      AUDIO_MODELS.includes(model) ||
       TTS_MODELS.includes(model)
     );
-    
+
     if (validModels.length > 0) {
       // Reorder models based on priority
       const newChatModels = [
         ...validModels.filter(model => FREE_MODELS.includes(model)),
         ...FREE_MODELS.filter(model => !validModels.includes(model))
       ];
-      
+
       const newAudioModels = [
         ...validModels.filter(model => AUDIO_MODELS.includes(model)),
         ...AUDIO_MODELS.filter(model => !validModels.includes(model))
       ];
-      
+
       const newTTSModels = [
         ...validModels.filter(model => TTS_MODELS.includes(model)),
         ...TTS_MODELS.filter(model => !validModels.includes(model))
       ];
-      
+
       // Update the arrays (in a real implementation, you might want to be more careful here)
       FREE_MODELS.length = 0;
       FREE_MODELS.push(...newChatModels);
-      
+
       AUDIO_MODELS.length = 0;
       AUDIO_MODELS.push(...newAudioModels);
-      
+
       TTS_MODELS.length = 0;
       TTS_MODELS.push(...newTTSModels);
-      
+
       this.resetModels();
       console.log('✅ Model priority updated');
     }

@@ -89,9 +89,7 @@ export default function NotFound() {
         >
            <span className="flex items-center gap-2"><Activity size={12} className="text-green-500" /> Systems Operational</span>
            <span>•</span>
-           <Link href="/tools" className="hover:text-white transition-colors">Engineering Tools</Link>
-           <span>•</span>
-           <Link href="/games" className="hover:text-white transition-colors">Arcade</Link>
+           <Link href="/tools" className="hover:text-white transition-colors">Study Tools</Link>
         </motion.div>
 
       </main>

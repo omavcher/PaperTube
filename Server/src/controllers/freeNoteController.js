@@ -4,16 +4,17 @@ const Note = require('../models/Note');
 const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
 const { generateStudyImages } = require('../services/imageGenerationService');
+const { checkFreeTierLimits } = require('../utils/freeTierLimits');
 
-const FREE_MODELS = ['sankshipta', 'bhashasetu'];
-const MAX_FREE_VIDEO_LENGTH = 2 * 60 * 60; // 2 hours in seconds for free users
+const FREE_MODELS = ['flash'];
+const MAX_FREE_VIDEO_LENGTH = 1 * 60 * 60; // 1 hour in seconds for free users
 
 // Plan-based video duration limits (in seconds)
 const PLAN_VIDEO_LIMITS = {
-  free: 2 * 60 * 60,      // 2 hours for free users
-  scholar: 6 * 60 * 60,   // 6 hours for Scholar plan
-  pro: 12 * 60 * 60,      // 12 hours for Pro Scholar plan
-  power: Infinity          // Unlimited for Power Scholar plan
+  free: 1 * 60 * 60,      // 1 hour for free users
+  pro: 4 * 60 * 60,       // 4 hours for Pro plan
+  scholar: 4 * 60 * 60,   // 4 hours (legacy scholar)
+  power: 12 * 60 * 60     // 12 hours for Power plan
 };
 
 // Helper to get max video duration for a user's plan
@@ -26,13 +27,9 @@ const TOKEN_COST_PER_GENERATION = 5; // Deduct 5 tokens per free generation
 
 // Model-specific token limits
 const MODEL_TOKEN_LIMITS = {
-  sankshipta: {
-    maxInputTokens: 10000,
-    maxOutputTokens: 1200
-  },
-  bhashasetu: {
-    maxInputTokens: 10000,
-    maxOutputTokens: 3500
+  flash: {
+    maxInputTokens: 20000,
+    maxOutputTokens: 2500
   }
 };
 
@@ -140,7 +137,7 @@ const extractVideoId = (url) => {
   }
 };
 
-// Premium OpenRouter call for x-ai/grok-4.3 (for subscribers)
+// Premium OpenRouter call for deepseek/deepseek-v4-flash (for subscribers)
 async function premiumOpenRouterChatCompletion(messages, options = {}) {
   const {
     temperature = 0.7,
@@ -149,7 +146,7 @@ async function premiumOpenRouterChatCompletion(messages, options = {}) {
     timeout = 120000
   } = options;
 
-  const model = "x-ai/grok-4.3";
+  const model = "deepseek/deepseek-v4-flash";
   let retries = 3;
   let lastError = null;
   
@@ -737,122 +734,58 @@ STEP 3 — FORMAT: Present the synthesized knowledge as a beautiful, well-struct
 • Output ONLY the Markdown content.
 `;
 
-  // ─── SANKSHIPTA: Clean Academic Notes ────────────────────────────────────
-  if (model === 'sankshipta') {
+  // ─── FLASH: Clean Bullet Notes ────────────────────────────────────
+  if (model === 'flash') {
+    const imgInstruction = image_titles && image_titles.trim()
+      ? `\n* Visuals / Images: You have these Google Search image titles available:
+  ${image_titles}
+  
+  You MUST contextually insert these images within the relevant sections of your notes where they fit best.
+  To insert an image, use the exact placeholder format on its own line:
+  [IMAGE_PLACEHOLDER: exact_image_title]
+  Do not write raw HTML or standard Markdown image tags, ONLY use the exact placeholder format. Place it on its own line with no other text, e.g. right below the section heading.`
+      : '';
+
     return `
 ${coreIntelligenceRules}
 
 **${languageInstruction}**${userInstructions}
 
-**DESIGN SYSTEM — SANKSHIPTA (Clean Academic):**
-Font: "Segoe UI, Helvetica Neue, Arial, sans-serif" | Line-height: 1.7
-Colors: Primary headings #1e293b, Section headings #2563eb, Accents #059669, Body text #374151
-Background: #ffffff | Max-width: 800px | Padding: 40px
+**DESIGN SYSTEM — FLASH (Clean Bullet Outline):**
+* Bullet format: Always use the arrow symbol "→ " for key points and definitions.
+* Bold terms: Auto-detect important terms and write them in bold like **Bold Term**.
+* Summary: Include a brief "Quick Summary" section at the very top.
+* Do not write HTML tags or inline styles, only use clean Markdown.${imgInstruction}
 
-**AVAILABLE IMAGES:**
-You have these images available (by title) — use them contextually near relevant concepts:
-${image_titles}
-
-To insert an image, you MUST use the exact placeholder format:
-[IMAGE_PLACEHOLDER: exact_image_title]
-Do not write HTML or markdown for images, ONLY use this exact placeholder format. Our system will automatically replace it with the correct image HTML.
-
-**DOCUMENT STRUCTURE — produce ALL of these sections:**
-
-1. SUBJECT BADGE + TITLE
-   <div style="background:#eff6ff;border-left:5px solid #2563eb;padding:6px 14px;border-radius:4px;display:inline-block;font-size:12px;font-weight:700;color:#2563eb;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">[SUBJECT DOMAIN]</div>
-   <h1 style="font-size:28px;font-weight:800;color:#1e293b;margin:0 0 6px;line-height:1.3">[TOPIC TITLE]</h1>
-   <p style="color:#64748b;font-size:14px;margin:0 0 24px">Based on: <a href="${videoUrl}" style="color:#2563eb;text-decoration:none">Source Video ↗</a></p>
-
-2. LEARNING OBJECTIVES BOX
-   <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:18px 22px;margin-bottom:28px">
-     <h3 style="color:#166534;font-size:14px;font-weight:700;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.5px">📋 Learning Objectives</h3>
-     <ul style="margin:0;padding-left:18px">
-       <li style="color:#15803d;font-size:14px;margin-bottom:6px">What you will understand after studying this</li>
-       ... (3–5 objectives)
-     </ul>
-   </div>
-
-3. CORE CONCEPT SECTIONS — for EACH major concept in the topic:
-   <h2 style="font-size:20px;font-weight:700;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:8px;margin:28px 0 14px">[Concept Name]</h2>
-   <p style="color:#374151;font-size:15px;line-height:1.75;margin:0 0 14px">[Clear explanation of the concept in your own words]</p>
-   
-   For definitions: <div style="background:#fafafa;border-left:3px solid #2563eb;padding:12px 16px;margin:12px 0;border-radius:0 6px 6px 0">
-     <b style="color:#1e293b;font-size:14px">Definition:</b> <span style="color:#374151;font-size:14px">[precise definition]</span>
-   </div>
-   
-   For examples: <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:14px 18px;margin:12px 0">
-     <b style="color:#c2410c;font-size:13px">💡 Example:</b><br>
-     <span style="color:#374151;font-size:14px">[concrete example that illustrates the concept]</span>
-   </div>
-   
 **STRUCTURE — produce these sections in Markdown:**
 
 # [TOPIC TITLE]
 *Subject: [Subject Domain] • [Source Video](${videoUrl})*
 
-## Executive Summary
-[A concise 2-3 sentence overview of the core topic]
+## Quick Summary
+[A concise 2-3 sentence overview of the core video topic]
 
-## Learning Objectives
-- [objective 1]
-- [objective 2]
-...
+## [Section title 1]
+[IMAGE_PLACEHOLDER: exact_image_title] *(Insert here if relevant to this section, on its own line)*
+→ **[Key Term 1]** = [Brief definition or description]
+→ [Bullet point explaining concept 1]
+→ [Bullet point explaining concept 2]
 
-## Detailed Concepts
-[Break down the topic into logical sections using '##' and '###' headings. Use tables for comparisons. Use blockquotes for definitions.]
+## [Section title 2]
+[IMAGE_PLACEHOLDER: exact_image_title] *(Insert here if relevant to this section, on its own line)*
+→ **[Key Term 2]** = [Brief definition or description]
+→ [Bullet point explaining concept 1]
 
-## Key Takeaways
-- [takeaway 1]
-- [takeaway 2]
-
-**NOW PROCESS THIS TRANSCRIPT AND GENERATE THE COMPLETE STUDY DOCUMENT:**
+**NOW PROCESS THIS TRANSCRIPT AND GENERATE THE FLASH BULLET NOTES (be sure to include the IMAGE_PLACEHOLDER tags for the available images):**
 ${transcript}
 `;
   }
 
-  // ─── BHASHASETU: Visual Study Guide with Images ──────────────────────────
+  // Fallback
   return `
 ${coreIntelligenceRules}
-
 **${languageInstruction}**${userInstructions}
-
-**AVAILABLE IMAGES:**
-You have these images available (by title) — use them contextually near relevant concepts:
-${image_titles}
-
-To insert an image, you MUST use the exact placeholder format:
-[IMAGE_PLACEHOLDER: exact_image_title]
-Do not write HTML or markdown for images, ONLY use this exact placeholder format. Our system will automatically replace it with the correct image HTML.
-
-**STRUCTURE — produce these sections in Markdown:**
-
-# [TOPIC TITLE]
-*Comprehensive Visual Guide • [Watch Video](${videoUrl})*
-
-## 📋 Learning Objectives
-- [objective]
-
-## 🧠 Concept Breakdown
-[For each major concept, use '##' and '###'. Embed images where they fit naturally. Use tables for data and blockquotes for definitions.]
-
-## 💡 Examples & Applications
-[Provide concrete examples to illustrate the concepts]
-
-## 🚨 Critical Points
-- [Important fact or warning]
-
-## 📖 Glossary
-**[Term]**: [Definition]
-
-## ✅ Summary & Review
-### Key Takeaways
-- [takeaway]
-
-### Review Questions
-1. [question]
-
-**NOW PROCESS THIS TRANSCRIPT AND GENERATE THE COMPLETE VISUAL STUDY GUIDE:**
+# Notes
 ${transcript}
 `;
 };
@@ -978,6 +911,17 @@ exports.createNote = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "User not found"
+      });
+    }
+
+    // Enforce free tier daily limit (2 generations/day)
+    const limitCheck = await checkFreeTierLimits(userId);
+    if (!limitCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: limitCheck.code,
+        message: limitCheck.reason,
+        currentPlan: "Free"
       });
     }
 
@@ -1107,10 +1051,14 @@ exports.createNote = async (req, res) => {
     const image_titles = img_with_url.map(img => img.title).join(', ');
     const ai_prompt = getModelPrompt(model, transcript, prompt, image_titles, videoUrl, settings);
 
+    const systemPromptContent = (settings?.format === 'flashcards')
+      ? "You are an expert at creating educational flashcards from video transcripts. Always output a valid JSON array of flashcard objects only."
+      : "You are an expert at creating educational study notes from video transcripts. Always output clean, valid Markdown. Do not wrap in HTML tags, output Markdown only.";
+
     const messages = [
       {
         role: "system",
-        content: "You are an expert at creating educational PDF content from video transcripts. Always output valid HTML with inline styles only."
+        content: systemPromptContent
       },
       {
         role: "user",
@@ -1167,10 +1115,10 @@ exports.createNote = async (req, res) => {
         let finalContent = stripMarkdownFences(response.content);
         if (img_with_url && img_with_url.length > 0) {
           img_with_url.forEach(img => {
-            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
-            const regex = new RegExp(`\\\\[IMAGE_PLACEHOLDER:\\\\s*${escapeRegExp(img.title)}\\\\]`, 'gi');
+            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\[IMAGE_PLACEHOLDER:\\s*${escapeRegExp(img.title)}\\]`, 'gi');
             
-            const imgHtml = `\\n<div style="text-align:center;margin:20px 0">\\n  <img src="${img.img_url}" alt="${img.title}" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">\\n  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: ${img.title}</p>\\n</div>\\n`;
+            const imgHtml = `\n<div style="text-align:center;margin:20px 0">\n  <img src="${img.img_url}" alt="${img.title}" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">\n  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: ${img.title}</p>\n</div>\n`;
             finalContent = finalContent.replace(regex, imgHtml);
           });
         }
@@ -1185,6 +1133,7 @@ exports.createNote = async (req, res) => {
         detailLevel: mapDetailLevel(settings?.detailLevel) || 'Standard Notes',
         prompt: prompt || "",
         format: format || 'notes',
+        theme: req.body.theme || 'blueberry',
         flashcardCount: flashcardCount,
         generatedAt: new Date(),
         processingTime: processingTime,

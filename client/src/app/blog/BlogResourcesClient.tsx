@@ -42,7 +42,7 @@ const CATEGORIES = [
 // Fallback for trending (Static for now, could be dynamic later)
 const POPULAR_POSTS = [
   { id: 1, user: "Kneof", action: "shared", target: "Data Science Cheatsheet", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=1", time: "2h ago" },
-  { id: 2, user: "Nhtrai", action: "cracked", target: "GATE with AIR 45", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=2", time: "5h ago" },
+  { id: 2, user: "Nhtrai", action: "scored", target: "1580/1600 on SAT", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=2", time: "5h ago" },
   { id: 3, user: "Ahtlet", action: "posted", target: "Thermodynamics Notes", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=3", time: "1d ago" },
 ];
 
@@ -120,7 +120,7 @@ export default function BlogResourcesClient({ initialPosts }: { initialPosts: Bl
               BLOG <span className="text-red-600">&</span> RESOURCES
             </h1>
             <p className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase tracking-widest mt-1">
-              Official Engineering Intelligence
+              Official Blog and Guides
             </p>
           </div>
           

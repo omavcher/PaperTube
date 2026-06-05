@@ -31,7 +31,7 @@ exports.getMessages = async (req, res) => {
  */
 exports.handleMessage = async (req, res) => {
   try {
-    const { noteId, message, mode } = req.body;
+    const { noteId, message, mode, chatModelPersona, chatModelId } = req.body;
     if (!noteId || !message) {
       return res.status(400).json({ error: "noteId and message are required" });
     }
@@ -156,7 +156,10 @@ Provide a well-structured Markdown response. Use '###' for subheadings. Use '-' 
 `
     };
 
-    const systemPrompt = modePrompts[mode] || modePrompts.ask;
+    let systemPrompt = modePrompts[mode] || modePrompts.ask;
+    if (chatModelPersona) {
+      systemPrompt = `[IDENTITY PROTOCOL]: Adopt the following persona for all responses: "${chatModelPersona}". Even if the instructions below refer to PaperChat AI, maintain this identity and style of communication.\n\n${systemPrompt}`;
+    }
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -228,7 +231,7 @@ Provide a well-structured Markdown response. Use '###' for subheadings. Use '-' 
       role: "assistant", 
       content: fullContent, 
       timestamp: new Date(),
-      modelUsed: CHAT_MODEL
+      modelUsed: chatModelId || CHAT_MODEL
     });
 
     // Keep history manageable

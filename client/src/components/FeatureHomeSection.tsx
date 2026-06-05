@@ -69,7 +69,7 @@ export default function FeaturesSection() {
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400"
           >
             <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-white" /> 
-            <span>System Capabilities</span>
+            <span>Capabilities</span>
           </motion.div>
           
           <motion.h2 
@@ -79,7 +79,7 @@ export default function FeaturesSection() {
             transition={{ delay: 0.1 }}
             className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 leading-none"
           >
-            Advanced AI <br className="md:hidden" /> <span className="text-white">Protocols.</span>
+            Advanced AI <br className="md:hidden" /> <span className="text-white">Capabilities.</span>
           </motion.h2>
           
           <motion.p 
@@ -89,7 +89,7 @@ export default function FeaturesSection() {
             transition={{ delay: 0.2 }}
             className="text-sm md:text-lg text-neutral-400 font-medium md:font-light max-w-xl mx-auto leading-relaxed px-4 md:px-0"
           >
-            Everything you need to transform raw video data into structured, high-fidelity knowledge nodes.
+            Everything you need to transform raw video data into structured, high-fidelity study notes.
           </motion.p>
         </div>
 

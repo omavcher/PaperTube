@@ -1,4 +1,4 @@
-﻿import type { Metadata, ResolvingMetadata } from "next";
+import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import NoteClient from "./NoteClient";
 
@@ -77,8 +77,12 @@ export async function generateMetadata(
     return { title: "Note Not Found | Paperxify" };
   }
 
-  // Strip HTML tags for description (simple regex)
-  const plainTextDescription = note.content.replace(/<[^>]+>/g, '').slice(0, 160);
+  // Strip HTML tags and clean up whitespace for description
+  const plainTextDescription = note.content
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 150);
   const previousImages = (await parent).openGraph?.images || [];
 
   return {
@@ -120,6 +124,12 @@ export default async function NotePage({ params }: { params: Promise<{ name: str
     notFound();
   }
 
+  const plainTextDescription = note.content
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 150);
+
   // JSON-LD Structured Data (TechArticle)
   const jsonLd = {
     "@context": "https://schema.org",
@@ -132,7 +142,7 @@ export default async function NotePage({ params }: { params: Promise<{ name: str
       "url": `https://paperxify.com/${note.creator.username}/profile`
     },
     "datePublished": note.createdAt,
-    "description": note.content.replace(/<[^>]+>/g, '').slice(0, 200),
+    "description": plainTextDescription,
     "interactionStatistic": [
       {
         "@type": "InteractionCounter",

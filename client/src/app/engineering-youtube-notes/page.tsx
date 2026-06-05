@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Engineering YouTube Notes AI | YouTube to Notes AI for Students",
-  description: "Convert 3-hour engineering YouTube lectures into structured notes instantly. Paperxify is the best AI YouTube note taker and video summarizer for Indian students.",
+  description: "Convert 3-hour engineering YouTube lectures into structured notes instantly. Paperxify is the best AI YouTube note taker and video summarizer for students.",
   keywords: [
     "engineering youtube notes",
     "youtube to notes ai",
@@ -12,8 +12,8 @@ export const metadata: Metadata = {
     "youtube to notes for engineering",
     "ai notes for youtube lectures",
     "youtube study notes ai",
-    "best ai youtube summarizer in india",
-    "youtube to notes ai for indian students",
+    "best ai youtube summarizer",
+    "youtube to notes ai for students",
     "convert engineering lecture to pdf",
     "best ai for engineering students"
   ]
@@ -44,7 +44,7 @@ export default function EngineeringPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
              <div className="p-6 bg-neutral-900 border border-white/10 rounded-2xl">
                 <h3 className="text-lg font-bold mb-2">Equation Recognition</h3>
-                <p className="text-sm text-neutral-400">Our advanced Bhasha-Setu model captures complex mathematical contexts from transcripts for accurate notes.</p>
+                <p className="text-sm text-neutral-400">Our advanced Bridge-AI model captures complex mathematical contexts from transcripts for accurate notes.</p>
              </div>
              <div className="p-6 bg-neutral-900 border border-white/10 rounded-2xl">
                 <h3 className="text-lg font-bold mb-2">Code Snippet Extraction</h3>

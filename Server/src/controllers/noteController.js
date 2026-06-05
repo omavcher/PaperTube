@@ -2,12 +2,14 @@ const mongoose = require("mongoose");
 const Note = require("../models/Note");
 const User = require("../models/User");
 const Comment = require("../models/Comment");
+const Folder = require("../models/Folder");
 const { getTranscript } = require('../youtube-transcript');
 const {GoogleGenAI} = require("@google/genai");
 const { google } = require("googleapis");
 const html_to_pdf = require("html-pdf-node");
 dotenv = require("dotenv");
 const axios = require('axios');
+const jwt = require("jsonwebtoken");
 
 
 const GoogleDriveService = require('../services/googleDriveService');
@@ -817,10 +819,10 @@ exports.createNote = async (req, res) => {
       });
     }
 
-    // Generate images for bhashasetu model
+    // Generate images for canvas model
     let img_with_url = [];
-    if (model === 'bhashasetu') {
-      console.log('Generating images for bhashasetu model...');
+    if (model === 'canvas') {
+      console.log('Generating images for canvas model...');
       const figures = await generateImgGEnAI(transcript);
       if (figures && figures.length > 0) {
         img_with_url = await generateImgObjects(figures);
@@ -1055,26 +1057,75 @@ exports.updateNote = async (req, res) => {
 
 exports.getUserNotes = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', sortBy = 'updatedAt', sortOrder = 'desc' } = req.query;
+    const { page = 1, limit = 10, search = '', sortBy = 'updatedAt', sortOrder = 'desc', folderId } = req.query;
     
     const userId = req.user._id;
 
     let matchQuery = { owner: new mongoose.Types.ObjectId(userId) };
     let fcMatchQuery = { owner: new mongoose.Types.ObjectId(userId) };
+
+    // Apply folder filtering if specified
+    if (folderId) {
+      if (folderId === 'root') {
+        const rootFilter = { $or: [{ folderId: null }, { folderId: { $exists: false } }] };
+        matchQuery = { ...matchQuery, ...rootFilter };
+        fcMatchQuery = { ...fcMatchQuery, ...rootFilter };
+      } else {
+        matchQuery.folderId = new mongoose.Types.ObjectId(folderId);
+        fcMatchQuery.folderId = new mongoose.Types.ObjectId(folderId);
+      }
+    }
     
     if (search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
       
-      matchQuery.$and = [
-        { owner: new mongoose.Types.ObjectId(userId) },
-        { $or: [{ title: searchRegex }, { content: searchRegex }, { transcript: searchRegex }] }
-      ];
+      const searchConditions = [{ $or: [{ title: searchRegex }, { content: searchRegex }, { transcript: searchRegex }] }];
+      const fcSearchConditions = [{ $or: [{ title: searchRegex }, { transcript: searchRegex }] }];
 
-      // Flashcards don't have 'content', only 'flashcards' but it's an array of objects
-      fcMatchQuery.$and = [
-        { owner: new mongoose.Types.ObjectId(userId) },
-        { $or: [{ title: searchRegex }, { transcript: searchRegex }] }
-      ];
+      if (folderId === 'root') {
+        matchQuery = {
+          $and: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            { $or: [{ folderId: null }, { folderId: { $exists: false } }] },
+            ...searchConditions
+          ]
+        };
+        fcMatchQuery = {
+          $and: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            { $or: [{ folderId: null }, { folderId: { $exists: false } }] },
+            ...fcSearchConditions
+          ]
+        };
+      } else if (folderId) {
+        matchQuery = {
+          $and: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            { folderId: new mongoose.Types.ObjectId(folderId) },
+            ...searchConditions
+          ]
+        };
+        fcMatchQuery = {
+          $and: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            { folderId: new mongoose.Types.ObjectId(folderId) },
+            ...fcSearchConditions
+          ]
+        };
+      } else {
+        matchQuery = {
+          $and: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            ...searchConditions
+          ]
+        };
+        fcMatchQuery = {
+          $and: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            ...fcSearchConditions
+          ]
+        };
+      }
     }
 
     const sortOptions = {};
@@ -1164,6 +1215,366 @@ exports.getUserNotes = async (req, res) => {
 
 const marked = require('marked');
 
+const THEMES = [
+  // --- LIGHT THEMES ---
+  {
+    id: 'atmosphere',
+    name: 'Atmosphere',
+    category: 'light',
+    bg: '#fafafa',
+    text: '#18181b',
+    primary: '#db2777',
+    accent: '#7c3aed',
+    cardBg: '#f4f4f5',
+    border: '#e4e4e7',
+    link: '#c084fc',
+    btnText: '#ffffff',
+    font: "'Inter', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+    desc: 'Clean pink and lavender glassmorphism light theme'
+  },
+  {
+    id: 'snow',
+    name: 'Snow',
+    category: 'light',
+    bg: '#ffffff',
+    text: '#1f2937',
+    primary: '#0ea5e9',
+    accent: '#0284c7',
+    cardBg: '#f3f4f6',
+    border: '#e5e7eb',
+    link: '#38bdf8',
+    btnText: '#ffffff',
+    font: "'DM Sans', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap',
+    desc: 'Brilliant white background with clear sky blue highlights'
+  },
+  {
+    id: 'cream',
+    name: 'Cream',
+    category: 'light',
+    bg: '#fffdf9',
+    text: '#27272a',
+    primary: '#d97706',
+    accent: '#f59e0b',
+    cardBg: '#faf5e6',
+    border: '#e9dfc6',
+    link: '#ea580c',
+    btnText: '#ffffff',
+    font: "'Lora', serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap',
+    desc: 'Soft ivory background with warm butterscotch details'
+  },
+  {
+    id: 'cotton',
+    name: 'Cotton',
+    category: 'light',
+    bg: '#f8fafc',
+    text: '#334155',
+    primary: '#f43f5e',
+    accent: '#ec4899',
+    cardBg: '#f1f5f9',
+    border: '#e2e8f0',
+    link: '#fb7185',
+    btnText: '#ffffff',
+    font: "'Nunito', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap',
+    desc: 'Cozy slate-white theme with soft cherry-red features'
+  },
+  {
+    id: 'emerald-light',
+    name: 'Emerald Light',
+    category: 'light',
+    bg: '#f0fdf4',
+    text: '#14532d',
+    primary: '#059669',
+    accent: '#10b981',
+    cardBg: '#dcfce7',
+    border: '#bbf7d0',
+    link: '#10b981',
+    btnText: '#ffffff',
+    font: "'Plus Jakarta Sans', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
+    desc: 'Refreshing pastel green field guide style'
+  },
+  {
+    id: 'lavender',
+    name: 'Lavender',
+    category: 'light',
+    bg: '#faf5ff',
+    text: '#3b0764',
+    primary: '#7c3aed',
+    accent: '#a78bfa',
+    cardBg: '#f3e8ff',
+    border: '#e9d5ff',
+    link: '#9f7aea',
+    btnText: '#ffffff',
+    font: "'Quicksand', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap',
+    desc: 'Gentle pale purple and violet watercolor aesthetic'
+  },
+  {
+    id: 'peach',
+    name: 'Peach',
+    category: 'light',
+    bg: '#fffaf0',
+    text: '#7c2d12',
+    primary: '#ea580c',
+    accent: '#f97316',
+    cardBg: '#ffedd5',
+    border: '#fed7aa',
+    link: '#f97316',
+    btnText: '#ffffff',
+    font: "'Poppins', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap',
+    desc: 'Warm cream-orange tone with sweet apricot highlights'
+  },
+  {
+    id: 'sakura',
+    name: 'Sakura',
+    category: 'light',
+    bg: '#fff5f5',
+    text: '#4a1d1d',
+    primary: '#db2777',
+    accent: '#f472b6',
+    cardBg: '#ffe4e6',
+    border: '#fecdd3',
+    link: '#db2777',
+    btnText: '#ffffff',
+    font: "'Zen Maru Gothic', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap',
+    desc: 'Japanese cherry blossom pink theme with crimson lettering'
+  },
+  {
+    id: 'sky',
+    name: 'Sky',
+    category: 'light',
+    bg: '#f0f9ff',
+    text: '#0c4a6e',
+    primary: '#0369a1',
+    accent: '#38bdf8',
+    cardBg: '#e0f2fe',
+    border: '#bae6fd',
+    link: '#0ea5e9',
+    btnText: '#ffffff',
+    font: "'Outfit', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap',
+    desc: 'Airy light blue horizon theme with clear sky tones'
+  },
+  {
+    id: 'mint',
+    name: 'Mint',
+    category: 'light',
+    bg: '#f0fdfb',
+    text: '#134e4a',
+    primary: '#0f766e',
+    accent: '#2dd4bf',
+    cardBg: '#ccfbf1',
+    border: '#99f6e4',
+    link: '#0d9488',
+    btnText: '#ffffff',
+    font: "'Figtree', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap',
+    desc: 'Crisp fresh mint and teal tones for an energetic clean feel'
+  },
+
+  // --- PROFESSIONAL THEMES ---
+  {
+    id: 'kraft',
+    name: 'Kraft',
+    category: 'professional',
+    bg: '#f4efe4',
+    text: '#2d241e',
+    primary: '#8b5a2b',
+    accent: '#cd853f',
+    cardBg: '#eae3d2',
+    border: '#d7cdb2',
+    link: '#a0522d',
+    btnText: '#ffffff',
+    font: "'Crimson Pro', Georgia, serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600;700&display=swap',
+    desc: 'Vintage organic paper style with elegant brown serif typography'
+  },
+  {
+    id: 'academic',
+    name: 'Academic',
+    category: 'professional',
+    bg: '#ffffff',
+    text: '#0f172a',
+    primary: '#1e293b',
+    accent: '#475569',
+    cardBg: '#f8fafc',
+    border: '#e2e8f0',
+    link: '#3b82f6',
+    btnText: '#ffffff',
+    font: "'Source Serif 4', Georgia, serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;500;600;700&display=swap',
+    desc: 'Clean, neutral-light layouts standard for research and thesis'
+  },
+  {
+    id: 'sepia',
+    name: 'Sepia',
+    category: 'professional',
+    bg: '#f4ecd8',
+    text: '#433422',
+    primary: '#5c4033',
+    accent: '#8b5a2b',
+    cardBg: '#eae0c8',
+    border: '#d3c2a0',
+    link: '#8b4513',
+    btnText: '#ffffff',
+    font: "'EB Garamond', Georgia, serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&display=swap',
+    desc: 'Warm reading-friendly antique paper tone with dark brown text'
+  },
+  {
+    id: 'oxford',
+    name: 'Oxford',
+    category: 'professional',
+    bg: '#f8fafc',
+    text: '#0f172a',
+    primary: '#0f172a',
+    accent: '#334155',
+    cardBg: '#f1f5f9',
+    border: '#cbd5e1',
+    link: '#1e3a8a',
+    btnText: '#ffffff',
+    font: "'Playfair Display', Georgia, serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&display=swap',
+    desc: 'Classic British library aesthetic with navy and heavy borders'
+  },
+  {
+    id: 'executive',
+    name: 'Executive',
+    category: 'professional',
+    bg: '#ffffff',
+    text: '#1c1917',
+    primary: '#44403c',
+    accent: '#78716c',
+    cardBg: '#f5f5f4',
+    border: '#e7e5e4',
+    link: '#292524',
+    btnText: '#ffffff',
+    font: "'IBM Plex Sans', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap',
+    desc: 'High-contrast charcoal on warm white corporate layout'
+  },
+  {
+    id: 'minimalist',
+    name: 'Minimalist',
+    category: 'professional',
+    bg: '#fafafa',
+    text: '#18181b',
+    primary: '#09090b',
+    accent: '#27272a',
+    cardBg: '#f4f4f5',
+    border: '#e4e4e7',
+    link: '#09090b',
+    btnText: '#ffffff',
+    font: "'Space Grotesk', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap',
+    desc: 'Ultra-clean layout stripped of all decorative colors'
+  },
+  {
+    id: 'blueprint',
+    name: 'Blueprint',
+    category: 'professional',
+    bg: '#f8fbff',
+    text: '#1e3a5f',
+    primary: '#1d4ed8',
+    accent: '#3b82f6',
+    cardBg: '#eff6ff',
+    border: '#bfdbfe',
+    link: '#2563eb',
+    btnText: '#ffffff',
+    font: "'Roboto Mono', monospace",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap',
+    desc: 'Technical drafting-inspired blue-on-white engineering theme'
+  },
+  {
+    id: 'linen',
+    name: 'Linen',
+    category: 'professional',
+    bg: '#faf8f5',
+    text: '#3d2b1f',
+    primary: '#6b4c3b',
+    accent: '#a07050',
+    cardBg: '#f2ede7',
+    border: '#e0d5c8',
+    link: '#8b5e3c',
+    btnText: '#ffffff',
+    font: "'Merriweather', Georgia, serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap',
+    desc: 'Natural off-white linen texture with earthy warm tones'
+  },
+
+  // --- COLORFUL THEMES ---
+  {
+    id: 'coral',
+    name: 'Coral',
+    category: 'colorful',
+    bg: '#fff8f6',
+    text: '#7f1d1d',
+    primary: '#e11d48',
+    accent: '#f97316',
+    cardBg: '#ffe4e1',
+    border: '#fecaca',
+    link: '#e11d48',
+    btnText: '#ffffff',
+    font: "'Raleway', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap',
+    desc: 'Vibrant coral and warm orange tones on a light blush base'
+  },
+  {
+    id: 'violet-mist',
+    name: 'Violet Mist',
+    category: 'colorful',
+    bg: '#fdf4ff',
+    text: '#4a044e',
+    primary: '#9333ea',
+    accent: '#c026d3',
+    cardBg: '#fae8ff',
+    border: '#f0abfc',
+    link: '#a21caf',
+    btnText: '#ffffff',
+    font: "'Josefin Sans', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;500;600;700&display=swap',
+    desc: 'Dreamy fuchsia and violet mist with soft purple highlights'
+  },
+  {
+    id: 'sunrise',
+    name: 'Sunrise',
+    category: 'colorful',
+    bg: '#fffbf0',
+    text: '#78350f',
+    primary: '#f59e0b',
+    accent: '#f97316',
+    cardBg: '#fef3c7',
+    border: '#fde68a',
+    link: '#d97706',
+    btnText: '#ffffff',
+    font: "'Cabin', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Cabin:wght@400;500;600;700&display=swap',
+    desc: 'Golden sunrise warmth with amber and orange glow on cream'
+  },
+  {
+    id: 'breeze',
+    name: 'Breeze',
+    category: 'colorful',
+    bg: '#f0f7ff',
+    text: '#1e3a5f',
+    primary: '#2563eb',
+    accent: '#06b6d4',
+    cardBg: '#dbeafe',
+    border: '#bfdbfe',
+    link: '#0284c7',
+    btnText: '#ffffff',
+    font: "'Karla', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Karla:wght@400;500;600;700;800&display=swap',
+    desc: 'Fresh coastal breeze with cerulean blue and cyan highlights'
+  }
+];
+
 exports.generatePDF = async (req, res) => {
   try {
     const { noteId } = req.query;
@@ -1185,7 +1596,25 @@ exports.generatePDF = async (req, res) => {
       });
     }
 
-    console.log("✅ Found note:", note.title);
+    // Verify user session to check subscription (Clean vs Watermarked PDF)
+    let isPremium = false;
+    const authHeader = req.header('Auth') || req.header('Authorization');
+    if (authHeader) {
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+      if (token && token !== 'null' && token !== 'undefined') {
+        try {
+          const decoded = jwt.verify(token, process.env.SESSION_SECRET);
+          const user = await User.findById(decoded.id);
+          if (user && user.membership?.isActive === true) {
+            isPremium = true;
+          }
+        } catch (jwtErr) {
+          console.warn("JWT verification in PDF generation failed:", jwtErr.message);
+        }
+      }
+    }
+
+    console.log(`` + `✅ Found note: ${note.title}. PDF Tier determined: ${isPremium ? 'Premium (No Watermark)' : 'Free (Watermarked)'}`);
     console.log("🔄 Generating new PDF with images...");
 
     // Convert Markdown to HTML if needed
@@ -1207,7 +1636,7 @@ exports.generatePDF = async (req, res) => {
     while ((match = imgRegex.exec(processedContent)) !== null) {
       // match[1] is for HTML, match[2] is for Markdown
       const url = match[1] || match[2];
-      if (url && !imgUrls.includes(url)) imgUrls.push(url);
+      if (url && !imgUrls.push(url)) imgUrls.push(url);
     }
 
     console.log(`📸 Found ${imgUrls.length} images to process`);
@@ -1237,7 +1666,7 @@ exports.generatePDF = async (req, res) => {
           imageMap[imgUrl] = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-family='Arial' font-size='16'%3EImage failed to load%3C/text%3E%3C/svg%3E`;
         }
       }));
-      console.log(`✅ Image downloading complete.`);
+      console.log(`` + `✅ Image downloading complete.`);
     }
 
     // Replace the URLs in content with data URLs
@@ -1248,6 +1677,16 @@ exports.generatePDF = async (req, res) => {
       }
     });
 
+    // Determine the theme dynamically
+    const activeThemeId = note.generationDetails?.theme || 'atmosphere';
+    const theme = THEMES.find(t => t.id === activeThemeId) || THEMES[0];
+
+    const displayBg = theme.bg;
+    const displayText = theme.text;
+    const displayBorder = theme.border;
+    const displayCardBg = theme.cardBg;
+    const displayFont = theme.font || "'Inter', sans-serif";
+
     // Create HTML with embedded images and premium styling
     const completeHTML = `
       <!DOCTYPE html>
@@ -1256,25 +1695,24 @@ exports.generatePDF = async (req, res) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${note.title}</title>
+        ${theme.googleFont ? `<link rel="stylesheet" href="${theme.googleFont}">` : `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`}
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-          
           * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
           }
           body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            color: #1e293b; 
+            font-family: ${displayFont}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            color: ${displayText}; 
             padding: 50px 60px;
             line-height: 1.7;
             max-width: 1000px;
             margin: 0 auto;
-            background: #ffffff;
+            background: ${displayBg};
           }
           h1 { 
-            color: #0f172a; 
+            color: ${theme.primary}; 
             font-size: 36px;
             font-weight: 800;
             letter-spacing: -0.03em;
@@ -1282,23 +1720,23 @@ exports.generatePDF = async (req, res) => {
             line-height: 1.2;
           }
           h2 { 
-            color: #1d4ed8; 
+            color: ${theme.primary}; 
             font-size: 24px;
             font-weight: 700;
             margin-top: 40px;
             margin-bottom: 16px;
-            border-bottom: 2px solid #e2e8f0;
+            border-bottom: 2px solid ${displayBorder};
             padding-bottom: 8px;
           }
           h3 { 
-            color: #334155; 
+            color: ${theme.primary}; 
             font-size: 20px;
             font-weight: 600;
             margin-top: 30px;
             margin-bottom: 12px;
           }
           h4 {
-            color: #475569;
+            color: ${theme.primary};
             font-size: 16px;
             font-weight: 600;
             margin-top: 24px;
@@ -1307,7 +1745,7 @@ exports.generatePDF = async (req, res) => {
           p { 
             margin-bottom: 18px;
             font-size: 15px;
-            color: #334155;
+            color: ${displayText};
           }
           img {
             max-width: 100%;
@@ -1316,30 +1754,31 @@ exports.generatePDF = async (req, res) => {
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             margin: 24px auto;
             display: block;
-            border: 1px solid #e2e8f0;
+            border: 1px solid ${displayBorder};
           }
           .content {
             margin-top: 32px;
           }
           code {
-            background-color: #f1f5f9;
-            color: #0f172a;
+            background-color: ${displayCardBg};
+            color: ${theme.accent};
             padding: 3px 6px;
             border-radius: 6px;
             font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid ${displayBorder};
           }
           pre {
-            background-color: #0f172a;
-            color: #f8fafc;
+            background-color: ${displayCardBg};
+            color: ${displayText};
             padding: 20px;
             border-radius: 12px;
             overflow-x: auto;
             margin: 24px 0;
             font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid ${displayBorder};
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
           }
           pre code {
             background-color: transparent;
@@ -1348,12 +1787,12 @@ exports.generatePDF = async (req, res) => {
             padding: 0;
           }
           blockquote {
-            background-color: #f8fafc;
-            border-left: 4px solid #3b82f6;
+            background-color: ${displayCardBg};
+            border-left: 4px solid ${theme.primary};
             padding: 16px 20px;
             border-radius: 0 12px 12px 0;
             margin: 24px 0;
-            color: #475569;
+            color: ${displayText};
             font-style: italic;
           }
           table {
@@ -1363,18 +1802,20 @@ exports.generatePDF = async (req, res) => {
             margin: 24px 0;
             font-size: 15px;
             border-radius: 12px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid ${displayBorder};
             overflow: hidden;
+            background-color: ${displayCardBg};
           }
           th, td {
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid ${displayBorder};
             padding: 14px 16px;
             text-align: left;
+            color: ${displayText};
           }
           th {
-            background-color: #f8fafc;
+            background-color: ${displayBorder};
             font-weight: 600;
-            color: #0f172a;
+            color: ${theme.primary};
           }
           tr:last-child td {
             border-bottom: none;
@@ -1382,19 +1823,19 @@ exports.generatePDF = async (req, res) => {
           ul, ol {
             margin: 18px 0;
             padding-left: 28px;
-            color: #334155;
+            color: ${displayText};
           }
           li {
             margin-bottom: 10px;
             font-size: 15px;
           }
           li::marker {
-            color: #3b82f6;
+            color: ${theme.primary};
             font-weight: 600;
           }
           hr {
             border: none;
-            border-top: 2px solid #e2e8f0;
+            border-top: 2px solid ${displayBorder};
             margin: 40px 0;
           }
           .header-meta {
@@ -1406,8 +1847,13 @@ exports.generatePDF = async (req, res) => {
             font-weight: 500;
           }
           @media print {
+            * {
+              font-family: ${displayFont}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+            }
             body {
               padding: 0;
+              background: ${displayBg} !important;
+              color: ${displayText} !important;
             }
             img {
               max-width: 100% !important;
@@ -1415,6 +1861,7 @@ exports.generatePDF = async (req, res) => {
             }
             h2, h3, h4 {
               page-break-after: avoid;
+              color: ${theme.primary} !important;
             }
             p, ul, ol, blockquote, pre {
               page-break-inside: avoid;
@@ -1426,11 +1873,28 @@ exports.generatePDF = async (req, res) => {
               page-break-inside: avoid;
             }
           }
+          ${!isPremium ? `
+          .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 70px;
+            font-weight: 900;
+            color: rgba(220, 38, 38, 0.05);
+            pointer-events: none;
+            z-index: 9999;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            white-space: nowrap;
+          }
+          ` : ''}
         </style>
       </head>
       <body>
+        ${!isPremium ? '<div class="watermark">Paperxify Free Tier</div>' : ''}
         <header>
-          <h1>${note.title}</h1>
+          <h1 style="color: ${theme.primary};">${note.title}</h1>
           <div class="header-meta">
             <span>Created: ${new Date(note.createdAt).toLocaleDateString('en-US', {
               year: 'numeric',
@@ -1445,16 +1909,16 @@ exports.generatePDF = async (req, res) => {
           ${processedContent}
         </main>
         
-        <div style="margin-top: 60px; padding: 24px 32px; border-top: 2px solid #f1f5f9; font-family: 'Inter', sans-serif; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; background-color: #f8fafc; border-radius: 16px; page-break-inside: avoid;">
+        <div style="margin-top: 60px; padding: 24px 32px; border-top: 2px solid ${displayBorder}; font-family: ${displayFont}, sans-serif; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; background-color: ${displayCardBg}; border-radius: 16px; page-break-inside: avoid;">
           <div>
             <a href="https://paperxify.com" style="text-decoration: none;">
-              <span style="font-size: 20px; font-weight: 800; font-style: italic; letter-spacing: -0.5px; text-transform: uppercase; color: #0f172a;">Paper<span style="color: #dc2626;">Xify</span></span>
+              <span style="font-size: 20px; font-weight: 800; font-style: italic; letter-spacing: -0.5px; text-transform: uppercase; color: ${theme.primary};">Paper<span style="color: ${theme.accent};">Xify</span></span>
             </a>
             <div style="font-size: 10px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">AI Knowledge Synthesis</div>
           </div>
           <div>
-            <a href="https://paperxify.com" style="color: #475569; font-size: 12px; text-decoration: none; font-weight: 600;">
-              Convert any YouTube Video to PDF <span style="color: #dc2626; font-weight: 900; margin-left: 6px;">&#8594;</span>
+            <a href="https://paperxify.com" style="color: ${displayText}; font-size: 12px; text-decoration: none; font-weight: 600;">
+              Convert any YouTube Video to PDF <span style="color: ${theme.primary}; font-weight: 900; margin-left: 6px;">&#8594;</span>
             </a>
           </div>
         </div>
@@ -3113,5 +3577,136 @@ exports.deleteReply = async (req, res) => {
   } catch (error) {
     console.error("Delete reply error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// --- FOLDER CRUD CONTROLLERS ---
+
+// Create a new folder
+exports.createFolder = async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: "Folder name is required" });
+    }
+    const folder = new Folder({
+      name: name.trim(),
+      owner: req.user._id
+    });
+    await folder.save();
+    res.status(201).json({ success: true, data: folder });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: "A folder with this name already exists" });
+    }
+    res.status(500).json({ success: false, message: "Error creating folder", error: error.message });
+  }
+};
+
+// Get all folders of user
+exports.getFolders = async (req, res) => {
+  try {
+    const folders = await Folder.find({ owner: req.user._id }).sort({ name: 1 });
+    
+    // For each folder, let's also count how many notes/flashcards are inside it!
+    const folderData = await Promise.all(folders.map(async (folder) => {
+      const noteCount = await Note.countDocuments({ owner: req.user._id, folderId: folder._id });
+      const flashcardCount = await mongoose.model('FlashcardSet').countDocuments({ owner: req.user._id, folderId: folder._id });
+      return {
+        ...folder.toObject(),
+        count: noteCount + flashcardCount
+      };
+    }));
+    
+    res.status(200).json({ success: true, data: folderData });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error fetching folders", error: error.message });
+  }
+};
+
+// Rename a folder
+exports.renameFolder = async (req, res) => {
+  try {
+    const { folderId } = req.params;
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: "Folder name is required" });
+    }
+    const folder = await Folder.findOneAndUpdate(
+      { _id: folderId, owner: req.user._id },
+      { name: name.trim() },
+      { new: true }
+    );
+    if (!folder) {
+      return res.status(404).json({ success: false, message: "Folder not found" });
+    }
+    res.status(200).json({ success: true, data: folder });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: "A folder with this name already exists" });
+    }
+    res.status(500).json({ success: false, message: "Error renaming folder", error: error.message });
+  }
+};
+
+// Delete a folder
+exports.deleteFolder = async (req, res) => {
+  try {
+    const { folderId } = req.params;
+    const folder = await Folder.findOneAndDelete({ _id: folderId, owner: req.user._id });
+    if (!folder) {
+      return res.status(404).json({ success: false, message: "Folder not found" });
+    }
+    // Update all notes & flashcards in this folder to have folderId = null
+    await Note.updateMany({ owner: req.user._id, folderId }, { $set: { folderId: null } });
+    await mongoose.model('FlashcardSet').updateMany({ owner: req.user._id, folderId }, { $set: { folderId: null } });
+    
+    res.status(200).json({ success: true, message: "Folder deleted and contents moved to root" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error deleting folder", error: error.message });
+  }
+};
+
+// Move note or flashcard to a folder
+exports.moveNoteToFolder = async (req, res) => {
+  try {
+    const { itemId, itemType, folderId } = req.body;
+    if (!itemId || !itemType) {
+      return res.status(400).json({ success: false, message: "itemId and itemType are required" });
+    }
+    
+    let targetFolderId = null;
+    if (folderId && folderId !== 'root') {
+      const folderExists = await Folder.findOne({ _id: folderId, owner: req.user._id });
+      if (!folderExists) {
+        return res.status(404).json({ success: false, message: "Target folder not found or access denied" });
+      }
+      targetFolderId = folderExists._id;
+    }
+    
+    let updatedItem = null;
+    if (itemType === 'note') {
+      updatedItem = await Note.findOneAndUpdate(
+        { _id: itemId, owner: req.user._id },
+        { $set: { folderId: targetFolderId } },
+        { new: true }
+      );
+    } else if (itemType === 'flashcard') {
+      updatedItem = await mongoose.model('FlashcardSet').findOneAndUpdate(
+        { _id: itemId, owner: req.user._id },
+        { $set: { folderId: targetFolderId } },
+        { new: true }
+      );
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid itemType (must be 'note' or 'flashcard')" });
+    }
+    
+    if (!updatedItem) {
+      return res.status(404).json({ success: false, message: "Item not found or access denied" });
+    }
+    
+    res.status(200).json({ success: true, message: "Item moved successfully", data: updatedItem });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error moving item", error: error.message });
   }
 };

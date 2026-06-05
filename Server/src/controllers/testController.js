@@ -2,9 +2,10 @@ const User = require('../models/User');
 const PracticeTest = require('../models/PracticeTest');
 const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
+const { checkFreeTierLimits, checkVideoDurationLimit } = require('../utils/freeTierLimits');
 
-const FREE_MODELS = ['sankshipta', 'bhashasetu'];
-const PREMIUM_MODELS = ['parikshasarthi', 'vyavastha'];
+const FREE_MODELS = ['flash'];
+const PREMIUM_MODELS = ['canvas', 'scholar', 'atlas'];
 const ALL_MODELS = [...FREE_MODELS, ...PREMIUM_MODELS];
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -18,7 +19,7 @@ let openRouterModelQueue = [
 ];
 
 // Premium model
-const PREMIUM_MODEL_ID = "x-ai/grok-4.3";
+const PREMIUM_MODEL_ID = "deepseek/deepseek-v4-flash";
 
 async function callOpenRouter(messages, modelId, options = {}) {
   const { temperature = 0.5, max_tokens = 4000, timeout = 120000 } = options;
@@ -158,6 +159,18 @@ exports.createPracticeTest = async (req, res) => {
     
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Enforce free tier daily limit (2 generations/day)
+    const limitCheck = await checkFreeTierLimits(userId);
+    if (!limitCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: limitCheck.code,
+        message: limitCheck.reason,
+        currentPlan: "Free"
+      });
+    }
+
     const isSubscribed = user.membership?.isActive === true;
     const isFreeModel = FREE_MODELS.includes(model);
     
@@ -172,6 +185,19 @@ exports.createPracticeTest = async (req, res) => {
     }
 
     const videoId = extractVideoId(videoUrl);
+    if (!videoId) return res.status(400).json({ success: false, message: 'Invalid YouTube URL' });
+
+    // Enforce free tier video duration limit (1hr max)
+    const durationCheck = await checkVideoDurationLimit(videoId, userId);
+    if (!durationCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: durationCheck.code,
+        message: durationCheck.reason,
+        upgradeRequired: true
+      });
+    }
+
     const videoTitle = await fetchVideoTitle(videoUrl);
     let transcript = await getTranscript(videoId);
     if (!transcript) throw new Error('Transcript unavailable');

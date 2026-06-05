@@ -45,8 +45,8 @@ export const metadata: Metadata = {
     "notegpt vs mindgrasp vs paperxify",
     
     // Geo-Targeted
-    "youtube ai notes india free tool", "best ai youtube summarizer in india", 
-    "youtube to notes ai for indian students", "upsc lecture summarizer ai",
+    "youtube ai notes free tool", "best ai youtube summarizer", 
+    "youtube to notes ai for students", "lecture summarizer ai",
     
     "Paperxify"
   ],
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
   
   openGraph: {
     type: "website",
-    locale: "en-IN",
+    locale: "en-US",
     url: "https://paperxify.com",
     title: "Paperxify | AI Notes Maker & YT Link to Notes Converter",
     description:
@@ -100,7 +100,8 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://paperxify.com",
     languages: {
-      'en-IN': 'https://paperxify.com',
+      'en': 'https://paperxify.com',
+      'en-US': 'https://paperxify.com',
     },
   }
 };
@@ -162,13 +163,6 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-        <meta name="google-adsense-account" content="ca-pub-8343501385468147"></meta>
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8343501385468147"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
         {/* Google Analytics / Tag Manager (AW-363591459) */}
         <Script

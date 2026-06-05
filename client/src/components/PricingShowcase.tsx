@@ -19,21 +19,21 @@ function fakeOriginal(real: number) {
 // ─── Plan data ────────────────────────────────────────────────
 const plans = [
   { 
-    id: "scholar", name: "Scholar", price: 149, daily: 4.90,
-    desc: "For occasional research.", 
-    features: ["3 AI Models (excl. Vyavastha)", "6 Hour Video Limit", "Cloud Save Enabled", "Basic Export"],
-    cta: "Get Started", highlight: false,
+    id: "free", name: "Free", price: 0, daily: 0,
+    desc: "Try before you commit.", 
+    features: ["2 videos per day", "Up to 1 hour per video", "Quick Notes mode", "Last 5 notes saved", "Watermarked PDF export"],
+    cta: "Get Started Free", highlight: false,
   },
   { 
-    id: "pro", name: "Pro Scholar", price: 299, daily: 9.90,
-    desc: "For serious academic work.", 
-    features: ["All 4 AI Models", "12 Hour Video Limit", "Priority Processing", "Advanced PDF Export", "No Watermark"],
+    id: "pro", name: "Pro", price: 9, daily: 0.30,
+    desc: "For serious students.", 
+    features: ["15 videos per day", "Up to 4 hours per video", "All note styles — Quick, Visual, Full PDF", "Clean PDF export (no watermark)", "Markdown + Notion export"],
     cta: "Upgrade to Pro", highlight: true, popular: true,
   },
   { 
-    id: "power", name: "Power Scholar", price: 599, daily: 19.90,
-    desc: "For power users & teams.", 
-    features: ["All 4 AI Models", "Unlimited Video Processing", "API Access", "24/7 Priority Support", "Team Dashboard"],
+    id: "power", name: "Power", price: 19, daily: 0.63,
+    desc: "For power learners.", 
+    features: ["Unlimited videos, no daily cap", "Up to 12 hours per video", "Playlist processing (full course)", "Deep PDF — textbook-quality", "Anki deck export (.apkg)"],
     cta: "Go Power", highlight: false,
   },
 ];
@@ -197,21 +197,21 @@ export default function PricingShowcase() {
                 <div className="mb-6 md:mb-8 pb-6 md:pb-8 border-b border-white/5">
                   {/* Fake higher original price — crossed out */}
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm text-neutral-600 line-through font-mono">₹{origPrice}</span>
+                    <span className="text-sm text-neutral-600 line-through font-mono">${origPrice}</span>
                     <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[8px] font-black uppercase">
                       -{OFFER_DISCOUNT_PCT}%
                     </span>
                   </div>
                   {/* Actual (discounted-looking) price */}
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl md:text-5xl font-bold text-white tracking-tighter">₹{plan.price}</span>
+                    <span className="text-4xl md:text-5xl font-bold text-white tracking-tighter">${plan.price}</span>
                     <span className="text-neutral-500 text-xs md:text-sm font-bold uppercase tracking-widest">/mo</span>
                   </div>
                   {/* Savings row */}
                   <div className="mt-2 flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-emerald-500">✓ You save ₹{savedAmount}</span>
+                    <span className="text-[10px] font-bold text-emerald-500">✓ You save ${savedAmount}</span>
                     <span className="text-[10px] font-mono text-neutral-600">
-                      ≈ ₹{plan.daily.toFixed(2)} / day
+                      ≈ ${plan.daily.toFixed(2)} / day
                     </span>
                   </div>
                 </div>

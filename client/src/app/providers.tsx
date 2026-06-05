@@ -9,11 +9,13 @@ import api from "@/config/api";
 import { Toaster, toast } from "sonner";
 import UserTracker from "@/components/UserTracker";
 import { cn } from "@/lib/utils";
+import { LoginDialog } from "@/components/LoginDialog";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const pathname = usePathname();
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -56,7 +58,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     syncAuthState();
     window.addEventListener("auth-change", syncAuthState);
-    return () => window.removeEventListener("auth-change", syncAuthState);
+    
+    const handleOpenLogin = () => setIsLoginOpen(true);
+    window.addEventListener("open-login", handleOpenLogin);
+
+    return () => {
+      window.removeEventListener("auth-change", syncAuthState);
+      window.removeEventListener("open-login", handleOpenLogin);
+    };
   }, []);
 
    useEffect(() => {
@@ -112,6 +121,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <Toaster theme="dark" position="top-center" richColors />
       
       <GoogleOneTapLoginWrapper onSuccess={handleLoginSuccess} />
+
+      <LoginDialog isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onSuccess={handleLoginSuccess} />
 
       <Navbar
         isLoggedIn={isLoggedIn}

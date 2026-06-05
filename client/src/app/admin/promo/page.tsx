@@ -6,7 +6,7 @@ import {
   Tag, Plus, Trash2, ToggleLeft, ToggleRight, Edit3,
   X, Save, Loader2, Users, CheckCircle2,
   RefreshCw, Copy, ChevronDown, ChevronUp,
-  Gift, Clock, ShieldOff, Shield, IndianRupee,
+  Gift, Clock, ShieldOff, Shield, DollarSign,
   ArrowRight, Zap, Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,37 +15,16 @@ import { toast } from "sonner";
 
 // ─── All plan data (source of truth) ─────────────────────────
 const ALL_PLANS = [
-  // Subscriptions
+  // Subscriptions — Stripe USD plans
   {
-    id: "scholar", type: "subscription", label: "Scholar",
-    monthlyPrice: 149, yearlyPrice: 1490,
+    id: "pro", type: "subscription", label: "Pro",
+    monthlyPrice: 14, yearlyPrice: 168,
     tagColor: "bg-blue-500/10 text-blue-400 border-blue-500/20"
   },
   {
-    id: "pro", type: "subscription", label: "Pro Scholar",
-    monthlyPrice: 299, yearlyPrice: 2990,
+    id: "power", type: "subscription", label: "Power",
+    monthlyPrice: 29, yearlyPrice: 348,
     tagColor: "bg-purple-500/10 text-purple-400 border-purple-500/20"
-  },
-  {
-    id: "power", type: "subscription", label: "Power Scholar",
-    monthlyPrice: 599, yearlyPrice: 5990,
-    tagColor: "bg-orange-500/10 text-orange-400 border-orange-500/20"
-  },
-  // Token packs
-  {
-    id: "basic", type: "token", label: "Basic Chip",
-    price: 99,
-    tagColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-  },
-  {
-    id: "standard", type: "token", label: "Standard Core",
-    price: 399,
-    tagColor: "bg-teal-500/10 text-teal-400 border-teal-500/20"
-  },
-  {
-    id: "premium", type: "token", label: "Premium Node",
-    price: 699,
-    tagColor: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
   },
 ] as const;
 
@@ -69,7 +48,7 @@ function calcDiscount(
 
 // Get all price points for a plan (could be monthly / yearly / flat)
 function getPlanPrices(plan: typeof ALL_PLANS[number]): Array<{ label: string; price: number }> {
-  if (plan.type === "token") {
+  if ((plan.type as string) === "token") {
     return [{ label: "One-time", price: (plan as any).price }];
   }
   return [
@@ -179,26 +158,25 @@ function DiscountPreview({
                 if (!meetsMin) {
                   return (
                     <div key={label} className="flex items-center justify-between opacity-40">
-                      <span className="text-[9px]">{label} — ₹{price}</span>
+                      <span className="text-[9px]">{label} — ${price}</span>
                       <span className="text-[8px] italic">Below min order</span>
                     </div>
                   );
                 }
                 const { discount, final } = calcDiscount(price, discountType, discountValue, maxDiscountCap);
-                const gstFinal = +(final * 1.18).toFixed(2);
                 return (
                   <div key={label} className="bg-black/30 rounded-lg p-2.5 space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] font-bold opacity-70">{label}</span>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] line-through opacity-40">₹{price}</span>
+                        <span className="text-[9px] line-through opacity-40">${price}</span>
                         <ArrowRight size={8} className="opacity-40" />
-                        <span className="text-[10px] font-black text-white">₹{final}</span>
+                        <span className="text-[10px] font-black text-white">${final}</span>
                       </div>
                     </div>
                     <div className="flex justify-between text-[8px] opacity-60">
-                      <span className="text-red-400 font-bold">— ₹{discount} saved</span>
-                      <span>+GST → ₹{gstFinal}</span>
+                      <span className="text-red-400 font-bold">— ${discount} saved</span>
+                      <span className="text-neutral-500">No tax added</span>
                     </div>
                   </div>
                 );
@@ -238,7 +216,7 @@ function PlanChips({ applicableTo, restrictedToPlans }: { applicableTo: string; 
             {p.label} ·{" "}
             {prices.map((pr, i) => (
               <span key={i}>
-                {i > 0 && " / "}₹{pr.price}
+                {i > 0 && " / "}${pr.price}
                 <span className="opacity-60 font-normal">/{pr.label.toLowerCase()}</span>
               </span>
             ))}
@@ -350,7 +328,7 @@ export default function PromoAdminPage() {
   const filteredPlanOptions = useMemo(() =>
     ALL_PLANS.filter(p => {
       if (form.applicableTo === "subscription") return p.type === "subscription";
-      if (form.applicableTo === "token") return p.type === "token";
+      if (form.applicableTo === "token") return (p.type as string) === "token";
       return true;
     }), [form.applicableTo]);
 
@@ -441,21 +419,21 @@ export default function PromoAdminPage() {
                     <button key={t} onClick={() => setForm(f => ({ ...f, discountType: t }))}
                       className={cn("flex-1 h-10 rounded-lg border text-[10px] font-bold uppercase tracking-widest transition-all",
                         form.discountType === t ? "bg-red-600 border-red-600 text-white" : "bg-white/5 border-white/10 text-neutral-400 hover:text-white")}>
-                      {t === "flat" ? "₹ Flat" : "% Percent"}
+                      {t === "flat" ? "$ Flat" : "% Percent"}
                     </button>
                   ))}
                 </div>
               </FormField>
 
               {/* Discount Value */}
-              <FormField label={`Discount Value (${form.discountType === "percent" ? "%" : "₹"})`}>
+              <FormField label={`Discount Value (${form.discountType === "percent" ? "%" : "$"})`}>
                 <input type="number" value={form.discountValue} min={1} max={form.discountType === "percent" ? 100 : 99999}
                   onChange={e => setForm(f => ({ ...f, discountValue: +e.target.value }))} className="form-input" />
               </FormField>
 
               {/* Max Discount Cap */}
               {form.discountType === "percent" && (
-                <FormField label="Max Discount Cap (₹)" hint="0 = no cap">
+                <FormField label="Max Discount Cap ($)" hint="0 = no cap">
                   <input type="number" value={form.maxDiscountCap} min={0}
                     onChange={e => setForm(f => ({ ...f, maxDiscountCap: +e.target.value }))} className="form-input" />
                 </FormField>
@@ -473,7 +451,7 @@ export default function PromoAdminPage() {
               </FormField>
 
               {/* Min Order Amount */}
-              <FormField label="Min Order Amount (₹)" hint="0 = no minimum">
+              <FormField label="Min Order Amount ($)" hint="0 = no minimum">
                 <input type="number" value={form.minOrderAmount} min={0}
                   onChange={e => setForm(f => ({ ...f, minOrderAmount: +e.target.value }))} className="form-input" />
               </FormField>
@@ -541,7 +519,7 @@ export default function PromoAdminPage() {
                           <div className="flex items-center gap-2 mt-0.5">
                             {prices.map((pr, i) => (
                               <span key={i} className={cn("text-[9px] font-bold", selected ? "text-red-300" : "text-neutral-500")}>
-                                {pr.label}: <span className="text-white">₹{pr.price}</span>
+                                 {pr.label}: <span className="text-white">${pr.price}</span>
                                 {p.type === "subscription" && <span className="opacity-50">/{pr.label === "Monthly" ? "mo" : "yr"}</span>}
                               </span>
                             ))}
@@ -635,11 +613,11 @@ export default function PromoAdminPage() {
                         </span>
                         {c.discountType === "percent" ? (
                           <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
-                            {c.discountValue}% OFF{c.maxDiscountCap > 0 && ` (max ₹${c.maxDiscountCap})`}
+                            {c.discountValue}% OFF{c.maxDiscountCap > 0 && ` (max $${c.maxDiscountCap})`}
                           </span>
                         ) : (
                           <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400">
-                            ₹{c.discountValue} OFF
+                            ${c.discountValue} OFF
                           </span>
                         )}
                       </div>
@@ -754,7 +732,7 @@ export default function PromoAdminPage() {
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           {[
                             { label: "Per User Limit", value: `${c.perUserLimit}x` },
-                            { label: "Min Order", value: c.minOrderAmount > 0 ? `₹${c.minOrderAmount}` : "None" },
+                            { label: "Min Order", value: c.minOrderAmount > 0 ? `$${c.minOrderAmount}` : "None" },
                             { label: "Valid From", value: formatDate(c.validFrom) },
                             { label: "Created", value: formatDate(c.createdAt) },
                           ].map(d => (
@@ -849,7 +827,7 @@ function CompactPricePreview({ applicableTo, restrictedToPlans, discountType, di
   return (
     <div className="mt-3">
       <p className="text-[8px] text-neutral-600 uppercase tracking-widest font-bold mb-1.5 flex items-center gap-1">
-        <IndianRupee size={8} /> User pays after discount
+        <DollarSign size={8} /> User pays after discount
       </p>
       <div className="flex flex-wrap gap-1.5">
         {eligible.map(plan => {
@@ -863,12 +841,11 @@ function CompactPricePreview({ applicableTo, restrictedToPlans, discountType, di
                   meetsMin ? "border-white/10 bg-white/[0.03]" : "border-white/5 bg-white/[0.02] opacity-40")}>
                 <span className="text-neutral-500 font-medium">{plan.label}</span>
                 {plan.type === "subscription" && <span className="text-neutral-700">({label.toLowerCase()})</span>}
-                <span className="text-neutral-600 line-through">₹{price}</span>
+                    <span className="text-neutral-600 line-through">${price}</span>
                 {meetsMin ? (
                   <>
                     <ArrowRight size={8} className="text-neutral-700" />
-                    <span className="font-black text-emerald-400">₹{final}</span>
-                    <span className="text-neutral-600 text-[8px]">+GST ≈ ₹{+(final * 1.18).toFixed(0)}</span>
+                    <span className="font-black text-emerald-400">${final}</span>
                   </>
                 ) : (
                   <span className="text-[8px] italic text-neutral-600">min order not met</span>

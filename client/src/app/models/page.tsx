@@ -16,67 +16,66 @@ import { Badge } from '@/components/ui/badge';
 
 const MODELS = [
   {
-    id: "sankshipta",
-    name: "Sankshipta",
+    id: "flash",
+    name: "Flash",
     tier: "Free",
-    description: "Clean, minimalist notes - perfect for quick summaries",
-    longDescription: "Sankshipta creates distraction-free, academic-style notes with clear headings and bullet points. Ideal for students who want concise, well-structured summaries without visual clutter.",
+    description: "Clean, fast bullet notes in seconds",
+    longDescription: "The fastest way to turn a lecture into clean notes. Flash produces distraction-free, bullet-format notes with bold terms and definitions auto-detected.",
     features: [
-      "Clean, academic layout",
-      "Dark slate headers with soft blue accents",
-      "Boxed summary sections",
-      "No images - pure text focus",
-      "Perfect for quick review"
+      "Clean, academic bullet layout",
+      "Auto-detected bold terms & definitions",
+      "Quick summary at the top",
+      "Under 30-second generation speed",
+      "Supports videos up to 1 hour"
     ],
     icon: IconFileText,
     color: "blue",
     tokenCost: 5
   },
   {
-    id: "bhashasetu",
-    name: "Bhasha-Setu",
-    tier: "Free",
-    description: "Visual study guide with images and rich formatting",
-    longDescription: "Bhasha-Setu creates magazine-quality study guides with contextual images, card-based layouts, and rich formatting. Perfect for visual learners who benefit from image associations.",
+    id: "canvas",
+    name: "Canvas",
+    tier: "Pro",
+    description: "Visual notes with curated images",
+    longDescription: "Canvas creates modern study cards that feel like a magazine. It integrates contextual images (Unsplash) and video timestamps back to specific segments, perfect for visual learners.",
     features: [
-      "Modern textbook layout with cards",
-      "Contextual images from Google Search",
-      "Royal blue and emerald green accents",
-      "Timestamps with watch links",
-      "Rich media integration"
+      "Section card-based visual layouts",
+      "Curated images matching each concept",
+      "Timestamps linked back to the video",
+      "Pro-tier generation quality",
+      "Supports videos up to 4 hours"
     ],
     icon: IconSparkles,
-    color: "purple",
-    tokenCost: 5
+    color: "purple"
   },
   {
-    id: "parikshasarthi",
-    name: "Pariksha-Sarthi",
-    tier: "Premium",
-    description: "Exam-focused Q&A format with active recall",
-    longDescription: "Pariksha-Sarthi transforms content into active-recall study materials with question-answer pairs, practice problems, and exam tips. Perfect for test preparation and self-assessment.",
+    id: "scholar",
+    name: "Scholar",
+    tier: "Pro",
+    description: "Structured full PDF, textbook quality",
+    longDescription: "Scholar produces structured, textbook-quality notes formatted for PDF export. It auto-generates a table of contents, definitions boxes, data tables, and deep comparative grids.",
     features: [
-      "Question-Answer grid layout",
-      "High-yield summary boxes",
-      "Exam tips and common mistakes",
-      "Electric purple and orange accents",
-      "Critical concept callouts"
+      "Auto-generated table of contents",
+      "H1 → H2 → H3 heading structures",
+      "Key definitions box per section",
+      "Data tables for comparisons",
+      "Clean PDF and Markdown exports"
     ],
     icon: IconBrain,
     color: "yellow"
   },
   {
-    id: "vyavastha",
-    name: "Vyavastha",
-    tier: "Premium",
-    description: "Comprehensive academic structure with table of contents",
-    longDescription: "Vyavastha creates comprehensive, textbook-style notes with table of contents, timelines, and detailed explanations. Perfect for in-depth learning and reference.",
+    id: "atlas",
+    name: "Atlas",
+    tier: "Power",
+    description: "Deep research notes for long videos",
+    longDescription: "Designed for power users processing massive YouTube courses, playlists, or conference talks. Atlas offers chapter-by-chapter breakdowns, cross-section concept linking, and full PDF + Anki deck exports.",
     features: [
-      "Table of contents with anchors",
-      "Timeline/process flow diagrams",
-      "Oxford blue and crimson red accents",
-      "Data tables for comparisons",
-      "Research paper style formatting"
+      "Processes entire courses & playlists",
+      "Chunked processing handles any length",
+      "Chapter-by-chapter breakdown",
+      "Cross-section concept linking",
+      "Full PDF + Anki deck (.apkg) exports"
     ],
     icon: IconBrain,
     color: "red"
@@ -181,13 +180,17 @@ export default function ModelsPage() {
                       <div>
                         <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white tracking-tight leading-none mb-1.5 md:mb-2">{model.name}</h2>
                         <div className="flex items-center gap-2">
-                          {model.tier === "Premium" ? (
+                          {model.tier === "Power" ? (
+                            <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 shadow-lg animate-glow-pulse">
+                              Power Tier
+                            </Badge>
+                          ) : model.tier === "Pro" ? (
                             <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 shadow-lg">
-                              Premium Node
+                              Pro Tier
                             </Badge>
                           ) : (
                             <Badge className="bg-white/10 text-white border-white/10 text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-0.5">
-                              Free Access
+                              Free Tier
                             </Badge>
                           )}
                         </div>

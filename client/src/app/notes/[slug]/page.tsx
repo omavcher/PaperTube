@@ -1,9 +1,13 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, use } from "react";
+import { THEMES } from "@/config/themes";
 import { Editor } from "@tinymce/tinymce-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
+import { marked } from "marked";
+// @ts-ignore
+import TurndownService from "turndown";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -35,7 +39,9 @@ import {
   Brain,
   HelpCircle,
   Lightbulb,
-  Zap
+  Zap,
+  ArrowRight,
+  Check
 } from "lucide-react";
 
 
@@ -369,11 +375,21 @@ const PDFPreviewWithThumbnail: React.FC<{
   content: string; 
   isGenerating?: boolean;
   onGeneratePDF?: () => void;
-}> = ({ content, isGenerating = false, onGeneratePDF }) => {
+  themeId?: string;
+}> = ({ content, isGenerating = false, onGeneratePDF, themeId = 'atmosphere' }) => {
   const [showFullPreview, setShowFullPreview] = useState(false);
 
-  // Simple check for HTML
-  const isHtml = content.includes('<h1') || content.includes('<p>') || content.includes('<div');
+  // Simple check for HTML: Check if the content starts with an HTML tag
+  const isHtml = /^\s*</.test(content);
+
+  const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+
+  // All themes now use light backgrounds — use theme colors directly
+  const displayBg = theme.bg;
+  const displayText = theme.text;
+  const displayBorder = theme.border;
+  const displayCardBg = theme.cardBg;
+  const displayFont = theme.font || "'Inter', sans-serif";
 
   const renderContent = (className: string) => {
     if (isHtml) {
@@ -392,9 +408,83 @@ const PDFPreviewWithThumbnail: React.FC<{
   };
 
   return (
-    <div className="w-full h-full border border-neutral-800 shadow-2xl overflow-hidden rounded-lg bg-white relative group animate-scale-in flex flex-col">
+    <div 
+      className="w-full h-full border shadow-2xl overflow-hidden rounded-lg relative group animate-scale-in flex flex-col premium-note-render-container"
+      style={{ 
+        backgroundColor: displayBg, 
+        color: displayText,
+        borderColor: displayBorder,
+        fontFamily: displayFont
+      }}
+    >
+      {/* Load theme's Google Font */}
+      {theme.googleFont && (
+        <link rel="stylesheet" href={theme.googleFont} />
+      )}
+      <style dangerouslySetInnerHTML={{ __html: `
+        /* Apply theme font to all note content */
+        .premium-note-render-container,
+        .premium-note-render-container .premium-note-render,
+        .premium-note-render-container .premium-note-render * {
+          font-family: ${displayFont} !important;
+        }
+        .premium-note-render-container .premium-note-render h1,
+        .premium-note-render-container .premium-note-render h2,
+        .premium-note-render-container .premium-note-render h3,
+        .premium-note-render-container .premium-note-render h4 {
+          color: ${theme.primary} !important;
+          font-family: ${displayFont} !important;
+        }
+        .premium-note-render-container .premium-note-render h2 {
+          border-bottom: 2px solid ${displayBorder} !important;
+        }
+        .premium-note-render-container .premium-note-render p,
+        .premium-note-render-container .premium-note-render li {
+          color: ${displayText} !important;
+        }
+        .premium-note-render-container .premium-note-render a {
+          color: ${theme.link} !important;
+        }
+        .premium-note-render-container .premium-note-render blockquote {
+          background-color: ${displayCardBg} !important;
+          border-left: 4px solid ${theme.primary} !important;
+          color: ${displayText} !important;
+        }
+        .premium-note-render-container .premium-note-render table {
+          border: 1px solid ${displayBorder} !important;
+          background-color: ${displayCardBg} !important;
+        }
+        .premium-note-render-container .premium-note-render th {
+          background-color: ${displayBorder} !important;
+          color: ${theme.primary} !important;
+          border-bottom: 1px solid ${displayBorder} !important;
+        }
+        .premium-note-render-container .premium-note-render td {
+          border-bottom: 1px solid ${displayBorder} !important;
+          color: ${displayText} !important;
+        }
+        .premium-note-render-container .premium-note-render code {
+          background-color: ${displayCardBg} !important;
+          color: ${theme.accent} !important;
+          border: 1px solid ${displayBorder} !important;
+        }
+        .premium-note-render-container .premium-note-render pre {
+          background-color: ${displayCardBg} !important;
+          border: 1px solid ${displayBorder} !important;
+        }
+        .premium-note-render-container .premium-note-render li::marker {
+          color: ${theme.primary} !important;
+        }
+        @media print {
+          * { font-family: ${displayFont} !important; }
+          body { background: ${displayBg} !important; color: ${displayText} !important; }
+        }
+      `}} />
       {/* Content */}
-      <div className="flex-1 overflow-auto bg-white p-6 custom-scrollbar">
+      <div 
+        className="flex-1 overflow-auto p-6 custom-scrollbar"
+        style={{ backgroundColor: displayBg }}
+      >
         {isGenerating ? (
           <div className="h-full flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-red-500 animate-spin mb-2" />
@@ -412,8 +502,15 @@ const PDFPreviewWithThumbnail: React.FC<{
       {/* Fullscreen Modal */}
       {showFullPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col relative animate-scale-in">
-            <button className="absolute top-2 right-2 bg-black/10 hover:bg-black/20 rounded-full p-2 text-black z-20" onClick={() => setShowFullPreview(false)}>
+          <div 
+            className="rounded-lg w-full max-w-4xl h-[90vh] flex flex-col relative animate-scale-in premium-note-render-container"
+            style={{ 
+              backgroundColor: displayBg, 
+              color: displayText,
+              fontFamily: displayFont
+            }}
+          >
+            <button className="absolute top-4 right-4 bg-black/50 hover:bg-black/80 rounded-full p-2 text-white z-20" onClick={() => setShowFullPreview(false)}>
               <X className="h-5 w-5" />
             </button>
             <div className="flex-1 overflow-auto p-8 custom-scrollbar">
@@ -674,12 +771,97 @@ const QuizRenderer: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
-// --- PAPERCHAT INPUT COMPONENT ---
+// --- CHAT AI MODELS ---
+// tier: 'free'  → unlimited for everyone
+// tier: 'pro'   → unlimited for pro + power, 2 free messages for free users
+// tier: 'power' → unlimited for power only, 2 free messages for free/pro users
+const CHAT_AI_MODELS = [
+  {
+    id: 'paperchat',
+    name: 'PaperChat',
+    desc: "Paperxify's own model",
+    logoUrl: '/paperxify.jpeg',
+    logoFallback: '\uD83D\uDCC4',
+    tier: 'free' as const,
+    accentColor: '#dc2626',
+    freeLimit: Infinity,
+    persona: "You are PaperChat, Paperxify's own advanced AI study assistant. You are expert at helping students understand notes, generate quizzes, and explain complex topics clearly."
+  },
+  {
+    id: 'gpt4o',
+    name: 'ChatGPT 4o',
+    desc: 'OpenAI \u00b7 Frontier model',
+    logoUrl: '/chatgpt.png',
+    logoFallback: '\uD83E\uDD16',
+    tier: 'pro' as const,
+    accentColor: '#10b981',
+    freeLimit: 2,
+    persona: "You are ChatGPT 4o, OpenAI's most advanced model. You provide detailed, accurate, and well-reasoned responses with exceptional clarity."
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek V4 Flash',
+    desc: 'DeepSeek \u00b7 Speed & Precision',
+    logoUrl: '/deepseek.png',
+    logoFallback: '\uD83D\uDC33',
+    tier: 'pro' as const,
+    accentColor: '#1d4ed8',
+    freeLimit: 2,
+    persona: 'You are DeepSeek V4 Flash, an advanced language model trained by DeepSeek. You are highly accurate, extremely fast, and provide deep reasoning and clear assistance.'
+  },
+  {
+    id: 'claude',
+    name: 'Claude 3.5',
+    desc: 'Anthropic \u00b7 Thoughtful AI',
+    logoUrl: '/claude-color.png',
+    logoFallback: '\uD83C\uDF1F',
+    tier: 'power' as const,
+    accentColor: '#f97316',
+    freeLimit: 2,
+    persona: 'You are Claude 3.5 by Anthropic. You are thoughtful, nuanced, and highly accurate. You excel at deep reasoning and safe, helpful responses.'
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini 2.0',
+    desc: 'Google DeepMind \u00b7 Multimodal',
+    logoUrl: '/gemini.png',
+    logoFallback: '\u264A',
+    tier: 'power' as const,
+    accentColor: '#4285f4',
+    freeLimit: 2,
+    persona: 'You are Gemini 2.0 by Google DeepMind. You are a multimodal AI that provides precise, structured, and helpful academic assistance.'
+  },
+];
+
+type UserPlan = 'free' | 'pro' | 'power';
+
+// Which models are UNLIMITED for each plan
+const PLAN_UNLIMITED: Record<UserPlan, string[]> = {
+  free:  ['paperchat'],
+  pro:   ['paperchat', 'gpt4o', 'deepseek'],
+  power: ['paperchat', 'gpt4o', 'deepseek', 'claude', 'gemini'],
+};
+
+// Plan display metadata
+const PLAN_META: Record<UserPlan, { label: string; color: string }> = {
+  free:  { label: 'Free',  color: '#6b7280' },
+  pro:   { label: 'Pro',   color: '#8b5cf6' },
+  power: { label: 'Power', color: '#f59e0b' },
+};
+
+// Required plan to use each model tier
+const TIER_REQUIRED_PLAN: Record<string, UserPlan> = {
+  free:  'free',
+  pro:   'pro',
+  power: 'power',
+};
+
 interface PaperChatInputProps {
   input: string;
   setInput: (v: string) => void;
   isThinking: boolean;
   isSubscribed: boolean;
+  canSendOverride: boolean;
   onSubmit: (e: React.FormEvent) => void;
   selectedMode: typeof CHAT_MODES[0];
   setSelectedMode: (m: typeof CHAT_MODES[0]) => void;
@@ -701,7 +883,7 @@ const QUICK_ACTIONS = [
 ];
 
 const PaperChatInput: React.FC<PaperChatInputProps> = ({
-  input, setInput, isThinking, isSubscribed, onSubmit, selectedMode, setSelectedMode
+  input, setInput, isThinking, isSubscribed, canSendOverride, onSubmit, selectedMode, setSelectedMode
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -731,7 +913,7 @@ const PaperChatInput: React.FC<PaperChatInputProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (input.trim() && !isThinking && isSubscribed) {
+      if (input.trim() && !isThinking && canSendOverride) {
         onSubmit(e as any);
       }
     }
@@ -743,7 +925,7 @@ const PaperChatInput: React.FC<PaperChatInputProps> = ({
     textareaRef.current?.focus();
   };
 
-  const canSend = input.trim().length > 0 && !isThinking && isSubscribed;
+  const canSend = input.trim().length > 0 && !isThinking && canSendOverride;
 
   return (
     <div
@@ -759,8 +941,8 @@ const PaperChatInput: React.FC<PaperChatInputProps> = ({
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isSubscribed ? `${selectedMode.description}... (Enter to send, Shift+Enter for newline)` : 'Upgrade to Pro to use PaperChat...'}
-          disabled={!isSubscribed}
+          placeholder={canSendOverride ? `${selectedMode.description}... (Enter to send, Shift+Enter for newline)` : 'Limit reached — switch to PaperChat (Free)'}
+          disabled={!canSendOverride}
           rows={1}
         />
 
@@ -773,7 +955,7 @@ const PaperChatInput: React.FC<PaperChatInputProps> = ({
               <button
                 className="plus-btn"
                 onClick={() => { setShowActionMenu(p => !p); setShowModeMenu(false); }}
-                disabled={!isSubscribed}
+                disabled={!canSendOverride}
                 title="Quick actions"
               >
                 <Plus size={15} />
@@ -883,6 +1065,246 @@ const PaperChatInput: React.FC<PaperChatInputProps> = ({
   );
 };
 
+interface ExportDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  isSubscribed: boolean;
+  onExportPDF: () => void;
+  onExportMarkdown: () => void;
+  isGeneratingPDF: boolean;
+  router: any;
+  noteTitle: string;
+  noteContent: string;
+}
+
+const ExportDialog: React.FC<ExportDialogProps> = ({
+  isOpen, onClose, isSubscribed, onExportPDF, onExportMarkdown, isGeneratingPDF, router, noteTitle, noteContent
+}) => {
+  const [notionStep, setNotionStep] = useState<'options' | 'upgrade' | 'connect' | 'syncing'>('options');
+  
+  useEffect(() => {
+    if (!isOpen) {
+      setNotionStep('options');
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleNotionClick = () => {
+    if (!isSubscribed) {
+      setNotionStep('upgrade');
+    } else {
+      const savedToken = localStorage.getItem("notion_token");
+      if (savedToken) {
+        triggerNotionSync();
+      } else {
+        setNotionStep('connect');
+      }
+    }
+  };
+
+  const triggerNotionSync = async () => {
+    setNotionStep('syncing');
+    const notionToken = localStorage.getItem("notion_token");
+    try {
+      const isHtml = noteContent.includes('<h1') || noteContent.includes('<p>') || noteContent.includes('<div') || /<[a-z][\s\S]*>/i.test(noteContent);
+      let markdown = noteContent;
+      if (isHtml) {
+        const turndownService = new TurndownService();
+        markdown = turndownService.turndown(noteContent);
+      }
+
+      const response = await fetch('/api/notion/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          noteTitle,
+          noteContent: markdown,
+          notionToken
+        })
+      });
+      const resData = await response.json();
+      if (resData.success) {
+        toast.success("Note synced to Notion successfully!");
+        onClose();
+        if (resData.pageUrl) {
+          window.open(resData.pageUrl, '_blank');
+        }
+      } else {
+        toast.error(resData.message || "Failed to sync to Notion");
+        setNotionStep('options');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Notion sync failed due to network error.");
+      setNotionStep('options');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="relative w-full max-w-md bg-neutral-900 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto scrollbar-hide"
+      >
+        {/* Background Ambient Glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-[radial-gradient(circle_at_center,_rgba(220,38,38,0.06)_0%,_transparent_75%)] pointer-events-none transform-gpu" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff01_1px,transparent_1px),linear-gradient(to_bottom,#ffffff01_1px,transparent_1px)] bg-[size:16px_16px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)] pointer-events-none" />
+
+        {/* Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 text-neutral-400 hover:text-white bg-white/5 border border-white/10 rounded-full p-1.5 transition-all z-20"
+        >
+          <X size={14} />
+        </button>
+
+        {notionStep === 'options' && (
+          <div className="space-y-5 relative z-10">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-neutral-300 text-[10px] font-medium uppercase tracking-widest mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                Export Engine
+              </div>
+              <h3 className="text-xl md:text-2xl font-black text-white tracking-tight">EXPORT <span className="text-red-500">NOTE</span></h3>
+              <p className="text-xs md:text-sm text-neutral-400 mt-1 max-w-sm">Convert and transfer your study notes into your preferred external formats.</p>
+            </div>
+
+            <div className="space-y-3">
+              {/* PDF Card */}
+              <button
+                onClick={() => { onExportPDF(); onClose(); }}
+                className="flex items-center gap-4 w-full p-4 rounded-2xl bg-neutral-950/40 border border-white/5 hover:border-red-500/30 hover:bg-neutral-800/40 text-left transition-all duration-300 group"
+              >
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 group-hover:scale-105 transition-transform shrink-0">
+                  <FileText size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-white group-hover:text-red-400 transition-colors">Export as PDF</div>
+                  <div className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors line-clamp-1">Clean, print-ready document without watermarks</div>
+                </div>
+              </button>
+
+              {/* Markdown Card */}
+              <button
+                onClick={() => { onExportMarkdown(); onClose(); }}
+                className="flex items-center gap-4 w-full p-4 rounded-2xl bg-neutral-950/40 border border-white/5 hover:border-blue-500/30 hover:bg-neutral-800/40 text-left transition-all duration-300 group"
+              >
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 group-hover:scale-105 transition-transform shrink-0">
+                  <Download size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">Export as Markdown</div>
+                  <div className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors line-clamp-1">Perfect for Obsidian, Notion, or local Markdown editors</div>
+                </div>
+              </button>
+
+              {/* Notion Card */}
+              <button
+                onClick={handleNotionClick}
+                className="flex items-center gap-4 w-full p-4 rounded-2xl bg-neutral-950/40 border border-white/5 hover:border-amber-500/30 hover:bg-neutral-800/40 text-left transition-all duration-300 group relative overflow-hidden shrink-0"
+              >
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform shrink-0">
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4.459 4.208c.15-.226.338-.376.812-.489l11.458-1.579c.902-.131 1.09.113 1.09.808v16.143c0 .545-.169.752-.77.827L5.85 20.916c-.507.075-.77-.132-.77-.733V4.866c0-.282.169-.47.282-.658h.097zM2.017 3.325c-.244.188-.413.489-.413.921v16.293c0 .921.619 1.485 1.54 1.353l17.788-2.312c.732-.094.957-.451.957-1.127V2.518c0-.752-.451-1.071-1.127-.978L3.107 3.006c-.544.075-.92.15-1.09.319zm13.111 4.549c.282-.038.508.15.508.47v7.501c0 .282-.207.451-.508.489l-2.067.169v-.094c.169-.131.282-.376.282-.676v-5.263l-4.116 5.864c-.169.244-.413.395-.732.413l-1.955.15c-.282.019-.488-.169-.488-.47v-7.389c0-.282.207-.47.507-.507l1.936-.15v.094c-.15.113-.263.357-.263.639v5.094l3.966-5.714c.188-.263.413-.395.77-.413l2.171-.17v.019z"/>
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors flex items-center gap-2">
+                    Sync to Notion
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Pro</span>
+                  </div>
+                  <div className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors line-clamp-1">Push notes directly into your Notion workspace pages</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {notionStep === 'upgrade' && (
+          <div className="text-center py-6 relative z-10 flex flex-col items-center">
+            <div className="p-4 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-4 animate-bounce shrink-0">
+              <Lock size={36} />
+            </div>
+            <h3 className="text-xl font-black text-white tracking-tight">PREMIUM LOCKED</h3>
+            <p className="text-xs md:text-sm text-neutral-400 mt-2 max-w-xs leading-relaxed">
+              Notion Sync is a Pro features integration. Upgrade now to unlock automated workspace syncing and premium PDF exports.
+            </p>
+            <div className="flex gap-3 w-full mt-6">
+              <button
+                type="button"
+                onClick={() => setNotionStep('options')}
+                className="flex-1 py-3 border border-white/10 hover:bg-white/5 text-white font-bold rounded-xl transition text-xs"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/pricing')}
+                className="flex-1 py-3 bg-white text-black hover:bg-neutral-200 font-bold rounded-xl transition text-xs shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              >
+                Upgrade to Pro
+              </button>
+            </div>
+          </div>
+        )}
+
+        {notionStep === 'connect' && (
+          <div className="text-center py-6 relative z-10 flex flex-col items-center">
+            <div className="p-4 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-4 animate-pulse shrink-0">
+              <Sparkles size={36} />
+            </div>
+            <h3 className="text-xl font-black text-white tracking-tight">CONNECT NOTION</h3>
+            <p className="text-xs md:text-sm text-neutral-400 mt-2 max-w-xs leading-relaxed">
+              Securely grant Paperxify access to create study pages in your Notion workspace.
+            </p>
+            <div className="flex gap-3 w-full mt-6">
+              <button
+                type="button"
+                onClick={() => setNotionStep('options')}
+                className="flex-1 py-3 border border-white/10 hover:bg-white/5 text-white font-bold rounded-xl transition text-xs"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('notion_redirect_back', window.location.pathname);
+                  window.location.href =
+                    'https://api.notion.com/v1/oauth/authorize?client_id=36ad872b-594c-8107-a869-00370d5b7599&response_type=code&owner=user&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fnotion%2Fcallback';
+                }}
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-xl transition text-xs"
+              >
+                Authorize Notion
+              </button>
+            </div>
+          </div>
+        )}
+
+        {notionStep === 'syncing' && (
+          <div className="text-center py-12 relative z-10 flex flex-col items-center">
+            <Loader2 className="animate-spin text-red-500 mb-4 shrink-0" size={40} />
+            <h3 className="text-lg font-bold text-white">SYNCING WORKSPACE</h3>
+            <p className="text-xs text-neutral-400 mt-2 animate-pulse">Constructing blocks and publishing to Notion...</p>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+};
+
 // --- MAIN PAGE COMPONENT ---
 export default function NotePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -896,10 +1318,12 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const [loading, setLoading] = useState(true);
   const [mobileView, setMobileView] = useState<'preview' | 'editor' | 'chat'>('preview');
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [hasPermission, setHasPermission] = useState(true);
   
   // Subscription State
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [userPlan, setUserPlan] = useState<UserPlan>('free');
 
   // Editor State
   const [markdownContent, setMarkdownContent] = useState<string>("");
@@ -910,18 +1334,70 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [selectedMode, setSelectedMode] = useState(CHAT_MODES[0]);
+
+  // --- Persist model selection in localStorage ---
+  const [selectedChatModel, setSelectedChatModelRaw] = useState(() => {
+    if (typeof window === 'undefined') return CHAT_AI_MODELS[0];
+    const saved = localStorage.getItem('paperchat_selected_model');
+    if (saved) {
+      const found = CHAT_AI_MODELS.find(m => m.id === saved);
+      if (found) return found;
+    }
+    return CHAT_AI_MODELS[0];
+  });
+
+  const setSelectedChatModel = (m: typeof CHAT_AI_MODELS[0]) => {
+    setSelectedChatModelRaw(m);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('paperchat_selected_model', m.id);
+    }
+  };
+
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const modelPickerRef = React.useRef<HTMLDivElement>(null);
+
+  // --- Persist free message counts ---
+  const [freeModelCounts, setFreeModelCountsRaw] = useState<Record<string, number>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = localStorage.getItem('paperchat_free_counts');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  const setFreeModelCounts = (updater: (prev: Record<string, number>) => Record<string, number>) => {
+    setFreeModelCountsRaw(prev => {
+      const next = updater(prev);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('paperchat_free_counts', JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // PDF State
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-  // Initialize Styles
+  // Initialize Styles + close picker on outside click
   useEffect(() => {
     const styleElement = document.createElement('style');
     styleElement.textContent = iphoneStyles;
     document.head.appendChild(styleElement);
-    return () => { document.head.removeChild(styleElement); };
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (modelPickerRef.current && !modelPickerRef.current.contains(e.target as Node)) {
+        setShowModelPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+
+    return () => {
+      document.head.removeChild(styleElement);
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
   }, []);
 
   // Fetch Data and Check Subscription
@@ -935,7 +1411,16 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       if (userStr) {
         try {
           const userObj = JSON.parse(userStr);
-          setIsSubscribed(!!userObj.membership?.isActive);
+          const active = !!userObj.membership?.isActive;
+          setIsSubscribed(active);
+          // Detect plan: look for 'power' or 'pro' in plan name
+          if (active) {
+            const planName = (userObj.membership?.plan || '').toLowerCase();
+            if (planName.includes('power')) setUserPlan('power');
+            else setUserPlan('pro');
+          } else {
+            setUserPlan('free');
+          }
         } catch (e) {
           console.error("Error parsing user data", e);
         }
@@ -943,7 +1428,17 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
       const res = await api.get(`/notes/slug/${slug}`, { headers: { 'Auth': authToken } });
       setData(res.data);
-      setMarkdownContent(res.data.content);
+      
+      const rawContent = res.data.content || "";
+      const isRawHtml = /^\s*</.test(rawContent);
+      const isFlashcardNote = res.data.generationDetails?.format === 'flashcards' || 
+                              (rawContent.trim().startsWith('[') && rawContent.includes('"front"'));
+      
+      let htmlContent = rawContent;
+      if (!isRawHtml && !isFlashcardNote && rawContent.trim()) {
+        htmlContent = marked.parse(rawContent) as string;
+      }
+      setMarkdownContent(htmlContent);
       
       // Load Messages
       try {
@@ -995,6 +1490,25 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     return () => clearInterval(interval);
   }, [isThinking]);
 
+  // Notion Connection Check
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('notion_connected') === 'true') {
+        const workspace = localStorage.getItem("notion_workspace") || "Notion Workspace";
+        toast.success(`Successfully connected to workspace: ${workspace}`);
+        
+        // Clean URL parameter
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+        router.replace(newUrl);
+        
+        // Open export dialog so user can sync right away
+        setShowExportDialog(true);
+      }
+    }
+  }, [router]);
+
   // Actions
   const handleSave = async () => {
     if (!data?._id) return;
@@ -1028,9 +1542,15 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
+  // Derived: can the current user send on the selected model?
+  const currentModelFreeCount = freeModelCounts[selectedChatModel.id] || 0;
+  const isModelUnlimited = PLAN_UNLIMITED[userPlan].includes(selectedChatModel.id);
+  const canUseModel = isModelUnlimited || currentModelFreeCount < selectedChatModel.freeLimit;
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isThinking || !isSubscribed) return;
+    if (!input.trim() || isThinking) return;
+    if (!canUseModel) return;
     
     const currentMode = selectedMode.id;
     const userMsg: ApiMessage = { 
@@ -1056,7 +1576,9 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         body: JSON.stringify({ 
           noteId: data?._id, 
           message: userMsg.content,
-          mode: currentMode
+          mode: currentMode,
+          chatModelPersona: selectedChatModel.persona,
+          chatModelId: selectedChatModel.id
         }),
       });
 
@@ -1120,6 +1642,13 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       }]);
     } finally {
       setIsThinking(false);
+      // Increment free message counter if this model is NOT unlimited for this plan
+      if (!isModelUnlimited) {
+        setFreeModelCounts(prev => ({
+          ...prev,
+          [selectedChatModel.id]: (prev[selectedChatModel.id] || 0) + 1
+        }));
+      }
     }
   };
 
@@ -1167,6 +1696,34 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       setIsGeneratingPDF(false); 
     }
   };
+
+  // Export markdown content as .md file
+  const exportMarkdown = () => {
+    if (!markdownContent || !data) return;
+    try {
+      const isHtml = markdownContent.includes('<h1') || markdownContent.includes('<p>') || markdownContent.includes('<div') || /<[a-z][\s\S]*>/i.test(markdownContent);
+      let markdown = markdownContent;
+      if (isHtml) {
+        const turndownService = new TurndownService();
+        markdown = turndownService.turndown(markdownContent);
+      }
+      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      const fileName = `${data.title.replace(/[^\w\s.-]/gi, '_').substring(0, 80)}.md`;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Markdown file exported successfully");
+    } catch (err) {
+      console.error("Markdown Export Failed:", err);
+      toast.error("Failed to export Markdown");
+    }
+  };
   
   const isFlashcard = data?.generationDetails?.format === 'flashcards' || 
                      (data?.content && data.content.trim().startsWith('[') && data.content.includes('"front"'));
@@ -1187,7 +1744,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-red-900/10 rounded-full blur-[120px]" />
-         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20viewBox=%220%200%20200%20200%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter%20id=%22noise%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.8%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23noise)%22/%3E%3C/svg%3E')] opacity-20 mix-blend-overlay" />
       </div>
 
       {/* Main Container */}
@@ -1222,9 +1779,9 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                  <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-white">{isFlashcard ? 'Flashcards Preview' : 'Document Preview'}</h3>
                     {!isFlashcard && (
-                      <Button size="sm" variant="outline" onClick={generatePDF} disabled={isGeneratingPDF} className="h-8 border-neutral-700">
-                        {isGeneratingPDF ? <Loader2 className="animate-spin h-4 w-4"/> : <Download className="h-4 w-4 mr-2"/>}
-                        Export PDF
+                      <Button size="sm" variant="outline" onClick={() => setShowExportDialog(true)} className="h-8 border-neutral-700 hover:bg-neutral-800 hover:text-white text-neutral-300">
+                        <Download className="h-4 w-4 mr-2"/>
+                        Export Note
                       </Button>
                     )}
                  </div>
@@ -1238,6 +1795,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                          content={markdownContent} 
                          isGenerating={isGeneratingPDF}
                          onGeneratePDF={generatePDF}
+                         themeId={data?.generationDetails?.theme || 'blueberry'}
                        />
                     )}
                  </div>
@@ -1246,15 +1804,14 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
             {/* VIEW: EDITOR */}
             <div className={`absolute inset-0 flex flex-col transition-opacity duration-300 ${mobileView === 'editor' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}`}>
-              <div className="p-2 bg-neutral-900 border-b border-neutral-800 flex flex-wrap gap-2 items-center justify-between shrink-0">
-                 <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-400" onClick={() => tinyMceRef.current?.execCommand('Bold')}><Bold className="h-4 w-4"/></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-400" onClick={() => tinyMceRef.current?.execCommand('Italic')}><Italic className="h-4 w-4"/></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-400" onClick={() => tinyMceRef.current?.execCommand('InsertUnorderedList')}><ListIcon className="h-4 w-4"/></Button>
+              <div className="p-3 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between shrink-0">
+                 <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-xs font-black uppercase tracking-wider text-neutral-300">Live Note Editor</span>
                  </div>
                  {isDirty && (
-                   <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs">
-                     <Save className="h-3 w-3 mr-1"/> Save Changes
+                   <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs font-semibold px-3 rounded-lg shadow-lg">
+                     <Save className="h-3.5 w-3.5 mr-1.5"/> Save Changes
                    </Button>
                  )}
               </div>
@@ -1265,11 +1822,89 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                   value={markdownContent}
                   init={{
                     height: '100%',
-                    menubar: false,
-                    plugins: ['lists', 'link', 'image', 'code', 'help', 'wordcount'],
-                    toolbar: false,
-                    content_style: `body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; padding: 16px; }`,
-                    statusbar: false,
+                    menubar: true,
+                    plugins: [
+                      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                      'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                    ],
+                    toolbar: 'undo redo | blocks fontfamily fontsize | ' +
+                             'bold italic underline strikethrough | forecolor backcolor | ' +
+                             'alignleft aligncenter alignright alignjustify | ' +
+                             'bullist numlist outdent indent | table link image code | removeformat',
+                    content_style: `
+                      body { 
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+                        font-size: 16px; 
+                        padding: 24px; 
+                        color: #1e293b;
+                        line-height: 1.6;
+                        max-width: 800px;
+                        margin: 0 auto;
+                      }
+                      h1, h2, h3, h4, h5, h6 {
+                        color: #0f172a;
+                        font-weight: 700;
+                        margin-top: 24px;
+                        margin-bottom: 12px;
+                        font-family: inherit;
+                      }
+                      h1 { font-size: 28px; }
+                      h2 { font-size: 22px; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px; color: #1d4ed8; }
+                      h3 { font-size: 18px; }
+                      p { margin-bottom: 16px; }
+                      ul, ol { margin-bottom: 16px; padding-left: 24px; }
+                      li { margin-bottom: 6px; }
+                      blockquote {
+                        border-left: 4px solid #3b82f6;
+                        padding-left: 16px;
+                        color: #475569;
+                        font-style: italic;
+                        margin: 16px 0;
+                        background-color: #f8fafc;
+                        padding: 12px 16px;
+                        border-radius: 0 8px 8px 0;
+                      }
+                      table {
+                        width: 100%;
+                        border-collapse: separate;
+                        border-spacing: 0;
+                        margin: 16px 0;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        overflow: hidden;
+                      }
+                      th, td {
+                        border-bottom: 1px solid #e2e8f0;
+                        padding: 10px 12px;
+                        text-align: left;
+                      }
+                      th {
+                        background-color: #f8fafc;
+                        font-weight: 600;
+                        color: #0f172a;
+                      }
+                      tr:last-child td {
+                        border-bottom: none;
+                      }
+                      img {
+                        max-width: 100%;
+                        height: auto;
+                        border-radius: 8px;
+                        margin: 16px auto;
+                        display: block;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                      }
+                      code {
+                        background-color: #f1f5f9;
+                        color: #0f172a;
+                        padding: 2px 4px;
+                        border-radius: 4px;
+                        font-family: monospace;
+                        font-size: 14px;
+                      }
+                    `,
+                    statusbar: true,
                   }}
                   onEditorChange={(c) => { setMarkdownContent(c); setIsDirty(true); }}
                 />
@@ -1280,32 +1915,203 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
         {/* RIGHT PANEL: Chat */}
         <div className={`flex-1 lg:flex-[0_0_400px] xl:flex-[0_0_450px] bg-neutral-900/50 flex flex-col min-h-0 ${mobileView === 'chat' ? 'flex' : 'hidden lg:flex'}`}>
-          <div className="p-3 border-b border-neutral-800 bg-neutral-950/50 backdrop-blur shrink-0 flex justify-between items-center">
-             <div className="flex items-center gap-2">
-               <Avatar className="h-8 w-8 border border-neutral-700">
-                 <AvatarImage src="/ai-avatar.png" />
-                 <AvatarFallback className="bg-red-600 text-xs">AI</AvatarFallback>
-               </Avatar>
-               <div>
-                 <h3 className="text-sm font-semibold text-white">PaperChat</h3>
-                 <p className="text-[10px] text-green-400 flex items-center"><span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"/>Online</p>
-               </div>
-             </div>
+          {/* Chat Panel Header with Model Selector */}
+          <div className="p-3 border-b border-neutral-800 bg-neutral-950/60 backdrop-blur shrink-0 relative z-30">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {/* Selected model logo */}
+                <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-neutral-700 bg-neutral-900 flex items-center justify-center shrink-0">
+                  <img
+                    src={selectedChatModel.logoUrl}
+                    alt={selectedChatModel.name}
+                    className="w-6 h-6 object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }}
+                  />
+                  <span className="absolute text-xs" style={{ display: 'none' }}>{selectedChatModel.logoFallback}</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white leading-none">{selectedChatModel.name}</h3>
+                  <p className="text-[10px] text-green-400 flex items-center gap-1 mt-0.5">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"/>
+                    Online
+                    {/* Show free-messages-left only for models NOT unlimited on this plan */}
+                    {!isModelUnlimited && selectedChatModel.freeLimit !== Infinity && (
+                      <span className="text-neutral-600 ml-1">
+                        &middot; {Math.max(0, selectedChatModel.freeLimit - currentModelFreeCount)} free left
+                      </span>
+                    )}
+                    {isModelUnlimited && (
+                      <span className="text-neutral-600 ml-1">&middot; Unlimited</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Model Picker Button */}
+              <div className="relative" ref={modelPickerRef}>
+                <button
+                  onClick={() => setShowModelPicker(p => !p)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-bold transition-all ${
+                    showModelPicker
+                      ? 'bg-white/[0.1] border-white/20 text-white'
+                      : 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] hover:border-white/15 text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  <Sparkles size={11} className={showModelPicker ? 'text-white' : 'text-neutral-500'} />
+                  Switch Model
+                  <ChevronDown size={10} className={`transition-transform ${showModelPicker ? 'rotate-180 text-white' : 'text-neutral-600'}`} />
+                </button>
+
+                {/* Model Picker Dropdown */}
+                <AnimatePresence>
+                  {showModelPicker && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full right-0 mt-2 w-64 sm:w-72 bg-[#09090b] border border-white/[0.08] rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-50"
+                      style={{ background: '#09090b' }}
+                    >
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-600 px-3 py-2">Select AI Model</p>
+                      {CHAT_AI_MODELS.map(m => {
+                        const count = freeModelCounts[m.id] || 0;
+                        const isUnlimitedForUser = PLAN_UNLIMITED[userPlan].includes(m.id);
+                        const remaining = isUnlimitedForUser ? Infinity : Math.max(0, m.freeLimit - count);
+                        const requiredPlan = TIER_REQUIRED_PLAN[m.tier];
+                        // "Locked" = needs an upgrade to get unlimited, AND free uses are exhausted
+                        const isHardLocked = !isUnlimitedForUser && remaining === 0;
+                        const isActive = selectedChatModel.id === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => {
+                              setSelectedChatModel(m);
+                              setShowModelPicker(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-left group/row"
+                            style={{
+                              background: isActive ? 'rgba(255,255,255,0.07)' : undefined,
+                              border: isActive ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                              opacity: isHardLocked ? 0.55 : 1,
+                            }}
+                          >
+                            {/* Logo */}
+                            <div className="w-8 h-8 flex items-center justify-center shrink-0 overflow-hidden rounded-xl"
+                              style={{
+                                background: isActive ? `${m.accentColor}18` : 'rgba(255,255,255,0.04)',
+                                border: isActive ? `1px solid ${m.accentColor}35` : '1px solid rgba(255,255,255,0.07)',
+                              }}
+                            >
+                              <img
+                                src={m.logoUrl}
+                                alt={m.name}
+                                className="w-5 h-5 object-contain"
+                                onError={(e) => {
+                                  const el = e.target as HTMLImageElement;
+                                  el.style.display = 'none';
+                                  const fallback = el.nextSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'block';
+                                }}
+                              />
+                              <span className="text-sm hidden">{m.logoFallback}</span>
+                            </div>
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-xs font-black truncate ${isActive ? 'text-white' : 'text-neutral-300 group-hover/row:text-white'}`}>{m.name}</span>
+                                {/* Access badge */}
+                                {isUnlimitedForUser ? (
+                                  <span
+                                    className="text-[8px] font-black px-1.5 py-0.5 rounded border"
+                                    style={{ color: PLAN_META[userPlan].color, borderColor: `${PLAN_META[userPlan].color}40`, background: `${PLAN_META[userPlan].color}15` }}
+                                  >
+                                    {userPlan === 'free' ? 'FREE ∞' : `${PLAN_META[userPlan].label} ∞`}
+                                  </span>
+                                ) : remaining > 0 ? (
+                                  <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/25 text-amber-400">
+                                    {remaining} free
+                                  </span>
+                                ) : (
+                                  <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/25 text-red-400 flex items-center gap-0.5">
+                                    <Lock size={7} />USED
+                                  </span>
+                                )}
+                                {/* Required plan tag (when not already at that plan) */}
+                                {requiredPlan !== 'free' && !isUnlimitedForUser && (
+                                  <span
+                                    className="text-[8px] font-black px-1.5 py-0.5 rounded border"
+                                    style={{ color: PLAN_META[requiredPlan].color, borderColor: `${PLAN_META[requiredPlan].color}35`, background: `${PLAN_META[requiredPlan].color}10` }}
+                                  >
+                                    {PLAN_META[requiredPlan].label}+
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-[10px] truncate mt-0.5 ${isActive ? 'text-neutral-400' : 'text-neutral-600 group-hover/row:text-neutral-500'}`}>{m.desc}</p>
+                            </div>
+                            {/* State icon */}
+                            {isActive && (
+                              <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center shrink-0">
+                                <Check size={9} className="text-black" strokeWidth={3} />
+                              </div>
+                            )}
+                            {!isActive && isHardLocked && (
+                              <Lock size={11} className="text-neutral-600 shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+                      {userPlan !== 'power' && (
+                        <div className="mt-2 pt-2 border-t border-white/[0.05] px-3 pb-1">
+                          <p className="text-[9px] text-neutral-600 leading-relaxed">
+                            <span className="text-white font-bold">Upgrade</span> your plan to unlock more models with unlimited messages.
+                          </p>
+                          <button
+                            onClick={() => router.push('/pricing')}
+                            className="mt-2 w-full py-2 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-neutral-200 transition-all"
+                          >
+                            View Plans →
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
 
           <div className="relative flex-1 flex flex-col min-h-0">
             
-            {/* Premium Lock Overlay */}
-            {!isSubscribed && (
-              <div className="absolute inset-0 z-20 bg-black/70 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
-                <div className="w-16 h-16 bg-red-600/10 rounded-2xl flex items-center justify-center mb-4 border border-red-600/20 shadow-[0_0_30px_rgba(220,38,38,0.2)]">
-                  <Lock className="h-8 w-8 text-red-500" />
+            {/* Model-limit lock overlay — shown when free messages exhausted */}
+            {!isModelUnlimited && !canUseModel && (
+              <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 border overflow-hidden"
+                  style={{ background: `${selectedChatModel.accentColor}15`, borderColor: `${selectedChatModel.accentColor}35` }}
+                >
+                  <img src={selectedChatModel.logoUrl} alt={selectedChatModel.name} className="w-9 h-9 object-contain" />
                 </div>
-                <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-2">PaperChat Locked</h3>
-                <p className="text-sm text-neutral-400 mb-6 font-medium">Upgrade to Pro to interact dynamically with your generated notes using our advanced neural assistant.</p>
-                <Button onClick={() => router.push('/pricing')} className="bg-white text-black hover:bg-neutral-200 font-bold uppercase tracking-widest text-xs px-8 h-12 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                   Unlock Premium <Sparkles className="ml-2 h-4 w-4" />
-                </Button>
+                <h3 className="text-xl font-black text-white mb-1">{selectedChatModel.name} Limit Reached</h3>
+                <p className="text-sm text-neutral-400 mb-1 max-w-xs">
+                  You've used your {selectedChatModel.freeLimit} free messages on {selectedChatModel.name}.
+                </p>
+                <p className="text-xs text-neutral-600 mb-5 max-w-xs">
+                  Upgrade to <span style={{ color: PLAN_META[TIER_REQUIRED_PLAN[selectedChatModel.tier]].color }} className="font-bold">
+                    {PLAN_META[TIER_REQUIRED_PLAN[selectedChatModel.tier]].label}
+                  </span> for unlimited {selectedChatModel.name} access.
+                </p>
+                <div className="flex flex-col gap-2 w-full max-w-xs">
+                  <Button onClick={() => router.push('/pricing')} className="bg-white text-black hover:bg-neutral-200 font-bold uppercase tracking-widest text-xs h-11 rounded-xl">
+                    Upgrade Plan <Sparkles className="ml-2 h-3 w-3" />
+                  </Button>
+                  <button
+                    onClick={() => setSelectedChatModel(CHAT_AI_MODELS[0])}
+                    className="text-xs text-neutral-400 hover:text-white transition-colors py-2"
+                  >
+                    Switch back to PaperChat (Free · Unlimited)
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1395,6 +2201,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
               setInput={setInput}
               isThinking={isThinking}
               isSubscribed={isSubscribed}
+              canSendOverride={canUseModel}
               onSubmit={handleSendMessage}
               selectedMode={selectedMode}
               setSelectedMode={setSelectedMode}
@@ -1402,6 +2209,23 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           </div>
         </div>
       </div>
+
+      {/* Export Dialog */}
+      <AnimatePresence>
+        {showExportDialog && (
+          <ExportDialog
+            isOpen={showExportDialog}
+            onClose={() => setShowExportDialog(false)}
+            isSubscribed={isSubscribed}
+            onExportPDF={generatePDF}
+            onExportMarkdown={exportMarkdown}
+            isGeneratingPDF={isGeneratingPDF}
+            router={router}
+            noteTitle={data?.title || "Note"}
+            noteContent={markdownContent}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Mobile Bottom Nav */}
       <MobileBottomNav 

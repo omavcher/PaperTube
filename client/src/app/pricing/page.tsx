@@ -1,203 +1,360 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
-import { 
-  Smartphone, Tag, Zap, User, Loader2, IndianRupee, 
-  ShieldCheck, Activity, CheckCircle2, CreditCard, 
-  TicketPercent, X, ArrowRight, Timer, Flame,
-  Coins, Database, Cpu, Lock, Sparkles, Terminal,
-  AlertCircle, BadgePercent, Gift, Users, Sun, Clock
+import { useState, useEffect, useRef } from "react";
+import {
+  CheckCircle2, X, ArrowRight, Zap, ShieldCheck, Activity,
+  Sparkles, Clock, Star, Lock, Loader2, ChevronDown, Globe,
+  BookOpen, FileText, Layers, Download, Folder, Timer,
+  List, Infinity, AlertCircle, Users, TrendingUp, Award,
+  BarChart3, Flame, Coffee, GraduationCap, Brain, Rocket,
+  Check, BadgeCheck, Shield, Play, MessageCircle
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import { cn } from "@/lib/utils";
 import api from "@/config/api";
-import Script from "next/script";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
 import { AuthLoginModal } from "@/components/AuthGuard";
 
-// --- Types ---
-interface PromoCode {
-  code: string;
+// ─── Types ────────────────────────────────────────────────────────────────────
+type BillingPeriod = "monthly" | "yearly";
+
+interface Plan {
+  id: string;
   name: string;
-  description: string;
-  discountType: "percent" | "flat";
-  discountValue: number;
-  applicableTo: "all" | "subscription" | "token";
-  restrictedToPlans: string[];
-  maxDiscountCap: number;
-  minOrderAmount: number;
-  slotsRemaining: number;
-  isAlmostGone: boolean;
-  validUntil?: string | null;
+  tagline: string;
+  persona: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  cta: string;
+  ctaFree?: boolean;
+  hasTrial: boolean;
+  popular?: boolean;
+  highlight?: boolean;
+  badge?: string;
+  accentColor: string;
+  glowColor: string;
+  features: Array<{ text: string; icon: any }>;
 }
 
-interface AppliedPromo {
-  code: string;
-  name: string;
-  discountType: "percent" | "flat";
-  discountValue: number;
-  discountAmount: number;
-}
+// ─── Plan Data ─────────────────────────────────────────────────────────────────
+const PLANS: Plan[] = [
+  {
+    id: "free",
+    name: "Free",
+    tagline: "Explore the magic, zero risk.",
+    persona: "Perfect for casual learners",
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    cta: "Start for free",
+    ctaFree: true,
+    hasTrial: false,
+    accentColor: "text-neutral-400",
+    glowColor: "rgba(255,255,255,0.03)",
+    features: [
+      { text: "2 videos per day", icon: Play },
+      { text: "Up to 1 hour per video", icon: Clock },
+      { text: "Quick Notes mode", icon: FileText },
+      { text: "Last 5 notes saved", icon: Folder },
+      { text: "Watermarked PDF export", icon: Download },
+    ],
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    tagline: "Everything you need to ace every exam.",
+    persona: "For serious students & daily learners",
+    monthlyPrice: 9,
+    yearlyPrice: 72,
+    cta: "Start 7-day free trial",
+    hasTrial: true,
+    popular: true,
+    highlight: true,
+    badge: "Most Popular",
+    accentColor: "text-white",
+    glowColor: "rgba(255,255,255,0.08)",
+    features: [
+      { text: "15 videos per day", icon: Play },
+      { text: "Up to 4 hours per video", icon: Clock },
+      { text: "All note styles — Quick, Visual, Full PDF", icon: Layers },
+      { text: "Clean PDF export — no watermark", icon: Download },
+      { text: "Markdown + Notion export", icon: FileText },
+      { text: "Unlimited saved notes + folders", icon: Folder },
+      { text: "Timestamps linked to video", icon: Timer },
+      { text: "Priority processing speed", icon: Zap },
+    ],
+  },
+  {
+    id: "power",
+    name: "Power",
+    tagline: "Research-grade output, zero limits.",
+    persona: "For researchers, grad students & power users",
+    monthlyPrice: 19,
+    yearlyPrice: 144,
+    cta: "Start 7-day free trial",
+    hasTrial: true,
+    accentColor: "text-violet-300",
+    glowColor: "rgba(139,92,246,0.08)",
+    features: [
+      { text: "Unlimited videos, no daily cap", icon: Infinity },
+      { text: "Up to 12 hours per video", icon: Clock },
+      { text: "Playlist processing (full course)", icon: List },
+      { text: "Deep PDF — textbook-quality output", icon: BookOpen },
+      { text: "Anki deck export (.apkg)", icon: Brain },
+      { text: "Multi-language notes (DE, ES, FR)", icon: Globe },
+      { text: "Instant processing — zero queue", icon: Rocket },
+    ],
+  },
+];
 
-interface PaymentData {
-  packageId: string;
-  packageType: "subscription" | "token";
-  finalAmount: number;
-  baseAmount: number;
-  discountAmount: number;
-  gstAmount: number;
-  mobile: string;
-  couponCode?: string;
-  billingPeriod?: "monthly" | "yearly";
-  packageName?: string;
-}
+// ─── Comparison Table Data ─────────────────────────────────────────────────────
+const COMPARE_ROWS = [
+  { category: "Usage", feature: "Videos per day", free: "2", pro: "15", power: "Unlimited" },
+  { category: "Usage", feature: "Max video length", free: "1 hr", pro: "4 hrs", power: "12 hrs" },
+  { category: "Notes", feature: "Quick Notes", free: true, pro: true, power: true },
+  { category: "Notes", feature: "Visual Notes (with images)", free: false, pro: true, power: true },
+  { category: "Notes", feature: "Full PDF Notes", free: false, pro: true, power: true },
+  { category: "Notes", feature: "Deep PDF (textbook quality)", free: false, pro: false, power: true },
+  { category: "Export", feature: "PDF export (no watermark)", free: false, pro: true, power: true },
+  { category: "Export", feature: "Markdown export", free: false, pro: true, power: true },
+  { category: "Export", feature: "Notion export", free: false, pro: true, power: true },
+  { category: "Export", feature: "Anki deck (.apkg)", free: false, pro: false, power: true },
+  { category: "Storage", feature: "Saved notes + folders", free: "Last 5", pro: "Unlimited", power: "Unlimited" },
+  { category: "Advanced", feature: "Timestamps linked to video", free: false, pro: true, power: true },
+  { category: "Advanced", feature: "Playlist processing", free: false, pro: false, power: true },
+  { category: "Advanced", feature: "Multi-language output", free: false, pro: false, power: true },
+  { category: "Performance", feature: "Processing speed", free: "Shared", pro: "Priority", power: "Instant" },
+  { category: "Trial", feature: "7-day free trial", free: false, pro: true, power: true },
+];
 
-interface TransactionResponse {
-  success: boolean;
-  order: {
-    id: string;
-    amount: number;
-    currency: string;
-    receipt: string;
-  };
-}
-
-interface VerifyResponse {
-  success: boolean;
-  transactionId?: string;
-  message?: string;
-  data?: {
-    transactionId: string;
-    orderId: string;
-    paymentId: string;
-    tokens: number;
-    tokensAwarded: number;
-    membership: any;
-    status: string;
-  };
-}
-
-// ─── Summer Offer: cosmetic pricing illusion ───────────────────
-// These multipliers create the fake "original" (higher) price
-const OFFER_LABEL = "Summer Offer";
-const OFFER_DISCOUNT_PCT = 20; // visually shown discount
-const FAKE_PRICE_MULTIPLIER = 1.25; // fake original = real * 1.25
-
-function fakeOriginal(real: number) {
-  return Math.round(real * FAKE_PRICE_MULTIPLIER);
-}
-
-function MegaOfferBanner() {
-  // Countdown to end of the day (midnight)
-  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
+// ─── Social proof counter ─────────────────────────────────────────────────────
+function AnimatedNumber({ target, suffix = "" }: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
 
   useEffect(() => {
-    const tick = () => {
-      const now = new Date();
-      const midnight = new Date();
-      midnight.setHours(23, 59, 59, 999);
-      const diff = midnight.getTime() - now.getTime();
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setTimeLeft({ h, m, s });
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
+    if (!inView) return;
+    const duration = 1400;
+    const steps = 60;
+    const increment = target / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) { setCount(target); clearInterval(timer); }
+      else setCount(Math.floor(current));
+    }, duration / steps);
+    return () => clearInterval(timer);
+  }, [inView, target]);
 
-  const pad = (n: number) => String(n).padStart(2, "0");
+  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
+}
 
+// ─── Testimonials ─────────────────────────────────────────────────────────────
+const TESTIMONIALS = [
+  { name: "Aditya R.", role: "CS Student, IIT Bombay", text: "Went from failing to top 10% in my class. The flashcards + PDF combo is unreal.", rating: 5 },
+  { name: "Sofia M.", role: "Pre-Med, UCLA", text: "I process entire lecture playlists in one sitting. Power plan is a game-changer.", rating: 5 },
+  { name: "James K.", role: "MBA Student", text: "Saves me 3–4 hours per week. Absolutely worth every dollar.", rating: 5 },
+];
+
+// ─── FAQ ─────────────────────────────────────────────────────────────────────
+const FAQS = [
+  { q: "Do I need a credit card for the free trial?", a: "No. The 7-day free trial for Pro and Power plans requires no credit card. You're only charged after the trial ends if you choose to continue." },
+  { q: "What happens after the trial?", a: "You'll get an email reminder before your trial ends. If you don't cancel, your selected plan activates. You can cancel anytime from your profile." },
+  { q: "Is the yearly plan auto-renewed?", a: "No. The yearly plan is a one-time payment for 12 months of access. It does not auto-renew — you'll manually choose to renew when it expires." },
+  { q: "Can I switch plans?", a: "Yes, you can upgrade or downgrade at any time from your profile page. Upgrades take effect immediately." },
+  { q: "What payment methods do you accept?", a: "We support PayPal (credit/debit card, PayPal balance) and LemonSqueezy (Visa, Mastercard, American Express, and more). Both gateways are fully secure." },
+  { q: "Which payment gateway should I use?", a: "Both are equally safe. Choose PayPal if you already have a PayPal account. Choose LemonSqueezy for a seamless credit/debit card experience without needing an account." },
+];
+
+// ─── Small helpers ─────────────────────────────────────────────────────────────
+function CellValue({ val, isPro }: { val: boolean | string; isPro?: boolean }) {
+  if (typeof val === "boolean") {
+    return val
+      ? <CheckCircle2 size={16} className={cn("mx-auto", isPro ? "text-white" : "text-emerald-400")} />
+      : <X size={14} className="text-neutral-800 mx-auto" />;
+  }
+  return <span className={cn("font-semibold text-xs", isPro ? "text-white" : "text-neutral-300")}>{val}</span>;
+}
+
+// ─── FAQ Item ─────────────────────────────────────────────────────────────────
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-500/10 via-orange-500/10 to-rose-500/10 backdrop-blur-md p-5 mb-10 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-[0_0_30px_rgba(239,68,68,0.2)] transform-gpu"
-    >
-      {/* Glow */}
-      <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 to-orange-600/10 pointer-events-none" />
-      
-      {/* Left */}
-      <div className="flex items-center gap-4">
-        <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30">
-          <Gift size={24} className="text-red-400 animate-bounce" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black uppercase tracking-widest text-red-500">🚨 The "Rob Us" Launch Giveaway</span>
-            <span className="px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/30 text-[10px] font-bold text-red-400 animate-pulse">
-              100% Guaranteed Win Chances
-            </span>
-          </div>
-          <p className="text-xs text-neutral-300 mt-1.5 font-medium max-w-2xl leading-relaxed">
-            We're giving away a <strong className="text-white">FREE iPhone 16 Pro</strong> or <strong className="text-white">Samsung S26 Ultra</strong> for ONE lucky subscriber! You're robbing us while we build our user base. Grab a subscription now before we regret it! 🤯
-          </p>
-        </div>
-      </div>
-
-      {/* Countdown */}
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="flex items-center gap-1 text-red-400/80">
-          <Clock size={12} className="animate-pulse" />
-          <span className="text-[9px] uppercase tracking-widest font-bold">Offer Ends In</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {[
-            { v: timeLeft.h, label: "hr" },
-            { v: timeLeft.m, label: "min" },
-            { v: timeLeft.s, label: "sec" },
-          ].map((t, i) => (
-            <div key={i} className="flex items-center gap-1">
-              {i > 0 && <span className="text-red-500/50 font-bold text-sm">:</span>}
-              <div className="flex flex-col items-center bg-red-950/50 border border-red-500/20 rounded-lg px-2.5 py-1.5 min-w-[38px]">
-                <span className="text-sm font-black text-red-400 font-mono tabular-nums">{pad(t.v)}</span>
-                <span className="text-[7px] text-red-500/80 uppercase tracking-widest">{t.label}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </motion.div>
+    <div className={cn("border border-white/5 rounded-2xl overflow-hidden transition-colors duration-200", open ? "bg-neutral-900/60" : "bg-neutral-900/20 hover:bg-neutral-900/40")}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full text-left flex items-center justify-between gap-4 p-5 md:p-6"
+      >
+        <span className="text-sm font-semibold text-white">{q}</span>
+        <ChevronDown size={16} className={cn("text-neutral-500 shrink-0 transition-transform duration-300", open && "rotate-180")} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <p className="px-5 md:px-6 pb-5 text-sm text-neutral-400 leading-relaxed">{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
-// --- Custom Modal ---
-function NeuralModal({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => void; children: React.ReactNode }) {
+// PayPal Smart Buttons (JS SDK) - avoids ALL currency restriction issues
+function PayPalSDKButton({
+  plan, billing, onSuccess, onError,
+}: {
+  plan: Plan;
+  billing: BillingPeriod;
+  onSuccess: () => void;
+  onError: (msg: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [sdkReady, setSdkReady] = useState(false);
+
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "unset";
-  }, [isOpen]);
+    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+    if (!clientId || clientId === "YOUR_PAYPAL_CLIENT_ID") {
+      onError("PayPal Client ID not configured.");
+      return;
+    }
+    const scriptId = "paypal-sdk-script";
+    if (document.getElementById(scriptId)) {
+      if ((window as any).paypal) setSdkReady(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture`;
+    script.async = true;
+    script.onload  = () => setSdkReady(true);
+    script.onerror = () => onError("Failed to load PayPal SDK.");
+    document.body.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!sdkReady || !containerRef.current || !(window as any).paypal) return;
+    containerRef.current.innerHTML = "";
+    (window as any).paypal.Buttons({
+      style: { layout: "vertical", color: "blue", shape: "pill", label: "pay", height: 48 },
+      createOrder: async () => {
+        const token = localStorage.getItem("authToken");
+        const res = await api.post(
+          "/payment/paypal/create-order",
+          { planId: plan.id, billingPeriod: billing },
+          { headers: { Auth: token } }
+        );
+        if (!res.data.success) throw new Error(res.data.message || "Order creation failed");
+        return res.data.orderId;
+      },
+      onApprove: async (data: any) => {
+        try {
+          const token = localStorage.getItem("authToken");
+          const res = await api.post(
+            "/payment/paypal/capture-order",
+            { orderId: data.orderID },
+            { headers: { Auth: token } }
+          );
+          if (res.data.success) onSuccess();
+          else onError("Payment capture failed. Please contact support.");
+        } catch (err: any) {
+          onError(err?.response?.data?.message || "Capture failed");
+        }
+      },
+      onError: (err: any) => {
+        console.error("PayPal SDK error:", err);
+        onError("PayPal payment failed. Please try again.");
+      },
+    }).render(containerRef.current);
+  }, [sdkReady, plan.id, billing]);
+
+  if (!sdkReady) {
+    return (
+      <div className="w-full h-12 flex items-center justify-center gap-2 text-neutral-500 text-xs">
+        <Loader2 size={14} className="animate-spin" /> Loading PayPal…
+      </div>
+    );
+  }
+  return <div ref={containerRef} id="paypal-button-container" className="w-full" />;
+}
+
+function PaymentMethodModal({
+  isOpen, onClose, plan, billing, onLemonSqueezy, onPayPalSuccess, isLemonProcessing,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  plan: Plan | null;
+  billing: BillingPeriod;
+  onLemonSqueezy: () => void;
+  onPayPalSuccess: () => void;
+  isLemonProcessing: boolean;
+}) {
+  const handlePayPalError = (msg: string) => toast.error(msg);
 
   return (
     <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-6 overflow-hidden">
+      {isOpen && plan && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            className="absolute inset-0 bg-black/80 backdrop-blur-xl"
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 40 }}
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 40 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="relative w-full max-w-5xl bg-[#0a0a0a] border border-white/10 rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden max-h-[100vh] md:max-h-[90vh] flex flex-col"
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="relative w-full max-w-sm bg-neutral-950 border border-white/10 rounded-3xl p-8 shadow-2xl overflow-hidden"
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/40">
-              <div className="flex items-center gap-2 text-xs font-mono text-neutral-500 uppercase tracking-widest">
-                <Terminal size={12} /> Secure Checkout
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-36 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.04)_0%,_transparent_70%)] pointer-events-none" />
+            <div className="relative z-10">
+              <div className="text-center mb-7">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-white/5 border border-white/8 flex items-center justify-center">
+                  <Lock size={20} className="text-neutral-300" />
+                </div>
+                <h3 className="text-lg font-black text-white mb-1">Choose payment method</h3>
+                <p className="text-xs text-neutral-500">{plan.name} plan · Secure checkout</p>
               </div>
-              <button onClick={onClose} className="p-2 rounded-full bg-white/5 hover:bg-red-500/10 hover:text-red-500 transition-colors text-neutral-400">
-                <X size={18} />
+
+              {/* PayPal Smart Buttons via official JS SDK */}
+              <PayPalSDKButton
+                plan={plan}
+                billing={billing}
+                onSuccess={onPayPalSuccess}
+                onError={handlePayPalError}
+              />
+
+              <div className="flex items-center gap-3 my-4">
+                <div className="flex-1 h-px bg-white/6" />
+                <span className="text-[10px] text-neutral-600 font-semibold uppercase tracking-wider">or</span>
+                <div className="flex-1 h-px bg-white/6" />
+              </div>
+
+              <button
+                id="btn-lemonsqueezy"
+                onClick={onLemonSqueezy}
+                disabled={isLemonProcessing}
+                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-white/8 hover:border-white/15 transition-all duration-200 active:scale-95 disabled:opacity-60 font-bold text-white text-sm"
+              >
+                {isLemonProcessing ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <><span className="text-xl">🍋</span> Pay with LemonSqueezy</>
+                )}
               </button>
+
+              <p className="text-center text-[10px] text-neutral-700 mt-5 flex items-center justify-center gap-1.5">
+                <ShieldCheck size={11} className="text-neutral-600" />
+                256-bit SSL encrypted · Cancel anytime
+              </p>
             </div>
-            <div className="overflow-y-auto flex-1 custom-scrollbar">{children}</div>
           </motion.div>
         </div>
       )}
@@ -205,16 +362,14 @@ function NeuralModal({ isOpen, onClose, children }: { isOpen: boolean; onClose: 
   );
 }
 
-// --- Success Modal ---
-function SuccessModal({ isOpen, onClose, transactionData }: { isOpen: boolean; onClose: () => void; transactionData: any }) {
+// ─── Success Modal ─────────────────────────────────────────────────────────────
+function SuccessModal({ isOpen, onClose, planName }: { isOpen: boolean; onClose: () => void; planName: string }) {
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
             className="absolute inset-0 bg-black/80 backdrop-blur-xl"
           />
@@ -224,40 +379,23 @@ function SuccessModal({ isOpen, onClose, transactionData }: { isOpen: boolean; o
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="relative w-full max-w-md bg-neutral-900 border border-emerald-500/20 rounded-3xl p-8 shadow-2xl overflow-hidden"
           >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-[radial-gradient(circle_at_center,_rgba(16,185,129,0.15)_0%,_transparent_70%)] pointer-events-none transform-gpu" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-40 bg-[radial-gradient(circle_at_center,_rgba(16,185,129,0.18)_0%,_transparent_70%)] pointer-events-none" />
             <div className="text-center space-y-6 relative z-10">
-              <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-              </div>
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
+                className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center"
+              >
+                <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+              </motion.div>
               <div>
-                <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">Payment Successful</h3>
-                <p className="text-xs text-neutral-500 font-mono uppercase tracking-widest">
-                  ID: {transactionData?.paymentId?.slice(0, 16)}...
-                </p>
-              </div>
-              <div className="space-y-3">
-                <div className="p-4 bg-black/40 rounded-xl border border-white/5">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-neutral-400 font-medium">Package</span>
-                    <span className="text-sm text-white font-bold">{transactionData?.packageName}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-neutral-400 font-medium">Amount Paid</span>
-                    <span className="text-xl font-bold text-emerald-400">₹{transactionData?.amount}</span>
-                  </div>
-                </div>
-                {transactionData?.tokensAwarded > 0 && (
-                  <div className="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/10 flex justify-between items-center">
-                    <span className="text-xs font-bold uppercase text-emerald-500/80">Tokens Added</span>
-                    <span className="text-lg font-bold text-emerald-400">+{transactionData?.tokensAwarded}</span>
-                  </div>
-                )}
+                <h3 className="text-2xl font-bold text-white mb-2">You're all set! 🎉</h3>
+                <p className="text-sm text-neutral-400">{planName} plan activated. Time to study smarter.</p>
               </div>
               <button
                 onClick={onClose}
-                className="w-full py-3.5 bg-white text-black font-bold uppercase tracking-wide text-xs rounded-xl hover:bg-neutral-200 transition-colors"
+                className="w-full py-3.5 bg-white text-black font-bold uppercase tracking-wide text-xs rounded-xl hover:bg-neutral-100 transition-colors"
               >
-                Return to Dashboard
+                Start Learning →
               </button>
             </div>
           </motion.div>
@@ -267,506 +405,193 @@ function SuccessModal({ isOpen, onClose, transactionData }: { isOpen: boolean; o
   );
 }
 
-// --- Purchase Interface ---
-function PurchaseInterface({ packageData, user, onPurchase, isProcessing, onUpdateMobile, billingPeriod, activeOffers, onClose }: any) {
-  const [couponInput, setCouponInput] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [activePromoCodes, setActivePromoCodes] = useState<PromoCode[]>([]);
-  const [loadingCodes, setLoadingCodes] = useState(true);
-  const [mobile, setMobile] = useState(user?.mobile || "");
-  const [isMobileEditable, setIsMobileEditable] = useState(!user?.mobile);
-  const [timeLeft, setTimeLeft] = useState(900);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTimeLeft((t) => (t > 0 ? t - 1 : 0)), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Fetch active promo codes from backend
-  useEffect(() => {
-    const fetchCodes = async () => {
-      try {
-        const res = await api.get("/promo/active");
-        if (res.data.success) setActivePromoCodes(res.data.promoCodes || []);
-      } catch (e) {
-        console.error("Failed to load promo codes:", e);
-      } finally {
-        setLoadingCodes(false);
-      }
-    };
-    fetchCodes();
-  }, []);
-
-  const isTokenPackage = packageData.type === "token";
-
-  let baseAmount = 0;
-  if (isTokenPackage) {
-    baseAmount = packageData.price;
-  } else {
-    baseAmount = billingPeriod === "monthly" ? packageData.monthlyPrice : packageData.yearlyPrice;
-  }
-
-  const bestOffer = activeOffers[0];
-  const offerDiscount = bestOffer && !isTokenPackage ? (baseAmount * bestOffer.discountPercent) / 100 : 0;
-  const amountAfterOffer = Math.max(0, baseAmount - offerDiscount);
-
-  // Promo discount comes from server-verified value
-  const promoDiscount = appliedPromo?.discountAmount ?? 0;
-
-  const totalDiscount = offerDiscount + promoDiscount;
-  const discountedAmount = Math.max(0, baseAmount - totalDiscount);
-  const gstAmount = discountedAmount * 0.18;
-  const totalAmount = discountedAmount + gstAmount;
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-  };
-
-  // Filter which promo codes are relevant for this plan
-  const relevantCodes = activePromoCodes.filter((c) => {
-    if (c.applicableTo !== "all" && c.applicableTo !== packageData.type) return false;
-    if (c.restrictedToPlans.length > 0 && !c.restrictedToPlans.includes(packageData.id)) return false;
-    if (c.minOrderAmount > 0 && amountAfterOffer < c.minOrderAmount) return false;
-    return true;
-  });
-
-  const handleVerifyPromo = async (code: string) => {
-    const trimmedCode = code.toUpperCase().trim();
-    if (!trimmedCode) {
-      toast.error("Please enter a promo code");
-      return;
-    }
-
-    // If same code already applied, skip
-    if (appliedPromo?.code === trimmedCode) {
-      toast.info("This code is already applied");
-      return;
-    }
-
-    setIsVerifying(true);
-    try {
-      const token = localStorage.getItem("authToken");
-      const res = await api.post(
-        "/promo/verify",
-        {
-          code: trimmedCode,
-          packageId: packageData.id,
-          packageType: packageData.type,
-          baseAmount: amountAfterOffer
-        },
-        { headers: { Auth: token } }
-      );
-
-      if (res.data.success) {
-        const { promo } = res.data;
-        setAppliedPromo({
-          code: promo.code,
-          name: promo.name,
-          discountType: promo.discountType,
-          discountValue: promo.discountValue,
-          discountAmount: promo.discountAmount
-        });
-        setCouponInput(promo.code);
-        toast.success(`🎉 "${promo.name}" applied! You save ₹${promo.discountAmount.toFixed(2)}`);
-      }
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "Invalid promo code";
-      toast.error(msg);
-      setAppliedPromo(null);
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleRemovePromo = () => {
-    setAppliedPromo(null);
-    setCouponInput("");
-    toast.info("Promo code removed");
-  };
-
-  const handlePurchase = () => {
-    const paymentData: PaymentData = {
-      packageId: packageData.id,
-      packageType: isTokenPackage ? "token" : "subscription",
-      finalAmount: totalAmount,
-      baseAmount: baseAmount,
-      discountAmount: totalDiscount,
-      gstAmount: gstAmount,
-      mobile: mobile,
-      couponCode: appliedPromo?.code,
-      billingPeriod: isTokenPackage ? undefined : billingPeriod,
-      packageName: packageData.name
-    };
-    onPurchase(paymentData);
-  };
+// ─── Plan Card ─────────────────────────────────────────────────────────────────
+function PlanCard({
+  plan, billing, onSelect, isProcessing, selectedId,
+}: {
+  plan: Plan; billing: BillingPeriod;
+  onSelect: (plan: Plan) => void; isProcessing: boolean; selectedId: string | null;
+}) {
+  const price = billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
+  const monthlyEquiv = billing === "yearly" && plan.monthlyPrice > 0
+    ? (plan.yearlyPrice / 12).toFixed(2)
+    : null;
+  const isLoading = isProcessing && selectedId === plan.id;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full font-sans">
-      {/* Left Section */}
-      <div className="lg:col-span-7 p-6 md:p-10 space-y-8 border-b lg:border-b-0 lg:border-r border-white/5 bg-[#0a0a0a]">
-        
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className={cn(
+        "relative flex flex-col rounded-[2rem] border transition-all duration-500 group",
+        plan.highlight
+          ? "bg-gradient-to-b from-neutral-800/80 to-neutral-900/80 border-white/20 shadow-[0_0_80px_rgba(255,255,255,0.06)] z-10 md:-mt-4 md:-mb-4 pb-4"
+          : plan.id === "power"
+          ? "bg-gradient-to-b from-violet-950/30 to-black/60 border-violet-500/15 hover:border-violet-500/30"
+          : "bg-neutral-950/60 border-white/5 hover:border-white/10"
+      )}
+    >
+      {/* Top glow */}
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 pointer-events-none rounded-t-[2rem] opacity-60"
+        style={{ background: `radial-gradient(ellipse at top, ${plan.glowColor}, transparent 70%)` }}
+      />
+
+      {/* Popular badge */}
+      {plan.badge && (
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-1.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-full shadow-[0_0_30px_rgba(255,255,255,0.3)] whitespace-nowrap">
+          <Sparkles size={10} />
+          {plan.badge}
+        </div>
+      )}
+
+      <div className={cn("p-7 flex flex-col flex-1", plan.highlight && "pt-10")}>
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-xl bg-neutral-900 border border-white/10 flex items-center justify-center">
-              <CreditCard size={18} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-white tracking-tight">Checkout</h2>
-              <p className="text-[10px] text-neutral-500 font-medium uppercase tracking-wider">Secure Payment</p>
-            </div>
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className={cn("text-xl font-black tracking-tight", plan.accentColor)}>{plan.name}</h3>
+            {plan.id === "power" && (
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/20">Power</span>
+            )}
           </div>
-          <div className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2">
-            <Timer size={14} className="text-red-500 animate-pulse" />
-            <span className="font-mono text-sm font-bold text-red-500">{formatTime(timeLeft)}</span>
-          </div>
+          <p className="text-sm text-neutral-500 font-medium leading-relaxed">{plan.tagline}</p>
+          <p className="text-[10px] text-neutral-600 mt-1 font-medium flex items-center gap-1">
+            <Users size={9} /> {plan.persona}
+          </p>
         </div>
 
-        {/* User Info */}
-        <section className="space-y-3">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 flex items-center gap-2">
-            <User size={12} /> Account
-          </label>
-          <div className="p-4 bg-neutral-900/40 border border-white/5 rounded-2xl flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-black border border-white/10 flex items-center justify-center overflow-hidden">
-              {user?.picture ? (
-                <img src={user.picture} alt={user.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-neutral-400 font-bold text-lg uppercase">{user?.name?.charAt(0) || "U"}</span>
-              )}
-            </div>
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <p className="font-bold text-white text-sm">{user?.name}</p>
-                {user?.membership?.isActive && (
-                  <Badge className="bg-emerald-500/10 text-emerald-500 border-none text-[9px] px-1.5 py-0">
-                    {user.membership.planName}
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-neutral-500 font-mono">{user?.email}</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Mobile Input */}
-        <section className="space-y-3">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 flex items-center gap-2">
-            <Smartphone size={12} /> Phone Number
-          </label>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-sm border-r border-white/10 pr-3">+91</span>
-              <input
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                disabled={!isMobileEditable}
-                className="w-full bg-neutral-900/40 border border-white/10 h-12 rounded-xl pl-14 font-mono text-sm text-white focus:border-white/20 focus:ring-0 outline-none transition-all placeholder:text-neutral-700"
-                placeholder="9876543210"
-              />
-            </div>
-            <button
-              onClick={() => (isMobileEditable ? onUpdateMobile(mobile).then(() => setIsMobileEditable(false)) : setIsMobileEditable(true))}
-              className={cn(
-                "h-12 px-6 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all",
-                isMobileEditable ? "bg-white text-black hover:bg-neutral-200" : "bg-neutral-900 text-neutral-400 border border-white/5 hover:border-white/20"
-              )}
-            >
-              {isMobileEditable ? "Save" : "Change"}
-            </button>
-          </div>
-        </section>
-
-        {/* Promo Code Section */}
-        <section className="space-y-4">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 flex items-center gap-2">
-            <Gift size={12} /> Promo Code
-          </label>
-
-          {/* Input + Apply */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <input
-                value={couponInput}
-                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === "Enter" && handleVerifyPromo(couponInput)}
-                className="w-full bg-neutral-900/40 border border-white/10 h-10 rounded-lg px-4 font-mono text-xs uppercase outline-none focus:border-white/20 text-white placeholder:text-neutral-600 pr-10"
-                placeholder="ENTER CODE"
-                disabled={!!appliedPromo}
-              />
-              {appliedPromo && (
-                <button
-                  onClick={handleRemovePromo}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-red-400 transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            <button
-              onClick={() => appliedPromo ? handleRemovePromo() : handleVerifyPromo(couponInput)}
-              disabled={isVerifying}
-              className={cn(
-                "px-5 h-10 border rounded-lg font-bold uppercase text-[10px] transition-all flex items-center gap-1.5",
-                appliedPromo
-                  ? "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20"
-                  : "bg-white/5 border-white/10 text-white hover:bg-white hover:text-black"
-              )}
-            >
-              {isVerifying ? <Loader2 size={12} className="animate-spin" /> : appliedPromo ? "Remove" : "Apply"}
-            </button>
-          </div>
-
-          {/* Applied promo success state */}
-          <AnimatePresence>
-            {appliedPromo && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold text-emerald-400">{appliedPromo.name}</p>
-                    <p className="text-[10px] text-emerald-600">
-                      {appliedPromo.discountType === "percent"
-                        ? `${appliedPromo.discountValue}% off`
-                        : `₹${appliedPromo.discountValue} flat off`}{" "}
-                      — You save ₹{appliedPromo.discountAmount.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-                <span className="font-mono text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">
-                  {appliedPromo.code}
+        {/* Price block */}
+        <div className="mb-6 pb-6 border-b border-white/5">
+          <div className="flex items-end gap-1.5">
+            {price === 0 ? (
+              <span className="text-5xl font-black text-white tracking-tighter">Free</span>
+            ) : (
+              <>
+                <span className="text-2xl font-bold text-neutral-400 mb-1">$</span>
+                <span className={cn("text-6xl font-black tracking-tighter leading-none", plan.highlight ? "text-white" : plan.id === "power" ? "text-violet-200" : "text-white")}>
+                  {price}
                 </span>
-              </motion.div>
+                <div className="flex flex-col mb-1">
+                  <span className="text-xs text-neutral-500 font-medium leading-tight">
+                    / {billing === "monthly" ? "month" : "year"}
+                  </span>
+                  {monthlyEquiv && billing === "yearly" && (
+                    <span className="text-[10px] text-emerald-400 font-bold leading-tight">${monthlyEquiv}/mo</span>
+                  )}
+                </div>
+              </>
             )}
-          </AnimatePresence>
+          </div>
 
-          {/* Visible promo chips */}
-          {!loadingCodes && relevantCodes.length > 0 && (
-            <div>
-              <p className="text-[10px] text-neutral-600 uppercase tracking-widest mb-2 font-bold">Available Offers</p>
-              <div className="flex flex-wrap gap-2">
-                {relevantCodes.map((c) => (
-                  <button
-                    key={c.code}
-                    onClick={() => {
-                      if (appliedPromo?.code === c.code) return;
-                      setCouponInput(c.code);
-                      handleVerifyPromo(c.code);
-                    }}
-                    className={cn(
-                      "px-3 py-2 border rounded-lg hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all text-left group flex items-center gap-2",
-                      appliedPromo?.code === c.code
-                        ? "border-emerald-500/40 bg-emerald-500/5"
-                        : "bg-neutral-900/60 border-white/5"
-                    )}
-                  >
-                    <BadgePercent size={12} className={cn("shrink-0", c.isAlmostGone ? "text-orange-400" : "text-neutral-500 group-hover:text-emerald-400")} />
-                    <div>
-                      <span className="text-[10px] font-mono font-bold block text-neutral-300 group-hover:text-emerald-400">
-                        {c.code}
-                      </span>
-                      <span className="text-[9px] text-neutral-500">
-                        {c.discountType === "percent" ? `-${c.discountValue}%` : `₹${c.discountValue} off`}
-                        {c.maxDiscountCap > 0 && ` (max ₹${c.maxDiscountCap})`}
-                      </span>
-                    </div>
-                    <div className="ml-auto flex flex-col items-end gap-0.5">
-                      <span className={cn(
-                        "text-[8px] font-bold px-1.5 py-0.5 rounded",
-                        c.isAlmostGone
-                          ? "bg-orange-500/10 text-orange-400"
-                          : "bg-emerald-500/10 text-emerald-600"
-                      )}>
-                        {c.isAlmostGone ? `${c.slotsRemaining} left!` : "Available"}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+          {/* Savings & billing notes */}
+          {price > 0 && billing === "yearly" && (
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <TrendingUp size={10} className="text-emerald-400" />
+                <span className="text-[10px] font-bold text-emerald-400">Save ~17%</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/8 border border-amber-500/15">
+                <AlertCircle size={10} className="text-amber-400/80" />
+                <span className="text-[10px] font-semibold text-amber-400/80">One-time · No auto-renewal</span>
               </div>
             </div>
           )}
-
-          {loadingCodes && (
-            <div className="flex items-center gap-2 text-neutral-600 text-xs">
-              <Loader2 size={12} className="animate-spin" />
-              <span>Loading offers...</span>
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* Right Section: Summary */}
-      <div className="lg:col-span-5 bg-neutral-900/20 p-6 md:p-10 flex flex-col justify-between h-full">
-        <div className="space-y-6">
-          <div className="pb-6 border-b border-white/5">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500">Selected Plan</span>
-            </div>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{packageData?.name}</h3>
-            <p className="text-xs text-neutral-500 mt-2 font-medium">
-              {isTokenPackage ? "Lifetime Validity • One-time Payment" : `Billed ${billingPeriod === "monthly" ? "Monthly" : "Annually"} • Cancel Anytime`}
+          {price > 0 && billing === "monthly" && plan.hasTrial && (
+            <p className="text-[11px] text-neutral-600 mt-2 flex items-center gap-1">
+              <Shield size={10} /> No credit card required during trial
             </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex justify-between text-xs font-medium text-neutral-400">
-              <span>Subtotal</span>
-              <span className="text-white font-mono">₹{baseAmount.toFixed(2)}</span>
-            </div>
-            <AnimatePresence>
-              {offerDiscount > 0 && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="flex justify-between text-xs font-bold text-blue-400">
-                  <span className="flex items-center gap-1"><Zap size={12} /> Limited Offer</span>
-                  <span className="font-mono">- ₹{offerDiscount.toFixed(2)}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <AnimatePresence>
-              {promoDiscount > 0 && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="flex justify-between text-xs font-bold text-emerald-500">
-                  <span className="flex items-center gap-1">
-                    <TicketPercent size={12} /> Promo: {appliedPromo?.code}
-                  </span>
-                  <span className="font-mono">- ₹{promoDiscount.toFixed(2)}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <div className="flex justify-between text-xs font-medium text-neutral-400">
-              <span>GST (18%)</span>
-              <span className="text-white font-mono">₹{gstAmount.toFixed(2)}</span>
-            </div>
-          </div>
+          )}
+          {price === 0 && (
+            <p className="text-[11px] text-neutral-600 mt-2">Free forever. No credit card needed.</p>
+          )}
         </div>
 
-        <div className="space-y-6 mt-8">
-          <div className="bg-black/40 p-6 rounded-2xl border border-white/5">
-            <div className="flex justify-between items-end">
-              <span className="text-[10px] font-bold uppercase text-neutral-500 mb-1">Total Payable</span>
-              <span className="text-4xl font-bold text-white tracking-tighter">₹{Math.round(totalAmount)}</span>
-            </div>
-            {totalDiscount > 0 && (
-              <p className="text-[10px] text-emerald-500 font-bold mt-2 text-right">
-                You save ₹{totalDiscount.toFixed(2)} on this order!
-              </p>
-            )}
-          </div>
+        {/* CTA */}
+        <button
+          onClick={() => onSelect(plan)}
+          disabled={isProcessing}
+          className={cn(
+            "w-full h-13 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-95 mb-2 group/btn relative overflow-hidden",
+            plan.highlight
+              ? "bg-white text-black hover:bg-neutral-100 shadow-[0_4px_24px_rgba(255,255,255,0.18)] hover:shadow-[0_4px_32px_rgba(255,255,255,0.28)]"
+              : plan.id === "power"
+              ? "bg-violet-600 text-white hover:bg-violet-500 border border-violet-500/50 shadow-[0_4px_24px_rgba(139,92,246,0.2)] hover:shadow-[0_4px_32px_rgba(139,92,246,0.35)]"
+              : "bg-neutral-800/80 text-neutral-300 border border-white/8 hover:bg-neutral-700/80 hover:text-white hover:border-white/15"
+          )}
+        >
+          {isLoading ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <>
+              {plan.hasTrial && <Sparkles size={13} className="opacity-80" />}
+              {plan.cta}
+              <ArrowRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
+            </>
+          )}
+        </button>
 
-          <button
-            onClick={handlePurchase}
-            disabled={isProcessing || mobile.length !== 10}
-            className="w-full h-14 bg-white hover:bg-neutral-200 text-black font-bold uppercase tracking-wide text-sm rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <><Lock size={16} /> Pay Securely</>}
-          </button>
+        {plan.hasTrial && (
+          <p className="text-center text-[10px] text-neutral-600 mb-5 font-medium">
+            {billing === "yearly" ? "No auto-renew after 12 months" : "Cancel anytime — no charge during trial"}
+          </p>
+        )}
 
-          <div className="flex justify-center gap-4 text-[9px] font-bold text-neutral-600 uppercase tracking-widest">
-            <span className="flex items-center gap-1"><ShieldCheck size={10} /> SSL Encrypted</span>
-            <span className="flex items-center gap-1"><Zap size={10} /> Instant Access</span>
-          </div>
+        {/* Feature divider */}
+        <p className={cn("text-[9px] font-black uppercase tracking-[0.18em] mb-4 flex items-center gap-2", plan.highlight ? "text-neutral-400" : "text-neutral-600")}>
+          <span className="flex-1 h-px bg-white/5" />
+          {plan.id === "free" ? "Included" : `Everything in ${plan.id === "pro" ? "Free" : "Pro"}, plus`}
+          <span className="flex-1 h-px bg-white/5" />
+        </p>
+
+        {/* Features */}
+        <div className="space-y-2.5 flex-1">
+          {plan.features.map((f, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.05 * i + 0.3, duration: 0.3 }}
+              className="flex items-start gap-3 group/feat"
+            >
+              <div className={cn(
+                "mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-200",
+                plan.highlight ? "bg-white/10 text-white group-hover/feat:bg-white group-hover/feat:text-black" 
+                : plan.id === "power" ? "bg-violet-500/15 text-violet-400 group-hover/feat:bg-violet-500/25"
+                : "bg-white/[0.04] text-neutral-500 group-hover/feat:bg-white/[0.08]"
+              )}>
+                <f.icon size={10} strokeWidth={2.5} />
+              </div>
+              <span className={cn("text-xs font-medium leading-relaxed transition-colors", 
+                plan.highlight ? "text-neutral-300 group-hover/feat:text-white" 
+                : plan.id === "power" ? "text-neutral-400 group-hover/feat:text-violet-200"
+                : "text-neutral-600 group-hover/feat:text-neutral-400")}>
+                {f.text}
+              </span>
+            </motion.div>
+          ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-// --- Main Component ---
-export default function PricingSection() {
-  const [viewMode, setViewMode] = useState<"subscription" | "token">("subscription");
-  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
+// ─── Main Component ────────────────────────────────────────────────────────────
+export default function PricingPage() {
+  const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [user, setUser] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [successModalOpen, setSuccessModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<any>(null);
-  const [activeSyncs] = useState(8420);
-  const [transactionResult, setTransactionResult] = useState<any>(null);
-  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
-
-  const subscriptionPlans = [
-    {
-      id: "scholar",
-      type: "subscription",
-      name: "Scholar",
-      monthlyPrice: 149,
-      yearlyPrice: 1490,
-      description: "Essential toolkit for survival.",
-      features: ["3 AI Models (excl. Vyavastha)", "Unlimited AI Quiz", "6hr Video Processing/Day", "Basic Game Access", "Standard Tools"],
-      cta: "Get Started",
-      slots: "High Demand"
-    },
-    {
-      id: "pro",
-      type: "subscription",
-      name: "Pro Scholar",
-      monthlyPrice: 299,
-      yearlyPrice: 2990,
-      description: "The choice of toppers.",
-      popular: true,
-      highlight: true,
-      features: ["All 4 AI Models", "Everything in Scholar", "Priority Fast-Lane Speed", "Verified Scholar Badge", "Zero Ads", "12hr Video Processing/Day", "Beta Tools Access"],
-      cta: "Upgrade to Pro",
-      slots: "97% Capacity"
-    },
-    {
-      id: "power",
-      type: "subscription",
-      name: "Power Scholar",
-      monthlyPrice: 599,
-      yearlyPrice: 5990,
-      description: "God-mode for Engineers.",
-      features: ["All 4 AI Models", "Everything in Pro", "Unlimited Video Processing", "Instant Image Gen", "Bulk Documentation", "Career Roadmap", "VIP Support"],
-      cta: "Unlock Power",
-      slots: "Limited Access"
-    }
-  ];
-
-  const tokenPackages = [
-    {
-      id: "basic",
-      type: "token",
-      name: "Basic Chip",
-      tokens: 100,
-      price: 99,
-      description: "Emergency supply.",
-      features: ["100 Tokens", "Valid Forever", "Instant Credit", "Access Basic Models"],
-      cta: "Buy Tokens",
-      icon: Database
-    },
-    {
-      id: "standard",
-      type: "token",
-      name: "Standard Core",
-      tokens: 500,
-      price: 399,
-      description: "Standard supply for projects.",
-      popular: true,
-      highlight: true,
-      features: ["500 Tokens", "Valid Forever", "Instant Credit", "Access All Models", "Priority Queue"],
-      cta: "Buy Tokens",
-      icon: Cpu
-    },
-    {
-      id: "premium",
-      type: "token",
-      name: "Premium Node",
-      tokens: 1000,
-      price: 699,
-      description: "Massive supply for heavy lifting.",
-      features: ["1000 Tokens", "Valid Forever", "Instant Credit", "Access All Models", "Top Priority Queue", "Bulk Operations"],
-      cta: "Buy Tokens",
-      icon: Coins
-    }
-  ];
+  const [pendingPlan, setPendingPlan] = useState<Plan | null>(null);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successPlanName, setSuccessPlanName] = useState("");
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  // ── Payment method modal state ──────────────────────────────────────────────
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingCheckoutPlan, setPendingCheckoutPlan] = useState<Plan | null>(null);
+  const [processingGateway, setProcessingGateway] = useState<"paypal" | "lemonsqueezy" | null>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -782,427 +607,445 @@ export default function PricingSection() {
     fetchUser();
   }, []);
 
-  const handleUpdateMobile = async (mobile: string) => {
-    const token = localStorage.getItem("authToken");
-    try {
-      const res = await api.put("/auth/update-profile", { mobile }, { headers: { Auth: token } });
-      if (res.data.success) {
-        setUser({ ...user, mobile });
-        toast.success("Phone number saved");
-        return true;
-      }
-    } catch (error) {
-      toast.error("Failed to update phone number");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      const plan = params.get("plan") || "Pro";
+      setSuccessPlanName(plan);
+      setSuccessOpen(true);
+      window.history.replaceState({}, "", window.location.pathname);
     }
-    return false;
-  };
+    if (params.get("payment") === "cancel") {
+      toast.info("Checkout cancelled — no charge was made.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
-  const createRazorpayOrder = async (paymentData: PaymentData): Promise<TransactionResponse | null> => {
-    try {
+  const handleSelectPlan = async (plan: Plan) => {
+    if (plan.ctaFree) {
       const token = localStorage.getItem("authToken");
-      const response = await api.post("/payment/create-order", paymentData, { headers: { Auth: token } });
-      if (response.data.success) return response.data;
-      toast.error("Failed to create order");
-      return null;
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to create payment order");
-      return null;
-    }
-  };
-
-  const verifyPayment = async (paymentData: any): Promise<VerifyResponse | null> => {
-    try {
-      const token = localStorage.getItem("authToken");
-      const response = await api.post("/payment/verify", paymentData, { headers: { Auth: token } });
-      if (response.data.success) return response.data;
-      return null;
-    } catch (error: any) {
-      return null;
-    }
-  };
-
-  const handlePayment = async (paymentData: PaymentData) => {
-    if (!razorpayLoaded) {
-      toast.error("Payment system loading... Please try again");
+      if (!token) { setPendingPlan(plan); setShowLoginModal(true); return; }
+      window.location.href = "/notes";
       return;
     }
+    const token = localStorage.getItem("authToken");
+    if (!token) { setPendingPlan(plan); setShowLoginModal(true); return; }
+    // Open payment method picker
+    setPendingCheckoutPlan(plan);
+    setSelectedId(plan.id);
+    setShowPaymentModal(true);
+  };
 
+  const launchLemonSqueezyCheckout = async (plan: Plan) => {
+    setShowPaymentModal(false);
     setIsProcessing(true);
-
+    setProcessingGateway("lemonsqueezy");
     try {
-      toast.loading("Creating order...");
-      const orderData = await createRazorpayOrder(paymentData);
-
-      if (!orderData) {
-        setIsProcessing(false);
-        return;
+      const token = localStorage.getItem("authToken");
+      const res = await api.post(
+        "/payment/lemonsqueezy/create-checkout",
+        {
+          planId: plan.id,
+          billingPeriod: billing,
+          successUrl: `${window.location.origin}/pricing?payment=success&plan=${encodeURIComponent(plan.name)}&gateway=lemonsqueezy`,
+          cancelUrl:  `${window.location.origin}/pricing?payment=cancel`,
+        },
+        { headers: { Auth: token } }
+      );
+      if (res.data.success && res.data.url) {
+        window.location.href = res.data.url;
+      } else {
+        toast.error("Could not start LemonSqueezy checkout. Please try again.");
       }
-
-      toast.dismiss();
-      toast.success("Payment gateway opened");
-
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.order.amount,
-        currency: orderData.order.currency,
-        name: "PaperXify",
-        description: `${paymentData.packageName}`,
-        image: "/paperxify.png",
-        order_id: orderData.order.id,
-        handler: async (response: any) => {
-          setIsProcessing(true);
-          toast.loading("Verifying payment...");
-
-          const verifyData = {
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_signature: response.razorpay_signature,
-            ...paymentData,
-            userId: user?._id,
-            userEmail: user?.email,
-            userName: user?.username,
-            status: "success"
-          };
-
-          const verifyResult = await verifyPayment(verifyData);
-
-          if (verifyResult?.success) {
-            toast.dismiss();
-            toast.success("Payment Successful!");
-            
-            // Trigger Google Ads Conversion Event
-            if (typeof window !== 'undefined' && (window as any).gtag) {
-              (window as any).gtag('event', 'conversion', {
-                  'send_to': 'AW-363591459/u5W5CL_70YscEKPur60B',
-                  'value': paymentData.finalAmount || 1.0,
-                  'currency': 'INR'
-              });
-            }
-
-            setTransactionResult({
-              ...verifyResult.data,
-              paymentId: response.razorpay_payment_id,
-              amount: Math.round(paymentData.finalAmount),
-              packageName: paymentData.packageName
-            });
-            setModalOpen(false);
-            setSuccessModalOpen(true);
-
-            const token = localStorage.getItem("authToken");
-            const res = await api.get("/auth/get-profile", { headers: { Auth: token } });
-            if (res.data.success) setUser(res.data.user);
-          } else {
-            toast.dismiss();
-            toast.error("Payment verification failed");
-            await api
-              .post(
-                "/payment/save-transaction",
-                { ...verifyData, status: "failed", error: "Verification failed" },
-                { headers: { Auth: localStorage.getItem("authToken") } }
-              )
-              .catch(console.error);
-          }
-
-          setIsProcessing(false);
-        },
-        prefill: {
-          name: user?.name || "",
-          email: user?.email || "",
-          contact: paymentData.mobile || ""
-        },
-        notes: {
-          package: paymentData.packageName,
-          userId: user?._id
-        },
-        theme: { color: "#000000" },
-        modal: {
-          ondismiss: () => {
-            toast.info("Payment cancelled");
-            setIsProcessing(false);
-            api
-              .post(
-                "/payment/save-transaction",
-                { ...paymentData, status: "failed", error: "User cancelled payment", userId: user?._id, userEmail: user?.email, userName: user?.name },
-                { headers: { Auth: localStorage.getItem("authToken") } }
-              )
-              .catch(console.error);
-          }
-        }
-      };
-
-      // @ts-ignore
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
-    } catch (error: any) {
-      toast.error(error.message || "Payment failed");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to start LemonSqueezy checkout");
+    } finally {
       setIsProcessing(false);
+      setProcessingGateway(null);
+      setSelectedId(null);
     }
   };
 
   return (
     <>
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="lazyOnload"
-        onLoad={() => setRazorpayLoaded(true)}
-      />
-
       <AuthLoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-        message="Sign in to purchase a plan"
+        message="Sign in to get started"
         onSuccess={() => {
-          if (selectedPackage) setModalOpen(true);
+          setShowLoginModal(false);
+          if (pendingPlan) {
+            if (pendingPlan.ctaFree) window.location.href = "/notes";
+            else {
+              setPendingCheckoutPlan(pendingPlan);
+              setSelectedId(pendingPlan.id);
+              setShowPaymentModal(true);
+            }
+          }
         }}
       />
+      <PaymentMethodModal
+        isOpen={showPaymentModal}
+        onClose={() => { setShowPaymentModal(false); setSelectedId(null); }}
+        plan={pendingCheckoutPlan}
+        billing={billing}
+        onLemonSqueezy={() => pendingCheckoutPlan && launchLemonSqueezyCheckout(pendingCheckoutPlan)}
+        onPayPalSuccess={() => {
+          setShowPaymentModal(false);
+          setSuccessPlanName(pendingCheckoutPlan?.name || "Pro");
+          setSuccessOpen(true);
+        }}
+        isLemonProcessing={isProcessing && processingGateway === "lemonsqueezy"}
+      />
+      <SuccessModal isOpen={successOpen} onClose={() => setSuccessOpen(false)} planName={successPlanName} />
 
-      <NeuralModal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
-        <PurchaseInterface
-          packageData={selectedPackage}
-          user={user}
-          onPurchase={handlePayment}
-          isProcessing={isProcessing}
-          onUpdateMobile={handleUpdateMobile}
-          billingPeriod={billingPeriod}
-          activeOffers={[]}
-          onClose={() => setModalOpen(false)}
-        />
-      </NeuralModal>
+      <div className="relative min-h-screen bg-black text-white overflow-hidden selection:bg-neutral-800 selection:text-white font-sans">
 
-      <SuccessModal isOpen={successModalOpen} onClose={() => setSuccessModalOpen(false)} transactionData={transactionResult} />
-
-      <section className="relative min-h-screen bg-black text-white py-24 px-4 font-sans overflow-hidden selection:bg-neutral-800 selection:text-white">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.04)_0%,_transparent_70%)] rounded-full pointer-events-none transform-gpu" />
-        <div className="absolute inset-0 z-0 opacity-20 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-
-        <div className="relative z-20 flex justify-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[10px] font-medium uppercase tracking-widest text-neutral-400">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            {activeSyncs.toLocaleString()} Students Active
-          </div>
+        {/* ── Atmospheric BG ── */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.05)_0%,_transparent_60%)]" />
+          <div className="absolute top-1/3 left-[-10%] w-[500px] h-[500px] bg-violet-900/10 blur-[120px] rounded-full" />
+          <div className="absolute top-1/4 right-[-5%] w-[400px] h-[400px] bg-blue-900/8 blur-[100px] rounded-full" />
+          <div className="absolute inset-0 opacity-[0.12] bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:48px_48px]" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto">
-          <div className="text-center mb-16 space-y-6">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500 leading-none">
-              Choose Your <span className="text-white">Plan.</span>
-            </h1>
-            <p className="text-lg text-neutral-400 font-light max-w-lg mx-auto leading-relaxed">
-              Upgrade your learning experience. Pick the plan that works best for you.
-            </p>
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-24">
+
+          {/* ── Hero Section ── */}
+          <div className="text-center mb-6 space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/8 text-[10px] font-bold uppercase tracking-widest text-neutral-400"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Simple, transparent pricing
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
+              className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05]"
+            >
+              <span className="text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-500">
+                Learn Smarter.
+              </span>
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-b from-neutral-300 to-neutral-600">
+                Pay Less Than a Coffee.
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
+              className="text-base md:text-lg text-neutral-400 font-light max-w-lg mx-auto leading-relaxed"
+            >
+              Turn any YouTube lecture into structured notes, flashcards, and PDFs.
+              Start free — upgrade when you're ready.
+            </motion.p>
           </div>
 
-          {/* Type Switcher */}
-          <div className="flex justify-center mb-12">
-            <div className="p-1 rounded-2xl bg-neutral-900/40 border border-white/5 backdrop-blur-md flex gap-1 transform-gpu">
-              <button
-                onClick={() => setViewMode("subscription")}
-                className={cn(
-                  "px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2",
-                  viewMode === "subscription" ? "bg-white text-black shadow-lg" : "text-neutral-500 hover:text-white"
-                )}
+          {/* ── Social Proof Numbers ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+            className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mb-14"
+          >
+            {[
+              { value: 24000, suffix: "+", label: "Students enrolled" },
+              { value: 4.9, suffix: "/5", label: "Average rating", isDecimal: true },
+              { value: 98, suffix: "%", label: "Satisfaction rate" },
+            ].map((stat, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="text-right">
+                  <div className="text-lg font-black text-white">
+                    {stat.isDecimal ? stat.value : <AnimatedNumber target={stat.value} suffix={stat.suffix} />}
+                    {stat.isDecimal && stat.suffix}
+                  </div>
+                  <div className="text-[10px] text-neutral-600 font-medium">{stat.label}</div>
+                </div>
+                {i < 2 && <div className="w-px h-8 bg-white/8 mx-2" />}
+              </div>
+            ))}
+            <div className="flex items-center gap-0.5 ml-2">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
+              ))}
+            </div>
+          </motion.div>
+
+          {/* ── Billing Toggle ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
+            className="flex justify-center mb-16"
+          >
+            <div className="relative flex items-center gap-1 p-1.5 rounded-2xl bg-neutral-900/70 border border-white/5 backdrop-blur-sm shadow-xl">
+              {(["monthly", "yearly"] as BillingPeriod[]).map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setBilling(period)}
+                  className={cn(
+                    "relative px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-250 flex items-center gap-2.5",
+                    billing === period
+                      ? "bg-white text-black shadow-lg"
+                      : "text-neutral-500 hover:text-neutral-300"
+                  )}
+                >
+                  {period === "monthly" ? "Monthly" : "Yearly"}
+                  {period === "yearly" && (
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-md text-[9px] font-black normal-case tracking-normal transition-colors",
+                      billing === "yearly"
+                        ? "bg-emerald-900/60 text-emerald-300"
+                        : "bg-emerald-500/15 text-emerald-400"
+                    )}>
+                      Save 17%
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* ── Plan Cards ── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-4 items-start">
+            {PLANS.map((plan, i) => (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * i + 0.28, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               >
-                <ShieldCheck size={14} /> Memberships
-              </button>
-              <button
-                onClick={() => setViewMode("token")}
-                className={cn(
-                  "px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2",
-                  viewMode === "token" ? "bg-white text-black shadow-lg" : "text-neutral-500 hover:text-white"
-                )}
-              >
-                <Coins size={14} /> Token Packs
-              </button>
+                <PlanCard
+                  plan={plan} billing={billing}
+                  onSelect={handleSelectPlan} isProcessing={isProcessing} selectedId={selectedId}
+                />
+              </motion.div>
+            ))}
+          </div>
+
+          {/* ── Trial / guarantee note ── */}
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+            className="text-center mt-8 space-y-2"
+          >
+            <p className="text-xs text-neutral-600 font-medium flex items-center justify-center gap-2">
+              <ShieldCheck size={13} className="text-emerald-500" />
+              Pro & Power include a 7-day free trial · No credit card required during trial · Cancel anytime
+            </p>
+          </motion.div>
+
+          {/* ── What you get section (Value reinforcement) ── */}
+          <div className="mt-24 mb-20">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">
+                One subscription. Every tool you need.
+              </h2>
+              <p className="text-neutral-500 max-w-md mx-auto text-sm">
+                Stop juggling 5 different apps. Paperxify is your all-in-one study co-pilot.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { icon: Brain, title: "AI Note Generation", desc: "Structured notes from any YouTube video, instantly", color: "text-blue-400", bg: "bg-blue-500/8 border-blue-500/15" },
+                { icon: FileText, title: "PDF Export", desc: "Beautiful, clean PDFs ready to print or share", color: "text-emerald-400", bg: "bg-emerald-500/8 border-emerald-500/15" },
+                { icon: Zap, title: "Flashcards", desc: "Auto-generated study cards from your notes", color: "text-amber-400", bg: "bg-amber-500/8 border-amber-500/15" },
+                { icon: Globe, title: "Multi-Language", desc: "Notes in English, German, Spanish, French & more", color: "text-violet-400", bg: "bg-violet-500/8 border-violet-500/15" },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.08 * i, duration: 0.4 }}
+                  className={cn("p-5 rounded-2xl border flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-200", item.bg)}
+                >
+                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", item.bg)}>
+                    <item.icon size={18} className={item.color} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white mb-1">{item.title}</p>
+                    <p className="text-[11px] text-neutral-500 leading-relaxed">{item.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </div>
 
-          {/* Billing toggle */}
-          <AnimatePresence mode="wait">
-            {viewMode === "subscription" && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="flex justify-center mb-16"
+          {/* ── Comparison Table ── */}
+          <div className="mb-20">
+            <div className="text-center mb-6">
+              <button
+                onClick={() => setCompareOpen(o => !o)}
+                className="group inline-flex items-center gap-2.5 text-sm font-semibold text-neutral-400 hover:text-white transition-colors"
               >
-                <div className="flex items-center gap-4">
-                  <span
-                    className={cn("text-xs font-medium cursor-pointer transition-colors", billingPeriod === "monthly" ? "text-white" : "text-neutral-600")}
-                    onClick={() => setBillingPeriod("monthly")}
-                  >
-                    Monthly
-                  </span>
-                  <button
-                    onClick={() => setBillingPeriod(billingPeriod === "monthly" ? "yearly" : "monthly")}
-                    className="w-12 h-6 rounded-full bg-neutral-900 border border-white/10 relative px-1 transition-colors"
-                  >
-                    <motion.div animate={{ x: billingPeriod === "yearly" ? 24 : 0 }} className="w-4 h-4 rounded-full bg-white shadow-md" />
-                  </button>
-                  <span
-                    className={cn("text-xs font-medium cursor-pointer transition-colors flex items-center gap-2", billingPeriod === "yearly" ? "text-white" : "text-neutral-600")}
-                    onClick={() => setBillingPeriod("yearly")}
-                  >
-                    Yearly <Badge className="bg-white text-black border-none text-[9px] px-1.5 py-0">SAVE 16%</Badge>
-                  </span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <BarChart3 size={15} className="text-neutral-600 group-hover:text-white transition-colors" />
+                Full feature comparison
+                <ChevronDown size={15} className={cn("transition-transform duration-300", compareOpen && "rotate-180")} />
+              </button>
+              <p className="text-[11px] text-neutral-700 mt-1">See exactly what each plan includes.</p>
+            </div>
 
-          {/* ── Mega Offer Banner ── */}
-          <AnimatePresence>
-            {viewMode === "subscription" && (
-              <motion.div
-                initial={{ opacity: 0, height: 0, scale: 0.95 }}
-                animate={{ opacity: 1, height: "auto", scale: 1 }}
-                exit={{ opacity: 0, height: 0, scale: 0.95 }}
-              >
-                <MegaOfferBanner />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Plan Grid */}
-          <motion.div
-            key={viewMode}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"
-          >
-            {(viewMode === "subscription" ? subscriptionPlans : tokenPackages).map((plan: any) => {
-              const realPrice = viewMode === "subscription"
-                ? (billingPeriod === "monthly" ? plan.monthlyPrice : plan.yearlyPrice)
-                : plan.price;
-              const origPrice = fakeOriginal(realPrice);
-              return (
-                <div
-                  key={plan.id}
-                  className={cn(
-                    "relative p-8 rounded-[2.5rem] border flex flex-col transition-all duration-300 hover:-translate-y-2 transform-gpu will-change-transform",
-                    plan.highlight ? "bg-neutral-900/30 backdrop-blur-md border-white/10 shadow-2xl z-10" : "bg-black/40 border-white/5"
-                  )}
+            <AnimatePresence>
+              {compareOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                  className="overflow-hidden"
                 >
-                  {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-white text-black text-[10px] font-bold uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(255,255,255,0.3)]">
-                      Most Popular
-                    </div>
-                  )}
-
-                  {/* Offer corner badge */}
-                  {viewMode === "subscription" ? (
-                    <div className="absolute top-5 right-5 flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                      <Gift size={9} className="text-red-400" />
-                      <span className="text-[8px] font-black text-red-400 uppercase tracking-wider">Giveaway</span>
-                    </div>
-                  ) : (
-                    <div className="absolute top-5 right-5 flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                      <Sun size={9} className="text-amber-400" />
-                      <span className="text-[8px] font-black text-amber-400 uppercase tracking-wider">Offer</span>
-                    </div>
-                  )}
-
-                  <div className="mb-8 space-y-4">
-                    <div className="flex items-center justify-between">
-                      {viewMode === "token" ? (
-                        <div className="p-2.5 bg-neutral-900 rounded-xl border border-white/5">
-                          <plan.icon size={18} className="text-white" />
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-                          <Flame size={12} className={cn(plan.highlight ? "text-orange-500" : "text-neutral-600")} />
-                          {plan.slots}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-white tracking-tight">{plan.name}</h3>
-                      <p className="text-xs text-neutral-500 mt-2 font-medium leading-relaxed">{plan.description}</p>
-                    </div>
+                  <div className="overflow-x-auto rounded-2xl border border-white/5 shadow-2xl">
+                    <table className="w-full text-sm min-w-[560px]">
+                      <thead>
+                        <tr className="border-b border-white/5 bg-neutral-900/80">
+                          <th className="text-left p-4 pl-6 text-neutral-500 font-semibold text-xs uppercase tracking-wider w-[40%]">Feature</th>
+                          <th className="text-center p-4 text-neutral-400 font-bold text-xs w-[20%]">Free</th>
+                          <th className="text-center p-4 text-white font-black text-xs bg-white/[0.04] w-[20%]">
+                            Pro <span className="text-neutral-500 font-normal">— ${billing === "monthly" ? "9" : "72"}</span>
+                          </th>
+                          <th className="text-center p-4 text-violet-300 font-bold text-xs w-[20%]">
+                            Power <span className="text-neutral-500 font-normal">— ${billing === "monthly" ? "19" : "144"}</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {COMPARE_ROWS.map((row, i) => (
+                          <tr
+                            key={row.feature}
+                            className={cn(
+                              "border-b border-white/[0.03] transition-colors hover:bg-white/[0.015]",
+                              i % 2 === 0 ? "bg-black/10" : "bg-transparent"
+                            )}
+                          >
+                            <td className="p-3 pl-6 text-neutral-400 text-xs font-medium">{row.feature}</td>
+                            <td className="p-3 text-center"><CellValue val={row.free} /></td>
+                            <td className="p-3 text-center bg-white/[0.02]"><CellValue val={row.pro} isPro /></td>
+                            <td className="p-3 text-center"><CellValue val={row.power} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-                  <div className="mb-8 pb-8 border-b border-white/5">
-                    {/* Fake (inflated) original — strikethrough illusion */}
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm text-neutral-600 line-through font-mono">₹{origPrice}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[8px] font-black uppercase">
-                        -{OFFER_DISCOUNT_PCT}%
-                      </span>
-                    </div>
-                    {/* Actual price displayed as "discounted" */}
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-5xl font-bold text-white tracking-tighter">₹{realPrice}</span>
-                      {viewMode === "subscription" && (
-                        <span className="text-neutral-500 text-sm font-medium">/ {billingPeriod === "monthly" ? "mo" : "yr"}</span>
-                      )}
-                    </div>
-                    <div className="mt-2 flex items-center gap-3">
-                      <span className="text-[10px] font-bold text-emerald-500">✓ You save ₹{origPrice - realPrice}</span>
-                      <span className="text-[10px] font-mono text-neutral-600">
-                        {viewMode === "subscription"
-                          ? `≈ ₹${(realPrice / (billingPeriod === "monthly" ? 30 : 365)).toFixed(2)} / day`
-                          : `${plan.tokens.toLocaleString()} Tokens`}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 mb-10 flex-1">
-                    {plan.features.map((f: string, i: number) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <div
-                          className={cn(
-                            "mt-0.5 p-0.5 rounded-full flex items-center justify-center shrink-0",
-                            plan.highlight ? "bg-white text-black" : "bg-neutral-800 text-neutral-400"
-                          )}
-                        >
-                          <CheckCircle2 size={10} strokeWidth={4} />
-                        </div>
-                        <span className={cn("text-xs font-medium leading-tight", plan.highlight ? "text-neutral-200" : "text-neutral-500")}>{f}</span>
-                      </div>
+          {/* ── Testimonials ── */}
+          <div className="mb-24">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-2">Loved by 24,000+ students</h2>
+              <p className="text-sm text-neutral-500">Real students. Real results.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {TESTIMONIALS.map((t, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.1 * i, duration: 0.4 }}
+                  className="bg-neutral-900/40 border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all duration-300"
+                >
+                  <div className="flex items-center gap-0.5 mb-4">
+                    {[...Array(t.rating)].map((_, j) => (
+                      <Star key={j} size={12} className="fill-amber-400 text-amber-400" />
                     ))}
                   </div>
+                  <p className="text-sm text-neutral-300 leading-relaxed mb-4 font-medium">"{t.text}"</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neutral-600 to-neutral-800 flex items-center justify-center text-xs font-black text-white">
+                      {t.name[0]}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">{t.name}</p>
+                      <p className="text-[10px] text-neutral-600">{t.role}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
 
-                  <button
-                    onClick={() => {
-                      const token = localStorage.getItem("authToken");
-                      if (!token) {
-                        setSelectedPackage(plan);
-                        setShowLoginModal(true);
-                        return;
-                      }
-                      setSelectedPackage(plan);
-                      setModalOpen(true);
-                    }}
-                    className={cn(
-                      "w-full h-14 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-95",
-                      plan.highlight
-                        ? "bg-white text-black hover:bg-neutral-200 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
-                        : "bg-neutral-900 text-white border border-white/5 hover:bg-neutral-800"
-                    )}
-                  >
-                    {plan.cta} <ArrowRight size={14} />
-                  </button>
-                </div>
-              );
-            })}
+          {/* ── FAQ ── */}
+          <div className="mb-20 max-w-2xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl font-black text-white tracking-tight mb-2">Frequently asked questions</h2>
+              <p className="text-sm text-neutral-500">Everything you need to know before you commit.</p>
+            </div>
+            <div className="space-y-3">
+              {FAQS.map((faq, i) => (
+                <FaqItem key={i} q={faq.q} a={faq.a} />
+              ))}
+            </div>
+          </div>
+
+          {/* ── Final CTA Banner ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-neutral-900 to-black p-10 md:p-16 text-center"
+          >
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-48 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.05)_0%,_transparent_70%)] pointer-events-none" />
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-6">
+                <Flame size={10} className="text-orange-400" /> Start learning smarter today
+              </div>
+              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-4">
+                Your first 7 days are free.
+              </h2>
+              <p className="text-neutral-400 max-w-sm mx-auto text-sm mb-8 leading-relaxed">
+                No credit card. No risk. Just better notes starting from your very first video.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  onClick={() => handleSelectPlan(PLANS[1])}
+                  disabled={isProcessing}
+                  className="px-8 py-4 bg-white text-black font-black text-sm uppercase tracking-wider rounded-2xl hover:bg-neutral-100 transition-all active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_50px_rgba(255,255,255,0.25)] flex items-center gap-2"
+                >
+                  {isProcessing && selectedId === "pro" ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={14} />}
+                  Start Free Trial — Pro
+                </button>
+                <button
+                  onClick={() => handleSelectPlan(PLANS[0])}
+                  className="px-8 py-4 text-neutral-400 hover:text-white text-sm font-semibold transition-colors"
+                >
+                  Or continue with Free →
+                </button>
+              </div>
+              <p className="text-[11px] text-neutral-700 mt-5 flex items-center justify-center gap-1.5">
+                <ShieldCheck size={11} className="text-neutral-600" />
+                PayPal & LemonSqueezy · 256-bit SSL · Cancel anytime
+              </p>
+            </div>
           </motion.div>
 
-          {/* Trust Footer */}
-          <div className="mt-20 pt-10 border-t border-white/5 flex flex-wrap justify-center gap-x-12 gap-y-6">
-            <TrustItem icon={ShieldCheck} text="256-Bit SSL Encryption" />
-            <TrustItem icon={Activity} text="99.9% System Uptime" />
-            <TrustItem icon={IndianRupee} text="Secure Razorpay Gateway" />
+          {/* ── Trust Strip ── */}
+          <div className="mt-14 flex flex-wrap justify-center gap-x-10 gap-y-4">
+            {[
+              { icon: ShieldCheck, text: "256-bit SSL Encryption" },
+              { icon: Activity, text: "99.9% Uptime" },
+              { icon: Lock, text: "PayPal Secured" },
+              { icon: Zap, text: "Instant Access" },
+              { icon: BadgeCheck, text: "No Hidden Fees" },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-2 text-neutral-700 hover:text-neutral-400 transition-colors">
+                <Icon size={12} className="shrink-0" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">{text}</span>
+              </div>
+            ))}
+            {/* LemonSqueezy badge */}
+            <div className="flex items-center gap-2 text-neutral-700 hover:text-neutral-400 transition-colors">
+              <span className="text-xs leading-none">🍋</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">LemonSqueezy</span>
+            </div>
           </div>
+
         </div>
-      </section>
+      </div>
+
       <Footer />
     </>
   );
 }
-
-const TrustItem = ({ icon: Icon, text }: { icon: any; text: string }) => (
-  <div className="flex items-center gap-3 text-neutral-500 group hover:text-white transition-colors cursor-default">
-    <Icon size={14} className="text-neutral-600 group-hover:text-white transition-colors" />
-    <span className="text-[10px] font-bold uppercase tracking-[0.15em]">{text}</span>
-  </div>
-);

@@ -42,6 +42,14 @@ const UserSchema = new mongoose.Schema(
     googleAccessToken: {
       type: String,
     },
+    password: {
+      type: String,
+    },
+    githubId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     username: {
       type: String,
       required: true,
@@ -77,6 +85,10 @@ followingUsers: [{
       type: String,
       required: false,
       trim: true,
+    },
+    country: {
+      type: String,
+      default: "Unknown",
     },
     picture: {
       type: String,

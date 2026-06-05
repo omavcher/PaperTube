@@ -140,22 +140,22 @@ const shell = (content, previewText = "") => `
 </html>
 `;
 
-// ─── Helper to format Indian currency ────────────────────────────────────────
-const formatINR = (amount) =>
-  new Intl.NumberFormat("en-IN", {
+// ─── Helper to format USD currency ──────────────────────────────────────────
+const formatUSD = (amount) =>
+  new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "INR",
+    currency: "USD",
     minimumFractionDigits: 2,
   }).format(amount);
 
 const formatDate = (d) =>
-  new Date(d).toLocaleDateString("en-IN", {
+  new Date(d).toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
 
-// ─── Number to words (Indian) ─────────────────────────────────────────────────
+// ─── Number to words (US Dollar) ──────────────────────────────────────────────
 const numToWords = (n) => {
   const a = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
   const b = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
@@ -165,13 +165,12 @@ const numToWords = (n) => {
     if (num < 20) return a[num] + " ";
     if (num < 100) return b[Math.floor(num / 10)] + " " + a[num % 10] + " ";
     if (num < 1000) return a[Math.floor(num / 100)] + " Hundred " + toWord(num % 100);
-    if (num < 100000) return toWord(Math.floor(num / 1000)) + "Thousand " + toWord(num % 1000);
-    if (num < 10000000) return toWord(Math.floor(num / 100000)) + "Lakh " + toWord(num % 100000);
-    return toWord(Math.floor(num / 10000000)) + "Crore " + toWord(num % 10000000);
+    if (num < 1000000) return toWord(Math.floor(num / 1000)) + " Thousand " + toWord(num % 1000);
+    return toWord(Math.floor(num / 1000000)) + " Million " + toWord(num % 1000000);
   };
   const parts = parseFloat(n).toFixed(2).split(".");
-  let str = "Rupees " + (parseInt(parts[0]) === 0 ? "Zero " : toWord(parseInt(parts[0])));
-  if (parseInt(parts[1]) > 0) str += "and " + toWord(parseInt(parts[1])) + "Paise ";
+  let str = "Dollars " + (parseInt(parts[0]) === 0 ? "Zero " : toWord(parseInt(parts[0])));
+  if (parseInt(parts[1]) > 0) str += "and " + toWord(parseInt(parts[1])) + "Cents ";
   return str.trim() + " Only";
 };
 
@@ -225,9 +224,6 @@ exports.subscriptionPurchase = ({
   timestamp,
 }) => {
   const totalAmt = parseFloat(amount);
-  const gstRate = 0.18;
-  const baseVal = totalAmt / (1 + gstRate);
-  const gstVal = totalAmt - baseVal;
   const invNo = `INV-${(transactionId || paymentId || "DRAFT").toUpperCase()}`;
 
   return {
@@ -238,7 +234,7 @@ exports.subscriptionPurchase = ({
       <div class="icon-circle icon-circle-green">✅</div>
     </div>
     <div class="h1">Payment Confirmed!</div>
-      <p class="subtitle">Your <strong style="color:#fff;">${planName}</strong> subscription is now active. Here's your tax invoice.</p>
+      <p class="subtitle">Your <strong style="color:#fff;">${planName}</strong> subscription is now active. Here's your invoice.</p>
 
       <!-- Invoice Meta -->
       <div class="highlight-box" style="margin-bottom:24px;">
@@ -267,26 +263,20 @@ exports.subscriptionPurchase = ({
           <thead>
             <tr>
               <th>Description</th>
-              <th>SAC Code</th>
               <th>Period</th>
-              <th class="right">Taxable Value</th>
-              <th class="right">IGST (18%)</th>
-              <th class="right">Total</th>
+              <th class="right">Amount</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td class="bold">${planName}</td>
-              <td>998431</td>
               <td>${billingPeriod || "Monthly"}</td>
-              <td class="right">${formatINR(baseVal)}</td>
-              <td class="right">${formatINR(gstVal)}</td>
-              <td class="right bold">${formatINR(totalAmt)}</td>
+              <td class="right bold">${formatUSD(totalAmt)}</td>
             </tr>
             <tr class="total-row">
-              <td colspan="4"></td>
+              <td colspan="1"></td>
               <td class="right" style="font-size:13px;color:#a3a3a3;">Grand Total</td>
-              <td class="right">${formatINR(totalAmt)}</td>
+              <td class="right">${formatUSD(totalAmt)}</td>
             </tr>
           </tbody>
         </table>
@@ -308,7 +298,7 @@ exports.subscriptionPurchase = ({
         <a href="https://paperxify.com/profile" class="btn">View Your Plan →</a>
       </div>
 
-      <p class="p" style="font-size:12px;color:${C.dim};">This is a computer-generated invoice and does not require a physical signature. Registered under GST (IGST @18%). For any queries, email us at support@paperxify.com.</p>
+      <p class="p" style="font-size:12px;color:${C.dim};">This is a computer-generated invoice and does not require a physical signature. For any queries, email us at support@paperxify.com.</p>
       `,
       `Your ${planName} subscription is now active!`
     ),
@@ -329,9 +319,6 @@ exports.tokenPurchase = ({
   timestamp,
 }) => {
   const totalAmt = parseFloat(amount);
-  const gstRate = 0.18;
-  const baseVal = totalAmt / (1 + gstRate);
-  const gstVal = totalAmt - baseVal;
   const invNo = `INV-${(transactionId || paymentId || "DRAFT").toUpperCase()}`;
 
   return {
@@ -341,7 +328,7 @@ exports.tokenPurchase = ({
       <div style="text-align:center; padding-bottom: 16px;">
         <div class="icon-circle icon-circle-amber">🪙</div>
       </div>
-      <div class="h1">${tokensAwarded?.toLocaleString("en-IN")} Tokens Added!</div>
+      <div class="h1">${tokensAwarded?.toLocaleString("en-US")} Tokens Added!</div>
       <p class="subtitle">Your <strong style="color:#fff;">${packageName}</strong> token pack has been added to your account successfully.</p>
 
       <!-- Invoice Meta -->
@@ -371,26 +358,20 @@ exports.tokenPurchase = ({
           <thead>
             <tr>
               <th>Description</th>
-              <th>SAC Code</th>
               <th>Tokens</th>
-              <th class="right">Taxable Value</th>
-              <th class="right">IGST (18%)</th>
-              <th class="right">Total</th>
+              <th class="right">Amount</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td class="bold">${packageName}</td>
-              <td>998431</td>
-              <td><span class="token-pill">${tokensAwarded?.toLocaleString("en-IN")}</span></td>
-              <td class="right">${formatINR(baseVal)}</td>
-              <td class="right">${formatINR(gstVal)}</td>
-              <td class="right bold">${formatINR(totalAmt)}</td>
+              <td><span class="token-pill">${tokensAwarded?.toLocaleString("en-US")}</span></td>
+              <td class="right bold">${formatUSD(totalAmt)}</td>
             </tr>
             <tr class="total-row">
-              <td colspan="4"></td>
+              <td colspan="1"></td>
               <td class="right" style="font-size:13px;color:#a3a3a3;">Grand Total</td>
-              <td class="right">${formatINR(totalAmt)}</td>
+              <td class="right">${formatUSD(totalAmt)}</td>
             </tr>
           </tbody>
         </table>
@@ -404,9 +385,9 @@ exports.tokenPurchase = ({
         <a href="https://paperxify.com" class="btn">Start Using Tokens →</a>
       </div>
 
-      <p class="p" style="font-size:12px;color:${C.dim};">Computer-generated invoice · IGST @18% · support@paperxify.com</p>
+      <p class="p" style="font-size:12px;color:${C.dim};">Computer-generated invoice · support@paperxify.com</p>
       `,
-      `${tokensAwarded?.toLocaleString("en-IN")} tokens have been added to your Paperxify account!`
+      `${tokensAwarded?.toLocaleString("en-US")} tokens have been added to your Paperxify account!`
     ),
   };
 };
@@ -494,7 +475,7 @@ exports.subscriptionRenewed = ({
     <div class="highlight-box">
       <div class="info-row"><span class="info-key">Plan</span><span class="info-val"><span class="plan-pill">${planName}</span></span></div>
       <div class="info-row"><span class="info-key">Billing Period</span><span class="info-val">${billingPeriod || "Monthly"}</span></div>
-      <div class="info-row"><span class="info-key">Amount Charged</span><span class="info-val">${formatINR(amount)}</span></div>
+      <div class="info-row"><span class="info-key">Amount Charged</span><span class="info-val">${formatUSD(amount)}</span></div>
       <div class="info-row"><span class="info-key">New Expiry</span><span class="info-val">${formatDate(newExpiresAt)}</span></div>
       <div class="info-row" style="border:none;"><span class="info-key">Payment ID</span><span class="info-val" style="font-family:monospace;font-size:11px;">${paymentId || "—"}</span></div>
     </div>
@@ -552,9 +533,6 @@ exports.invoiceResend = ({
   timestamp,
 }) => {
   const totalAmt = parseFloat(amount);
-  const gstRate = 0.18;
-  const baseVal = totalAmt / (1 + gstRate);
-  const gstVal = totalAmt - baseVal;
   const invNo = `INV-${(transactionId || paymentId || "DRAFT").toUpperCase()}`;
 
   return {
@@ -564,7 +542,7 @@ exports.invoiceResend = ({
       <div style="text-align:center; padding-bottom: 16px;">
         <div class="icon-circle icon-circle-blue">📄</div>
       </div>
-      <div class="h1">Tax Invoice</div>
+      <div class="h1">Invoice</div>
       <p class="subtitle">Here is your requested invoice for the purchase made on ${formatDate(timestamp || new Date())}.</p>
 
       <div class="highlight-box" style="margin-bottom:24px;">
@@ -591,26 +569,20 @@ exports.invoiceResend = ({
           <thead>
             <tr>
               <th>Description</th>
-              <th>SAC Code</th>
               <th>${packageType === "subscription" ? "Period" : "Tokens"}</th>
-              <th class="right">Taxable Value</th>
-              <th class="right">IGST (18%)</th>
-              <th class="right">Total</th>
+              <th class="right">Amount</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td class="bold">${packageName}</td>
-              <td>998431</td>
               <td>${billingPeriod || "One-time"}</td>
-              <td class="right">${formatINR(baseVal)}</td>
-              <td class="right">${formatINR(gstVal)}</td>
-              <td class="right bold">${formatINR(totalAmt)}</td>
+              <td class="right bold">${formatUSD(totalAmt)}</td>
             </tr>
             <tr class="total-row">
-              <td colspan="4"></td>
+              <td colspan="1"></td>
               <td class="right" style="font-size:13px;color:#a3a3a3;">Grand Total</td>
-              <td class="right">${formatINR(totalAmt)}</td>
+              <td class="right">${formatUSD(totalAmt)}</td>
             </tr>
           </tbody>
         </table>
@@ -620,9 +592,9 @@ exports.invoiceResend = ({
         ${numToWords(totalAmt)}
       </div>
 
-      <p class="p" style="font-size:12px;color:${C.dim};">Computer-generated invoice · IGST @18% · Not a physical document · support@paperxify.com</p>
+      <p class="p" style="font-size:12px;color:${C.dim};">Computer-generated invoice · Not a physical document · support@paperxify.com</p>
       `,
-      `Your Paperxify tax invoice ${invNo}`
+      `Your Paperxify invoice ${invNo}`
     ),
   };
 };
@@ -699,3 +671,38 @@ exports.adminAlert = ({ alertType, message, data }) => ({
     `Admin Alert: ${alertType}`
   ),
 });
+
+// ════════════════════════════════════════════════════════════════════
+// 11. OTP VERIFICATION
+// ════════════════════════════════════════════════════════════════════
+exports.verificationOtp = ({ otpCode, purpose = "verification" }) => {
+  const isForgot = purpose === "forgot";
+  const subject = isForgot
+    ? `Reset your Paperxify password: ${otpCode}`
+    : `Verify your Paperxify email: ${otpCode}`;
+
+  return {
+    subject,
+    html: shell(
+      `
+      <div style="text-align:center; padding-bottom: 16px;">
+        <div class="icon-circle icon-circle-blue">🔑</div>
+      </div>
+      <div class="h1">${isForgot ? "Reset your password" : "Confirm your email"}</div>
+      <p class="subtitle">Please use the 6-digit verification code below to complete your ${isForgot ? "password reset" : "signup"}. This code is valid for 5 minutes.</p>
+
+      <div style="text-align:center; margin: 32px 0;">
+        <div style="display:inline-block; background:rgba(255,255,255,0.03); border: 1px solid ${C.border}; border-radius: 12px; padding: 16px 32px; font-size: 32px; font-weight: 800; color: ${C.accent}; letter-spacing: 6px; font-family: monospace;">
+          ${otpCode}
+        </div>
+      </div>
+
+      <p class="p" style="text-align:center; color:${C.dim}; font-size:14px;">If you didn't request this code, you can safely ignore this email.</p>
+      
+      <hr class="divider" />
+      <p class="p" style="font-size:13px; text-align:center;">Need help? Just reply to this email or visit our <a href="https://paperxify.com">Help Center</a>.</p>
+      `,
+      `Your verification code is ${otpCode}`
+    ),
+  };
+};

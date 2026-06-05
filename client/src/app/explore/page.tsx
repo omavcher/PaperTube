@@ -76,7 +76,7 @@ async function getExploreNotes(): Promise<ApiResponse | null> {
 // --- 3. Advanced SEO Metadata ---
 export const metadata: Metadata = {
   title: "Explore Engineering Notes & AI Summaries | Paperxify",
-  description: "Browse thousands of AI-generated study notes from YouTube videos. Topics include Coding, GATE, Finance, and Tech.",
+  description: "Browse thousands of AI-generated study notes from YouTube videos. Topics include Coding, Finance, and Tech.",
   keywords: ["AI notes", "engineering study", "tech summaries", "developer community", "learning resources"],
   alternates: {
     canonical: "https://paperxify.com/explore",

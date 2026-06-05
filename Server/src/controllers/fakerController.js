@@ -146,7 +146,7 @@ exports.injectNote = async (req, res) => {
             status: 'completed',
             visibility: 'public', // Fake user notes usually public
             generationDetails: {
-                model: 'sankshipta',
+                model: 'flash',
                 type: type,
                 detailLevel: detailLevel,
                 language: 'English',

@@ -18,12 +18,12 @@ import { cn } from "@/lib/utils";
 // --- Configuration ---
 const timelineData = [
   {
-    title: "Phase 01 — Target Acquisition",
+    title: "Step 1 — Copy Link",
     content: (
       <div className="space-y-6">
         <p className="text-sm md:text-base text-neutral-400 font-light leading-relaxed max-w-xl">
-          Identify your intelligence source. Locate any YouTube lecture, technical deep-dive, or podcast.
-          <span className="text-white block mt-2 font-medium">Action: Copy the source URL. Zero friction.</span>
+          Find any YouTube lecture, tutorial, or study video.
+          <span className="text-white block mt-2 font-medium">Action: Copy the video link. Zero friction.</span>
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative group rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-neutral-900/50">
@@ -31,7 +31,7 @@ const timelineData = [
              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
              <img
               src="/pro/step/11.avif"
-              alt="Target Acquisition"
+              alt="Copy Link"
               className="h-40 lg:h-52 w-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
             />
           </div>
@@ -48,12 +48,12 @@ const timelineData = [
     ),
   },
   {
-    title: "Phase 02 — Data Injection",
+    title: "Step 2 — Paste Link",
     content: (
       <div className="space-y-6">
         <p className="text-sm md:text-base text-neutral-400 font-light leading-relaxed max-w-xl">
-          Inject the signal into the core console. Paste the URL.
-          <span className="text-white block mt-2 font-medium">The Neural Engine immediately initializes parsing of timestamps and visual metadata.</span>
+          Paste the video link into the search bar.
+          <span className="text-white block mt-2 font-medium">Our system immediately prepares to analyze the video contents.</span>
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative group rounded-2xl overflow-hidden border border-white/10 bg-neutral-900/50">
@@ -73,11 +73,11 @@ const timelineData = [
     ),
   },
   {
-    title: "Phase 03 — Neural Synthesis",
+    title: "Step 3 — AI Analysis",
     content: (
       <div className="space-y-6">
         <p className="text-sm md:text-base text-neutral-400 font-light leading-relaxed max-w-xl">
-          Transformation sequence active. Your raw video data is synthesized into structured knowledge blocks.
+          The AI transforms the video audio and content into structured study material.
           <span className="text-white block mt-2 font-medium">Definitions, formulas, and key insights mapped to exact timestamps.</span>
         </p>
         <div className="relative group max-w-2xl rounded-[2rem] overflow-hidden border border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.1)] bg-neutral-900/50">
@@ -94,13 +94,13 @@ const timelineData = [
     ),
   },
   {
-    title: "Phase 04 — Artifact Extraction",
+    title: "Step 4 — PDF Export",
     content: (
       <div className="space-y-6">
         <p className="text-sm md:text-base text-neutral-400 font-light leading-relaxed max-w-xl">
-          Export high-fidelity documentation. Generate a clean, vector-based PDF optimized for deep-focus study.
+          Download structured notes or structured PDF to study offline.
           <span className="text-white block mt-2 font-medium flex items-center gap-2">
-            <Download size={14} className="text-green-500" /> Extraction Complete. File Ready.
+            <Download size={14} className="text-green-500" /> Export Complete. File Ready.
           </span>
         </p>
         <div className="relative group w-full md:w-[60%] rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-neutral-900/50">
@@ -134,7 +134,7 @@ export default function HomeLine() {
              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[10px] font-medium uppercase tracking-widest text-neutral-400"
            >
              <Layers size={12} className="text-white" /> 
-             <span>System Architecture</span>
+             <span>How it works</span>
            </motion.div>
 
            <motion.h2 
@@ -144,7 +144,7 @@ export default function HomeLine() {
              transition={{ delay: 0.1 }}
              className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500"
            >
-             Operational <span className="text-white">Flow.</span>
+             Simple <span className="text-white">Process.</span>
            </motion.h2>
 
            <motion.p 
@@ -154,7 +154,7 @@ export default function HomeLine() {
              transition={{ delay: 0.2 }}
              className="text-lg text-neutral-400 font-light max-w-md mx-auto"
            >
-             Four steps to transition from raw noise to high-density intelligence.
+             Four simple steps to get study notes from any YouTube video.
            </motion.p>
         </div>
 

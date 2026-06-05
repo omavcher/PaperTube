@@ -1,700 +1,508 @@
-// controllers/paymentController.js
-const User = require("../models/User");
-const Razorpay = require("razorpay");
+// controllers/paymentController.js — PayPal + LemonSqueezy
+const axios = require("axios");
 const crypto = require("crypto");
+const User = require("../models/User");
 const Transaction = require("../models/Transaction");
-const { consumePromoCode } = require("./promoController");
 const emailService = require("../utils/emailService");
 
-// Initialize Razorpay lazily so missing env vars don't crash the server on startup
-let _razorpay = null;
-const getRazorpay = () => {
-  if (!_razorpay) {
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      throw new Error('Razorpay keys not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET env vars.');
-    }
-    _razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
-  }
-  return _razorpay;
-};
-
-// Package configurations
-const SUBSCRIPTION_PLANS = {
-  scholar: {
-    monthly: { basePrice: 149, durationDays: 30 },
-    yearly: { basePrice: 1490, durationDays: 365 }
-  },
+// ─── Plan config ──────────────────────────────────────────────────────────────
+const PLANS = {
   pro: {
-    monthly: { basePrice: 299, durationDays: 30 },
-    yearly: { basePrice: 2990, durationDays: 365 }
+    name: "Pro",
+    monthly: { priceUSD: 9, durationDays: 30 },
+    yearly:  { priceUSD: 72, durationDays: 365 },
   },
   power: {
-    monthly: { basePrice: 599, durationDays: 30 },
-    yearly: { basePrice: 5990, durationDays: 365 }
+    name: "Power",
+    monthly: { priceUSD: 19, durationDays: 30 },
+    yearly:  { priceUSD: 144, durationDays: 365 },
+  },
+};
+
+// ─── LemonSqueezy variant map (from env) ─────────────────────────────────────
+const LS_VARIANTS = () => ({
+  pro:   { monthly: process.env.LEMONSQUEEZY_PRO_MONTHLY_VARIANT_ID,   yearly: process.env.LEMONSQUEEZY_PRO_YEARLY_VARIANT_ID   },
+  power: { monthly: process.env.LEMONSQUEEZY_POWER_MONTHLY_VARIANT_ID, yearly: process.env.LEMONSQUEEZY_POWER_YEARLY_VARIANT_ID },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SHARED HELPER — activate membership + save transaction
+// ─────────────────────────────────────────────────────────────────────────────
+async function activateMembership({ userId, planId, billingPeriod, amountUSD, paymentMethod, gatewayOrderId, gatewayPaymentId, userEmail, userName }) {
+  const plan = PLANS[planId];
+  if (!plan) throw new Error(`Unknown planId: ${planId}`);
+  const periodConfig = plan[billingPeriod];
+  const durationDays = periodConfig.durationDays;
+  const planName     = plan.name;
+
+  const user = await User.findById(userId);
+  if (!user) throw new Error(`User not found: ${userId}`);
+
+  // Idempotency — skip if already processed with same gateway order id
+  const alreadyDone = (user.transactions || []).some(
+    (t) => (t.paypalOrderId === gatewayOrderId || t.lemonSqueezyOrderId === gatewayOrderId) && t.status === "success"
+  );
+  if (alreadyDone) {
+    console.log(`⚠️  Order ${gatewayOrderId} already processed — skipping.`);
+    return null;
   }
-};
 
-const TOKEN_PACKAGES = {
-  basic: { tokens: 100, basePrice: 99 },
-  standard: { tokens: 500, basePrice: 399 },
-  premium: { tokens: 1000, basePrice: 699 }
-};
+  // ── Update membership ──────────────────────────────────────────────────────
+  const now = new Date();
+  const currentExpiry =
+    user.membership?.isActive && user.membership?.expiresAt
+      ? new Date(user.membership.expiresAt)
+      : null;
+  const baseDate  = currentExpiry && currentExpiry > now ? currentExpiry : now;
+  const expiresAt = new Date(baseDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
-// Verify payment signature
-const verifySignature = (orderId, paymentId, signature) => {
-  const body = orderId + "|" + paymentId;
-  const expectedSignature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(body.toString())
-    .digest("hex");
-  return expectedSignature === signature;
-};
+  user.membership = {
+    isActive:      true,
+    planId,
+    planName,
+    billingPeriod,
+    startedAt:     user.membership?.startedAt || now,
+    expiresAt,
+    lastPaymentId: gatewayPaymentId || gatewayOrderId,
+    autoRenew:     false,
+  };
 
-// Create Razorpay order
-exports.createOrder = async (req, res) => {
+  // ── Build transaction record ───────────────────────────────────────────────
+  const transactionRecord = {
+    userId:              user._id,
+    paymentId:           gatewayPaymentId || gatewayOrderId,
+    orderId:             gatewayOrderId,
+    paypalOrderId:       paymentMethod === "paypal"        ? gatewayOrderId : null,
+    lemonSqueezyOrderId: paymentMethod === "lemonsqueezy"  ? gatewayOrderId : null,
+    packageId:           planId,
+    packageName:         `${planName} (${billingPeriod})`,
+    packageType:         "subscription",
+    billingPeriod,
+    amount:              amountUSD,
+    baseAmount:          amountUSD,
+    discountAmount:      0,
+    gstAmount:           0,
+    status:              "success",
+    paymentMethod,
+    userEmail:           userEmail || user.email,
+    userName:            userName  || user.name,
+    timestamp:           new Date(),
+  };
+
+  if (!user.transactions) user.transactions = [];
+  user.transactions.push(transactionRecord);
+
+  await Transaction.create(transactionRecord).catch((e) =>
+    console.warn("Transaction standalone save warn:", e.message)
+  );
+  await user.save();
+
+  console.log(`✅ Membership activated for ${user.email}: ${planName} until ${expiresAt.toISOString()}`);
+
+  // ── Fire confirmation email (non-blocking) ─────────────────────────────────
+  setImmediate(async () => {
+    try {
+      const freshUser = await User.findById(user._id).select("name email membership").lean();
+      if (freshUser) await emailService.sendSubscriptionPurchase(freshUser, transactionRecord);
+    } catch (emailErr) {
+      console.error("⚠️  Email notification failed:", emailErr.message);
+    }
+  });
+
+  return transactionRecord;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  PAYPAL
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ── Get PayPal OAuth2 access token ───────────────────────────────────────────
+async function getPaypalAccessToken() {
+  const clientId     = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  const mode         = process.env.PAYPAL_MODE || "sandbox";
+
+  if (!clientId || !clientSecret) {
+    throw new Error("PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET not set in environment variables.");
+  }
+
+  const baseUrl = mode === "live"
+    ? "https://api-m.paypal.com"
+    : "https://api-m.sandbox.paypal.com";
+
+  const response = await axios.post(
+    `${baseUrl}/v1/oauth2/token`,
+    "grant_type=client_credentials",
+    {
+      auth:    { username: clientId, password: clientSecret },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    }
+  );
+  return { token: response.data.access_token, baseUrl };
+}
+
+// ── Create PayPal Order (used by JS SDK on frontend — no redirect needed) ────
+exports.createPaypalOrder = async (req, res) => {
   try {
-    const { 
-      packageId, 
-      packageType, 
-      finalAmount, 
-      billingPeriod = 'monthly',
-      packageName 
-    } = req.body;
+    const { planId, billingPeriod = "monthly" } = req.body;
 
-    // Validate required fields
-    if (!packageId || !packageType || !finalAmount) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields"
-      });
+    if (!planId) {
+      return res.status(400).json({ success: false, message: "Missing planId" });
     }
+    const plan = PLANS[planId];
+    if (!plan) return res.status(400).json({ success: false, message: "Invalid plan ID" });
 
-    // Validate amount
-    const amount = Math.round(parseFloat(finalAmount) * 100); // Convert to paise
-    if (amount < 100) { // Minimum ₹1
-      return res.status(400).json({
-        success: false,
-        message: "Amount must be at least ₹1"
-      });
-    }
+    const periodConfig = plan[billingPeriod];
+    const priceUSD     = periodConfig.priceUSD;
+    const user         = req.user;
 
-    // Create order options
-    const options = {
-      amount: amount,
-      currency: "INR",
-      receipt: `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      notes: {
-        packageId: packageId,
-        packageType: packageType,
-        billingPeriod: packageType === 'subscription' ? billingPeriod : undefined,
-        packageName: packageName || packageId,
-        userId: req.user._id.toString(),
-        userEmail: req.user.email
-      },
-      payment_capture: 1 // Auto capture payment
+    const { token, baseUrl } = await getPaypalAccessToken();
+
+    const orderPayload = {
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          reference_id: `${planId}-${billingPeriod}-${user._id}`,
+          description:  `PaperXify ${plan.name} — ${billingPeriod === "monthly" ? "Monthly" : "Yearly (One-Time)"}`,
+          amount: {
+            currency_code: "USD",
+            value:         priceUSD.toFixed(2),
+          },
+          custom_id: JSON.stringify({
+            userId:        user._id.toString(),
+            userEmail:     user.email,
+            userName:      user.name || user.username || "",
+            planId,
+            billingPeriod,
+            durationDays:  String(periodConfig.durationDays),
+            planName:      plan.name,
+            amountUSD:     String(priceUSD),
+          }),
+        },
+      ],
+      // Minimal order payload — no application_context redirect URLs.
+      // The PayPal JS SDK popup handles approval; capture is done via onApprove.
     };
 
-    // Create order with Razorpay
-    const order = await getRazorpay().orders.create(options);
-
-    console.log("✅ Order created:", {
-      orderId: order.id,
-      amount: order.amount / 100,
-      userId: req.user._id,
-      package: packageId
-    });
-
-    res.json({
-      success: true,
-      order: {
-        id: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        receipt: order.receipt
+    const orderRes = await axios.post(`${baseUrl}/v2/checkout/orders`, orderPayload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-      key: process.env.RAZORPAY_KEY_ID
     });
 
+    const order = orderRes.data;
+    console.log("✅ PayPal order created:", { orderId: order.id, userId: user._id, planId, billingPeriod });
+
+    // Return just the orderId — the JS SDK uses it to open the payment popup
+    res.json({ success: true, orderId: order.id });
   } catch (error) {
-    console.error("❌ Order creation error:", error);
+    console.error("❌ PayPal create order error:", error?.response?.data || error.message);
     res.status(500).json({
       success: false,
-      message: "Failed to create payment order",
-      error: error.message
+      message: error?.response?.data?.message || error.message || "Failed to create PayPal order",
     });
   }
 };
 
-// Verify payment and save transaction
-exports.verifyPayment = async (req, res) => {
+// ── Capture PayPal Order (called from frontend after user approves) ────────────
+exports.capturePaypalOrder = async (req, res) => {
   try {
-    const {
-      razorpay_payment_id,
-      razorpay_order_id,
-      razorpay_signature,
-      packageId,
-      packageType,
-      finalAmount,
-      baseAmount,
-      discountAmount,
-      gstAmount,
-      couponCode,
-      billingPeriod,
-      mobile,
-      status,
-      userId,
-      userEmail,
-      userName,
-      packageName
-    } = req.body;
+    const { orderId } = req.body;
+    if (!orderId) return res.status(400).json({ success: false, message: "Missing orderId" });
 
-    console.log("🔍 Verifying payment:", {
-      paymentId: razorpay_payment_id,
-      orderId: razorpay_order_id,
-      packageId,
-      status,
-      userId
+    const { token, baseUrl } = await getPaypalAccessToken();
+
+    // Fetch order details to extract metadata
+    const orderRes = await axios.get(`${baseUrl}/v2/checkout/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
+    const order = orderRes.data;
 
-    // Verify signature for successful payments
-    if (status === "success") {
-      const isValid = verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
-      
-      if (!isValid) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid payment signature"
-        });
-      }
+    if (order.status === "COMPLETED") {
+      return res.json({ success: true, message: "Order already captured" });
     }
 
-    // Prepare transaction data
-    const transactionData = {
-      razorpay_payment_id,
-      razorpay_order_id,
-      razorpay_signature: status === "success" ? razorpay_signature : undefined,
-      packageId,
-      packageType,
-      billingPeriod,
-      amount: parseFloat(finalAmount),
-      baseAmount: parseFloat(baseAmount) || 0,
-      discountAmount: parseFloat(discountAmount) || 0,
-      gstAmount: parseFloat(gstAmount) || 0,
-      status,
-      couponCode: couponCode || null,
-      userId: userId || req.user._id,
-      userEmail: userEmail || req.user.email,
-      userName: userName || req.user.name,
-      packageName: packageName || `Package ${packageId}`,
-      error: status === "failed" ? req.body.error : null,
-      paymentMethod: "razorpay"
-    };
+    // Capture
+    const captureRes = await axios.post(
+      `${baseUrl}/v2/checkout/orders/${orderId}/capture`,
+      {},
+      { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+    );
+    const captured = captureRes.data;
 
-    console.log("📦 Processing transaction data:", {
-      userId: transactionData.userId,
-      email: transactionData.userEmail,
-      amount: transactionData.amount
-    });
-
-    // Save transaction using internal function
-    const result = await saveTransactionInternal(transactionData);
-
-    if (status === "success") {
-      console.log("✅ Payment verified and saved successfully");
-      
-      // Fetch updated user data
-      const user = await User.findById(transactionData.userId);
-      
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found after transaction"
-        });
-      }
-      
-      res.json({
-        success: true,
-        message: "Payment verified successfully",
-        data: {
-          transactionId: result.transactionId,
-          orderId: razorpay_order_id,
-          paymentId: razorpay_payment_id,
-          tokens: user?.tokens || 0,
-          tokensAwarded: result.tokensAwarded || 0,
-          membership: user?.membership || null,
-          status: "success"
-        }
-      });
-    } else {
-      res.json({
-        success: true,
-        message: "Failed transaction saved",
-        data: {
-          transactionId: result.transactionId,
-          status: "failed"
-        }
-      });
+    if (captured.status !== "COMPLETED") {
+      return res.status(400).json({ success: false, message: "Payment not completed" });
     }
 
+    // Extract custom_id metadata
+    const unit      = captured.purchase_units?.[0];
+    const customId  = unit?.custom_id || unit?.reference_id;
+    let meta = {};
+    try { meta = JSON.parse(customId); } catch { /* ignore */ }
+
+    const captureId = unit?.payments?.captures?.[0]?.id || orderId;
+
+    await activateMembership({
+      userId:         meta.userId,
+      planId:         meta.planId,
+      billingPeriod:  meta.billingPeriod,
+      amountUSD:      parseFloat(meta.amountUSD) || 0,
+      paymentMethod:  "paypal",
+      gatewayOrderId: orderId,
+      gatewayPaymentId: captureId,
+      userEmail:      meta.userEmail,
+      userName:       meta.userName,
+    });
+
+    console.log("✅ PayPal payment captured:", orderId);
+    res.json({ success: true, orderId, captureId });
   } catch (error) {
-    console.error("❌ Payment verification error:", error);
+    console.error("❌ PayPal capture error:", error?.response?.data || error.message);
     res.status(500).json({
       success: false,
-      message: "Payment verification failed",
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: error?.response?.data?.message || error.message || "Failed to capture PayPal order",
     });
   }
 };
 
-// Internal function to save transaction
-const saveTransactionInternal = async (transactionData) => {
+// ═════════════════════════════════════════════════════════════════════════════
+//  LEMONSQUEEZY
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ── Create LemonSqueezy Checkout ──────────────────────────────────────────────
+exports.createLemonSqueezyCheckout = async (req, res) => {
   try {
-    // Validate required fields
-    const requiredFields = ['packageId', 'packageType', 'status', 'amount', 'userId'];
-    const missingFields = requiredFields.filter(field => !transactionData[field]);
-    
-    if (missingFields.length > 0) {
-      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    const { planId, billingPeriod = "monthly", successUrl, cancelUrl } = req.body;
+
+    if (!planId || !successUrl || !cancelUrl) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+    const plan = PLANS[planId];
+    if (!plan) return res.status(400).json({ success: false, message: "Invalid plan ID" });
+
+    const apiKey   = process.env.LEMONSQUEEZY_API_KEY;
+    const storeId  = process.env.LEMONSQUEEZY_STORE_ID;
+    if (!apiKey || !storeId) {
+      throw new Error("LEMONSQUEEZY_API_KEY / LEMONSQUEEZY_STORE_ID not set in environment variables.");
     }
 
-    // Parse and validate amounts
-    const totalAmount = parseFloat(transactionData.amount);
-    const baseAmount = parseFloat(transactionData.baseAmount) || 0;
-    const discountAmount = parseFloat(transactionData.discountAmount) || 0;
-    const gstAmount = parseFloat(transactionData.gstAmount) || 0;
-
-    if (isNaN(totalAmount) || totalAmount < 0) {
-      throw new Error('Invalid amount value');
+    const variantId = LS_VARIANTS()?.[planId]?.[billingPeriod];
+    if (!variantId) {
+      return res.status(500).json({ success: false, message: `LemonSqueezy variant ID not configured for ${planId}/${billingPeriod}` });
     }
 
-    // Get package details
-    let packageDetails;
-    let tokensToAward = 999999;
-    let computedBaseAmount = 0;
+    const user         = req.user;
+    const periodConfig = plan[billingPeriod];
 
-    if (transactionData.packageType === "subscription") {
-      const plan = SUBSCRIPTION_PLANS[transactionData.packageId];
-      if (!plan) {
-        throw new Error('Invalid subscription plan');
-      }
-
-      const periodPlan = plan[transactionData.billingPeriod || 'monthly'];
-      if (!periodPlan) {
-        throw new Error('Invalid billing period');
-      }
-
-      packageDetails = {
-        name: `${transactionData.packageId.charAt(0).toUpperCase() + transactionData.packageId.slice(1)} Plan`,
-        basePrice: periodPlan.basePrice,
-        durationDays: periodPlan.durationDays
-      };
-      computedBaseAmount = periodPlan.basePrice;
-
-    } else if (transactionData.packageType === "token") {
-      const tokenPackage = TOKEN_PACKAGES[transactionData.packageId];
-      if (!tokenPackage) {
-        throw new Error('Invalid token package');
-      }
-
-      packageDetails = {
-        name: `${transactionData.packageId.charAt(0).toUpperCase() + transactionData.packageId.slice(1)} Tokens`,
-        basePrice: tokenPackage.basePrice,
-        tokens: tokenPackage.tokens
-      };
-      tokensToAward = tokenPackage.tokens;
-      computedBaseAmount = tokenPackage.basePrice;
-    } else {
-      throw new Error('Invalid package type');
-    }
-
-    // Find user
-    const user = await User.findById(transactionData.userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Check for duplicate successful transactions (Check Embedded)
-    if (transactionData.status === "success" && transactionData.razorpay_payment_id) {
-      const existingTransaction = user.transactions.find(
-        txn => txn.razorpay_payment_id === transactionData.razorpay_payment_id && txn.status === "success"
-      );
-
-      if (existingTransaction) {
-        console.log(`⚠️ Payment ${transactionData.razorpay_payment_id} already processed`);
-        return {
-          success: false,
-          message: "Payment already processed",
-          transactionId: existingTransaction._id
-        };
-      }
-    }
-
-    // Build transaction record
-    const transactionRecord = {
-      userId: user._id, // *** CRITICAL: Added userId so standalone Transaction has it
-      paymentId: transactionData.razorpay_payment_id || `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      orderId: transactionData.razorpay_order_id || `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      signature: transactionData.razorpay_signature || "",
-      packageId: transactionData.packageId,
-      packageName: transactionData.packageName || packageDetails.name,
-      packageType: transactionData.packageType,
-      billingPeriod: transactionData.packageType === "subscription" ? transactionData.billingPeriod : undefined,
-      amount: totalAmount,
-      baseAmount: baseAmount || computedBaseAmount,
-      discountAmount: discountAmount,
-      gstAmount: gstAmount,
-      tokens: tokensToAward,
-      status: transactionData.status,
-      couponCode: transactionData.couponCode || null,
-      razorpay_payment_id: transactionData.razorpay_payment_id,
-      razorpay_order_id: transactionData.razorpay_order_id,
-      razorpay_signature: transactionData.razorpay_signature,
-      paymentMethod: transactionData.paymentMethod || "razorpay",
-      error: transactionData.error || null,
-      userEmail: transactionData.userEmail || user.email,
-      userName: transactionData.userName || user.name,
-      timestamp: new Date()
-    };
-
-    console.log("💾 Saving transaction record:", {
-      paymentId: transactionRecord.paymentId,
-      package: transactionRecord.packageName,
-      amount: transactionRecord.amount,
-      tokens: transactionRecord.tokens,
-      status: transactionRecord.status
-    });
-
-    // 1. SAVE TO STANDALONE TRANSACTION MODEL (Fixes your issue)
-    await Transaction.create(transactionRecord);
-
-    // 2. SAVE TO USER EMBEDDED TRANSACTIONS (Keeps user history)
-    if (!user.transactions) {
-      user.transactions = [];
-    }
-    user.transactions.push(transactionRecord);
-
-    // Process successful payments
-    if (transactionData.status === "success") {
-      if (transactionData.packageType === "token") {
-        // Add tokens to user's balance. (Backend field is 'tokens', not 'token')
-        if (typeof user.tokens !== 'number') user.tokens = 0;
-        user.tokens += tokensToAward;
-        
-        if (!user.tokenUsageHistory) {
-          user.tokenUsageHistory = [];
-        }
-        
-        user.tokenUsageHistory.push({
-          name: `Token Purchase - ${transactionRecord.packageName}`,
-          tokens: tokensToAward,
-          date: new Date()
-        });
-        
-        console.log(`💰 Added ${tokensToAward} tokens to user ${user.email}. New balance: ${user.tokens}`);
-      }
-
-      if (transactionData.packageType === "subscription") {
-        const now = new Date();
-        const currentExpiry = user.membership?.isActive && user.membership?.expiresAt
-          ? new Date(user.membership.expiresAt)
-          : null;
-        
-        const baseDate = currentExpiry && currentExpiry > now ? currentExpiry : now;
-        const durationMs = (packageDetails.durationDays || 30) * 24 * 60 * 60 * 1000;
-        const expiresAt = new Date(baseDate.getTime() + durationMs);
-
-        user.membership = {
-          isActive: true,
-          planId: transactionData.packageId,
-          planName: packageDetails.name,
-          billingPeriod: transactionData.billingPeriod,
-          startedAt: user.membership?.startedAt || now,
-          expiresAt: expiresAt,
-          lastPaymentId: transactionRecord.paymentId,
-          autoRenew: user.membership?.autoRenew || false,
-        };
-
-        if (!user.tokenUsageHistory) {
-          user.tokenUsageHistory = [];
-        }
-
-        user.tokenUsageHistory.push({
-          name: `Membership - ${packageDetails.name} (${transactionData.billingPeriod})`,
-          tokens: 0,
-          date: new Date()
-        });
-
-        console.log(`🪪 Membership updated for ${user.email} till ${expiresAt.toISOString()}`);
-      }
-
-      // Consume promo code after successful payment
-      if (transactionData.couponCode) {
-        await consumePromoCode(transactionData.couponCode, transactionData.userId);
-      }
-
-      // ─── Fire confirmation email (non-blocking) ───────────────────────────
-      // We fire this AFTER saving so we have the updated user object.
-      // Using .catch() ensures any email error never fails the payment response.
-      const emailPayload = { ...transactionRecord };
-      setImmediate(async () => {
-        try {
-          await user.save(); // ensure fresh data is saved before email reads it
-          const freshUser = await User.findById(user._id).select('name email membership tokens').lean();
-          if (!freshUser) return;
-
-          if (transactionData.packageType === 'subscription') {
-            await emailService.sendSubscriptionPurchase(freshUser, emailPayload);
-          } else if (transactionData.packageType === 'token') {
-            await emailService.sendTokenPurchase(freshUser, emailPayload);
-          }
-        } catch (emailErr) {
-          console.error('⚠️ [Payment] Email notification failed (non-critical):', emailErr.message);
-        }
-      });
-      // Skip the duplicate user.save() below since we do it in setImmediate
-    }
-
-    // Save user (for non-success paths)
-    if (transactionData.status !== 'success') await user.save();
-
-    // Return the ID of the embedded transaction for response consistency
-    const savedTransaction = user.transactions[user.transactions.length - 1];
-    
-    console.log("✅ Transaction saved successfully:", {
-      transactionId: savedTransaction._id,
-      paymentId: savedTransaction.paymentId,
-      tokensAwarded: tokensToAward,
-      newTokenBalance: user.tokens
-    });
-
-    return {
-      success: true,
-      transactionId: savedTransaction._id,
-      tokensAwarded: tokensToAward
-    };
-
-  } catch (error) {
-    console.error("❌ Error saving transaction internally:", error);
-    throw error;
-  }
-};
-
-// Public endpoint to save transaction (for direct calls)
-exports.saveTransaction = async (req, res) => {
-  try {
-    const transactionData = {
-      ...req.body,
-      userId: req.user._id,
-      userEmail: req.user.email,
-      userName: req.user.name
-    };
-
-    const result = await saveTransactionInternal(transactionData);
-
-    if (result.success === false && result.message === "Payment already processed") {
-      return res.status(409).json(result);
-    }
-
-    res.json({
-      success: true,
-      transactionId: result.transactionId,
-      orderId: transactionData.razorpay_order_id || transactionData.orderId,
-      message: `Transaction ${transactionData.status} saved successfully`,
+    const payload = {
       data: {
-        transactionId: result.transactionId,
-        tokensAwarded: result.tokensAwarded
-      }
-    });
+        type: "checkouts",
+        attributes: {
+          checkout_options: {
+            dark: true,
+            logo: true,
+          },
+          checkout_data: {
+            email:  user.email,
+            name:   user.name || user.username || "",
+            custom: {
+              userId:        user._id.toString(),
+              userEmail:     user.email,
+              userName:      user.name || user.username || "",
+              planId,
+              billingPeriod,
+              durationDays:  String(periodConfig.durationDays),
+              planName:      plan.name,
+              amountUSD:     String(periodConfig.priceUSD),
+            },
+          },
+          product_options: {
+            redirect_url:  successUrl,
+          },
+          expires_at: null,
+        },
+        relationships: {
+          store: {
+            data: { type: "stores", id: String(storeId) },
+          },
+          variant: {
+            data: { type: "variants", id: String(variantId) },
+          },
+        },
+      },
+    };
 
+    const lsRes = await axios.post(
+      "https://api.lemonsqueezy.com/v1/checkouts",
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept:         "application/vnd.api+json",
+          "Content-Type": "application/vnd.api+json",
+        },
+      }
+    );
+
+    const checkoutUrl = lsRes.data?.data?.attributes?.url;
+    if (!checkoutUrl) {
+      return res.status(500).json({ success: false, message: "LemonSqueezy did not return a checkout URL" });
+    }
+
+    console.log("✅ LemonSqueezy checkout created:", { userId: user._id, planId, billingPeriod });
+    res.json({ success: true, url: checkoutUrl });
   } catch (error) {
-    console.error("❌ Error in saveTransaction endpoint:", error);
+    console.error("❌ LemonSqueezy checkout error:", error?.response?.data || error.message);
     res.status(500).json({
       success: false,
-      message: "Failed to save transaction",
-      error: error.message
+      message: error?.response?.data?.errors?.[0]?.detail || error.message || "Failed to create LemonSqueezy checkout",
     });
   }
 };
 
-// Get user's transaction history
+// ── LemonSqueezy Webhook ──────────────────────────────────────────────────────
+exports.handleLemonSqueezyWebhook = async (req, res) => {
+  const secret    = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+  const signature = req.headers["x-signature"];
+
+  if (!secret) {
+    console.error("LEMONSQUEEZY_WEBHOOK_SECRET not set");
+    return res.status(500).json({ error: "Webhook secret not configured" });
+  }
+
+  // Verify HMAC-SHA256 signature
+  const rawBody = req.rawBody || req.body;
+  const bodyStr = Buffer.isBuffer(rawBody) ? rawBody.toString("utf8") : JSON.stringify(rawBody);
+  const expected = crypto.createHmac("sha256", secret).update(bodyStr).digest("hex");
+
+  if (!signature || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) {
+    console.error("❌ LemonSqueezy webhook signature mismatch");
+    return res.status(401).json({ error: "Invalid signature" });
+  }
+
+  const eventName = req.headers["x-event-name"];
+  console.log(`📨 LemonSqueezy webhook received: ${eventName}`);
+
+  if (eventName === "order_created") {
+    try {
+      const data  = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      const order = data?.data;
+      const attrs = order?.attributes;
+
+      if (!attrs || attrs.status !== "paid") {
+        return res.json({ received: true });
+      }
+
+      const custom      = attrs.first_order_item?.custom_data || attrs.meta?.custom_data || {};
+      const orderId     = String(order.id);
+      const amountUSD   = parseFloat(attrs.total) / 100 || parseFloat(custom.amountUSD) || 0;
+
+      await activateMembership({
+        userId:           custom.userId,
+        planId:           custom.planId,
+        billingPeriod:    custom.billingPeriod,
+        amountUSD,
+        paymentMethod:    "lemonsqueezy",
+        gatewayOrderId:   orderId,
+        gatewayPaymentId: orderId,
+        userEmail:        custom.userEmail || attrs.user_email,
+        userName:         custom.userName  || attrs.user_name,
+      });
+    } catch (err) {
+      console.error("❌ Error processing LemonSqueezy webhook:", err);
+      // Return 200 so LemonSqueezy doesn't retry for logic errors
+      return res.json({ received: true, warning: err.message });
+    }
+  }
+
+  res.json({ received: true });
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  SHARED / UTILITY ENDPOINTS
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ── Get user's transaction history ────────────────────────────────────────────
 exports.getTransactions = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { limit = 50, page = 1, status, packageType, startDate, endDate } = req.query;
+    const { limit = 50, page = 1, status, packageType } = req.query;
 
-    // Use Standalone Transaction Model for better query performance if needed, 
-    // OR keep using User embedded for user-specific history.
-    // For now, consistent with legacy, we fetch from User.
-    const user = await User.findById(userId).select('transactions name email');
+    const user = await User.findById(userId).select("transactions name email");
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     let transactions = user.transactions || [];
-
-    // Apply filters
-    if (status) {
-      transactions = transactions.filter(txn => txn.status === status);
-    }
-    if (packageType) {
-      transactions = transactions.filter(txn => txn.packageType === packageType);
-    }
-    if (startDate) {
-      const start = new Date(startDate);
-      transactions = transactions.filter(txn => new Date(txn.timestamp) >= start);
-    }
-    if (endDate) {
-      const end = new Date(endDate);
-      transactions = transactions.filter(txn => new Date(txn.timestamp) <= end);
-    }
+    if (status)      transactions = transactions.filter((t) => t.status === status);
+    if (packageType) transactions = transactions.filter((t) => t.packageType === packageType);
 
     transactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-    const paginatedTransactions = transactions.slice(startIndex, endIndex);
+    const paginated  = transactions.slice(startIndex, startIndex + parseInt(limit));
 
     res.json({
       success: true,
-      transactions: paginatedTransactions,
+      transactions: paginated,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: transactions.length,
-        totalPages: Math.ceil(transactions.length / limit)
+        page:       parseInt(page),
+        limit:      parseInt(limit),
+        total:      transactions.length,
+        totalPages: Math.ceil(transactions.length / limit),
       },
-      summary: {
-        totalTransactions: transactions.length,
-        successful: transactions.filter(t => t.status === 'success').length,
-        failed: transactions.filter(t => t.status === 'failed').length
-      }
     });
-
   } catch (error) {
     console.error("❌ Error fetching transactions:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch transactions",
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: "Failed to fetch transactions", error: error.message });
   }
 };
 
-// Get user token balance
+// ── Get token balance ──────────────────────────────────────────────────────────
 exports.getTokenBalance = async (req, res) => {
   try {
-    const userId = req.user._id;
-
-    const user = await User.findById(userId).select('tokens membership name email');
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
-
-    const availableToken = Math.max(0, user.tokens || 0);
+    const user = await User.findById(req.user._id).select("tokens membership name email");
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     res.json({
-      success: true,
-      token: user.tokens || 0,
-      usedToken: 0,
-      availableToken: availableToken,
-      membership: user.membership || null,
-      user: {
-        name: user.name,
-        email: user.email
-      }
+      success:        true,
+      token:          user.tokens || 0,
+      availableToken: Math.max(0, user.tokens || 0),
+      membership:     user.membership || null,
+      user:           { name: user.name, email: user.email },
     });
-
   } catch (error) {
-    console.error("❌ Error fetching token balance:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch token balance",
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: "Failed to fetch token balance", error: error.message });
   }
 };
 
-// Get transaction by ID
+// ── Get transaction by ID ──────────────────────────────────────────────────────
 exports.getTransactionById = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const { transactionId } = req.params;
+    const user = await User.findById(req.user._id).select("transactions");
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    const user = await User.findById(userId).select('transactions');
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
+    const transaction = (user.transactions || []).find(
+      (t) => t._id.toString() === req.params.transactionId
+    );
+    if (!transaction) return res.status(404).json({ success: false, message: "Transaction not found" });
 
-    const transactions = user.transactions || [];
-    const transaction = transactions.find(t => t._id.toString() === transactionId);
-    
-    if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        message: "Transaction not found"
-      });
-    }
-
-    res.json({
-      success: true,
-      transaction: transaction
-    });
-
+    res.json({ success: true, transaction });
   } catch (error) {
-    console.error("❌ Error fetching transaction:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch transaction",
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: "Failed to fetch transaction", error: error.message });
   }
 };
 
-// Test endpoint to check user schema
-exports.testUserSchema = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
+// ── Legacy stubs ──────────────────────────────────────────────────────────────
+exports.saveTransaction = async (_req, res) => {
+  res.status(410).json({ success: false, message: "This endpoint is deprecated. Payments are handled via PayPal/LemonSqueezy." });
+};
 
-    res.json({
-      success: true,
-      user: {
-        _id: user._id,
-        email: user.email,
-        name: user.name,
-        hasTransactions: Array.isArray(user.transactions),
-        transactionsCount: user.transactions ? user.transactions.length : 0,
-        hasTokenTransactions: Array.isArray(user.tokenTransactions),
-        tokenTransactionsCount: user.tokenTransactions ? user.tokenTransactions.length : 0,
-        schemaFields: Object.keys(User.schema.paths)
-      }
-    });
+exports.createOrder = async (_req, res) => {
+  res.status(410).json({ success: false, message: "Razorpay removed. Use /payment/paypal/create-order or /payment/lemonsqueezy/create-checkout." });
+};
 
-  } catch (error) {
-    console.error("❌ Error testing user schema:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error testing user schema",
-      error: error.message
-    });
-  }
+exports.verifyPayment = async (_req, res) => {
+  res.status(410).json({ success: false, message: "Razorpay removed. Payments are verified via PayPal capture or LemonSqueezy webhooks." });
 };

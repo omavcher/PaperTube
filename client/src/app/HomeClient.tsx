@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import HomeMain from "@/components/HomeMain";
+import HomePortal from "@/components/HomePortal";
 
 // --- Lazy load ALL below-fold sections ---
 // This is the #1 desktop perf fix: on large screens multiple sections
 // are visible at load — this defers their JS parse + render until needed.
-const HomeWorkspace   = dynamic(() => import("@/components/HomeWorkspace"),   { ssr: false });
+
 const HowToUse        = dynamic(() => import("@/components/HowToUse"),        { ssr: false });
 const ToolsGlimpse    = dynamic(() => import("@/components/ToolsGlimpse"),    { ssr: false });
 const PricingShowcase = dynamic(() => import("@/components/PricingShowcase"), { ssr: false });
@@ -38,7 +38,7 @@ export default function HomeClient() {
   }, []);
 
   // Sentinel refs — one per section. Component renders once sentinel enters viewport.
-  const workspaceRef  = useRef<HTMLDivElement>(null);
+
   const howToRef      = useRef<HTMLDivElement>(null);
   const toolsRef      = useRef<HTMLDivElement>(null);
   const pricingRef    = useRef<HTMLDivElement>(null);
@@ -46,7 +46,7 @@ export default function HomeClient() {
   const featureRef    = useRef<HTMLDivElement>(null);
   const footerRef     = useRef<HTMLDivElement>(null);
 
-  const showWorkspace  = useInView(workspaceRef,  "200px");
+
   const showHowTo      = useInView(howToRef,      "400px");
   const showTools      = useInView(toolsRef,      "400px");
   const showPricing    = useInView(pricingRef,    "400px");
@@ -59,12 +59,9 @@ export default function HomeClient() {
       <main className="flex flex-1 flex-col items-center justify-center w-full">
         
         {/* Above fold — always eager */}
-        <HomeMain />
+        <HomePortal />
 
-        {/* Workspace (auth-gated) */}
-        <div ref={workspaceRef} className="w-full perf-section">
-          {isAuthenticated && showWorkspace && <HomeWorkspace />}
-        </div>
+
 
         {/* HowToUse */}
         <div ref={howToRef} className="w-full perf-section">
@@ -79,11 +76,6 @@ export default function HomeClient() {
         {/* Pricing */}
         <div ref={pricingRef} className="w-full perf-section">
           {showPricing && <PricingShowcase />}
-        </div>
-
-        {/* Arcade */}
-        <div ref={arcadeRef} className="w-full perf-section">
-          {showArcade && <ArcadeGlimpse />}
         </div>
 
         {/* Features */}

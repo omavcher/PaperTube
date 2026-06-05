@@ -7,6 +7,11 @@ const noteSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    folderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Folder",
+      default: null,
+    },
     title: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     
@@ -39,7 +44,7 @@ const noteSchema = new mongoose.Schema(
       model: { 
         type: String, 
         required: true,
-        enum: ['sankshipta', 'bhashasetu', 'parikshasarthi', 'vyavastha', 'sarlakruti']
+        enum: ['sankshipta', 'bhashasetu', 'parikshasarthi', 'vyavastha', 'sarlakruti', 'flash', 'canvas', 'scholar', 'atlas']
       },
       type: {
         type: String,
@@ -59,6 +64,7 @@ const noteSchema = new mongoose.Schema(
         default: 'Standard Notes',
       },
       prompt: { type: String, default: "" },
+      theme: { type: String, default: 'blueberry' },
       
       // Cost & processing info
       cost: { type: Number, default: 0 }, // Token cost for free, 0 for premium

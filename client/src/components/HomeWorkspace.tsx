@@ -24,12 +24,19 @@ import {
   Clock,
   ChevronRight,
   Layers,
-  X
+  X,
+  Folder,
+  FolderPlus,
+  MoreVertical,
+  Trash2,
+  Edit3,
+  FolderOpen
 } from "lucide-react";
 import { IconFolderCode } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import api from "@/config/api";
+import { toast } from "sonner";
 import {
   Empty,
   EmptyDescription,
@@ -63,6 +70,7 @@ interface Note {
   visibility?: string;
   lastEdit?: string;
   type?: string;
+  folderId?: string | null;
 }
 
 interface Pagination {
@@ -146,12 +154,15 @@ const formatTimeAgo = (dateString: string): string => {
 
 // --- Sub-Component: Grid Card ---
 const GridCard = React.memo(({
-  note, searchQuery, onClick, onProfileClick, highlightText, showCreator = false, isPersonal = false
+  note, searchQuery, onClick, onProfileClick, highlightText, folders, onMoveItem, onDeleteItem, showCreator = false, isPersonal = false
 }: {
   note: Note; searchQuery: string;
   onClick: (note: Note, isPersonal: boolean) => void;
   onProfileClick: (creatorName: string) => void;
   highlightText: (text: string, highlight: string) => string | JSX.Element;
+  folders: { _id: string; name: string }[];
+  onMoveItem: (itemId: string, itemType: 'note' | 'flashcard', folderId: string | null) => void;
+  onDeleteItem: (itemId: string, itemType: 'note' | 'flashcard') => void;
   showCreator?: boolean; isPersonal?: boolean;
 }) => {
   const thumbnailUrl = note.thumbnail || getYouTubeThumbnail(note.videoUrl);
@@ -224,11 +235,50 @@ const GridCard = React.memo(({
               <span className="text-[10px] font-medium text-neutral-400 truncate max-w-[80px]">{getCreatorName(note.creator)}</span>
             </div>
           ) : (
-            <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: 'rgba(220,38,38,0.7)' }}>
-              <User size={10} /> Mine
-            </span>
+            <div className="flex items-center justify-between flex-1 min-w-0">
+              <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: 'rgba(220,38,38,0.7)' }}>
+                <User size={10} /> Mine
+              </span>
+              {isPersonal && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onClick={e => e.stopPropagation()}
+                      className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition-all shrink-0 relative z-30"
+                    >
+                      <MoreVertical size={12} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/[0.08] text-white rounded-xl p-1.5 w-48 shadow-2xl z-50">
+                    <div className="text-[9px] font-bold text-neutral-500 px-3 py-1.5 uppercase tracking-widest">Move to Folder</div>
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note', null); }}
+                      className={cn("text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-white/5", !note.folderId ? "text-red-400" : "text-neutral-400")}
+                    >
+                      Uncategorized
+                    </DropdownMenuItem>
+                    {folders.map(folder => (
+                      <DropdownMenuItem
+                        key={folder._id}
+                        onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note', folder._id); }}
+                        className={cn("text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-white/5", note.folderId === folder._id ? "text-red-400" : "text-neutral-400")}
+                      >
+                        {folder.name}
+                      </DropdownMenuItem>
+                    ))}
+                    <div className="h-px bg-white/[0.08] my-1" />
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); onDeleteItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note'); }}
+                      className="text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-red-500/10 text-red-400 focus:text-red-400"
+                    >
+                      <Trash2 size={12} className="mr-2 inline" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           )}
-          {note.views !== undefined && note.views > 0 && (
+          {note.views !== undefined && note.views > 0 && !isPersonal && (
             <span className="flex items-center gap-1 text-[10px] text-neutral-600 group-hover:text-neutral-400 transition-colors">
               <Eye size={10} /> {note.views.toLocaleString()}
             </span>
@@ -248,6 +298,9 @@ const ListCard = React.memo(({
   onClick, 
   onProfileClick, 
   highlightText, 
+  folders,
+  onMoveItem,
+  onDeleteItem,
   showCreator = false,
   isPersonal = false
 }: {
@@ -256,6 +309,9 @@ const ListCard = React.memo(({
   onClick: (note: Note, isPersonal: boolean) => void;
   onProfileClick: (creatorName: string) => void;
   highlightText: (text: string, highlight: string) => string | JSX.Element;
+  folders: { _id: string; name: string }[];
+  onMoveItem: (itemId: string, itemType: 'note' | 'flashcard', folderId: string | null) => void;
+  onDeleteItem: (itemId: string, itemType: 'note' | 'flashcard') => void;
   showCreator?: boolean;
   isPersonal?: boolean;
 }) => {
@@ -334,13 +390,53 @@ const ListCard = React.memo(({
           </div>
         </div>
 
-        {/* Arrow */}
-        <div className="hidden md:flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0 transition-all duration-200"
-          style={{ background: 'rgba(255,255,255,0.03)', color: '#555' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.1)'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLElement).style.color = '#555'; }}
-        >
-          <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        {/* Options & Arrow */}
+        <div className="flex items-center gap-2 shrink-0 relative z-30">
+          {isPersonal && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={e => e.stopPropagation()}
+                  className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition-all shrink-0"
+                >
+                  <MoreVertical size={13} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/[0.08] text-white rounded-xl p-1.5 w-48 shadow-2xl z-50">
+                <div className="text-[9px] font-bold text-neutral-500 px-3 py-1.5 uppercase tracking-widest">Move to Folder</div>
+                <DropdownMenuItem
+                  onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note', null); }}
+                  className={cn("text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-white/5", !note.folderId ? "text-red-400" : "text-neutral-400")}
+                >
+                  Uncategorized
+                </DropdownMenuItem>
+                {folders.map(folder => (
+                  <DropdownMenuItem
+                    key={folder._id}
+                    onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note', folder._id); }}
+                    className={cn("text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-white/5", note.folderId === folder._id ? "text-red-400" : "text-neutral-400")}
+                  >
+                    {folder.name}
+                  </DropdownMenuItem>
+                ))}
+                <div className="h-px bg-white/[0.08] my-1" />
+                <DropdownMenuItem
+                  onClick={(e) => { e.stopPropagation(); onDeleteItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note'); }}
+                  className="text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-red-500/10 text-red-400 focus:text-red-400"
+                >
+                  <Trash2 size={12} className="mr-2 inline" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          <div className="hidden md:flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200"
+            style={{ background: 'rgba(255,255,255,0.03)', color: '#555' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.1)'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLElement).style.color = '#555'; }}
+          >
+            <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+          </div>
         </div>
       </div>
     </motion.div>
@@ -351,7 +447,7 @@ ListCard.displayName = "ListCard";
 
 // --- Main Component ---
 export default function NotesWorkspace() {
-  const [activeTab, setActiveTab] = useState("my-bag");
+  const activeTab = "my-bag";
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("updatedAt");
@@ -361,9 +457,16 @@ export default function NotesWorkspace() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [exploreItems, setExploreItems] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
+
+  // Folders State
+  const [folders, setFolders] = useState<{ _id: string; name: string; count?: number }[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<string>("all"); // "all", "root", or custom folderId
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [showRenameFolder, setShowRenameFolder] = useState<{ _id: string; name: string } | null>(null);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [renameFolderName, setRenameFolderName] = useState("");
   
   const router = useRouter();
 
@@ -374,6 +477,26 @@ export default function NotesWorkspace() {
     if (!authToken) setLoading(false);
   }, []);
 
+  // Fetch Folders List
+  const fetchFolders = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await api.get('/notes/folders', { headers: { 'Auth': authToken } });
+      if (response.data.success) {
+        setFolders(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching folders:", error);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchFolders();
+    }
+  }, [isAuthenticated, fetchFolders]);
+
   // 2. Fetch Personal Notes
   const fetchPersonalNotes = useCallback(async (page = 1, append = false, search = '') => {
     if (!isAuthenticated) return;
@@ -383,6 +506,9 @@ export default function NotesWorkspace() {
       const params = new URLSearchParams({
         page: page.toString(), limit: '12', sortBy, sortOrder: 'desc', search: search || ''
       });
+      if (selectedFolderId && selectedFolderId !== 'all') {
+        params.append('folderId', selectedFolderId);
+      }
       const response = await api.get<PersonalNotesResponse>(`/notes/get-all-notes?${params.toString()}`, { headers: { 'Auth': authToken } }); 
       
       if (response.data.success) {
@@ -398,58 +524,120 @@ export default function NotesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, sortBy]);
+  }, [isAuthenticated, sortBy, selectedFolderId]);
 
-  // 3. Fetch Explore Data
-  const fetchExploreData = useCallback(async (page = 1, append = false, search = '') => {
-    if (!isAuthenticated) return;
+  // Folder management handlers
+  const handleCreateFolder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFolderName.trim()) return;
     try {
-      if (!append) setLoading(true);
       const authToken = localStorage.getItem('authToken');
-      const params = new URLSearchParams({
-        page: page.toString(), limit: '12', sortBy: 'createdAt', sortOrder: 'desc', type: 'notes', search: search || ''
-      });
-      const response = await api.get<ExploreResponse>(`/notes/explore?${params.toString()}`, { headers: { 'Auth': authToken } }); 
-      
+      const response = await api.post('/notes/folders', { name: newFolderName }, { headers: { 'Auth': authToken } });
       if (response.data.success) {
-        const { items, pagination } = response.data.data;
-        setExploreItems(prev => append ? [...prev, ...items] : items);
-        setCurrentPage(pagination.currentPage);
-        setHasMore(pagination.hasNext);
+        toast.success("Folder created successfully");
+        setNewFolderName("");
+        setShowCreateFolder(false);
+        fetchFolders();
       }
-    } catch (error) {
-      console.error(error);
-      if (!append) setExploreItems([]);
-    } finally {
-      setLoading(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to create folder");
     }
-  }, [isAuthenticated, sortBy]);
+  };
 
-  // 4. Initial Load — Auto Switch to Explore if Personal is Empty
+  const handleRenameFolder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showRenameFolder || !renameFolderName.trim()) return;
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await api.put(`/notes/folders/${showRenameFolder._id}`, { name: renameFolderName }, { headers: { 'Auth': authToken } });
+      if (response.data.success) {
+        toast.success("Folder renamed successfully");
+        setShowRenameFolder(null);
+        setRenameFolderName("");
+        fetchFolders();
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to rename folder");
+    }
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    if (!confirm("Are you sure you want to delete this folder? Notes inside will be moved to uncategorized.")) return;
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await api.delete(`/notes/folders/${folderId}`, { headers: { 'Auth': authToken } });
+      if (response.data.success) {
+        toast.success("Folder deleted");
+        if (selectedFolderId === folderId) {
+          setSelectedFolderId("all");
+        }
+        fetchFolders();
+        fetchPersonalNotes(1, false, searchQuery);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete folder");
+    }
+  };
+
+  const handleMoveItem = async (itemId: string, itemType: 'note' | 'flashcard', folderId: string | null) => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await api.put('/notes/notes/move', {
+        itemId,
+        itemType,
+        folderId: folderId || 'root'
+      }, { headers: { 'Auth': authToken } });
+      if (response.data.success) {
+        toast.success(`Moved successfully`);
+        fetchFolders();
+        fetchPersonalNotes(1, false, searchQuery);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to move item");
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string, type: 'note' | 'flashcard') => {
+    if (!confirm(`Are you sure you want to delete this ${type === 'flashcard' ? 'flashcard set' : 'note'}?`)) return;
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const endpoint = type === 'flashcard' 
+        ? `/flashcards/${itemId}`
+        : `/notes/${itemId}`;
+      const response = await api.delete(endpoint, { headers: { 'Auth': authToken } });
+      if (response.data.success) {
+        toast.success(`${type === 'flashcard' ? 'Flashcards' : 'Note'} deleted successfully`);
+        fetchFolders();
+        fetchPersonalNotes(1, false, searchQuery);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete item");
+    }
+  };
+
+  // 4. Initial Load
   useEffect(() => {
     const init = async () => {
         if (isAuthenticated && !initialCheckDone) {
-            const count = await fetchPersonalNotes(1, false, "");
+            await fetchPersonalNotes(1, false, "");
             setInitialCheckDone(true);
-            if (count === 0) setActiveTab("explore");
         }
     };
     init();
   }, [isAuthenticated, initialCheckDone, fetchPersonalNotes]);
 
-  // 5. Standard Tab Switching Fetch
+  // 5. Standard Fetch
   useEffect(() => {
     if (!initialCheckDone) return;
     setCurrentPage(1);
-    if (activeTab === 'explore') fetchExploreData(1, false, searchQuery);
-    else fetchPersonalNotes(1, false, searchQuery);
-  }, [activeTab, searchQuery, sortBy, initialCheckDone]);
+    fetchPersonalNotes(1, false, searchQuery);
+  }, [searchQuery, sortBy, initialCheckDone, fetchPersonalNotes]);
 
   // Handlers
   const handleLoadMore = () => {
     if (hasMore && !loading) {
       const nextPage = currentPage + 1;
-      activeTab === 'explore' ? fetchExploreData(nextPage, true, searchQuery) : fetchPersonalNotes(nextPage, true, searchQuery);
+      fetchPersonalNotes(nextPage, true, searchQuery);
     }
   };
 
@@ -472,7 +660,7 @@ export default function NotesWorkspace() {
     router.push(`/${formatCreatorNameForUrl(name)}/profile`);
   }, [router]);
 
-  const currentItems = useMemo(() => activeTab === 'explore' ? exploreItems : notes, [activeTab, exploreItems, notes]);
+  const currentItems = useMemo(() => notes, [notes]);
 
   const sortLabel = useMemo(() => {
     switch(sortBy) {
@@ -536,42 +724,8 @@ export default function NotesWorkspace() {
               </div>
             </div>
 
-            {/* === CENTRE: Tab switcher (desktop) === */}
-            <div className="hidden md:flex flex-1 justify-center">
-              <div className="flex items-center p-1 rounded-xl gap-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                {[
-                  { id: 'explore', label: 'Community', icon: Globe },
-                  { id: 'my-bag',  label: 'Personal',  icon: User  },
-                ].map(({ id, label, icon: Icon }) => (
-                  <button
-                    key={id}
-                    onClick={() => setActiveTab(id)}
-                    className="flex items-center gap-2 px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all duration-200"
-                    style={activeTab === id
-                      ? { background: '#fff', color: '#000', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }
-                      : { color: 'rgba(255,255,255,0.35)' }
-                    }
-                    onMouseEnter={e => { if (activeTab !== id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'; }}
-                    onMouseLeave={e => { if (activeTab !== id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}
-                  >
-                    <Icon size={12} />
-                    {label}
-                    {id === 'my-bag' && notes.length > 0 && (
-                      <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold"
-                        style={activeTab === id
-                          ? { background: 'rgba(0,0,0,0.15)', color: '#000' }
-                          : { background: 'rgba(220,38,38,0.2)', color: '#f87171' }
-                        }>
-                        {notes.length}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* === RIGHT: Search + Controls === */}
-            <div className="flex items-center gap-2 flex-1 md:flex-none justify-end">
+            <div className="flex items-center gap-2 flex-grow justify-end">
 
               {/* Search bar */}
               <div className="relative group hidden md:flex w-52 lg:w-64">
@@ -639,7 +793,7 @@ export default function NotesWorkspace() {
 
               {/* New Note CTA */}
               <button
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/youtube-to-notes')}
                 className="hidden md:flex items-center gap-1.5 h-9 px-4 rounded-xl text-[10px] font-bold uppercase tracking-widest text-white transition-all duration-200 active:scale-95 shrink-0"
                 style={{ background: 'linear-gradient(135deg,#dc2626,#9f1c1c)', boxShadow: '0 0 18px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.12)' }}
                 onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 0 28px rgba(220,38,38,0.55), inset 0 1px 0 rgba(255,255,255,0.12)')}
@@ -650,25 +804,13 @@ export default function NotesWorkspace() {
             </div>
           </div>
 
-          {/* === MOBILE: Tab switcher row === */}
-          <div className="md:hidden pb-2.5 flex items-center gap-2">
-            <div className="flex flex-1 items-center p-0.5 rounded-xl gap-0.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              {[
-                { id: 'explore', label: 'Community' },
-                { id: 'my-bag',  label: 'Personal' },
-              ].map(({ id, label }) => (
-                <button key={id} onClick={() => setActiveTab(id)}
-                  className="flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all duration-150"
-                  style={activeTab === id ? { background: '#fff', color: '#000' } : { color: 'rgba(255,255,255,0.35)' }}>
-                  {label}
-                </button>
-              ))}
-            </div>
+          {/* === MOBILE: Search row === */}
+          <div className="md:hidden pb-2.5 flex items-center w-full">
             {/* Mobile search */}
-            <div className="flex items-center h-8 px-2.5 rounded-xl gap-1.5 flex-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center h-8 px-2.5 rounded-xl gap-1.5 w-full" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <Search size={12} style={{ color: '#555', flexShrink: 0 }} />
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search…"
+                placeholder="Search notes…"
                 className="w-full bg-transparent border-none focus:outline-none text-[11px] text-white placeholder:text-neutral-600" />
             </div>
           </div>
@@ -679,80 +821,250 @@ export default function NotesWorkspace() {
       {/* --- CONTENT AREA --- */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8 min-h-[50vh] relative z-10">
          
-         {/* Results Count */}
-         {!loading && currentItems.length > 0 && (
-           <div className="mb-5 flex items-center gap-3">
-             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#dc2626', boxShadow: '0 0 6px rgba(220,38,38,0.6)' }} />
-             <span className="text-[10px] font-semibold tracking-wider" style={{ color: 'rgba(255,255,255,0.3)' }}>
-               {currentItems.length} {currentItems.length === 1 ? 'note' : 'notes'}
-             </span>
-             <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(255,255,255,0.06), transparent)' }} />
+         {/* Mobile Folders Scrollable List */}
+         {activeTab === 'my-bag' && (
+           <div className="md:hidden flex items-center gap-2 overflow-x-auto pb-4 pt-1 mb-2 custom-scrollbar shrink-0">
+             <button
+               onClick={() => setSelectedFolderId('all')}
+               className={cn(
+                 "px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all shrink-0",
+                 selectedFolderId === 'all'
+                   ? "bg-white text-black"
+                   : "bg-white/5 text-neutral-400 border border-white/5"
+               )}
+             >
+               All
+             </button>
+             <button
+               onClick={() => setSelectedFolderId('root')}
+               className={cn(
+                 "px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all shrink-0",
+                 selectedFolderId === 'root'
+                   ? "bg-white text-black"
+                   : "bg-white/5 text-neutral-400 border border-white/5"
+               )}
+             >
+               Uncategorized
+             </button>
+             {folders.map(folder => (
+               <button
+                 key={folder._id}
+                 onClick={() => setSelectedFolderId(folder._id)}
+                 className={cn(
+                   "px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all shrink-0 flex items-center gap-1.5",
+                   selectedFolderId === folder._id
+                     ? "bg-white text-black"
+                     : "bg-white/5 text-neutral-400 border border-white/5"
+                 )}
+               >
+                 <Folder size={10} />
+                 <span>{folder.name}</span>
+                 {folder.count !== undefined && folder.count > 0 && (
+                   <span className={cn(
+                     "text-[8px] font-bold px-1.5 py-0.5 rounded-full",
+                     selectedFolderId === folder._id ? "bg-black/10 text-black" : "bg-white/10 text-neutral-400"
+                   )}>
+                     {folder.count}
+                   </span>
+                 )}
+               </button>
+             ))}
+             
+             <button
+               onClick={() => setShowCreateFolder(true)}
+               className="p-1.5 rounded-full bg-red-600/10 border border-red-500/20 text-red-400 shrink-0 hover:bg-red-600/20 transition-all"
+             >
+               <Plus size={12} />
+             </button>
            </div>
          )}
 
-         <AnimatePresence mode="wait">
-           {loading && currentItems.length === 0 ? (
-              <motion.div 
-                key="loading"
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center min-h-[40vh] space-y-5"
-              >
-                <div className="relative">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.15)' }}>
-                    <Loader2 className="w-6 h-6 text-red-500 animate-spin" />
-                  </div>
-                </div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">Loading Notes...</p>
-              </motion.div>
-           ) : currentItems.length > 0 ? (
-              <motion.div 
-                key={`${activeTab}-${viewMode}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                 {/* GRID VIEW */}
-                 {viewMode === "grid" && (
-                   <div 
-                     className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 animate-in fade-in duration-500"
-                   >
-                     {currentItems.map((note) => (
-                       <GridCard 
-                         key={note._id} 
-                         note={note} 
-                         searchQuery={searchQuery}
-                         onClick={handleCardClick}
-                         onProfileClick={handleProfileClick}
-                         highlightText={highlightText}
-                         showCreator={activeTab === 'explore'}
-                         isPersonal={activeTab === 'my-bag'}
-                       />
-                     ))}
-                   </div>
-                 )}
+         {/* Layout container */}
+         <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-stretch">
 
-                 {/* LIST VIEW */}
-                 {viewMode === "list" && (
-                   <div 
-                     className="flex flex-col gap-2 md:gap-2.5 animate-in fade-in duration-500"
-                   >
-                     {currentItems.map((note) => (
-                       <ListCard 
-                         key={note._id} 
-                         note={note} 
-                         searchQuery={searchQuery}
-                         onClick={handleCardClick}
-                         onProfileClick={handleProfileClick}
-                         highlightText={highlightText}
-                         showCreator={activeTab === 'explore'}
-                         isPersonal={activeTab === 'my-bag'}
-                       />
-                     ))}
-                   </div>
-                 )}
+           {/* DESKTOP SIDEBAR */}
+           {activeTab === 'my-bag' && (
+             <div className="hidden md:flex flex-col w-60 lg:w-64 shrink-0 space-y-5 border-r border-white/[0.04] pr-6 lg:pr-8">
+               <div className="flex items-center justify-between">
+                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500 flex items-center gap-2">
+                   <FolderOpen size={12} /> Folders
+                 </h3>
+                 <button
+                   onClick={() => setShowCreateFolder(true)}
+                   className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-red-500/30 hover:bg-red-500/5 text-neutral-400 hover:text-red-400 transition-all"
+                   title="Create New Folder"
+                 >
+                   <FolderPlus size={14} />
+                 </button>
+               </div>
+               
+               <div className="flex flex-col gap-1">
+                 <button
+                   onClick={() => setSelectedFolderId('all')}
+                   className={cn(
+                     "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all border",
+                     selectedFolderId === 'all'
+                       ? "bg-white/5 border-white/10 text-white shadow-lg"
+                       : "bg-transparent border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-white"
+                   )}
+                 >
+                   <Database size={14} />
+                   <span className="flex-1 truncate">All Library</span>
+                 </button>
+
+                 <button
+                   onClick={() => setSelectedFolderId('root')}
+                   className={cn(
+                     "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all border",
+                     selectedFolderId === 'root'
+                       ? "bg-white/5 border-white/10 text-white shadow-lg"
+                       : "bg-transparent border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-white"
+                   )}
+                 >
+                   <FileText size={14} />
+                   <span className="flex-1 truncate">Uncategorized</span>
+                 </button>
+
+                 {folders.length > 0 && <div className="h-px bg-white/[0.04] my-2" />}
+                 
+                 <div className="flex flex-col gap-0.5 max-h-[40vh] overflow-y-auto custom-scrollbar pr-1">
+                   {folders.map(folder => (
+                     <div
+                       key={folder._id}
+                       className={cn(
+                         "group/folder w-full flex items-center gap-2 px-3 py-2 rounded-xl border transition-all relative",
+                         selectedFolderId === folder._id
+                           ? "bg-white/5 border-white/10 text-white shadow-lg"
+                           : "bg-transparent border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-white"
+                       )}
+                     >
+                       <button
+                         onClick={() => setSelectedFolderId(folder._id)}
+                         className="flex-1 flex items-center gap-2.5 text-left text-xs font-bold min-w-0"
+                       >
+                         <Folder size={14} className={cn(selectedFolderId === folder._id ? "text-red-500" : "text-neutral-500 group-hover/folder:text-neutral-300")} />
+                         <span className="flex-1 truncate pr-14">{folder.name}</span>
+                       </button>
+
+                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/folder:opacity-100 transition-opacity">
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setShowRenameFolder({ _id: folder._id, name: folder.name });
+                             setRenameFolderName(folder.name);
+                           }}
+                           className="p-1 rounded hover:bg-white/10 text-neutral-500 hover:text-white transition-all"
+                           title="Rename Folder"
+                         >
+                           <Edit3 size={11} />
+                         </button>
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             handleDeleteFolder(folder._id);
+                           }}
+                           className="p-1 rounded hover:bg-red-500/20 text-neutral-500 hover:text-red-400 transition-all"
+                           title="Delete Folder"
+                         >
+                           <Trash2 size={11} />
+                         </button>
+                       </div>
+
+                       {folder.count !== undefined && folder.count > 0 && (
+                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full pointer-events-none group-hover/folder:hidden">
+                           {folder.count}
+                         </span>
+                       )}
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             </div>
+           )}
+
+           {/* MAIN CONTAINER */}
+           <div className="flex-1 min-w-0">
+
+             {/* Results Count */}
+             {!loading && currentItems.length > 0 && (
+               <div className="mb-5 flex items-center gap-3">
+                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#dc2626', boxShadow: '0 0 6px rgba(220,38,38,0.6)' }} />
+                 <span className="text-[10px] font-semibold tracking-wider" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                   {currentItems.length} {currentItems.length === 1 ? 'note' : 'notes'}
+                 </span>
+                 <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(255,255,255,0.06), transparent)' }} />
+               </div>
+             )}
+
+             <AnimatePresence mode="wait">
+               {loading && currentItems.length === 0 ? (
+                  <motion.div 
+                    key="loading"
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col items-center justify-center min-h-[40vh] space-y-5"
+                  >
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.15)' }}>
+                        <Loader2 className="w-6 h-6 text-red-500 animate-spin" />
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">Loading Notes...</p>
+                  </motion.div>
+               ) : currentItems.length > 0 ? (
+                  <motion.div 
+                    key={`${activeTab}-${viewMode}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                     {/* GRID VIEW */}
+                     {viewMode === "grid" && (
+                       <div 
+                         className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 animate-in fade-in duration-500"
+                       >
+                         {currentItems.map((note) => (
+                           <GridCard 
+                             key={note._id} 
+                             note={note} 
+                             searchQuery={searchQuery}
+                             onClick={handleCardClick}
+                             onProfileClick={handleProfileClick}
+                             highlightText={highlightText}
+                             folders={folders}
+                             onMoveItem={handleMoveItem}
+                             onDeleteItem={handleDeleteItem}
+                             showCreator={false}
+                             isPersonal={true}
+                           />
+                         ))}
+                       </div>
+                     )}
+
+                     {/* LIST VIEW */}
+                     {viewMode === "list" && (
+                       <div 
+                         className="flex flex-col gap-2 md:gap-2.5 animate-in fade-in duration-500"
+                       >
+                         {currentItems.map((note) => (
+                           <ListCard 
+                             key={note._id} 
+                             note={note} 
+                             searchQuery={searchQuery}
+                             onClick={handleCardClick}
+                             onProfileClick={handleProfileClick}
+                             highlightText={highlightText}
+                             folders={folders}
+                             onMoveItem={handleMoveItem}
+                             onDeleteItem={handleDeleteItem}
+                             showCreator={false}
+                             isPersonal={true}
+                           />
+                         ))}
+                       </div>
+                     )}
                  
                  {/* Load More */}
                  {hasMore && (
@@ -781,30 +1093,125 @@ export default function NotesWorkspace() {
                 <Empty className="max-w-sm border border-white/[0.06] bg-neutral-900/30 rounded-[2rem] p-8 backdrop-blur-sm">
                    <EmptyHeader>
                      <div className="mx-auto w-14 h-14 md:w-16 md:h-16 bg-black rounded-2xl flex items-center justify-center border border-white/[0.08] mb-5 shadow-xl">
-                       {activeTab === 'explore' ? <Globe className="text-neutral-500" size={24} /> : <IconFolderCode className="text-neutral-500" size={24} />}
+                       {searchQuery ? <Search className="text-neutral-500" size={24} /> : <IconFolderCode className="text-neutral-500" size={24} />}
                      </div>
                      <EmptyTitle className="text-white text-lg md:text-xl font-bold tracking-tight">
-                       {activeTab === 'explore' ? 'No Notes Found' : 'Empty Library'}
+                       {searchQuery ? 'No Notes Found' : 'Empty Library'}
                      </EmptyTitle>
                      <EmptyDescription className="text-neutral-400 text-xs md:text-sm mt-2 font-medium leading-relaxed">
-                       {activeTab === 'explore' ? `Try a different search query.` : 'Generate your first AI note to get started.'}
+                       {searchQuery ? 'Try a different search query.' : 'Generate your first AI note to get started.'}
                      </EmptyDescription>
                    </EmptyHeader>
                 </Empty>
               </motion.div>
            )}
          </AnimatePresence>
+          </div>
+        </div>
       </div>
 
       {/* Mobile FAB */}
       <div className="md:hidden fixed bottom-6 right-4 z-50">
         <Button 
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/youtube-to-notes')}
           className="bg-red-600 hover:bg-red-700 text-white rounded-full w-12 h-12 p-0 shadow-[0_4px_20px_rgba(220,38,38,0.5)] active:scale-90 transition-all"
         >
           <Plus size={20} />
         </Button>
       </div>
+
+      {/* --- CREATE FOLDER DIALOG --- */}
+      <AnimatePresence>
+        {showCreateFolder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+              onClick={() => setShowCreateFolder(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-neutral-900 border border-white/10 p-6 shadow-2xl z-50"
+            >
+              <button type="button" onClick={() => setShowCreateFolder(false)} className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors">
+                <X size={16} />
+              </button>
+              <h3 className="text-lg font-bold text-white mb-1">Create Folder</h3>
+              <p className="text-xs text-neutral-400 mb-4">Organize your lecture notes into custom categories.</p>
+              
+              <form onSubmit={handleCreateFolder} className="space-y-4">
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Computer Science, Math 101"
+                  value={newFolderName}
+                  onChange={e => setNewFolderName(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl bg-black border border-white/10 focus:border-red-500 focus:outline-none text-xs text-white placeholder:text-neutral-600"
+                  autoFocus
+                />
+                <div className="flex gap-2.5">
+                  <Button type="button" variant="ghost" onClick={() => setShowCreateFolder(false)} className="flex-1 text-xs text-neutral-400 hover:text-white">
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl h-10">
+                    Create
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- RENAME FOLDER DIALOG --- */}
+      <AnimatePresence>
+        {showRenameFolder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+              onClick={() => setShowRenameFolder(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-neutral-900 border border-white/10 p-6 shadow-2xl z-50"
+            >
+              <button type="button" onClick={() => setShowRenameFolder(null)} className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors">
+                <X size={16} />
+              </button>
+              <h3 className="text-lg font-bold text-white mb-1">Rename Folder</h3>
+              <p className="text-xs text-neutral-400 mb-4">Enter a new name for the folder.</p>
+              
+              <form onSubmit={handleRenameFolder} className="space-y-4">
+                <input
+                  type="text"
+                  required
+                  value={renameFolderName}
+                  onChange={e => setRenameFolderName(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl bg-black border border-white/10 focus:border-red-500 focus:outline-none text-xs text-white placeholder:text-neutral-600"
+                  autoFocus
+                />
+                <div className="flex gap-2.5">
+                  <Button type="button" variant="ghost" onClick={() => setShowRenameFolder(null)} className="flex-1 text-xs text-neutral-400 hover:text-white">
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl h-10">
+                    Rename
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

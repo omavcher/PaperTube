@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from 'react';
 import { 
@@ -44,8 +44,8 @@ export default function Footer() {
                   </Link>
               
               <p className="text-neutral-400 text-sm leading-relaxed max-w-sm font-light">
-                The advanced interface for engineering intelligence. 
-                Transform raw video data into structured knowledge nodes using our proprietary <span className="text-white font-medium">Paperxify</span>.
+                The advanced interface for smart study notes. 
+                Transform raw video data into structured study notes using our proprietary <span className="text-white font-medium">Paperxify</span>.
               </p>
             </div>
 
@@ -83,9 +83,8 @@ export default function Footer() {
             
             <FooterColumn title="Platform">
               <FooterLink href="/explore" label="Explore Notes" />
-              <FooterLink href="/tools" label="Engineering Tools" />
+              <FooterLink href="/tools" label="Study Tools" />
               <FooterLink href="/blog" label="Tech Blog" />
-              <FooterLink href="/games" label="Neural Arcade" />
             </FooterColumn>
 
             <FooterColumn title="Ecosystem">
@@ -93,7 +92,6 @@ export default function Footer() {
                   <Heart size={12} className="text-neutral-600 group-hover:text-red-500 transition-colors" />
                   HeartEcho
               </a>
-              <FooterLink href="/leaderboard" label="Global Rank" />
               <FooterLink href="/pricing" label="Pro Membership" badge="New" />
             </FooterColumn>
 
@@ -123,7 +121,7 @@ export default function Footer() {
             
             {/* System Status Indicators */}
             <div className="flex items-center gap-4 border-l border-white/5 pl-6 hidden md:flex">
-               <StatusDot label="Neural Engine" status="online" />
+               <StatusDot label="AI Service" status="online" />
                <StatusDot label="API Gateway" status="online" />
             </div>
           </div>

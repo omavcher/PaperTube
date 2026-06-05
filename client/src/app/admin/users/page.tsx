@@ -669,7 +669,7 @@ function UserDrawer({
                           </div>
                           <div className="text-right shrink-0 ml-3">
                             {txn.amount > 0 && (
-                              <p className="text-[10px] font-black text-white">₹{txn.amount}</p>
+                              <p className="text-[10px] font-black text-white">${txn.amount}</p>
                             )}
                             {txn.tokens != null && txn.tokens > 0 && (
                               <p className="text-[10px] text-yellow-400 font-mono">+{txn.tokens} tkn</p>

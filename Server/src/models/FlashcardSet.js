@@ -66,6 +66,11 @@ const flashcardSetSchema = new mongoose.Schema({
     ref: 'User', 
     required: true 
   },
+  folderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Folder',
+    default: null
+  },
   videoUrl: { type: String, required: true },
   videoId: { type: String, required: true },
   title: { type: String, required: true },

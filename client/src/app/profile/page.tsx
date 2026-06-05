@@ -29,32 +29,32 @@ const formatDate = (dateString: string) => {
 };
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 };
 
-// --- NUMBER TO WORDS (Indian Currency) ---
+// --- NUMBER TO WORDS (US Dollars) ---
 const numToWords = (n: number) => {
     const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
     const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-    
+
     const numToWord = (num: number): string => {
         if ((num = num.toString().length > 9 ? parseFloat(num.toString().slice(0, 9)) : num) === 0) return '';
         if (num < 20) return a[num];
         if (num < 100) return b[Math.floor(num / 10)] + ' ' + a[num % 10];
         if (num < 1000) return a[Math.floor(num / 100)] + 'Hundred ' + numToWord(num % 100);
-        if (num < 100000) return numToWord(Math.floor(num / 1000)) + 'Thousand ' + numToWord(num % 1000);
-        if (num < 10000000) return numToWord(Math.floor(num / 100000)) + 'Lakh ' + numToWord(num % 100000);
-        return numToWord(Math.floor(num / 10000000)) + 'Crore ' + numToWord(num % 10000000);
+        if (num < 1000000) return numToWord(Math.floor(num / 1000)) + 'Thousand ' + numToWord(num % 1000);
+        if (num < 1000000000) return numToWord(Math.floor(num / 1000000)) + 'Million ' + numToWord(num % 1000000);
+        return numToWord(Math.floor(num / 1000000000)) + 'Billion ' + numToWord(num % 1000000000);
     };
 
-    const [rupees, paise] = n.toFixed(2).split('.');
-    let str = "Rupees " + (parseInt(rupees) === 0 ? "Zero " : numToWord(parseInt(rupees)));
-    
-    if (parseInt(paise) > 0) {
-        str += "and " + numToWord(parseInt(paise)) + "Paise ";
+    const [dollars, cents] = n.toFixed(2).split('.');
+    let str = 'US Dollars ' + (parseInt(dollars) === 0 ? 'Zero ' : numToWord(parseInt(dollars)));
+
+    if (parseInt(cents) > 0) {
+        str += 'and ' + numToWord(parseInt(cents)) + 'Cents ';
     }
-    
-    return str + "Only";
+
+    return str + 'Only';
 };
 
 export default function ProfilePage() {
@@ -113,19 +113,19 @@ export default function ProfilePage() {
     // --- Header ---
     doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
     doc.text("Paperxify", 14, 22);
-    
+
     doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
-    doc.text("Nagpur, Maharashtra, India - 440034", 14, 29);
-    doc.text("Email: support@paperxify.com", 14, 34);
+    doc.text("Email: support@paperxify.com", 14, 29);
+    doc.text("paperxify.com", 14, 34);
 
     // --- Invoice Meta ---
     doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
-    doc.text("TAX INVOICE", pageWidth - 14, 22, { align: "right" });
-    
+    doc.text("INVOICE", pageWidth - 14, 22, { align: "right" });
+
     doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
-    
+
     const invoiceNo = tx._id ? tx._id.toUpperCase() : 'DRAFT';
-    
+
     doc.text(`Invoice No: INV-${invoiceNo}`, pageWidth - 14, 30, { align: "right" });
     doc.text(`Date: ${formatDate(tx.timestamp)}`, pageWidth - 14, 35, { align: "right" });
 
@@ -137,20 +137,18 @@ export default function ProfilePage() {
     doc.setFont("helvetica", "normal"); doc.setTextColor(60, 60, 60);
     doc.text(user.name || "Customer", 14, 64);
     doc.text(user.email || "", 14, 69);
-    if(user.mobile) doc.text(`Mobile: ${user.mobile}`, 14, 74);
+    if (user.mobile) doc.text(`Mobile: ${user.mobile}`, 14, 74);
 
-    // --- Calculation ---
+    // --- Calculation (USD, no GST) ---
     const totalAmt = parseFloat(tx.amount);
-    const gstRate = 0.18;
-    const baseVal = totalAmt / (1 + gstRate);
-    const gstVal = totalAmt - baseVal;
-    
+
     autoTable(doc, {
         startY: 85,
-        head: [['Description', 'SAC Code', 'Period', 'Taxable Value', 'IGST (18%)', 'Total']],
+        head: [['Description', 'Period', 'Amount']],
         body: [[
-            `${tx.packageName || 'Subscription'} Plan`, '998431', tx.billingPeriod || 'Monthly', 
-            `Rs. ${baseVal.toFixed(2)}`, `Rs. ${gstVal.toFixed(2)}`, `Rs. ${totalAmt.toFixed(2)}`
+            `${tx.packageName || 'Subscription'} Plan`,
+            tx.billingPeriod || 'Monthly',
+            `$${totalAmt.toFixed(2)}`
         ]],
         theme: 'grid',
         headStyles: { fillColor: [20, 20, 20], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -158,22 +156,19 @@ export default function ProfilePage() {
     });
 
     const finalY = (doc as any).lastAutoTable.finalY + 12;
-    
+
     // --- Amount Words ---
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(80, 80, 80);
     doc.text("Total Amount in Words:", 14, finalY);
     doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
     doc.text(numToWords(totalAmt), 14, finalY + 6);
 
-    // --- Totals ---
+    // --- Grand Total ---
     const rightColX = pageWidth - 60; const valueX = pageWidth - 14;
-    doc.setFont("helvetica", "normal");
-    doc.text("Sub Total:", rightColX, finalY); doc.text(baseVal.toFixed(2), valueX, finalY, { align: "right" });
-    doc.text("IGST (18%):", rightColX, finalY + 6); doc.text(gstVal.toFixed(2), valueX, finalY + 6, { align: "right" });
-    
     doc.setDrawColor(200); doc.line(rightColX, finalY + 10, pageWidth - 14, finalY + 10);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text("Grand Total:", rightColX, finalY + 18); doc.text(`Rs. ${totalAmt.toFixed(2)}`, valueX, finalY + 18, { align: "right" });
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(20, 20, 20);
+    doc.text("Grand Total:", rightColX, finalY + 18);
+    doc.text(`$${totalAmt.toFixed(2)}`, valueX, finalY + 18, { align: "right" });
 
     // --- Footer ---
     const pageHeight = doc.internal.pageSize.height;
@@ -646,9 +641,6 @@ function ActivityItem({ item, type }: { item: any, type: 'note' }) {
 
 function ReceiptCard({ tx, user, onDownload, downloading }: any) {
     const totalAmt = parseFloat(tx.amount);
-    const gstRate = 0.18;
-    const baseVal = totalAmt / (1 + gstRate);
-    const gstVal = totalAmt - baseVal;
 
     return (
         <div className="relative bg-neutral-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-6 md:p-8 flex flex-col overflow-hidden group shadow-2xl transition-all duration-300 hover:border-white/20 hover:bg-neutral-900/80">
@@ -666,7 +658,7 @@ function ReceiptCard({ tx, user, onDownload, downloading }: any) {
                        </div>
                        <div>
                           <h3 className="text-lg md:text-xl font-black text-white leading-tight uppercase tracking-tight italic">Paperxify</h3>
-                          <p className="text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-bold">Tax Invoice</p>
+                          <p className="text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-bold">Invoice</p>
                        </div>
                     </div>
                     <div className="text-right">
@@ -702,15 +694,11 @@ function ReceiptCard({ tx, user, onDownload, downloading }: any) {
                    </div>
                 </div>
 
-                {/* Tax Breakdown */}
+                {/* Amount summary */}
                 <div className="flex-col gap-2 mb-auto px-2 hidden sm:flex">
                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-neutral-500 uppercase tracking-widest">Base Amount</span>
-                      <span className="text-neutral-400">{formatCurrency(baseVal)}</span>
-                   </div>
-                   <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-neutral-500 uppercase tracking-widest">IGST (18%)</span>
-                      <span className="text-neutral-400">{formatCurrency(gstVal)}</span>
+                      <span className="text-neutral-500 uppercase tracking-widest">Total Paid</span>
+                      <span className="text-neutral-300">{formatCurrency(totalAmt)}</span>
                    </div>
                 </div>
 

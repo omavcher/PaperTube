@@ -14,7 +14,7 @@ const NOTE_GENERATION_TOKEN_COST = 25;
 
 
 // Free model routes (token-based)
-router.post('/free', 
+router.post('/free',
   // requireSubscriptionOrTokens({ 
   //   tokenCost: NOTE_GENERATION_TOKEN_COST, 
   //   actionLabel: "generate notes with free models" 
@@ -24,7 +24,7 @@ router.post('/free',
 );
 
 // Premium model routes (subscription-based)
-router.post('/premium', 
+router.post('/premium',
   // requireActiveSubscription("Premium subscription required for premium models"),
   authMiddleware,
   premiumNoteController.createNote
@@ -37,36 +37,36 @@ router.post('/premium',
 
 router.get("/", noteController.getNotes);
 router.post("/ytinfo", noteController.getYouTubeInfo);
-router.get("/slug/:slug",authMiddleware, noteController.getNoteBySlug);
+router.get("/slug/:slug", authMiddleware, noteController.getNoteBySlug);
 
-router.get("/allw/:slug",noteController.getNoteALLBySlug);
-
-
-router.put("/update/:id",authMiddleware, noteController.updateNote);
-
-router.get("/get-all-notes",authMiddleware, noteController.getUserNotes);
+router.get("/allw/:slug", noteController.getNoteALLBySlug);
 
 
-router.get("/generate/pdf" , noteController.generatePDF);
+router.put("/update/:id", authMiddleware, noteController.updateNote);
+
+router.get("/get-all-notes", authMiddleware, noteController.getUserNotes);
+
+
+router.get("/generate/pdf", noteController.generatePDF);
 router.delete('/delete/:noteId', noteController.deletePDF);
 router.get('/list', noteController.getUserPDFs);
 
 router.post("/like/:noteId", authMiddleware, noteController.likeNote);
 
-router.get("/explore" , noteController.explore);
+router.get("/explore", noteController.explore);
 
 router.get("/:noteId/comments", noteController.getComments);
 
 
-router.post("/:noteId/comments",authMiddleware, noteController.createComment);
+router.post("/:noteId/comments", authMiddleware, noteController.createComment);
 
 
-router.post("/comments/:commentId/like",authMiddleware, noteController.likeComment);
+router.post("/comments/:commentId/like", authMiddleware, noteController.likeComment);
 
 
-router.post("/comments/:commentId/replies",authMiddleware, noteController.createReply);
+router.post("/comments/:commentId/replies", authMiddleware, noteController.createReply);
 
-router.post("/comments/:commentId/replies/:replyId/like",authMiddleware, noteController.likeReply);
+router.post("/comments/:commentId/replies/:replyId/like", authMiddleware, noteController.likeReply);
 router.delete("/comments/:commentId", authMiddleware, noteController.deleteComment);
 router.delete("/comments/:commentId/replies/:replyId", authMiddleware, noteController.deleteReply);
 router.get("/analytics", authMiddleware, noteController.getUserAnalytics);
@@ -77,7 +77,14 @@ router.delete("/:id", authMiddleware, noteController.deleteNote);
 router.post("/bulk-delete", authMiddleware, noteController.bulkDeleteNotes);
 router.patch("/:id/visibility", authMiddleware, noteController.updateNoteVisibility);
 router.get("/:id/edit", authMiddleware, noteController.getNoteForEdit);
-// Add this route
 router.get("/:id/analytics", authMiddleware, noteController.getNoteAnalytics);
 router.patch("/:id", authMiddleware, noteController.updateNoteedit);
+
+// Folder management routes
+router.post("/folders", authMiddleware, noteController.createFolder);
+router.get("/folders", authMiddleware, noteController.getFolders);
+router.put("/folders/:folderId", authMiddleware, noteController.renameFolder);
+router.delete("/folders/:folderId", authMiddleware, noteController.deleteFolder);
+router.put("/notes/move", authMiddleware, noteController.moveNoteToFolder);
+
 module.exports = router;

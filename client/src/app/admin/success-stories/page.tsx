@@ -20,7 +20,7 @@ import { uploadToR2 } from "@/utils/r2Upload";
 
 // --- Configuration ---
 // Cloudinary is deprecated, now using Cloudflare R2 via pre-signed URLs
-const EXAM_OPTIONS = ["GATE", "NEET", "JEE Mains", "JEE Advanced", "UPSC", "CAT", "MPSC", "Gov", "Other"];
+const EXAM_OPTIONS = ["SAT", "ACT", "MCAT", "LSAT", "GRE", "GMAT", "AP Exams", "College Exams", "Other"];
 
 interface Story {
   _id: string;

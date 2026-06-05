@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const CodeSolution = require('../models/CodeSolution');
 const User = require('../models/User');
+const { checkFreeTierLimits } = require('../utils/freeTierLimits');
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 const FREE_MODELS = [
@@ -8,10 +9,10 @@ const FREE_MODELS = [
   "openrouter/free",
   "nvidia/nemotron-nano-12b-v2-vl:free"
 ];
-const PREMIUM_MODEL_ID = "x-ai/grok-4.3";
+const PREMIUM_MODEL_ID = "deepseek/deepseek-v4-flash";
 
 async function generateWithOpenRouter(systemPrompt, userPrompt, model) {
-    const isFreeModel = model === 'sankshipta' || model === 'bhashasetu';
+    const isFreeModel = model === 'flash';
     let targetModelId = isFreeModel ? FREE_MODELS[0] : PREMIUM_MODEL_ID;
     
     const messages = [
@@ -169,12 +170,23 @@ exports.generateCodeSolution = async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
+        // Enforce free tier daily limit (2 generations/day)
+        const limitCheck = await checkFreeTierLimits(req.user.id);
+        if (!limitCheck.allowed) {
+            return res.status(403).json({
+                success: false,
+                code: limitCheck.code,
+                message: limitCheck.reason,
+                currentPlan: "Free"
+            });
+        }
+
         if (!problemUrl) {
             return res.status(400).json({ success: false, message: "Problem URL is required" });
         }
 
         // Deduct Tokens for Free users (assumes same token deduction system as before)
-        const isFreeModel = model === 'sankshipta' || model === 'bhashasetu';
+        const isFreeModel = model === 'flash';
         const cost = 8; // 8 tokens for code solution
         if (!user.isSubscribed && isFreeModel) {
             if (user.neuralTokens < cost) {

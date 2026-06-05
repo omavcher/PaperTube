@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import SuccessStoriesClient from "./SuccessStoriesClient";
 
 // --- 1. Define Types ---
@@ -44,8 +44,8 @@ async function getSuccessStories(): Promise<Story[]> {
 
 // --- 3. Dynamic Metadata ---
 export const metadata: Metadata = {
-  title: "Success Stories: GATE, UPSC & Engineering Toppers | Paperxify",
-  description: "Read inspiring journeys of students who cracked GATE, UPSC, and Coding interviews using Paperxify notes. Real stories, real results.",
+  title: "Success Stories & Coding Interview Toppers | Paperxify",
+  description: "Read inspiring journeys of students who cracked Coding interviews and engineering exams using Paperxify notes. Real stories, real results.",
   alternates: {
     canonical: "https://paperxify.com/success-stories",
   },

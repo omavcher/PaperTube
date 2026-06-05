@@ -14,7 +14,7 @@ class GeminiClient {
     if (!currentKey) {
       throw new Error('No valid Gemini API keys found');
     }
-    
+
     this.ai = new GoogleGenAI({
       apiKey: currentKey
     });
@@ -35,20 +35,20 @@ class GeminiClient {
 
       } catch (error) {
         lastError = error;
-        
+
         // Check if it's a rate limit error
         if (this.isRateLimitError(error)) {
           const retryDelay = this.extractRetryDelay(error);
           console.warn(`⏳ Rate limit hit on key ${this.keyManager.currentKeyIndex + 1}. Retry in ${retryDelay}ms`);
-          
+
           this.keyManager.markKeyFailed(this.keyManager.currentKeyIndex, retryDelay);
           this.initializeAI(); // Reinitialize with new key
-          
+
           // Wait before retrying with new key
           if (retryDelay > 0) {
             await this.delay(Math.min(retryDelay, 5000)); // Max 5 second delay
           }
-          
+
           continue; // Retry with next key
         }
 
@@ -62,22 +62,22 @@ class GeminiClient {
   }
 
   isRateLimitError(error) {
-    return error.status === 429 || 
-           error.message?.includes('429') ||
-           error.message?.includes('quota') ||
-           error.message?.includes('RESOURCE_EXHAUSTED') ||
-           error.message?.includes('rate limit');
+    return error.status === 429 ||
+      error.message?.includes('429') ||
+      error.message?.includes('quota') ||
+      error.message?.includes('RESOURCE_EXHAUSTED') ||
+      error.message?.includes('rate limit');
   }
 
   extractRetryDelay(error) {
     // Extract retry delay from error message
     const delayMatch = error.message?.match(/Please retry in ([0-9.]+)s/) ||
-                      error.message?.match(/retryDelay["']?:\s*["']?([0-9.]+)s/);
-    
+      error.message?.match(/retryDelay["']?:\s*["']?([0-9.]+)s/);
+
     if (delayMatch) {
       return parseFloat(delayMatch[1]) * 1000; // Convert to milliseconds
     }
-    
+
     // Default exponential backoff
     return Math.min(1000 * Math.pow(2, this.keyManager.failedKeys.size), 30000);
   }

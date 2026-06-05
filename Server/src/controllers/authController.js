@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const Otp = require("../models/Otp");
 const Note = require("../models/Note");
 const { OAuth2Client } = require('google-auth-library');
 const axios = require('axios'); // Add axios for better HTTP requests
@@ -176,7 +178,7 @@ async function handleUserAuth(userInfo) {
   console.log("🔄 Processing user in database...");
   
   try {
-    const { email, name, picture, googleId } = userInfo;
+    const { email, name, picture, googleId, githubId, password, country } = userInfo;
     
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -189,10 +191,13 @@ async function handleUserAuth(userInfo) {
       
       user = await User.create({
         googleId,
+        githubId,
+        password,
         name,
         email,
         username,
         picture,
+        country: country || "Unknown",
         isVerified: true,
         tokens: 10, // Start with daily allocation
         streak: { count: 1, lastVisit: new Date() },
@@ -264,7 +269,8 @@ async function handleUserAuth(userInfo) {
       };
 
       if (googleId && !user.googleId) updateData.googleId = googleId;
-      if (picture) updateData.picture = picture;
+      if (githubId && !user.githubId) updateData.githubId = githubId;
+      if (picture && !user.picture) updateData.picture = picture;
       
       user = await User.findByIdAndUpdate(
         user._id,
@@ -786,6 +792,296 @@ exports.getPlanStatus = async (req, res) => {
     });
   }
 };
+
+// 🔹 Email/Password Register
+exports.register = async (req, res) => {
+  try {
+    const { name, email, password, otpCode, country } = req.body;
+    if (!name || !email || !password || !otpCode) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
+    }
+
+    const emailLower = email.toLowerCase();
+
+    // Verify OTP
+    const validOtp = await Otp.findOne({ email: emailLower, code: otpCode, purpose: "signup" });
+    if (!validOtp) {
+      return res.status(400).json({ success: false, message: "Invalid or expired verification code" });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: emailLower });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: "Email is already registered" });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Call handleUserAuth to create the user properly (setting streaks, welcome email, tokens, country)
+    const user = await handleUserAuth({
+      email: emailLower,
+      name,
+      password: hashedPassword,
+      country: country || "Unknown",
+    });
+
+    // Clean up OTP
+    await Otp.deleteOne({ _id: validOtp._id });
+
+    return sendAuthResponse(res, user);
+  } catch (error) {
+    console.error("❌ Register Error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Registration failed" });
+  }
+};
+
+// 🔹 Email/Password Login
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Invalid email or password" });
+    }
+
+    // Check if they registered via social login and don't have a password
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message: "This account was registered using Google. Please log in using Google."
+      });
+    }
+
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Invalid email or password" });
+    }
+
+    // Update streak and tokens utilizing the unified handleUserAuth helper
+    const updatedUser = await handleUserAuth({
+      email: user.email,
+      name: user.name
+    });
+
+    return sendAuthResponse(res, updatedUser);
+  } catch (error) {
+    console.error("❌ Login Error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Login failed" });
+  }
+};
+
+// 🔹 GitHub OAuth Controller
+exports.githubAuth = async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ success: false, message: "GitHub authorization code is required" });
+    }
+
+    // Exchange code for token
+    console.log("🔄 Exchanging GitHub code for access token...");
+    const tokenResponse = await axios.post("https://github.com/login/oauth/access_token", {
+      client_id: process.env.GITHUB_CLIENT_ID || process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID,
+      client_secret: process.env.GITHUB_CLIENT_SECRET,
+      code,
+    }, {
+      headers: {
+        Accept: "application/json"
+      }
+    });
+
+    const accessToken = tokenResponse.data.access_token;
+    if (!accessToken) {
+      console.error("❌ Failed to get access token from GitHub", tokenResponse.data);
+      return res.status(400).json({ success: false, message: "GitHub token exchange failed: " + (tokenResponse.data.error_description || "No token returned") });
+    }
+
+    // Fetch user profile
+    console.log("🔄 Fetching GitHub user profile...");
+    const userResponse = await axios.get("https://api.github.com/user", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    const profile = userResponse.data;
+    let email = profile.email;
+
+    // Fetch emails if profile email is private/null
+    if (!email) {
+      console.log("🔄 Fetching GitHub user emails...");
+      const emailResponse = await axios.get("https://api.github.com/user/emails", {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const primaryEmailObj = emailResponse.data.find(e => e.primary && e.verified);
+      email = primaryEmailObj ? primaryEmailObj.email : (emailResponse.data[0] ? emailResponse.data[0].email : null);
+    }
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: "No email associated with this GitHub account." });
+    }
+
+    console.log(`✅ GitHub Profile: ${profile.login} (${email})`);
+
+    // Handle user database sync
+    const user = await handleUserAuth({
+      email: email.toLowerCase(),
+      name: profile.name || profile.login,
+      picture: profile.avatar_url,
+      githubId: String(profile.id)
+    });
+
+    return sendAuthResponse(res, user);
+  } catch (error) {
+    console.error("❌ GitHub OAuth Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "GitHub authentication failed",
+      error: error.message
+    });
+  }
+};
+
+// 🔹 Send Signup OTP
+exports.sendSignupOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const emailLower = email.toLowerCase();
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: emailLower });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: "Email is already registered" });
+    }
+
+    // Generate 6-digit code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save to Otp model, replacing any old ones for same email/purpose
+    await Otp.deleteMany({ email: emailLower, purpose: "signup" });
+    await Otp.create({
+      email: emailLower,
+      code: otpCode,
+      purpose: "signup",
+    });
+
+    // Send email
+    const emailResult = await emailService.sendVerificationOtp(emailLower, otpCode, "signup");
+    if (!emailResult.success) {
+      console.error("❌ Failed to send signup OTP email:", emailResult.error);
+      return res.status(500).json({ success: false, message: "Failed to send verification email" });
+    }
+
+    return res.status(200).json({ success: true, message: "Verification OTP code sent to your email" });
+  } catch (error) {
+    console.error("❌ sendSignupOtp Error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to send OTP" });
+  }
+};
+
+// 🔹 Send Forgot Password OTP
+exports.sendForgotOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const emailLower = email.toLowerCase();
+
+    // Check if user exists
+    const user = await User.findOne({ email: emailLower });
+    if (!user) {
+      return res.status(400).json({ success: false, message: "No account registered with this email" });
+    }
+
+    // Check if user has a password (they might be Google/GitHub OAuth only)
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message: "This account was registered using Google/GitHub. Please log in using those providers.",
+      });
+    }
+
+    // Generate 6-digit code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save to Otp model, replacing any old ones for same email/purpose
+    await Otp.deleteMany({ email: emailLower, purpose: "forgot" });
+    await Otp.create({
+      email: emailLower,
+      code: otpCode,
+      purpose: "forgot",
+    });
+
+    // Send email
+    const emailResult = await emailService.sendVerificationOtp(emailLower, otpCode, "forgot");
+    if (!emailResult.success) {
+      console.error("❌ Failed to send forgot OTP email:", emailResult.error);
+      return res.status(500).json({ success: false, message: "Failed to send verification email" });
+    }
+
+    return res.status(200).json({ success: true, message: "Password reset OTP sent to your email" });
+  } catch (error) {
+    console.error("❌ sendForgotOtp Error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to send OTP" });
+  }
+};
+
+// 🔹 Reset Password with OTP
+exports.resetPasswordOtp = async (req, res) => {
+  try {
+    const { email, otpCode, newPassword } = req.body;
+    if (!email || !otpCode || !newPassword) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
+    }
+
+    const emailLower = email.toLowerCase();
+
+    // Verify OTP
+    const validOtp = await Otp.findOne({ email: emailLower, code: otpCode, purpose: "forgot" });
+    if (!validOtp) {
+      return res.status(400).json({ success: false, message: "Invalid or expired verification code" });
+    }
+
+    // Update user
+    const user = await User.findOne({ email: emailLower });
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found" });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save({ validateBeforeSave: false });
+
+    // Clean up OTP
+    await Otp.deleteOne({ _id: validOtp._id });
+
+    return res.status(200).json({ success: true, message: "Password reset successfully. You can now log in." });
+  } catch (error) {
+    console.error("❌ resetPasswordOtp Error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to reset password" });
+  }
+};
+
+// 🔹 Apple Sign-In Controller removed
+
 
 
 

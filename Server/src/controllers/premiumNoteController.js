@@ -5,28 +5,27 @@ const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
 const { generateStudyImages } = require('../services/imageGenerationService');
 
-const PREMIUM_MODELS = ['parikshasarthi', 'vyavastha'];
+const PREMIUM_MODELS = ['canvas', 'scholar', 'atlas'];
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 // Plan-based video duration limits (in seconds)
 const PLAN_VIDEO_LIMITS = {
-  scholar: 6 * 60 * 60,    // 6 hours for Scholar plan
-  pro: 12 * 60 * 60,       // 12 hours for Pro Scholar plan
-  power: Infinity           // Unlimited for Power Scholar plan
+  scholar: 4 * 60 * 60,    // 4 hours for legacy Scholar
+  pro: 4 * 60 * 60,        // 4 hours for Pro plan
+  power: 12 * 60 * 60       // 12 hours for Power plan
 };
 
 // Plan-based model restrictions
-// Scholar plan cannot use Vyavastha model
 const PLAN_MODEL_RESTRICTIONS = {
-  scholar: ['parikshasarthi'],  // Scholar can only use parikshasarthi
-  pro: ['parikshasarthi', 'vyavastha'],     // Pro can use all premium models
-  power: ['parikshasarthi', 'vyavastha']    // Power can use all premium models
+  scholar: ['canvas', 'scholar'],
+  pro: ['canvas', 'scholar'],
+  power: ['canvas', 'scholar', 'atlas']
 };
 
 // Helper to get max video duration for a user's plan
 function getMaxVideoDuration(user) {
-  const planId = user.membership?.planId || 'scholar';
-  return PLAN_VIDEO_LIMITS[planId] || PLAN_VIDEO_LIMITS.scholar;
+  const planId = user.membership?.planId || 'pro';
+  return PLAN_VIDEO_LIMITS[planId] || PLAN_VIDEO_LIMITS.pro;
 }
 
 // Token limits
@@ -35,15 +34,20 @@ const MAX_OUTPUT_TOKENS = 15000;  // 15k tokens for generated content
 
 // Premium model features
 const PREMIUM_FEATURES = {
-  parikshasarthi: { 
-    maxLength: '2 hours', 
-    features: ['exam_focused', 'qna_format', 'high_yield_summary'],
-    description: 'Exam-focused notes with structured Q&A format'
-  },
-  vyavastha: { 
+  canvas: { 
     maxLength: '4 hours', 
-    features: ['structured_output', 'comprehensive_coverage', 'table_of_contents'],
-    description: 'Structured notes with comprehensive coverage'
+    features: ['visual_notes', 'card_layout', 'curated_images'],
+    description: 'Visual notes with curated images and card layout'
+  },
+  scholar: { 
+    maxLength: '4 hours', 
+    features: ['structured_pdf', 'textbook_quality', 'table_of_contents'],
+    description: 'Textbook-quality structured notes'
+  },
+  atlas: {
+    maxLength: '12 hours',
+    features: ['deep_chapters', 'playlist_processing', 'anki_export'],
+    description: 'Deep chapters breakdown and cross-section concept linking'
   }
 };
 
@@ -67,7 +71,7 @@ async function openRouterChatCompletion(messages, options = {}) {
     timeout = 120000 // 2 minute timeout
   } = options;
 
-  const model = "x-ai/grok-4.3";
+  const model = "deepseek/deepseek-v4-flash";
   let lastError = null;
   let retries = 3;
   
@@ -463,230 +467,160 @@ Format the synthesized knowledge as a stunning, print-ready HTML document.
 `;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🔥 PARIKSHA-SARTHI — High-Intensity Exam Preparation Engine
   // ═══════════════════════════════════════════════════════════════════════════
-  if (model === 'parikshasarthi') {
+  // 🎨 CANVAS — Visual Magazine Card Layout
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (model === 'canvas') {
     return `
 ${coreIntelligence}
 
 **${languageInstruction}**${userInstructions}
 
-**DESIGN SYSTEM — PARIKSHA-SARTHI (Exam Powerhouse):**
-Font: "Segoe UI, Roboto, sans-serif" | Line-height: 1.7
-Theme: Deep Purple (#7c3aed) primary | Orange (#ea580c) for critical alerts | Emerald (#059669) for correct/positive
-Background: #faf5ff (light purple tint)
-
-**MANDATORY DOCUMENT STRUCTURE:**
-
-━━━ SECTION 1: EXAM HEADER ━━━
-<div style="background:linear-gradient(135deg,#4c1d95,#7c3aed);border-radius:14px;padding:28px 32px;margin-bottom:24px;color:#fff">
-  <div style="font-size:11px;letter-spacing:2px;font-weight:700;opacity:0.7;text-transform:uppercase;margin-bottom:8px">EXAM PREPARATION GUIDE • [SUBJECT]</div>
-  <h1 style="font-size:28px;font-weight:900;margin:0 0 8px;line-height:1.2">[TOPIC TITLE]</h1>
-  <p style="opacity:0.8;font-size:13px;margin:0">Source: <a href="${videoUrl}" style="color:#c4b5fd;text-decoration:none">Video Reference ↗</a></p>
+**DESIGN SYSTEM — CANVAS (Visual Magazine):**
+Theme: Vibrant and Modern | Primary: #3b82f6 (blue) | Accent: #10b981 (green) | Contrast: #0f172a
+Layout: Use cards! Write content as distinct sections wrapped in card components:
+<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;margin-bottom:20px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05)">
+  ...
 </div>
 
-━━━ SECTION 2: EXAM READINESS CHECKLIST ━━━
-<div style="background:#fff;border:2px solid #ede9fe;border-radius:12px;padding:20px 24px;margin-bottom:22px">
-  <h3 style="color:#6d28d9;font-size:15px;font-weight:700;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px">📋 What You Must Know for the Exam</h3>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-    <div style="background:#f5f3ff;border-radius:8px;padding:10px 14px;font-size:13px;color:#5b21b6;font-weight:500">☐ [Core concept 1]</div>
-    ... (6-10 items, 2-column grid)
-  </div>
-</div>
+**AVAILABLE IMAGES:**
+You have these images available (by title) — use them contextually inside relevant cards:
+${image_titles}
 
-━━━ SECTION 3: CONCEPT BREAKDOWN (one card per major concept) ━━━
-<div style="background:#fff;border:1px solid #ede9fe;border-radius:12px;padding:22px 26px;margin-bottom:18px;box-shadow:0 2px 10px rgba(124,58,237,0.07)">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-    <span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px">CONCEPT</span>
-    <h2 style="font-size:18px;font-weight:700;color:#1e1b4b;margin:0">[Concept Name]</h2>
-  </div>
-  <p style="color:#374151;font-size:14px;line-height:1.75;margin:0 0 14px">[Clear expert explanation of the concept — written as a textbook author]</p>
-
-  <!-- Critical Alert box — use for exam-critical points -->
-  <div style="background:#fff7ed;border-left:4px solid #ea580c;padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0">
-    <b style="color:#9a3412;font-size:13px">🚨 EXAM TRAP / COMMON MISTAKE:</b>
-    <p style="color:#374151;font-size:13px;margin:6px 0 0">[What students commonly get wrong about this concept and how to avoid it]</p>
-  </div>
-
-  <!-- Memory Tip -->
-  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin:12px 0">
-    <b style="color:#14532d;font-size:13px">🧠 Memory Trick:</b>
-    <span style="color:#374151;font-size:13px"> [Mnemonic, analogy, or memory hook]</span>
-  </div>
-
-  <!-- Formula/Rule box if applicable -->
-  <div style="background:#1e1b4b;color:#e0e7ff;border-radius:8px;padding:12px 18px;margin:12px 0;font-family:monospace;font-size:14px">
-    [Formula / Definition / Rule — use for maths, science, law, etc.]
-  </div>
-
-  <!-- Timestamp -->
-  <a href="${videoUrl}&t=0s" style="display:inline-block;background:#f5f3ff;color:#7c3aed;padding:4px 12px;border-radius:20px;text-decoration:none;font-size:11px;font-weight:600;margin-top:10px">⏱️ Review in video</a>
-</div>
-
-━━━ SECTION 4: Q&A FLASHCARD BANK ━━━
-<h2 style="font-size:20px;font-weight:800;color:#1e1b4b;margin:28px 0 16px">🃏 Exam Question Bank</h2>
-<p style="color:#6b7280;font-size:13px;margin:0 0 18px">Cover each answer and attempt to recall before revealing</p>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
-  <!-- Generate 8-15 Q&A pairs based on the topic -->
-  <div style="background:#fff;border:2px solid #ede9fe;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(124,58,237,0.06)">
-    <div style="font-size:12px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Q</div>
-    <p style="font-weight:600;color:#1e1b4b;font-size:14px;margin:0 0 12px">[Exam-style question that tests deep understanding]</p>
-    <div style="border-top:1px dashed #ddd6fe;padding-top:10px">
-      <div style="font-size:12px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">A</div>
-      <p style="color:#374151;font-size:13px;line-height:1.65;margin:0">[Precise, exam-ready answer]</p>
-    </div>
-  </div>
-</div>
-
-━━━ SECTION 5: IMAGES ━━━
-Available Images (by title): ${image_titles}
-To place an image inside a relevant concept card, you MUST use the exact placeholder format:
+To insert an image inside a card, you MUST use the exact placeholder format:
 [IMAGE_PLACEHOLDER: exact_image_title]
 Do not write HTML or markdown for images, ONLY use this exact placeholder. Our system will replace it with the correct image HTML.
 
-━━━ SECTION 6: HIGH-YIELD SUMMARY ━━━
-<div style="background:linear-gradient(135deg,#1e1b4b,#4c1d95);color:#fff;border-radius:14px;padding:26px 30px;margin-top:30px">
-  <h3 style="font-size:18px;font-weight:800;margin:0 0 16px">⚡ High-Yield Summary — Must Know for Exam</h3>
-  <ul style="margin:0;padding-left:18px">
-    <li style="font-size:14px;line-height:1.7;margin-bottom:9px;opacity:0.9">[Most critical point — written as a bullet a student would memorize]</li>
-    ... (7-12 bullets — the absolute essentials)
-  </ul>
+**MANDATORY DOCUMENT STRUCTURE:**
+
+━━━ SECTION 1: HEADER CARD ━━━
+<div style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);border-radius:16px;padding:32px;margin-bottom:24px;color:#fff">
+  <div style="font-size:11px;letter-spacing:2px;font-weight:700;opacity:0.8;text-transform:uppercase;margin-bottom:8px">Visual Concept Guide</div>
+  <h1 style="font-size:28px;font-weight:900;margin:0 0 8px;line-height:1.2;color:#ffffff">[TOPIC TITLE]</h1>
+  <p style="opacity:0.8;font-size:13px;margin:10px 0 0">Source Video: <a href="${videoUrl}" style="color:#93c5fd;text-decoration:none">Reference Link ↗</a></p>
 </div>
 
-**NOW SYNTHESIZE THE TRANSCRIPT BELOW INTO THE ABOVE EXAM GUIDE:**
+━━━ SECTION 2: CONCEPTS CARD ARRAY ━━━
+Produce 4-8 concept cards. Each card must focus on a major idea, including:
+- A title with an emoji.
+- Clean bullet explanations.
+- An embedded image placeholder if relevant.
+- Timestamp link back to the video: <a href="${videoUrl}&t=Xs" style="color:#3b82f6;text-decoration:none;font-weight:700">Watch this section ↗</a>
+
+Example Card layout:
+<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;margin-bottom:20px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05)">
+  <h2 style="font-size:20px;font-weight:700;color:#1e3a8a;margin:0 0 12px">🧠 [Concept Name]</h2>
+  <p style="color:#4b5563;font-size:14px;line-height:1.6">[Explanation...]</p>
+  [IMAGE_PLACEHOLDER: exact_image_title]
+  <div style="margin-top:14px"><a href="${videoUrl}&t=60s" style="color:#3b82f6;font-size:12px;text-decoration:none;font-weight:700">⏱️ Watch this section →</a></div>
+</div>
+
+**NOW PROCESS THE TRANSCRIPT BELOW AND GENERATE THE COMPLETE VISUAL GUIDE:**
 ${transcript}
 `;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🏛️ VYAVASTHA — Academic Deep Dive / Comprehensive Textbook
+  // 📖 SCHOLAR — Textbook-Quality Structured PDF Notes
   // ═══════════════════════════════════════════════════════════════════════════
-  return `
+  if (model === 'scholar') {
+    return `
 ${coreIntelligence}
 
 **${languageInstruction}**${userInstructions}
 
-**DESIGN SYSTEM — VYAVASTHA (Academic Excellence):**
-Font: "Georgia, 'Times New Roman', serif" for headings | "Segoe UI, Arial, sans-serif" for body
-Primary: #0f172a | Accent: #0369a1 | Subheading: #1e40af | Success: #14532d | Warning: #92400e
-Background: #ffffff | Print-optimized, formal academic aesthetic
+**DESIGN SYSTEM — SCHOLAR (Academic textbook format):**
+Font: Serif for headings, Sans-serif for body.
+Theme: Oxford Blue (#0f172a) primary | Slate (#475569) secondary | Soft light background.
+No images should be used. This model is purely textual.
 
 **MANDATORY DOCUMENT STRUCTURE:**
 
-━━━ SECTION 1: ACADEMIC TITLE PAGE ━━━
-<div style="border-bottom:3px solid #0f172a;padding-bottom:24px;margin-bottom:28px">
-  <p style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#64748b;margin:0 0 8px">[SUBJECT DOMAIN] • ACADEMIC STUDY GUIDE</p>
-  <h1 style="font-size:32px;font-weight:900;color:#0f172a;margin:0 0 10px;line-height:1.15;font-family:Georgia,'Times New Roman',serif">[TOPIC TITLE]</h1>
-  <p style="color:#64748b;font-size:13px;margin:0">Reference: <a href="${videoUrl}" style="color:#0369a1;text-decoration:none">Source Material ↗</a></p>
+━━━ SECTION 1: TITLE PAGE ━━━
+<div style="border-bottom:3px double #0f172a;padding-bottom:20px;margin-bottom:28px">
+  <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#64748b;margin-bottom:6px">[SUBJECT DOMAIN] • REFERENCE SCHOLAR NOTES</div>
+  <h1 style="font-size:32px;font-weight:800;color:#0f172a;margin:0 0 10px;font-family:Georgia,serif">[TOPIC TITLE]</h1>
+  <p style="color:#64748b;font-size:13px;margin:0">Source: <a href="${videoUrl}" style="color:#0f172a;text-decoration:underline">YouTube Reference ↗</a></p>
 </div>
 
-━━━ SECTION 2: ABSTRACT / EXECUTIVE OVERVIEW ━━━
-<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:20px 24px;margin-bottom:28px">
-  <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#475569;margin:0 0 10px">Abstract</h3>
-  <p style="color:#1e293b;font-size:15px;line-height:1.8;margin:0">[2-3 sentence expert summary of what this study guide covers and why it matters — written like a textbook abstract]</p>
-</div>
-
-━━━ SECTION 3: TABLE OF CONTENTS ━━━
-<div style="border:1px solid #e2e8f0;border-radius:8px;padding:18px 22px;margin-bottom:28px">
-  <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 12px">Contents</h3>
-  <ol style="margin:0;padding-left:18px;color:#0369a1">
-    <li style="font-size:14px;margin-bottom:6px"><a href="#sec1" style="color:#0369a1;text-decoration:none">[Section 1 Name]</a></li>
-    ... (one entry per section)
+━━━ SECTION 2: TABLE OF CONTENTS ━━━
+<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;margin-bottom:28px">
+  <h3 style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#475569;margin:0 0 12px">Table of Contents</h3>
+  <ol style="margin:0;padding-left:20px;color:#0f172a;font-size:13px">
+    <li style="margin-bottom:6px">[Section 1 Name]</li>
+    <li style="margin-bottom:6px">[Section 2 Name]</li>
   </ol>
 </div>
 
-━━━ SECTION 4: CORE ACADEMIC SECTIONS (one per major topic/concept) ━━━
-<!-- Each section gets a proper anchor ID and academic formatting -->
-<section id="sec1" style="margin-bottom:36px">
-  <h2 style="font-size:22px;font-weight:700;color:#0f172a;font-family:Georgia,'Times New Roman',serif;border-bottom:2px solid #e2e8f0;padding-bottom:10px;margin:0 0 18px">[Section N: Concept Name]</h2>
-  
-  <!-- Main explanation — 2-4 substantial paragraphs -->
-  <p style="color:#1e293b;font-size:15px;line-height:1.85;margin:0 0 14px">[Expert, well-structured explanation of the concept. Be thorough. Think textbook chapter.]</p>
-  
-  <!-- Definition sidebar style -->
-  <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:14px 0">
-    <b style="color:#1e40af;font-size:13px;display:block;margin-bottom:4px">Formal Definition</b>
-    <p style="color:#1d4ed8;font-size:14px;line-height:1.7;margin:0;font-style:italic">[Precise, formal definition]</p>
-  </div>
+━━━ SECTION 3: DETAILED CONCEPTS (H1 → H2 → H3 structure) ━━━
+Structure concepts with proper headers and sub-sections.
+For each key term/concept, provide:
+- A definition box:
+<div style="background:#f1f5f9;border-left:4px solid #0f172a;padding:12px 16px;margin:12px 0;border-radius:0 8px 8px 0">
+  <b style="color:#0f172a;font-size:13px">Definition:</b> <span style="color:#334155;font-size:13px">[Precise definition]</span>
+</div>
+- Data tables for comparisons:
+<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:13px">
+  <thead>
+    <tr style="background:#0f172a;color:#fff"><th style="padding:8px;border:1px solid #cbd5e1">Concept</th><th style="padding:8px;border:1px solid #cbd5e1">Details</th></tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #cbd5e1">[Concept A]</td><td style="padding:8px;border:1px solid #cbd5e1">[Comparison details]</td></tr>
+  </tbody>
+</table>
 
-  <!-- Image placement if relevant -->
-  ${image_titles ? `
-  To place an image, you MUST use the exact placeholder format:
-  [IMAGE_PLACEHOLDER: exact_image_title]
-  Do not write HTML or markdown for images, ONLY use this exact placeholder. Our system will replace it with the correct image HTML.
-  ` : ''}
+**NOW PROCESS THE TRANSCRIPT BELOW AND GENERATE THE SCHOLAR DOCUMENT:**
+${transcript}
+`;
+  }
 
-  <!-- Key points -->
-  <ul style="padding-left:22px;margin:14px 0">
-    <li style="color:#1e293b;font-size:14px;line-height:1.75;margin-bottom:10px">[Key academic point — written with precision]</li>
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🗺️ ATLAS — Deep Course Chapters & Concept Outline
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (model === 'atlas') {
+    return `
+${coreIntelligence}
+
+**${languageInstruction}**${userInstructions}
+
+**DESIGN SYSTEM — ATLAS (Deep Outline):**
+Theme: Minimalist Slate & Purple | Primary: #581c87 (purple) | Secondary: #3b82f6 (blue).
+Purpose: Chapter-by-chapter detailed breakdown of long videos, playlists, or deep topics.
+
+**MANDATORY DOCUMENT STRUCTURE:**
+
+━━━ SECTION 1: COURSE COVER ━━━
+<div style="background:linear-gradient(135deg,#3b0764,#581c87);border-radius:16px;padding:32px;margin-bottom:28px;color:#fff">
+  <div style="font-size:11px;letter-spacing:2px;font-weight:700;opacity:0.8;text-transform:uppercase;margin-bottom:8px">Deep Research Notes & Syllabus Map</div>
+  <h1 style="font-size:30px;font-weight:900;margin:0 0 10px;line-height:1.2;color:#ffffff">[COURSE / PLAYLIST TITLE]</h1>
+  <p style="opacity:0.8;font-size:13px;margin:0">Full syllabus mapped from: <a href="${videoUrl}" style="color:#d8b4fe;text-decoration:none">Playlist Source ↗</a></p>
+</div>
+
+━━━ SECTION 2: CHAPTER BREAKDOWN ━━━
+Provide a detailed chapter-by-chapter analysis of the transcript. For each chapter, include:
+- Chapter title with timestamp.
+- Detailed sub-topics and bullet explanations.
+- Cross-section linking: how this chapter connects back to preceding concepts.
+
+━━━ SECTION 3: ANKI DECK STUDY GUIDE ━━━
+<div style="background:#fdf4ff;border:1px solid #f0abfc;border-radius:12px;padding:20px;margin-top:28px">
+  <h3 style="color:#86198f;font-size:16px;font-weight:700;margin:0 0 12px">⚡ Anki Flashcard Deck Generated</h3>
+  <p style="color:#701a75;font-size:13px;line-height:1.6">The following cards have been added to the syllabus deck. Use these for active recall practice:</p>
+  <ul style="margin:10px 0;padding-left:20px;color:#701a75;font-size:13px">
+    <li style="margin-bottom:8px"><b>Q:</b> [Concept question] <br> <b>A:</b> [Direct precise answer]</li>
   </ul>
-
-  <!-- Example / Case Study box -->
-  <div style="background:#fff7ed;border-left:4px solid #d97706;padding:14px 18px;border-radius:0 8px 8px 0;margin:14px 0">
-    <b style="color:#92400e;font-size:13px;display:block;margin-bottom:6px">Worked Example / Case Study</b>
-    <p style="color:#374151;font-size:14px;line-height:1.75;margin:0">[Step-by-step example showing the concept in action]</p>
-  </div>
-
-  <!-- Process Flow / Timeline (use when there's a sequence) -->
-  <div style="border-left:3px solid #cbd5e1;padding-left:22px;margin:18px 0">
-    <div style="position:relative;margin-bottom:16px;padding-left:10px">
-      <span style="position:absolute;left:-27px;top:4px;background:#0f172a;width:11px;height:11px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #94a3b8;display:block"></span>
-      <b style="color:#0f172a;font-size:14px">[Step / Phase / Stage]</b>
-      <p style="color:#374151;font-size:14px;line-height:1.7;margin:4px 0 0">[Detailed explanation of this step]</p>
-    </div>
-    ... (repeat for each step in a process)
-  </div>
-</section>
-
-━━━ SECTION 5: COMPARATIVE ANALYSIS TABLE ━━━
-<!-- Use when 2 or more concepts/approaches can be compared -->
-<div style="overflow-x:auto;margin-bottom:30px">
-  <h2 style="font-size:20px;font-weight:700;color:#0f172a;font-family:Georgia,'Times New Roman',serif;border-bottom:2px solid #e2e8f0;padding-bottom:8px;margin:0 0 16px">Comparative Analysis</h2>
-  <table style="width:100%;border-collapse:collapse;font-size:14px">
-    <thead>
-      <tr style="background:#0f172a">
-        <th style="padding:12px 16px;text-align:left;font-weight:600;color:#f1f5f9;border:1px solid #334155">[Criterion]</th>
-        <th style="padding:12px 16px;text-align:left;font-weight:600;color:#f1f5f9;border:1px solid #334155">[Approach A]</th>
-        <th style="padding:12px 16px;text-align:left;font-weight:600;color:#f1f5f9;border:1px solid #334155">[Approach B]</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="background:#f8fafc">
-        <td style="padding:11px 16px;color:#374151;border:1px solid #e2e8f0;font-weight:500">[criterion]</td>
-        <td style="padding:11px 16px;color:#374151;border:1px solid #e2e8f0">[value]</td>
-        <td style="padding:11px 16px;color:#374151;border:1px solid #e2e8f0">[value]</td>
-      </tr>
-    </tbody>
-  </table>
 </div>
 
-━━━ SECTION 6: ACADEMIC GLOSSARY ━━━
-<div style="border:1px solid #e2e8f0;border-radius:8px;padding:20px 24px;margin-bottom:28px">
-  <h2 style="font-size:20px;font-weight:700;color:#0f172a;font-family:Georgia,'Times New Roman',serif;margin:0 0 16px">Glossary of Terms</h2>
-  <dl style="margin:0;columns:2;gap:24px">
-    <dt style="font-weight:700;color:#0369a1;font-size:14px;margin:10px 0 3px;break-inside:avoid">[Term]</dt>
-    <dd style="color:#374151;font-size:13px;line-height:1.7;margin:0 0 8px;padding-left:14px;border-left:2px solid #bfdbfe;break-inside:avoid">[Precise academic definition with context]</dd>
-  </dl>
-</div>
+**NOW PROCESS THE TRANSCRIPT BELOW AND GENERATE THE COMPLETE ATLAS STUDY GUIDE:**
+${transcript}
+`;
+  }
 
-━━━ SECTION 7: CONCLUSION & FURTHER STUDY ━━━
-<div style="background:#0f172a;color:#f1f5f9;border-radius:12px;padding:26px 30px;margin-top:28px">
-  <h2 style="font-size:20px;font-weight:700;font-family:Georgia,'Times New Roman',serif;margin:0 0 14px">Conclusion</h2>
-  <p style="font-size:14px;line-height:1.85;opacity:0.9;margin:0 0 18px">[2-3 sentence scholarly conclusion — what has been established, its significance, and how it connects to broader knowledge]</p>
-  
-  <h3 style="font-size:15px;font-weight:700;margin:0 0 12px;opacity:0.8">Key Takeaways</h3>
-  <ul style="margin:0 0 18px;padding-left:18px">
-    <li style="font-size:14px;line-height:1.7;margin-bottom:8px;opacity:0.9">[critical takeaway]</li>
-  </ul>
-
-  <h3 style="font-size:15px;font-weight:700;margin:0 0 12px;opacity:0.8">Discussion Questions</h3>
-  <ol style="margin:0;padding-left:18px">
-    <li style="font-size:14px;line-height:1.7;margin-bottom:7px;opacity:0.85">[Open-ended question encouraging critical thinking]</li>
-    ... (3-5 questions)
-  </ol>
-</div>
-
-**NOW SYNTHESIZE THE TRANSCRIPT BELOW INTO THE ABOVE ACADEMIC STUDY GUIDE:**
+  // Fallback
+  return `
+${coreIntelligence}
+**${languageInstruction}**${userInstructions}
+# Notes
 ${transcript}
 `;
 };
@@ -809,7 +743,7 @@ exports.createNote = async (req, res) => {
       });
     }
 
-    // Check plan-based model restrictions (Scholar cannot use Vyavastha)
+    // Check plan-based model restrictions (Pro/Scholar cannot use Atlas)
     const userPlanId = user.membership?.planId || 'scholar';
     const allowedModels = PLAN_MODEL_RESTRICTIONS[userPlanId] || PLAN_MODEL_RESTRICTIONS.scholar;
     
@@ -818,9 +752,9 @@ exports.createNote = async (req, res) => {
       return res.status(403).json({
         success: false,
         code: "MODEL_NOT_AVAILABLE",
-        message: `The ${model === 'vyavastha' ? 'Vyavastha' : model} model is not available on the ${planName}. Please upgrade to Pro Scholar or higher to access this model.`,
+        message: `The ${model === 'atlas' ? 'Atlas' : model} model is not available on the ${planName}. Please upgrade to Power Tier to access this model.`,
         currentPlan: planName,
-        requiredPlan: 'Pro Scholar',
+        requiredPlan: 'Power',
         upgradeRequired: true
       });
     }
@@ -903,21 +837,22 @@ exports.createNote = async (req, res) => {
       });
     }
 
-    // STEP 2: Generate AI images for premium models
-    // Premium tier → use Google custom search for image links
+    // STEP 2: Generate AI images for premium models (Only Canvas gets visual images)
     let img_with_url = [];
-    console.log('🎨 Generating images for premium model using Google Search...');
-    try {
-      const figures = await generateImgGEnAI(transcript, settings?.language);
-      if (figures && figures.length > 0) {
-        img_with_url = await generateImgObjects(figures);
-        console.log(`✅ Image retrieval complete: ${img_with_url.length} image(s) ready`);
-      } else {
-        console.log('No visual topics identified – skipping image generation');
+    if (model === 'canvas') {
+      console.log('🎨 Generating images for premium model using Google Search...');
+      try {
+        const figures = await generateImgGEnAI(transcript, settings?.language);
+        if (figures && figures.length > 0) {
+          img_with_url = await generateImgObjects(figures);
+          console.log(`✅ Image retrieval complete: ${img_with_url.length} image(s) ready`);
+        } else {
+          console.log('No visual topics identified – skipping image generation');
+        }
+      } catch (imgErr) {
+        console.error('⚠️ Image generation failed (non-critical):', imgErr.message);
+        // Continue without images – premium note generation must not fail
       }
-    } catch (imgErr) {
-      console.error('⚠️ Image generation failed (non-critical):', imgErr.message);
-      // Continue without images – premium note generation must not fail
     }
 
     // STEP 3: Generate premium PDF content using OpenRouter
@@ -926,10 +861,14 @@ exports.createNote = async (req, res) => {
     const image_titles = img_with_url.map(img => img.title).join(', ');
     const ai_prompt = getPremiumModelPrompt(model, transcript, prompt, image_titles, videoUrl, settings);
 
+    const systemPromptContent = (settings?.format === 'flashcards')
+      ? "You are an expert at creating educational flashcards from video transcripts. Always output a valid JSON array of flashcard objects only."
+      : "You are an expert at creating educational PDF content from video transcripts. Always output valid HTML with inline styles only.";
+
     const messages = [
       {
         role: "system",
-        content: "You are an expert at creating educational PDF content from video transcripts. Always output valid HTML with inline styles only."
+        content: systemPromptContent
       },
       {
         role: "user",
@@ -976,10 +915,10 @@ exports.createNote = async (req, res) => {
         let finalContent = stripMarkdownFences(content);
         if (img_with_url && img_with_url.length > 0) {
           img_with_url.forEach(img => {
-            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
-            const regex = new RegExp(`\\\\[IMAGE_PLACEHOLDER:\\\\s*${escapeRegExp(img.title)}\\\\]`, 'gi');
+            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\[IMAGE_PLACEHOLDER:\\s*${escapeRegExp(img.title)}\\]`, 'gi');
             
-            const imgHtml = `\\n<div style="text-align:center;margin:20px 0">\\n  <img src="${img.img_url}" alt="${img.title}" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">\\n  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: ${img.title}</p>\\n</div>\\n`;
+            const imgHtml = `\n<div style="text-align:center;margin:20px 0">\n  <img src="${img.img_url}" alt="${img.title}" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">\n  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: ${img.title}</p>\n</div>\n`;
             finalContent = finalContent.replace(regex, imgHtml);
           });
         }
@@ -994,6 +933,7 @@ exports.createNote = async (req, res) => {
         detailLevel: mapDetailLevel(settings?.detailLevel) || 'Standard Notes',
         prompt: prompt || "",
         format: format || 'notes',
+        theme: req.body.theme || 'blueberry',
         flashcardCount: flashcardCount,
         generatedAt: new Date(),
         processingTime: processingTime,
@@ -1068,7 +1008,7 @@ exports.getPremiumModels = async (req, res) => {
   try {
     const models = PREMIUM_MODELS.map(model => ({
       id: model,
-      name: model === 'parikshasarthi' ? 'Pariksha-Sarthi' : 'Vyavastha',
+      name: model.charAt(0).toUpperCase() + model.slice(1),
       features: PREMIUM_FEATURES[model]?.features || [],
       description: PREMIUM_FEATURES[model]?.description || '',
       maxLength: PREMIUM_FEATURES[model]?.maxLength || 'unlimited'

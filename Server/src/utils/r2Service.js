@@ -33,7 +33,7 @@ exports.generatePresignedUploadUrl = async (fileName, contentType, folder = 'upl
         .toLowerCase()
         .replace(/[^a-z0-9.]/g, '-')
         .replace(/-+/g, '-');
-    
+
     // Final key in the bucket
     const key = `${folder}/${timestamp}-${uniqueId}-${safeFileName}`;
 

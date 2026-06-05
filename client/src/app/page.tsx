@@ -24,8 +24,8 @@ export const metadata: Metadata = {
     "youtube study notes ai",
     "notegpt alternative",
     "mindgrasp alternative",
-    "best ai youtube summarizer in india",
-    "youtube to notes ai for indian students"
+    "best ai youtube summarizer",
+    "youtube to notes ai for students"
   ],
   alternates: {
     canonical: "https://paperxify.com",
@@ -60,7 +60,7 @@ export default function Page() {
         "offers": {
           "@type": "Offer",
           "price": "0",
-          "priceCurrency": "INR"
+          "priceCurrency": "USD"
         },
         "description": "The best free AI tool to take notes from youtube. Convert YouTube videos into structured study notes, flashcards, and summaries instantly.",
         "aggregateRating": {

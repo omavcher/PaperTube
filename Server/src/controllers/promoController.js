@@ -137,7 +137,7 @@ exports.verifyPromoCode = async (req, res) => {
     if (promo.minOrderAmount > 0 && orderBase < promo.minOrderAmount) {
       return res.status(400).json({
         success: false,
-        message: `This promo code requires a minimum order of ₹${promo.minOrderAmount}`
+        message: `This promo code requires a minimum order of $${promo.minOrderAmount}`
       });
     }
 

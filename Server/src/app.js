@@ -14,6 +14,7 @@ const tokenResetService = require("./services/tokenResetService");
 const pdfRoutes = require("./routes/pdfRoutes");
 const supportRoutes = require("./routes/supportRoutes");
 const promoRoutes = require("./routes/promoRoutes");
+const presentationRoutes = require("./routes/presentationRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 
@@ -21,10 +22,22 @@ const app = express();
 
 // Middlewares
 app.use(cors(
-    { origin: ["https://paperxify.com", "https://www.paperxify.com", "http://localhost:3000"]
-      , credentials: true }
+  {
+    origin: ["https://paperxify.com", "https://www.paperxify.com", "http://localhost:3000"]
+    , credentials: true
+  }
 ));
-app.use(express.json());
+// LemonSqueezy webhook needs raw body for HMAC-SHA256 signature verification
+// — this must be applied before express.json()
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      if (req.originalUrl.startsWith("/api/payment/lemonsqueezy/webhook")) {
+        req.rawBody = buf;
+      }
+    },
+  })
+);
 
 // Set X-Robots-Tag header to allow bots/crawlers
 app.use((req, res, next) => {
@@ -34,6 +47,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use("/api/notes", noteRoutes);
+app.use("/api/presentation", presentationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/payment", authPayment);
@@ -88,7 +102,7 @@ function reloadWebsite() {
     console.log("BACKEND_URL is not defined. Skipping website reload.");
     return;
   }
-  
+
   axios
     .get(url)
     .then((response) => {

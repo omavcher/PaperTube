@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import createGlobe from "cobe";
@@ -17,7 +17,7 @@ export function HomeFeatureX() {
     {
       title: "Instant Video Conversion",
       description:
-        "Paste a YouTube link and watch our Neural Engine turn long lectures into crisp, structured notes in seconds.",
+        "Paste a YouTube link and watch our system turn long lectures into crisp, structured notes in seconds.",
       skeleton: <SkeletonOne />,
       className:
         "col-span-1 lg:col-span-4 border-b lg:border-r border-white/10",
@@ -68,7 +68,7 @@ export function HomeFeatureX() {
         </h4>
 
         <p className="text-sm lg:text-lg max-w-2xl my-6 mx-auto text-neutral-400 text-center font-light leading-relaxed">
-          Paperxify transforms raw video data into colorful, timestamped knowledge nodes. 
+          Paperxify transforms raw video data into colorful, timestamped study notes. 
           Clean, readable, and designed for high-retention learning.
         </p>
       </div>

@@ -108,7 +108,7 @@ const NoteContentView: React.FC<{ data: PublicNoteData }> = ({ data }) => {
              )}
            </div>
            <div className="min-w-0">
-             <h3 className="text-sm font-semibold truncate">{data.title}</h3>
+             <h1 className="text-sm font-semibold truncate">{data.title}</h1>
              <p className="text-xs text-neutral-400">{new Date(data.createdAt).toLocaleDateString()}</p>
            </div>
         </div>
@@ -461,7 +461,7 @@ export default function NoteClient({ initialData, username, slug }: NoteClientPr
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-red-900/10 rounded-full blur-[120px]" />
-         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20viewBox=%220%200%20200%20200%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter%20id=%22noise%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.8%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23noise)%22/%3E%3C/svg%3E')] opacity-20 mix-blend-overlay" />
       </div>
 
       <div className="relative z-10 flex flex-col h-full lg:flex-row">

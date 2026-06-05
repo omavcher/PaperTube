@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { 
-  IndianRupee, ArrowUpRight, ArrowDownRight, 
+  DollarSign, ArrowUpRight, ArrowDownRight,
   Search, Filter, Download, 
   CheckCircle2, XCircle, Clock,
   TrendingUp, Activity, Receipt,
@@ -129,7 +129,7 @@ export default function FinancialLedger() {
           </h1>
           <p className="text-[9px] font-black text-neutral-600 uppercase tracking-[0.4em] flex items-center gap-2">
             <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_emerald]" />
-            Gateway: Razorpay_Secure_Link_Established
+            Gateway: Stripe_Secure_Link_Established
           </p>
         </div>
         <button 
@@ -144,9 +144,9 @@ export default function FinancialLedger() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          <FinanceCard 
    label="Gross Revenue" 
-   val={`₹${Math.round(metrics.grossRevenue).toLocaleString()}`} 
-   sub="Total Verified Volume" 
-   icon={IndianRupee} 
+   val={`$${Math.round(metrics.grossRevenue).toLocaleString()}`}
+   sub="Total Verified Volume"
+   icon={DollarSign}
    color="text-emerald-500" 
 />
          <FinanceCard 
@@ -158,7 +158,7 @@ export default function FinancialLedger() {
          />
          <FinanceCard 
             label="Avg Ticket" 
-            val={`₹${metrics.avgTicket}`} 
+            val={`$${metrics.avgTicket}`} 
             sub="Per User Spend" 
             icon={TrendingUp} 
             color="text-blue-500" 
@@ -260,7 +260,7 @@ export default function FinancialLedger() {
                               </div>
                            </td>
                            <td className="p-6">
-                              <span className="text-xs font-black text-white italic tracking-tighter">₹{txn.amount.toFixed(2)}</span>
+                              <span className="text-xs font-black text-white italic tracking-tighter">${txn.amount.toFixed(2)}</span>
                            </td>
                            <td className="p-6">
                               <StatusIndicator status={txn.status} />
@@ -268,7 +268,7 @@ export default function FinancialLedger() {
                            <td className="p-6">
                               <div className="flex items-center gap-2 text-[9px] font-black text-neutral-600 uppercase tracking-tighter">
                                  <Calendar size={12}/> 
-                                 {new Date(txn.timestamp).toLocaleString('en-IN', { 
+                                 {new Date(txn.timestamp).toLocaleString('en-US', { 
                                     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
                                  })}
                               </div>
