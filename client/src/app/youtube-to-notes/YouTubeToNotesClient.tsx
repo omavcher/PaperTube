@@ -28,8 +28,7 @@ export default function YouTubeToNotesClient() {
         </div>
       )}
 
-      {/* 3. Footer */}
-      <Footer />
+     
     </div>
   );
 }

@@ -189,13 +189,13 @@ exports.generateCodeSolution = async (req, res) => {
         const isFreeModel = model === 'flash';
         const cost = 8; // 8 tokens for code solution
         if (!user.isSubscribed && isFreeModel) {
-            if (user.neuralTokens < cost) {
+            if (user.tokens < cost) {
                 return res.status(403).json({
                     success: false,
                     code: 'INSUFFICIENT_TOKENS',
-                    message: `You need ${cost} tokens to generate a code solution, but you only have ${user.neuralTokens} left.`,
+                    message: `You need ${cost} tokens to generate a code solution, but you only have ${user.tokens} left.`,
                     requiredTokens: cost,
-                    currentTokens: user.neuralTokens,
+                    currentTokens: user.tokens,
                     canPurchase: true
                 });
             }
@@ -307,7 +307,7 @@ Extra Request: ${prompt || 'Provide the optimal, production-quality solution.'}
         await newSolution.save();
 
         if (!user.isSubscribed && isFreeModel) {
-            user.neuralTokens -= cost;
+            user.tokens -= cost;
             await user.save();
         }
 
@@ -315,7 +315,7 @@ Extra Request: ${prompt || 'Provide the optimal, production-quality solution.'}
             success: true,
             newSolution,
             tokenInfo: {
-                tokensRemaining: user.neuralTokens,
+                tokensRemaining: user.tokens,
                 tokensDeducted: cost,
             }
         });

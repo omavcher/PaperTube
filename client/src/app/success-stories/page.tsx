@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import SuccessStoriesClient from "./SuccessStoriesClient";
 
+export const dynamic = "force-dynamic";
+
 // --- 1. Define Types ---
 interface Story {
   _id: string;

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   ChevronLeft, ChevronRight, Play, Download, LayoutGrid, X, 
   Loader2, Presentation, ArrowLeft, RefreshCw, FileText, Check, 
-  MessageSquare, Edit3, Save, Maximize2, ShieldAlert
+  MessageSquare, Edit3, Save, Maximize2, ShieldAlert, Sparkles, Image as ImageIcon
 } from "lucide-react";
 import Link from "next/link";
 import api from "@/config/api";
@@ -17,16 +17,43 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PPT_THEMES_MAP } from "@/config/ppt-themes";
 
 interface Slide {
   id: number;
   title: string;
   subtitle?: string;
-  layout: "title" | "bullets" | "comparison" | "metric";
+  layout: 
+    | "title" | "section_break" | "conclusion"
+    | "bullets" | "paragraph" | "quote" | "two_column_text"
+    | "comparison" | "pros_cons" | "metric_callout" | "matrix_2x2"
+    | "timeline" | "steps" | "roadmap"
+    | "image_left" | "image_right" | "gallery_grid"
+    | "metric";
   bullets?: string[];
   columns?: { left: string[]; right: string[] };
   metric?: { value: string; label: string; description: string };
   speakerNotes: string;
+  variantIndex?: number;
+  bgImageIndex?: number;
+  
+  // Custom layout fields
+  author?: string;
+  content?: string;
+  quote_text?: string;
+  role?: string;
+  left_text?: string;
+  right_text?: string;
+  pros?: string[];
+  cons?: string[];
+  metrics?: { value: string; label: string }[];
+  quadrants?: string[];
+  events?: { year: string; description: string }[];
+  steps?: string[];
+  phases?: { phase: string; goal: string }[];
+  image_url?: string;
+  alt_text?: string;
+  images?: string[];
 }
 
 interface PresentationData {
@@ -41,12 +68,14 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
   const [loading, setLoading] = useState(true);
   const [presentation, setPresentation] = useState<PresentationData | null>(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [activeRightTab, setActiveRightTab] = useState<"notes" | "outline">("notes");
+  const [activeRightTab, setActiveRightTab] = useState<"notes" | "outline" | "design">("notes");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExporting, setIsExporting] = useState<"pptx" | "pdf" | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const slideNotesRef = useRef<HTMLTextAreaElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
 
   // Load presentation from API or generate mock content if slug not found
   useEffect(() => {
@@ -174,6 +203,42 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
     return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
 
+  // Resize listener to scale slide preview proportionally
+  useEffect(() => {
+    if (isFullscreen) {
+      setScale(1);
+      return;
+    }
+    const handleResize = () => {
+      if (!wrapperRef.current) return;
+      const parentWidth = wrapperRef.current.clientWidth;
+      const parentHeight = wrapperRef.current.clientHeight;
+      // Scale to fit both width and height (16:9 canvas is 960x540)
+      const scaleByWidth = parentWidth / 960;
+      const scaleByHeight = parentHeight / 540;
+      const newScale = Math.min(1, scaleByWidth, scaleByHeight);
+      setScale(newScale);
+    };
+
+    window.addEventListener("resize", handleResize);
+    handleResize();
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && wrapperRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize();
+      });
+      resizeObserver.observe(wrapperRef.current);
+    }
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, [isFullscreen]);
+
   const triggerFullscreen = () => {
     if (!containerRef.current) return;
     if (!isFullscreen) {
@@ -232,6 +297,41 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
     });
   };
 
+  const changeTheme = (themeId: string) => {
+    if (!presentation) return;
+    setPresentation({
+      ...presentation,
+      theme: themeId
+    });
+    toast.success(`Theme switched to ${PPT_THEMES_MAP[themeId]?.name || themeId}`);
+  };
+
+  const changeSlideVariant = (index: number) => {
+    if (!presentation) return;
+    const updatedSlides = [...presentation.slides];
+    updatedSlides[activeSlideIndex] = {
+      ...updatedSlides[activeSlideIndex],
+      variantIndex: index
+    };
+    setPresentation({
+      ...presentation,
+      slides: updatedSlides
+    });
+  };
+
+  const changeSlideBackground = (index: number) => {
+    if (!presentation) return;
+    const updatedSlides = [...presentation.slides];
+    updatedSlides[activeSlideIndex] = {
+      ...updatedSlides[activeSlideIndex],
+      bgImageIndex: index
+    };
+    setPresentation({
+      ...presentation,
+      slides: updatedSlides
+    });
+  };
+
   // Debounced auto-save effect
   useEffect(() => {
     if (!presentation || !presentation._id || presentation._id.startsWith('demo')) return;
@@ -240,7 +340,8 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
       try {
         const token = localStorage.getItem("authToken");
         await api.put(`/presentation/update/${presentation._id}`, {
-          slides: presentation.slides
+          slides: presentation.slides,
+          theme: presentation.theme
         }, {
           headers: { 'Auth': token }
         });
@@ -276,8 +377,21 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
   const slides = presentation.slides;
   const currentSlide = slides[activeSlideIndex];
 
+  // Resolve dynamic theme and active layout variant
+  const activeThemeId = presentation.theme || "sunset-orange";
+  const activeTheme = PPT_THEMES_MAP[activeThemeId] || PPT_THEMES_MAP["sunset-orange"];
+  const layoutsForType = (activeTheme.layouts[currentSlide.layout] || []) as any[];
+  const variantIndex = currentSlide.variantIndex || 0;
+  const activeVariantIndex = variantIndex < layoutsForType.length ? variantIndex : 0;
+  const activeVariant = layoutsForType[activeVariantIndex];
+
+  // Background image resolver
+  const slideBgUrl = currentSlide.bgImageIndex && currentSlide.bgImageIndex > 0 && currentSlide.bgImageIndex <= activeTheme.bgImages.length
+    ? activeTheme.bgImages[currentSlide.bgImageIndex - 1]
+    : null;
+
   return (
-    <div className="min-h-screen bg-[#070707] text-white flex flex-col font-sans select-none relative pt-16">
+    <div className="h-screen bg-[#070707] text-white flex flex-col font-sans select-none relative overflow-hidden pt-16">
       
       {/* HEADER CONTROL BAR */}
       <header className="fixed top-0 inset-x-0 h-16 bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-white/[0.04] flex items-center justify-between px-4 lg:px-8 z-40 transform-gpu shadow-sm">
@@ -327,10 +441,10 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
       </header>
 
       {/* CORE WORKSPACE PANES */}
-      <div className="flex-1 flex overflow-hidden min-h-[calc(100vh-64px)]">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden h-[calc(100vh-64px)]">
         
         {/* LEFT PANEL: SLIDE THUMBNAILS (20%) */}
-        <aside className="w-56 shrink-0 bg-[#090909] border-r border-white/[0.04] p-4 overflow-y-auto hidden md:flex flex-col gap-3 custom-scrollbar">
+        <aside className="w-56 shrink-0 bg-[#090909] border-r border-white/[0.04] p-4 overflow-y-auto hidden md:flex flex-col gap-3 custom-scrollbar h-full">
           <p className="text-[8px] font-black uppercase tracking-[0.25em] text-neutral-500 mb-2">Slide Navigation</p>
           {slides.map((slide, idx) => {
             const isActive = activeSlideIndex === idx;
@@ -363,112 +477,82 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
         </aside>
 
         {/* CENTER PANEL: INTERACTIVE CANVAS AREA */}
-        <main className="flex-1 bg-black p-4 lg:p-8 flex flex-col justify-between overflow-y-auto">
+        <main className="flex-1 bg-black p-4 lg:p-6 flex flex-col overflow-hidden h-full">
           
           {/* Active slide viewport (16:9 widescreen card) */}
-          <div className="flex-1 flex items-center justify-center py-4">
-            <div 
-              ref={containerRef}
-              className={cn(
-                "w-full max-w-4xl aspect-[16/9] rounded-2xl border relative overflow-hidden flex flex-col justify-between shadow-2xl transition-all duration-300",
-                isFullscreen 
-                  ? "w-screen h-screen max-w-none rounded-none border-none bg-black p-12 sm:p-20" 
-                  : "bg-gradient-to-br from-[#120a04] via-[#080808] to-[#040404] border-white/[0.08] p-8 sm:p-12"
-              )}
-            >
-              {/* Background ppt-like slide branding elements */}
-              <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-gradient-to-bl from-orange-500/5 to-transparent rounded-bl-full pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-[30%] h-[30%] bg-gradient-to-tr from-amber-500/5 to-transparent rounded-tr-full pointer-events-none" />
-
-              {/* Top Row: Slide layout label */}
-              <div className="flex justify-between items-center text-[10px] font-mono text-neutral-500">
-                <span>{presentation.title}</span>
-                <span className="uppercase text-orange-500/50 tracking-widest">{currentSlide.layout} Layout</span>
-              </div>
-
-              {/* Main Content Area based on Layout */}
-              <div className="my-auto flex-1 flex flex-col justify-center min-h-0 pt-4">
-                
-                {currentSlide.layout === "title" && (
-                  <div className="text-center space-y-4 max-w-2xl mx-auto py-6">
-                    <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-orange-400">
-                      {currentSlide.title}
-                    </h1>
-                    <div className="h-0.5 w-20 bg-orange-500 mx-auto" />
-                    {currentSlide.subtitle && (
-                      <p className="text-xs sm:text-sm text-neutral-400 font-light tracking-wide">{currentSlide.subtitle}</p>
-                    )}
-                  </div>
+          <div ref={wrapperRef} className="w-full flex-1 flex items-center justify-center relative overflow-hidden min-h-0">
+            <div className="w-full aspect-[16/9] max-w-4xl relative overflow-hidden flex items-center justify-center">
+              <div 
+                ref={containerRef}
+                className={cn(
+                  "absolute rounded-2xl border relative overflow-hidden flex flex-col justify-between shadow-2xl transition-all duration-500",
+                  isFullscreen 
+                    ? "w-screen h-screen max-w-none rounded-none border-none bg-black p-12 sm:p-20" 
+                    : `bg-gradient-to-br ${activeTheme.bgGradient} border-white/[0.08] p-8 sm:p-12`
+                )}
+                style={{
+                  fontFamily: activeTheme.fontFamily,
+                  width: isFullscreen ? "100%" : "960px",
+                  height: isFullscreen ? "100%" : "540px",
+                  transform: isFullscreen ? "none" : `translate(-50%, -50%) scale(${scale})`,
+                  left: isFullscreen ? "0" : "50%",
+                  top: isFullscreen ? "0" : "50%",
+                  position: isFullscreen ? "fixed" : "absolute",
+                  transformOrigin: "center center",
+                  zIndex: isFullscreen ? 50 : 10
+                }}
+              >
+                {/* Background image if selected */}
+                {slideBgUrl && (
+                  <>
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center transition-all duration-500" 
+                      style={{ backgroundImage: `url(${slideBgUrl})` }} 
+                    />
+                    {/* Contrast tint overlay */}
+                    <div className="absolute inset-0 bg-black/75 backdrop-blur-[0.5px] transition-all" />
+                  </>
                 )}
 
-                {currentSlide.layout === "bullets" && (
-                  <div className="space-y-4">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-orange-400 leading-snug border-l-2 border-orange-500 pl-3">
-                      {currentSlide.title}
-                    </h2>
-                    <ul className="space-y-3 pl-4 text-xs sm:text-sm md:text-base text-neutral-300 leading-relaxed font-light list-disc">
-                      {currentSlide.bullets?.map((bullet, idx) => (
-                        <li key={idx} className="hover:text-white transition-colors">{bullet}</li>
-                      ))}
-                    </ul>
-                  </div>
+                {/* Background ppt-like slide branding elements (only if no bg image to avoid clutter) */}
+                {!slideBgUrl && (
+                  <>
+                    <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-gradient-to-bl from-white/[0.01] to-transparent rounded-bl-full pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-[30%] h-[30%] bg-gradient-to-tr from-white/[0.01] to-transparent rounded-tr-full pointer-events-none" />
+                  </>
                 )}
 
-                {currentSlide.layout === "comparison" && (
-                  <div className="space-y-4 h-full flex flex-col justify-center">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-orange-400 pl-1">
-                      {currentSlide.title}
-                    </h2>
-                    <div className="grid grid-cols-2 gap-6 pt-2">
-                      <div className="p-4 rounded-xl border border-white/[0.04] bg-white/[0.005] space-y-2.5">
-                        <span className="text-[11px] font-mono text-neutral-500 block border-b border-white/5 pb-1">{currentSlide.columns?.left[0]}</span>
-                        <ul className="space-y-2 text-[11px] sm:text-xs text-neutral-300 font-light list-disc pl-3">
-                          {currentSlide.columns?.left.slice(1).map((item, idx) => (
-                            <li key={idx}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="p-4 rounded-xl border border-white/[0.04] bg-white/[0.005] space-y-2.5">
-                        <span className="text-[11px] font-mono text-orange-400 block border-b border-orange-500/10 pb-1">{currentSlide.columns?.right[0]}</span>
-                        <ul className="space-y-2 text-[11px] sm:text-xs text-neutral-300 font-light list-disc pl-3">
-                          {currentSlide.columns?.right.slice(1).map((item, idx) => (
-                            <li key={idx} className="text-orange-100/90">{item}</li>
-                          ))}
-                        </ul>
-                      </div>
+                {/* Top Row: Slide layout label */}
+                <div className="flex justify-between items-center text-[10px] font-mono text-neutral-500 z-10">
+                  <span>{presentation.title}</span>
+                  <span className="uppercase tracking-widest text-[9px] px-2 py-0.5 rounded border border-white/5 bg-black/45" style={{ color: activeTheme.colors.primary }}>
+                    {currentSlide.layout.replace("_", " ")} Layout
+                  </span>
+                </div>
+
+                {/* Main Content Area based on Layout */}
+                <div className="my-auto flex-1 flex flex-col justify-center min-h-0 pt-4 z-10">
+                  {activeVariant ? (
+                    activeVariant.render(currentSlide, activeTheme.colors)
+                  ) : (
+                    <div className="text-center py-6">
+                      <h2 className="text-xl font-bold">{currentSlide.title}</h2>
+                      <p className="text-xs text-neutral-400">Layout "{currentSlide.layout}" is not configured for this theme.</p>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {currentSlide.layout === "metric" && (
-                  <div className="space-y-4 h-full flex flex-col justify-center">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-orange-400 mb-2">
-                      {currentSlide.title}
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center pt-2">
-                      <div className="md:col-span-5 p-5 rounded-2xl bg-orange-500/5 border border-orange-500/10 text-center flex flex-col justify-center">
-                        <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-orange-400 to-amber-500 leading-none">{currentSlide.metric?.value}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 mt-2">{currentSlide.metric?.label}</span>
-                      </div>
-                      <div className="md:col-span-7 pl-0 md:pl-2">
-                        <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-light">{currentSlide.metric?.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-              </div>
-
-              {/* Bottom Row: Slide numbers & controls */}
-              <div className="flex justify-between items-center text-[10px] font-mono text-neutral-500 pt-2 border-t border-white/[0.04]">
-                <span>Paperxify AI Presentations</span>
-                <span>Slide {activeSlideIndex + 1} of {slides.length}</span>
+                {/* Bottom Row: Slide numbers & controls */}
+                <div className="flex justify-between items-center text-[10px] font-mono text-neutral-500 pt-2 border-t border-white/[0.04] z-10">
+                  <span>Paperxify AI Presentations</span>
+                  <span>Slide {activeSlideIndex + 1} of {slides.length}</span>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Onscreen Slide Switcher */}
-          <div className="flex justify-center items-center gap-4 bg-white/[0.02] border border-white/[0.06] rounded-xl px-5 py-2.5 mx-auto max-w-xs shrink-0 mt-4">
+          <div className="flex justify-center items-center gap-4 bg-white/[0.02] border border-white/[0.06] rounded-xl px-5 py-2.5 mx-auto max-w-xs shrink-0 mt-3">
             <button 
               onClick={() => setActiveSlideIndex((prev) => Math.max(0, prev - 1))}
               disabled={activeSlideIndex === 0}
@@ -489,35 +573,44 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
           </div>
         </main>
 
-        {/* RIGHT PANEL: SPEAKER NOTES / OUTLINE (25%) */}
-        <aside className="w-80 shrink-0 bg-[#090909] border-l border-white/[0.04] flex flex-col overflow-hidden">
+        {/* RIGHT PANEL: SPEAKER NOTES / OUTLINE / DESIGN (25%) */}
+        <aside className="w-full md:w-80 shrink-0 bg-[#090909] border-t md:border-t-0 md:border-l border-white/[0.04] flex flex-col overflow-hidden h-[380px] md:h-full">
           
           {/* Workspace Tabs */}
-          <div className="flex border-b border-white/[0.05] bg-[#0c0c0c] p-2 shrink-0">
+          <div className="flex border-b border-white/[0.05] bg-[#0c0c0c] p-1.5 gap-1 shrink-0">
             <button 
               onClick={() => setActiveRightTab("notes")}
               className={cn(
-                "flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                "flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
                 activeRightTab === "notes" ? "bg-orange-500/10 text-orange-400" : "text-neutral-500 hover:text-neutral-300"
               )}
             >
-              <MessageSquare size={12} /> Speaker Notes
+              <MessageSquare size={11} /> Notes
             </button>
             <button 
               onClick={() => setActiveRightTab("outline")}
               className={cn(
-                "flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                "flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
                 activeRightTab === "outline" ? "bg-orange-500/10 text-orange-400" : "text-neutral-500 hover:text-neutral-300"
               )}
             >
-              <LayoutGrid size={12} /> Outline Map
+              <LayoutGrid size={11} /> Outline
+            </button>
+            <button 
+              onClick={() => setActiveRightTab("design")}
+              className={cn(
+                "flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                activeRightTab === "design" ? "bg-orange-500/10 text-orange-400" : "text-neutral-500 hover:text-neutral-300"
+              )}
+            >
+              <Sparkles size={11} /> Design
             </button>
           </div>
 
           {/* Active Tab View */}
           <div className="flex-1 overflow-y-auto p-5 custom-scrollbar min-h-0 flex flex-col justify-between">
             <AnimatePresence mode="wait">
-              {activeRightTab === "notes" ? (
+              {activeRightTab === "notes" && (
                 <motion.div 
                   key="notes-tab"
                   initial={{ opacity: 0 }}
@@ -536,7 +629,7 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
                     value={currentSlide.speakerNotes}
                     onChange={(e) => updateNotes(e.target.value)}
                     placeholder="Enter presenter speaker notes for this slide..."
-                    className="flex-1 w-full bg-black/40 border border-white/5 hover:border-white/10 focus:border-orange-500/50 rounded-xl p-3.5 text-xs text-neutral-300 placeholder:text-neutral-600 focus:outline-none resize-none leading-relaxed min-h-[250px] outline-none transition-all font-light"
+                    className="flex-1 w-full bg-black/40 border border-white/5 hover:border-white/10 focus:border-orange-500/50 rounded-xl p-3.5 text-xs text-neutral-305 placeholder:text-neutral-600 focus:outline-none resize-none leading-relaxed min-h-[250px] outline-none transition-all font-light"
                   />
                   <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/10 flex items-start gap-2.5 shrink-0">
                     <span className="text-xs shrink-0 mt-0.5">💡</span>
@@ -545,15 +638,17 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
                     </p>
                   </div>
                 </motion.div>
-              ) : (
+              )}
+
+              {activeRightTab === "outline" && (
                 <motion.div 
                   key="outline-tab"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="space-y-4"
+                  className="space-y-4 text-left"
                 >
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 block">Deck Outline</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 block font-bold">Deck Outline Map</span>
                   <div className="space-y-2.5 border-l border-white/10 ml-2 pl-3 py-1">
                     {slides.map((s, idx) => (
                       <div 
@@ -561,7 +656,7 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
                         onClick={() => setActiveSlideIndex(idx)}
                         className={cn(
                           "cursor-pointer text-xs font-semibold py-1 hover:text-white transition-all text-left relative",
-                          activeSlideIndex === idx ? "text-orange-400" : "text-neutral-400"
+                          activeSlideIndex === idx ? "text-orange-455" : "text-neutral-400"
                         )}
                       >
                         {activeSlideIndex === idx && (
@@ -570,6 +665,120 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
                         <span className="font-mono text-[10px] opacity-50 mr-1">0{idx + 1}.</span> {s.title}
                       </div>
                     ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {activeRightTab === "design" && (
+                <motion.div 
+                  key="design-tab"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-6 flex-1 flex flex-col h-full text-left"
+                >
+                  {/* Presentation Themes Section */}
+                  <div className="space-y-2.5">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 block">Select Presentation Theme</span>
+                    <div className="grid grid-cols-1 gap-2">
+                      {Object.values(PPT_THEMES_MAP).map((t) => {
+                        const isSelected = activeTheme.id === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => changeTheme(t.id)}
+                            className={cn(
+                              "w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between group",
+                              isSelected 
+                                ? "bg-orange-500/10 border-orange-500/40" 
+                                : "bg-black/40 border-white/5 hover:border-white/10 hover:bg-black/60"
+                            )}
+                          >
+                            <div>
+                              <span className="text-xs font-bold text-white block">{t.name}</span>
+                              <span className="text-[9px] text-neutral-500 font-mono tracking-wide">{t.fontFamily}</span>
+                            </div>
+                            <div className="flex gap-1.5 shrink-0">
+                              <span className="w-2.5 h-2.5 rounded-full border border-white/10" style={{ backgroundColor: t.colors.primary }} />
+                              <span className="w-2.5 h-2.5 rounded-full border border-white/10" style={{ backgroundColor: t.colors.accent }} />
+                              <span className="w-2.5 h-2.5 rounded-full border border-white/10" style={{ backgroundColor: t.colors.bg }} />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Active Slide Layout Variants Section */}
+                  <div className="space-y-2.5">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 block font-bold">Layout Visual Style</span>
+                    {layoutsForType.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-2">
+                        {layoutsForType.map((variant, index) => {
+                          const isSelected = activeVariantIndex === index;
+                          return (
+                            <button
+                              key={variant.id}
+                              type="button"
+                              onClick={() => changeSlideVariant(index)}
+                              className={cn(
+                                "w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between group",
+                                isSelected 
+                                  ? "bg-orange-500/10 border-orange-500/40" 
+                                  : "bg-black/40 border-white/5 hover:border-white/10 hover:bg-black/60"
+                              )}
+                            >
+                              <span className="text-xs font-medium text-neutral-200 group-hover:text-white">{variant.name}</span>
+                              <span className="text-[9px] font-mono text-neutral-500 uppercase">Style {index + 1}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-neutral-500 italic">No alternative styles for this layout type.</p>
+                    )}
+                  </div>
+
+                  {/* Active Slide Background Selection Section */}
+                  <div className="space-y-2.5">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 block font-bold">Slide Background Graphic</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* Gradient Default */}
+                      <button
+                        type="button"
+                        onClick={() => changeSlideBackground(0)}
+                        className={cn(
+                          "aspect-video rounded-lg border flex flex-col items-center justify-center p-1 text-center transition-all bg-gradient-to-br from-neutral-900 to-black",
+                          currentSlide.bgImageIndex === 0 || !currentSlide.bgImageIndex
+                            ? "border-orange-500 shadow-sm"
+                            : "border-white/5 hover:border-white/15"
+                        )}
+                      >
+                        <span className="text-[8px] font-bold text-neutral-300">Default Gradient</span>
+                      </button>
+                      
+                      {/* Background Images */}
+                      {activeTheme.bgImages.map((img: string, idx: number) => {
+                        const isSelected = currentSlide.bgImageIndex === idx + 1;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => changeSlideBackground(idx + 1)}
+                            className={cn(
+                              "aspect-video rounded-lg border overflow-hidden relative transition-all bg-black",
+                              isSelected
+                                ? "border-orange-500 shadow-sm"
+                                : "border-white/5 hover:border-white/15"
+                            )}
+                          >
+                            <img src={img} alt={`BG ${idx + 1}`} className="w-full h-full object-cover opacity-60 hover:opacity-85 transition-opacity" />
+                            <span className="absolute bottom-1 right-1 bg-black/75 px-1 rounded text-[7px] font-mono text-neutral-400">#{idx + 1}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </motion.div>
               )}

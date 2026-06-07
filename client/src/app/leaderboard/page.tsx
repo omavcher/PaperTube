@@ -1,5 +1,7 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import LeaderboardClient from "./LeaderboardClient";
+
+export const dynamic = 'force-dynamic';
 
 // --- Types ---
 interface BadgeItem {

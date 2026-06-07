@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import "./globals.css";
+import "katex/dist/katex.min.css";
 import Script from "next/script";
 
 // Separate viewport export (Next.js 14+ standard)
@@ -101,7 +102,12 @@ export const metadata: Metadata = {
     canonical: "https://paperxify.com",
     languages: {
       'en': 'https://paperxify.com',
-      'en-US': 'https://paperxify.com',
+      'en-US': 'https://paperxify.com/us',
+      'en-GB': 'https://paperxify.com/uk',
+      'en-AU': 'https://paperxify.com/au',
+      'en-CA': 'https://paperxify.com/ca',
+      'de-DE': 'https://paperxify.com/de',
+      'en-EU': 'https://paperxify.com/eu',
     },
   }
 };
@@ -148,10 +154,9 @@ export default function RootLayout({
         "@type": "ItemList",
         "name": "Site Navigation",
         "itemListElement": [
-          { "@type": "SiteNavigationElement", "position": 1, "name": "Explore", "url": "https://paperxify.com/explore" },
-          { "@type": "SiteNavigationElement", "position": 2, "name": "Pricing", "url": "https://paperxify.com/pricing" },
-          { "@type": "SiteNavigationElement", "position": 3, "name": "About", "url": "https://paperxify.com/about" },
-          { "@type": "SiteNavigationElement", "position": 4, "name": "Contact", "url": "https://paperxify.com/contact" }
+          { "@type": "SiteNavigationElement", "position": 1, "name": "Pricing", "url": "https://paperxify.com/pricing" },
+          { "@type": "SiteNavigationElement", "position": 2, "name": "About", "url": "https://paperxify.com/about" },
+          { "@type": "SiteNavigationElement", "position": 3, "name": "Contact", "url": "https://paperxify.com/contact" }
         ]
       }
     ]
@@ -164,6 +169,8 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+      </head>
+      <body className="antialiased bg-black text-white selection:bg-red-900/50">
         {/* Google Analytics / Tag Manager (AW-363591459) */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=AW-363591459"
@@ -178,8 +185,6 @@ export default function RootLayout({
             gtag('config', 'AW-363591459');
           `}
         </Script>
-      </head>
-      <body className="antialiased bg-black text-white selection:bg-red-900/50">
         <Providers>{children}</Providers>
       </body>
     </html>

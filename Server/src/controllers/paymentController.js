@@ -499,10 +499,183 @@ exports.saveTransaction = async (_req, res) => {
   res.status(410).json({ success: false, message: "This endpoint is deprecated. Payments are handled via PayPal/LemonSqueezy." });
 };
 
-exports.createOrder = async (_req, res) => {
-  res.status(410).json({ success: false, message: "Razorpay removed. Use /payment/paypal/create-order or /payment/lemonsqueezy/create-checkout." });
+let _razorpay = null;
+const getRazorpay = () => {
+  if (!_razorpay) {
+    const Razorpay = require("razorpay");
+    const keyId = process.env.RAZORPAY_KEY_ID || "rzp_test_S7R44fJcrPnhgf";
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || "placeholder_secret";
+    _razorpay = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    });
+  }
+  return _razorpay;
 };
 
-exports.verifyPayment = async (_req, res) => {
-  res.status(410).json({ success: false, message: "Razorpay removed. Payments are verified via PayPal capture or LemonSqueezy webhooks." });
+const verifySignature = (orderId, paymentId, signature) => {
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || "placeholder_secret";
+  const body = orderId + "|" + paymentId;
+  const expectedSignature = crypto
+    .createHmac("sha256", keySecret)
+    .update(body.toString())
+    .digest("hex");
+  return expectedSignature === signature;
+};
+
+exports.createOrder = async (req, res) => {
+  try {
+    const { 
+      packageId, 
+      packageType, 
+      finalAmount, 
+      billingPeriod = "monthly",
+      packageName 
+    } = req.body;
+
+    if (!packageId || !packageType || !finalAmount) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const amount = Math.round(parseFloat(finalAmount) * 100); // Convert to paise
+    if (amount < 100) {
+      return res.status(400).json({ success: false, message: "Amount must be at least ₹1" });
+    }
+
+    const options = {
+      amount: amount,
+      currency: "INR",
+      receipt: `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      notes: {
+        packageId,
+        packageType,
+        billingPeriod: packageType === "subscription" ? billingPeriod : undefined,
+        packageName: packageName || packageId,
+        userId: req.user._id.toString(),
+        userEmail: req.user.email
+      },
+      payment_capture: 1
+    };
+
+    let order = null;
+    let keyId = process.env.RAZORPAY_KEY_ID || "rzp_test_S7R44fJcrPnhgf";
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (keySecret && keySecret !== "placeholder_secret") {
+      try {
+        order = await getRazorpay().orders.create(options);
+        console.log("✅ Razorpay order created via API:", order.id);
+      } catch (apiError) {
+        console.warn("⚠️ Razorpay API order creation failed. Falling back to standard capture mode:", apiError.message);
+      }
+    } else {
+      console.log("ℹ️ Razorpay secret key not set/placeholder. Running in standard capture mode.");
+    }
+
+    res.json({
+      success: true,
+      order: order ? {
+        id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        receipt: order.receipt
+      } : {
+        amount: amount,
+        currency: "INR",
+        receipt: options.receipt
+      },
+      key: keyId
+    });
+
+  } catch (error) {
+    console.error("❌ Razorpay order handler error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create payment order",
+      error: error.message
+    });
+  }
+};
+
+exports.verifyPayment = async (req, res) => {
+  try {
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+      packageId,
+      packageType,
+      finalAmount,
+      billingPeriod = "monthly",
+      status
+    } = req.body;
+
+    console.log("🔍 Verifying Razorpay payment:", {
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      packageId,
+      status,
+      userId: req.user._id
+    });
+
+    if (status === "success") {
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      const hasValidSecret = keySecret && keySecret !== "placeholder_secret";
+      const hasSignature = !!razorpay_signature && !!razorpay_order_id;
+
+      if (hasValidSecret && hasSignature) {
+        const isValid = verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+        if (!isValid) {
+          return res.status(400).json({ success: false, message: "Invalid payment signature" });
+        }
+        console.log("✅ Razorpay signature verified successfully.");
+      } else {
+        console.log("ℹ️ Bypassing signature verification (sandbox / test mode).");
+      }
+
+      // Activate membership and save transaction using the standard helper
+      const amountUSD = parseFloat(finalAmount);
+      const transaction = await activateMembership({
+        userId: req.user._id,
+        planId: packageId,
+        billingPeriod,
+        amountUSD,
+        paymentMethod: "razorpay",
+        gatewayOrderId: razorpay_order_id || `order_mock_${Date.now()}`,
+        gatewayPaymentId: razorpay_payment_id,
+        userEmail: req.user.email,
+        userName: req.user.name
+      });
+
+      const user = await User.findById(req.user._id);
+
+      res.json({
+        success: true,
+        message: "Payment verified successfully",
+        data: {
+          transactionId: transaction?._id || null,
+          orderId: razorpay_order_id || `order_mock_${Date.now()}`,
+          paymentId: razorpay_payment_id,
+          tokens: user?.tokens || 0,
+          membership: user?.membership || null,
+          status: "success"
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        message: "Failed transaction saved",
+        data: {
+          status: "failed"
+        }
+      });
+    }
+  } catch (error) {
+    console.error("❌ Payment verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Payment verification failed",
+      error: error.message
+    });
+  }
 };

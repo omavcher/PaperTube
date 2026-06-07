@@ -28,8 +28,6 @@ export default function AIPPTClient() {
         </div>
       )}
 
-      {/* 3. Footer */}
-      <Footer />
     </div>
   );
 }

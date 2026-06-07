@@ -1,5 +1,7 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import BlogResourcesClient from "./BlogResourcesClient";
+
+export const dynamic = 'force-dynamic';
 
 // --- Types ---
 interface BlogPost {

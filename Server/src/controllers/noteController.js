@@ -1063,6 +1063,7 @@ exports.getUserNotes = async (req, res) => {
 
     let matchQuery = { owner: new mongoose.Types.ObjectId(userId) };
     let fcMatchQuery = { owner: new mongoose.Types.ObjectId(userId) };
+    let testMatchQuery = { owner: new mongoose.Types.ObjectId(userId) };
 
     // Apply folder filtering if specified
     if (folderId) {
@@ -1070,9 +1071,11 @@ exports.getUserNotes = async (req, res) => {
         const rootFilter = { $or: [{ folderId: null }, { folderId: { $exists: false } }] };
         matchQuery = { ...matchQuery, ...rootFilter };
         fcMatchQuery = { ...fcMatchQuery, ...rootFilter };
+        testMatchQuery = { ...testMatchQuery, ...rootFilter };
       } else {
         matchQuery.folderId = new mongoose.Types.ObjectId(folderId);
         fcMatchQuery.folderId = new mongoose.Types.ObjectId(folderId);
+        testMatchQuery.folderId = new mongoose.Types.ObjectId(folderId);
       }
     }
     
@@ -1081,6 +1084,7 @@ exports.getUserNotes = async (req, res) => {
       
       const searchConditions = [{ $or: [{ title: searchRegex }, { content: searchRegex }, { transcript: searchRegex }] }];
       const fcSearchConditions = [{ $or: [{ title: searchRegex }, { transcript: searchRegex }] }];
+      const testSearchConditions = [{ $or: [{ title: searchRegex }, { transcript: searchRegex }] }];
 
       if (folderId === 'root') {
         matchQuery = {
@@ -1095,6 +1099,13 @@ exports.getUserNotes = async (req, res) => {
             { owner: new mongoose.Types.ObjectId(userId) },
             { $or: [{ folderId: null }, { folderId: { $exists: false } }] },
             ...fcSearchConditions
+          ]
+        };
+        testMatchQuery = {
+          $and: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            { $or: [{ folderId: null }, { folderId: { $exists: false } }] },
+            ...testSearchConditions
           ]
         };
       } else if (folderId) {
@@ -1112,6 +1123,13 @@ exports.getUserNotes = async (req, res) => {
             ...fcSearchConditions
           ]
         };
+        testMatchQuery = {
+          $and: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            { folderId: new mongoose.Types.ObjectId(folderId) },
+            ...testSearchConditions
+          ]
+        };
       } else {
         matchQuery = {
           $and: [
@@ -1125,6 +1143,12 @@ exports.getUserNotes = async (req, res) => {
             ...fcSearchConditions
           ]
         };
+        testMatchQuery = {
+          $and: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            ...testSearchConditions
+          ]
+        };
       }
     }
 
@@ -1135,7 +1159,7 @@ exports.getUserNotes = async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    // Use unionWith to combine notes and flashcardsets
+    // Use unionWith to combine notes, flashcardsets, and practice tests
     const pipeline = [
       { $match: matchQuery },
       { $addFields: { type: 'note' } },
@@ -1147,6 +1171,16 @@ exports.getUserNotes = async (req, res) => {
             { $match: fcMatchQuery },
             { $addFields: { type: 'flashcard' } },
             { $project: { __v: 0, flashcards: 0, transcript: 0 } }
+          ]
+        }
+      },
+      {
+        $unionWith: {
+          coll: 'practicetests',
+          pipeline: [
+            { $match: testMatchQuery },
+            { $addFields: { type: 'test' } },
+            { $project: { __v: 0, questions: 0, transcript: 0 } }
           ]
         }
       },
@@ -1173,10 +1207,10 @@ exports.getUserNotes = async (req, res) => {
       thumbnail: item.thumbnail,
       videoUrl: item.videoUrl,
       videoId: item.videoId,
-      type: item.type, // 'note' or 'flashcard'
+      type: item.type, // 'note', 'flashcard', or 'test'
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
-      lastEdit: item.updatedAt ? item.updatedAt.toISOString().split('T')[0] : null
+      lastEdit: item.updatedAt ? new Date(item.updatedAt).toISOString().split('T')[0] : null
     }));
 
     return res.status(200).json({
@@ -3697,8 +3731,14 @@ exports.moveNoteToFolder = async (req, res) => {
         { $set: { folderId: targetFolderId } },
         { new: true }
       );
+    } else if (itemType === 'test') {
+      updatedItem = await mongoose.model('PracticeTest').findOneAndUpdate(
+        { _id: itemId, owner: req.user._id },
+        { $set: { folderId: targetFolderId } },
+        { new: true }
+      );
     } else {
-      return res.status(400).json({ success: false, message: "Invalid itemType (must be 'note' or 'flashcard')" });
+      return res.status(400).json({ success: false, message: "Invalid itemType (must be 'note', 'flashcard', or 'test')" });
     }
     
     if (!updatedItem) {

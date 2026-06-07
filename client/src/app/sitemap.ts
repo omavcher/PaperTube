@@ -40,16 +40,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/success-stories',
     '/support',
     '/blog',
-    '/explore',
     '/leaderboard',
     '/notegpt-alternative',
     '/youtube-to-notes',
-    '/ai-study-notes'
+    '/ai-study-notes',
+    '/us',
+    '/uk',
+    '/au',
+    '/ca',
+    '/de',
+    '/eu'
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
-    priority: route === '' ? 1 : 0.8,
+    priority: route === '' || ['/us', '/uk', '/au', '/ca', '/de', '/eu'].includes(route) ? 1 : 0.8,
   }));
 
   const tools = [
@@ -62,6 +67,44 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.7,
+  }));
+
+  const studyTools = [
+    'homework-helper', 'math-solver', 'exam-planner', 'language-tutor'
+  ].map((tool) => ({
+    url: `${baseUrl}/ai-study/${tool}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.8,
+  }));
+
+  const writerTools = [
+    'ai-detector', 'ai-humanizer', 'essay-writer', 'plagiarism'
+  ].map((tool) => ({
+    url: `${baseUrl}/ai-writer/${tool}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.8,
+  }));
+
+  const diagramFormats = [
+    'flowchart', 'sequence', 'class', 'state', 'er', 'journey', 'pie', 'quadrant', 'timeline', 'sankey', 'xy', 'block'
+  ].map((format) => ({
+    url: `${baseUrl}/ai-diagram/${format}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.8,
+  }));
+
+  const extraAppRoutes = [
+    '/youtube-to-quiz',
+    '/youtube-to-notes',
+    '/presentation-generator'
+  ].map((route) => ({
+    url: `${baseUrl}${route}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily' as const,
+    priority: 0.9,
   }));
 
   // Fetch dynamic content
@@ -85,6 +128,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...baseRoutes,
     ...tools,
     ...storyRoutes,
-    ...blogRoutes
+    ...blogRoutes,
+    ...studyTools,
+    ...writerTools,
+    ...diagramFormats,
+    ...extraAppRoutes
   ];
 }

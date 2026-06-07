@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { LoginDialog } from "@/components/LoginDialog";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -26,7 +27,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     "/admin", 
     "/notes/", 
     "/note/",
-    "/flashcards/"
+    "/flashcards/",
+    "/presentation-generator/"
   ].some(path => pathname?.startsWith(path));
 
   // Hide Mobile Bottom Dock on tools that require full-screen height
@@ -40,6 +42,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
 
   useEffect(() => {
+    setMounted(true);
     const syncAuthState = () => {
       const token = localStorage.getItem("authToken");
       const userData = localStorage.getItem("user");
@@ -120,7 +123,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <GoogleOAuthProvider clientId={clientId || ""}>
       <Toaster theme="dark" position="top-center" richColors />
       
-      <GoogleOneTapLoginWrapper onSuccess={handleLoginSuccess} />
+      {mounted && <GoogleOneTapLoginWrapper onSuccess={handleLoginSuccess} />}
 
       <LoginDialog isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onSuccess={handleLoginSuccess} />
 

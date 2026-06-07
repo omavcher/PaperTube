@@ -30,7 +30,10 @@ import {
   MoreVertical,
   Trash2,
   Edit3,
-  FolderOpen
+  FolderOpen,
+  Brain,
+  BookOpen,
+  ClipboardList
 } from "lucide-react";
 import { IconFolderCode } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -161,10 +164,58 @@ const GridCard = React.memo(({
   onProfileClick: (creatorName: string) => void;
   highlightText: (text: string, highlight: string) => string | JSX.Element;
   folders: { _id: string; name: string }[];
-  onMoveItem: (itemId: string, itemType: 'note' | 'flashcard', folderId: string | null) => void;
-  onDeleteItem: (itemId: string, itemType: 'note' | 'flashcard') => void;
+  onMoveItem: (itemId: string, itemType: 'note' | 'flashcard' | 'test', folderId: string | null) => void;
+  onDeleteItem: (itemId: string, itemType: 'note' | 'flashcard' | 'test') => void;
   showCreator?: boolean; isPersonal?: boolean;
 }) => {
+  const cardConfig = useMemo(() => {
+    switch (note.type) {
+      case 'flashcard':
+        return {
+          color: '#fbbf24', // Amber
+          bgGradient: 'linear-gradient(135deg, #181003 0%, #0a0600 100%)',
+          badgeText: 'Flashcards',
+          badgeStyle: { background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24' },
+          glowStyle: { boxShadow: 'inset 0 0 0 1px rgba(245,158,11,0.25), 0 8px 32px rgba(245,158,11,0.06)' },
+          hoverTitleClass: 'group-hover:text-amber-400',
+          overlayText: 'Study Deck',
+          overlayBg: 'rgba(245,158,11,0.85)',
+          Icon: Layers,
+          fallbackIconBg: 'rgba(245,158,11,0.06)',
+          fallbackIconBorder: '1px solid rgba(245,158,11,0.12)',
+        };
+      case 'test':
+        return {
+          color: '#10b981', // Emerald
+          bgGradient: 'linear-gradient(135deg, #03120a 0%, #000502 100%)',
+          badgeText: 'Practice Test',
+          badgeStyle: { background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#10b981' },
+          glowStyle: { boxShadow: 'inset 0 0 0 1px rgba(16,185,129,0.25), 0 8px 32px rgba(16,185,129,0.06)' },
+          hoverTitleClass: 'group-hover:text-emerald-400',
+          overlayText: 'Take Test',
+          overlayBg: 'rgba(16,185,129,0.85)',
+          Icon: ClipboardList,
+          fallbackIconBg: 'rgba(16,185,129,0.06)',
+          fallbackIconBorder: '1px solid rgba(16,185,129,0.12)',
+        };
+      case 'note':
+      default:
+        return {
+          color: '#ef4444', // Red/Ruby
+          bgGradient: 'linear-gradient(135deg, #110303 0%, #050000 100%)',
+          badgeText: 'Notes',
+          badgeStyle: { background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444' },
+          glowStyle: { boxShadow: 'inset 0 0 0 1px rgba(239, 68, 68, 0.25), 0 8px 32px rgba(239, 68, 68, 0.06)' },
+          hoverTitleClass: 'group-hover:text-red-400',
+          overlayText: 'Read Notes',
+          overlayBg: 'rgba(239, 68, 68, 0.85)',
+          Icon: BookOpen,
+          fallbackIconBg: 'rgba(239, 68, 68, 0.06)',
+          fallbackIconBorder: '1px solid rgba(239, 68, 68, 0.12)',
+        };
+    }
+  }, [note.type]);
+
   const thumbnailUrl = note.thumbnail || getYouTubeThumbnail(note.videoUrl);
   const handleCardClick = () => onClick(note, isPersonal);
   const handleCreatorClick = (e: React.MouseEvent) => {
@@ -182,7 +233,7 @@ const GridCard = React.memo(({
       style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', border: '1px solid rgba(255,255,255,0.06)' }}
     >
       {/* Hover border glow */}
-      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style={{ boxShadow: 'inset 0 0 0 1px rgba(220,38,38,0.3), 0 8px 32px rgba(220,38,38,0.08)' }} />
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style={cardConfig.glowStyle} />
 
       {/* Thumbnail */}
       <div className="relative overflow-hidden bg-neutral-950 w-full aspect-video flex-shrink-0">
@@ -190,9 +241,9 @@ const GridCard = React.memo(({
           <img src={thumbnailUrl} alt={note.title}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.06] opacity-80 group-hover:opacity-100" loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#111,#0a0a0a)' }}>
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.15)' }}>
-              <FileText size={20} style={{ color: '#dc2626', opacity: 0.6 }} />
+          <div className="w-full h-full flex items-center justify-center" style={{ background: cardConfig.bgGradient }}>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: cardConfig.fallbackIconBg, border: cardConfig.fallbackIconBorder }}>
+              <cardConfig.Icon size={20} style={{ color: cardConfig.color, opacity: 0.7 }} />
             </div>
           </div>
         )}
@@ -200,27 +251,20 @@ const GridCard = React.memo(({
 
         {/* Top badges row */}
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10">
-          {note.type === 'flashcard' && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#fbbf24' }}>
-              <Layers size={8} /> Cards
-            </span>
-          )}
-          <span className="ml-auto text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest backdrop-blur-md" style={cardConfig.badgeStyle}>
+            <cardConfig.Icon size={9} /> {cardConfig.badgeText}
+          </span>
+          <span className="ml-auto text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {formatTimeAgo(note.updatedAt || note.createdAt)}
           </span>
         </div>
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20" style={{ background: 'rgba(0,0,0,0.45)' }}>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs" style={{ background: 'rgba(220,38,38,0.9)', color: '#fff', backdropFilter: 'blur(8px)' }}>
-            <FileText size={13} /> Open Note
-          </div>
-        </div>
+
       </div>
 
       {/* Content */}
       <div className="flex flex-col flex-1 p-3.5">
-        <h3 className="font-semibold text-white leading-snug group-hover:text-red-400 transition-colors duration-200 text-[13px] line-clamp-2 mb-3">
+        <h3 className={cn("font-semibold text-white leading-snug transition-colors duration-200 text-[13px] line-clamp-2 mb-3", cardConfig.hoverTitleClass)}>
           {searchQuery ? highlightText(note.title, searchQuery) : note.title}
         </h3>
 
@@ -230,13 +274,13 @@ const GridCard = React.memo(({
             <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCreatorClick}>
               {note.creator?.avatarUrl
                 ? <img src={note.creator.avatarUrl} alt="" className="w-5 h-5 rounded-full border border-white/10 flex-shrink-0" />
-                : <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0" style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.2)', color: '#f87171' }}>{getCreatorInitial(note.creator)}</div>
+                : <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0" style={{ background: `${cardConfig.color}25`, color: cardConfig.color }}>{getCreatorInitial(note.creator)}</div>
               }
               <span className="text-[10px] font-medium text-neutral-400 truncate max-w-[80px]">{getCreatorName(note.creator)}</span>
             </div>
           ) : (
             <div className="flex items-center justify-between flex-1 min-w-0">
-              <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: 'rgba(220,38,38,0.7)' }}>
+              <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: `${cardConfig.color}cc` }}>
                 <User size={10} /> Mine
               </span>
               {isPersonal && (
@@ -252,7 +296,7 @@ const GridCard = React.memo(({
                   <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/[0.08] text-white rounded-xl p-1.5 w-48 shadow-2xl z-50">
                     <div className="text-[9px] font-bold text-neutral-500 px-3 py-1.5 uppercase tracking-widest">Move to Folder</div>
                     <DropdownMenuItem
-                      onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note', null); }}
+                      onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : note.type === 'test' ? 'test' : 'note', null); }}
                       className={cn("text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-white/5", !note.folderId ? "text-red-400" : "text-neutral-400")}
                     >
                       Uncategorized
@@ -260,7 +304,7 @@ const GridCard = React.memo(({
                     {folders.map(folder => (
                       <DropdownMenuItem
                         key={folder._id}
-                        onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note', folder._id); }}
+                        onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : note.type === 'test' ? 'test' : 'note', folder._id); }}
                         className={cn("text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-white/5", note.folderId === folder._id ? "text-red-400" : "text-neutral-400")}
                       >
                         {folder.name}
@@ -268,7 +312,7 @@ const GridCard = React.memo(({
                     ))}
                     <div className="h-px bg-white/[0.08] my-1" />
                     <DropdownMenuItem
-                      onClick={(e) => { e.stopPropagation(); onDeleteItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note'); }}
+                      onClick={(e) => { e.stopPropagation(); onDeleteItem(note._id, note.type === 'flashcard' ? 'flashcard' : note.type === 'test' ? 'test' : 'note'); }}
                       className="text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-red-500/10 text-red-400 focus:text-red-400"
                     >
                       <Trash2 size={12} className="mr-2 inline" /> Delete
@@ -310,11 +354,59 @@ const ListCard = React.memo(({
   onProfileClick: (creatorName: string) => void;
   highlightText: (text: string, highlight: string) => string | JSX.Element;
   folders: { _id: string; name: string }[];
-  onMoveItem: (itemId: string, itemType: 'note' | 'flashcard', folderId: string | null) => void;
-  onDeleteItem: (itemId: string, itemType: 'note' | 'flashcard') => void;
+  onMoveItem: (itemId: string, itemType: 'note' | 'flashcard' | 'test', folderId: string | null) => void;
+  onDeleteItem: (itemId: string, itemType: 'note' | 'flashcard' | 'test') => void;
   showCreator?: boolean;
   isPersonal?: boolean;
 }) => {
+  const cardConfig = useMemo(() => {
+    switch (note.type) {
+      case 'flashcard':
+        return {
+          color: '#fbbf24', // Amber
+          bgGradient: 'linear-gradient(135deg, #181003 0%, #0a0600 100%)',
+          badgeText: 'Flashcards',
+          badgeStyle: { background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24' },
+          glowStyle: { boxShadow: 'inset 0 0 0 1px rgba(245,158,11,0.25), 0 8px 32px rgba(245,158,11,0.06)' },
+          hoverTitleClass: 'group-hover:text-amber-400',
+          overlayText: 'Study Deck',
+          overlayBg: 'rgba(245,158,11,0.85)',
+          Icon: Layers,
+          fallbackIconBg: 'rgba(245,158,11,0.06)',
+          fallbackIconBorder: '1px solid rgba(245,158,11,0.12)',
+        };
+      case 'test':
+        return {
+          color: '#10b981', // Emerald
+          bgGradient: 'linear-gradient(135deg, #03120a 0%, #000502 100%)',
+          badgeText: 'Practice Test',
+          badgeStyle: { background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#10b981' },
+          glowStyle: { boxShadow: 'inset 0 0 0 1px rgba(16,185,129,0.25), 0 8px 32px rgba(16,185,129,0.06)' },
+          hoverTitleClass: 'group-hover:text-emerald-400',
+          overlayText: 'Take Test',
+          overlayBg: 'rgba(16,185,129,0.85)',
+          Icon: ClipboardList,
+          fallbackIconBg: 'rgba(16,185,129,0.06)',
+          fallbackIconBorder: '1px solid rgba(16,185,129,0.12)',
+        };
+      case 'note':
+      default:
+        return {
+          color: '#ef4444', // Red/Ruby
+          bgGradient: 'linear-gradient(135deg, #110303 0%, #050000 100%)',
+          badgeText: 'Notes',
+          badgeStyle: { background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444' },
+          glowStyle: { boxShadow: 'inset 0 0 0 1px rgba(239, 68, 68, 0.25), 0 8px 32px rgba(239, 68, 68, 0.06)' },
+          hoverTitleClass: 'group-hover:text-red-400',
+          overlayText: 'Read Notes',
+          overlayBg: 'rgba(239, 68, 68, 0.85)',
+          Icon: BookOpen,
+          fallbackIconBg: 'rgba(239, 68, 68, 0.06)',
+          fallbackIconBorder: '1px solid rgba(239, 68, 68, 0.12)',
+        };
+    }
+  }, [note.type]);
+
   const thumbnailUrl = note.thumbnail || getYouTubeThumbnail(note.videoUrl);
   const handleCardClick = () => onClick(note, isPersonal);
   const handleCreatorClick = (e: React.MouseEvent) => {
@@ -332,7 +424,10 @@ const ListCard = React.memo(({
       style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
     >
       {/* Left accent line on hover */}
-      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+      <div 
+        className="absolute left-0 top-0 bottom-0 w-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200" 
+        style={{ backgroundColor: cardConfig.color }}
+      />
 
       {/* Thumbnail */}
       <div className="relative overflow-hidden bg-neutral-950 w-20 sm:w-32 md:w-44 flex-shrink-0" style={{ borderRight: '1px solid rgba(255,255,255,0.04)' }}>
@@ -340,24 +435,24 @@ const ListCard = React.memo(({
           <img src={thumbnailUrl} alt={note.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-70 group-hover:opacity-90" loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center min-h-[70px]" style={{ background: 'linear-gradient(135deg,#0d0d0d,#111)' }}>
-            <FileText size={16} style={{ color: '#dc2626', opacity: 0.4 }} />
+          <div className="w-full h-full flex items-center justify-center min-h-[70px]" style={{ background: cardConfig.bgGradient }}>
+            <cardConfig.Icon size={16} style={{ color: cardConfig.color, opacity: 0.4 }} />
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/40 pointer-events-none" />
-        {note.type === 'flashcard' && (
-          <div className="absolute top-1.5 left-1.5">
-            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-bold uppercase" style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-              <Layers size={7} /> Cards
-            </span>
-          </div>
-        )}
+        
+        {/* Left-top corner badge on thumbnail */}
+        <div className="absolute top-1.5 left-1.5">
+          <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-bold uppercase tracking-wider" style={cardConfig.badgeStyle}>
+            <cardConfig.Icon size={7} /> {cardConfig.badgeText}
+          </span>
+        </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0 flex items-center px-4 py-3 gap-4">
         <div className="flex-1 min-w-0 space-y-1.5">
-          <h3 className="font-semibold text-white leading-snug group-hover:text-red-400 transition-colors duration-200 text-sm line-clamp-1">
+          <h3 className={cn("font-semibold text-white leading-snug transition-colors duration-200 text-sm line-clamp-1", cardConfig.hoverTitleClass)}>
             {searchQuery ? highlightText(note.title, searchQuery) : note.title}
           </h3>
 
@@ -366,13 +461,13 @@ const ListCard = React.memo(({
               <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCreatorClick}>
                 {note.creator?.avatarUrl
                   ? <img src={note.creator.avatarUrl} alt="" className="w-4 h-4 rounded-full border border-white/10 flex-shrink-0" />
-                  : <div className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold flex-shrink-0" style={{ background: 'rgba(220,38,38,0.15)', color: '#f87171' }}>{getCreatorInitial(note.creator)}</div>
+                  : <div className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold flex-shrink-0" style={{ background: `${cardConfig.color}25`, color: cardConfig.color }}>{getCreatorInitial(note.creator)}</div>
                 }
                 <span className="text-[10px] font-medium text-neutral-400 truncate max-w-[120px]">{getCreatorName(note.creator)}</span>
               </div>
             ) : (
-              <span className="text-[10px] font-medium flex items-center gap-1" style={{ color: 'rgba(220,38,38,0.6)' }}>
-                <User size={9} /> Personal
+              <span className="text-[10px] font-medium flex items-center gap-1" style={{ color: `${cardConfig.color}cc` }}>
+                <User size={9} /> Mine
               </span>
             )}
             <span className="w-0.5 h-0.5 rounded-full bg-neutral-700 hidden sm:block" />
@@ -405,7 +500,7 @@ const ListCard = React.memo(({
               <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/[0.08] text-white rounded-xl p-1.5 w-48 shadow-2xl z-50">
                 <div className="text-[9px] font-bold text-neutral-500 px-3 py-1.5 uppercase tracking-widest">Move to Folder</div>
                 <DropdownMenuItem
-                  onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note', null); }}
+                  onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : note.type === 'test' ? 'test' : 'note', null); }}
                   className={cn("text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-white/5", !note.folderId ? "text-red-400" : "text-neutral-400")}
                 >
                   Uncategorized
@@ -413,7 +508,7 @@ const ListCard = React.memo(({
                 {folders.map(folder => (
                   <DropdownMenuItem
                     key={folder._id}
-                    onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note', folder._id); }}
+                    onClick={(e) => { e.stopPropagation(); onMoveItem(note._id, note.type === 'flashcard' ? 'flashcard' : note.type === 'test' ? 'test' : 'note', folder._id); }}
                     className={cn("text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-white/5", note.folderId === folder._id ? "text-red-400" : "text-neutral-400")}
                   >
                     {folder.name}
@@ -421,7 +516,7 @@ const ListCard = React.memo(({
                 ))}
                 <div className="h-px bg-white/[0.08] my-1" />
                 <DropdownMenuItem
-                  onClick={(e) => { e.stopPropagation(); onDeleteItem(note._id, note.type === 'flashcard' ? 'flashcard' : 'note'); }}
+                  onClick={(e) => { e.stopPropagation(); onDeleteItem(note._id, note.type === 'flashcard' ? 'flashcard' : note.type === 'test' ? 'test' : 'note'); }}
                   className="text-[11px] font-medium rounded-lg cursor-pointer px-3 py-1.5 focus:bg-red-500/10 text-red-400 focus:text-red-400"
                 >
                   <Trash2 size={12} className="mr-2 inline" /> Delete
@@ -432,7 +527,7 @@ const ListCard = React.memo(({
 
           <div className="hidden md:flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200"
             style={{ background: 'rgba(255,255,255,0.03)', color: '#555' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.1)'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${cardConfig.color}15`; (e.currentTarget as HTMLElement).style.color = cardConfig.color; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLElement).style.color = '#555'; }}
           >
             <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
@@ -579,7 +674,7 @@ export default function NotesWorkspace() {
     }
   };
 
-  const handleMoveItem = async (itemId: string, itemType: 'note' | 'flashcard', folderId: string | null) => {
+  const handleMoveItem = async (itemId: string, itemType: 'note' | 'flashcard' | 'test', folderId: string | null) => {
     try {
       const authToken = localStorage.getItem('authToken');
       const response = await api.put('/notes/notes/move', {
@@ -597,16 +692,19 @@ export default function NotesWorkspace() {
     }
   };
 
-  const handleDeleteItem = async (itemId: string, type: 'note' | 'flashcard') => {
-    if (!confirm(`Are you sure you want to delete this ${type === 'flashcard' ? 'flashcard set' : 'note'}?`)) return;
+  const handleDeleteItem = async (itemId: string, type: 'note' | 'flashcard' | 'test') => {
+    const typeLabel = type === 'flashcard' ? 'flashcard set' : type === 'test' ? 'practice test' : 'note';
+    if (!confirm(`Are you sure you want to delete this ${typeLabel}?`)) return;
     try {
       const authToken = localStorage.getItem('authToken');
       const endpoint = type === 'flashcard' 
         ? `/flashcards/${itemId}`
+        : type === 'test'
+        ? `/test/${itemId}`
         : `/notes/${itemId}`;
       const response = await api.delete(endpoint, { headers: { 'Auth': authToken } });
       if (response.data.success) {
-        toast.success(`${type === 'flashcard' ? 'Flashcards' : 'Note'} deleted successfully`);
+        toast.success(`${type === 'flashcard' ? 'Flashcards' : type === 'test' ? 'Practice test' : 'Note'} deleted successfully`);
         fetchFolders();
         fetchPersonalNotes(1, false, searchQuery);
       }
@@ -644,6 +742,8 @@ export default function NotesWorkspace() {
   const handleCardClick = useCallback((note: Note, isPersonal: boolean) => {
     if (note.type === 'flashcard') {
       router.push(`/flashcards/${note.slug}`);
+    } else if (note.type === 'test') {
+      router.push(`/yt-practice-test/${note.slug}`);
     } else {
       const creatorUsername = note.creator?.username || (note.creator?.name ? formatCreatorNameForUrl(note.creator.name) : 'anonymous');
       router.push(isPersonal ? `/notes/${note.slug}` : `/note/${creatorUsername}/${note.slug}`);

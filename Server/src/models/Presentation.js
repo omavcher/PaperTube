@@ -15,7 +15,14 @@ const SlideSchema = new mongoose.Schema({
   },
   layout: {
     type: String,
-    enum: ["title", "bullets", "comparison", "metric"],
+    enum: [
+      "title", "section_break", "conclusion",
+      "bullets", "paragraph", "quote", "two_column_text",
+      "comparison", "pros_cons", "metric_callout", "matrix_2x2",
+      "timeline", "steps", "roadmap",
+      "image_left", "image_right", "gallery_grid",
+      "metric"
+    ],
     required: true
   },
   bullets: [{
@@ -33,7 +40,68 @@ const SlideSchema = new mongoose.Schema({
   speakerNotes: {
     type: String,
     default: ""
-  }
+  },
+  variantIndex: {
+    type: Number,
+    default: 0
+  },
+  bgImageIndex: {
+    type: Number,
+    default: 0
+  },
+  author: {
+    type: String,
+    default: ""
+  },
+  content: {
+    type: String,
+    default: ""
+  },
+  quote_text: {
+    type: String,
+    default: ""
+  },
+  role: {
+    type: String,
+    default: ""
+  },
+  left_text: {
+    type: String,
+    default: ""
+  },
+  right_text: {
+    type: String,
+    default: ""
+  },
+  pros: [{
+    type: String
+  }],
+  cons: [{
+    type: String
+  }],
+  metrics: [{
+    value: { type: String, default: "" },
+    label: { type: String, default: "" }
+  }],
+  quadrants: [{
+    type: String
+  }],
+  events: [{
+    year: { type: String, default: "" },
+    description: { type: String, default: "" }
+  }],
+  steps: [{
+    type: String
+  }],
+  phases: [{
+    phase: { type: String, default: "" },
+    goal: { type: String, default: "" }
+  }],
+  image_url: { type: String, default: "" },
+  alt_text: { type: String, default: "" },
+  images: [{
+    type: String
+  }]
 });
 
 const PresentationSchema = new mongoose.Schema(

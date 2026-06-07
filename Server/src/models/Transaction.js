@@ -21,7 +21,7 @@ const TransactionSchema = new mongoose.Schema({
   discountAmount:   { type: Number, default: 0 },
   gstAmount:        { type: Number, default: 0 },
   status:           { type: String, enum: ["success", "failed", "pending"], required: true },
-  paymentMethod:    { type: String, enum: ["paypal", "lemonsqueezy"], default: "paypal" },
+  paymentMethod:    { type: String, enum: ["paypal", "lemonsqueezy", "razorpay"], default: "paypal" },
   couponCode:       { type: String, default: null },
   userEmail:        { type: String },
   userName:         { type: String },

@@ -237,18 +237,17 @@ export default function PricingShowcase() {
                 </div>
 
                 {/* CTA */}
-                <Link href="/pricing" className="w-full mt-auto">
-                  <button 
-                    className={cn(
-                      "w-full h-12 md:h-14 rounded-xl md:rounded-2xl font-bold uppercase tracking-widest text-[10px] md:text-xs flex items-center justify-center gap-2 transition-all active:scale-95",
-                      plan.highlight 
-                        ? "bg-white text-black hover:bg-neutral-200 shadow-[0_0_20px_rgba(255,255,255,0.1)]" 
-                        : "bg-neutral-900 text-white border border-white/5 hover:bg-neutral-800"
-                    )}
-                  >
-                    {plan.cta} 
-                    {plan.highlight && <ArrowRight size={14} />}
-                  </button>
+                <Link 
+                  href="/pricing" 
+                  className={cn(
+                    "w-full h-12 md:h-14 mt-auto rounded-xl md:rounded-2xl font-bold uppercase tracking-widest text-[10px] md:text-xs flex items-center justify-center gap-2 transition-all active:scale-95",
+                    plan.highlight 
+                      ? "bg-white text-black hover:bg-neutral-200 shadow-[0_0_20px_rgba(255,255,255,0.1)]" 
+                      : "bg-neutral-900 text-white border border-white/5 hover:bg-neutral-800"
+                  )}
+                >
+                  {plan.cta} 
+                  {plan.highlight && <ArrowRight size={14} />}
                 </Link>
 
               </motion.div>

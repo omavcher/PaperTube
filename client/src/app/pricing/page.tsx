@@ -7,7 +7,7 @@ import {
   BookOpen, FileText, Layers, Download, Folder, Timer,
   List, Infinity, AlertCircle, Users, TrendingUp, Award,
   BarChart3, Flame, Coffee, GraduationCap, Brain, Rocket,
-  Check, BadgeCheck, Shield, Play, MessageCircle
+  Check, BadgeCheck, Shield, Play, MessageCircle, CreditCard
 } from "lucide-react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -284,8 +284,22 @@ function PayPalSDKButton({
   return <div ref={containerRef} id="paypal-button-container" className="w-full" />;
 }
 
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && (window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 function PaymentMethodModal({
-  isOpen, onClose, plan, billing, onLemonSqueezy, onPayPalSuccess, isLemonProcessing,
+  isOpen, onClose, plan, billing, onLemonSqueezy, onPayPalSuccess, isLemonProcessing, user,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -294,66 +308,380 @@ function PaymentMethodModal({
   onLemonSqueezy: () => void;
   onPayPalSuccess: () => void;
   isLemonProcessing: boolean;
+  user: any;
 }) {
   const handlePayPalError = (msg: string) => toast.error(msg);
+  const [isRazorpayProcessing, setIsRazorpayProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"india" | "global">("global"); // Default to global
+  const [exchangeRate, setExchangeRate] = useState<number>(85.0);
+
+  // Live exchange rate fetch when open
+  useEffect(() => {
+    if (isOpen) {
+      fetch("https://open.er-api.com/v6/latest/USD")
+        .then(res => res.json())
+        .then(data => {
+          if (data?.rates?.INR) {
+            setExchangeRate(data.rates.INR);
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch live exchange rate, using fallback:", err);
+        });
+    }
+  }, [isOpen]);
+
+  const handleRazorpayCheckout = async () => {
+    if (!plan) return;
+    setIsRazorpayProcessing(true);
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      toast.error("Failed to load Razorpay SDK. Please try again.");
+      setIsRazorpayProcessing(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("authToken");
+      // Calculate dynamic INR pricing based on live exchange rate
+      const usdPrice = billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
+      const inrAmount = Math.round(usdPrice * exchangeRate);
+
+      // Step 1: Create Order on backend
+      const res = await api.post(
+        "/payment/create-order",
+        {
+          packageId: plan.id,
+          packageType: "subscription",
+          finalAmount: inrAmount,
+          billingPeriod: billing,
+          packageName: `${plan.name} (${billing})`
+        },
+        { headers: { Auth: token } }
+      );
+
+      if (!res.data.success) {
+        toast.error(res.data.message || "Failed to create order");
+        setIsRazorpayProcessing(false);
+        return;
+      }
+
+      const orderData = res.data.order;
+      const keyId = res.data.key || "rzp_test_S7R44fJcrPnhgf";
+
+      const options = {
+        key: keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "PaperXify",
+        description: `${plan.name} Subscription (${billing})`,
+        order_id: orderData.id,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await api.post(
+              "/payment/verify",
+              {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                packageId: plan.id,
+                packageType: "subscription",
+                finalAmount: inrAmount,
+                billingPeriod: billing,
+                status: "success"
+              },
+              { headers: { Auth: token } }
+            );
+
+            if (verifyRes.data.success) {
+              onClose();
+              onPayPalSuccess();
+            } else {
+              toast.error(verifyRes.data.message || "Payment verification failed");
+            }
+          } catch (verifyErr: any) {
+            toast.error(verifyErr?.response?.data?.message || "Verification failed");
+          } finally {
+            setIsRazorpayProcessing(false);
+          }
+        },
+        prefill: {
+          name: user?.name || "",
+          email: user?.email || "",
+          contact: user?.mobile || ""
+        },
+        theme: {
+          color: "#7c3aed" // Clean purple theme matching PaperXify
+        },
+        modal: {
+          ondismiss: function() {
+            setIsRazorpayProcessing(false);
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to initiate payment");
+      setIsRazorpayProcessing(false);
+    }
+  };
+
+  if (!plan) return null;
+
+  // Calculate pricing values to show
+  const usdPrice = billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
 
   return (
     <AnimatePresence>
-      {isOpen && plan && (
+      {isOpen && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+            className="absolute inset-0 bg-black/85 backdrop-blur-md transform-gpu"
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            initial={{ opacity: 0, scale: 0.94, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 20 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="relative w-full max-w-sm bg-neutral-950 border border-white/10 rounded-3xl p-8 shadow-2xl overflow-hidden"
+            exit={{ opacity: 0, scale: 0.94, y: 15 }}
+            transition={{ type: "spring", damping: 25, stiffness: 350 }}
+            className="relative w-full max-w-md md:max-w-3xl bg-neutral-950 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
           >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-36 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.04)_0%,_transparent_70%)] pointer-events-none" />
+            {/* Ambient Top Glow */}
+            <div
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 pointer-events-none rounded-t-[2rem] opacity-40 transition-all duration-300"
+              style={{ background: `radial-gradient(ellipse at top, ${plan.glowColor || 'rgba(255,255,255,0.05)'}, transparent 70%)` }}
+            />
+            {/* Film grain / noise overlay */}
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20viewBox=%220%200%20200%20200%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter%20id=%22noise%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.8%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23noise)%22/%3E%3C/svg%3E')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
+
             <div className="relative z-10">
-              <div className="text-center mb-7">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-white/5 border border-white/8 flex items-center justify-center">
-                  <Lock size={20} className="text-neutral-300" />
-                </div>
-                <h3 className="text-lg font-black text-white mb-1">Choose payment method</h3>
-                <p className="text-xs text-neutral-500">{plan.name} plan · Secure checkout</p>
-              </div>
-
-              {/* PayPal Smart Buttons via official JS SDK */}
-              <PayPalSDKButton
-                plan={plan}
-                billing={billing}
-                onSuccess={onPayPalSuccess}
-                onError={handlePayPalError}
-              />
-
-              <div className="flex items-center gap-3 my-4">
-                <div className="flex-1 h-px bg-white/6" />
-                <span className="text-[10px] text-neutral-600 font-semibold uppercase tracking-wider">or</span>
-                <div className="flex-1 h-px bg-white/6" />
-              </div>
-
+              {/* Top Close Button */}
               <button
-                id="btn-lemonsqueezy"
-                onClick={onLemonSqueezy}
-                disabled={isLemonProcessing}
-                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-white/8 hover:border-white/15 transition-all duration-200 active:scale-95 disabled:opacity-60 font-bold text-white text-sm"
+                onClick={onClose}
+                className="absolute top-0 right-0 p-2 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
               >
-                {isLemonProcessing ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <><span className="text-xl">🍋</span> Pay with LemonSqueezy</>
-                )}
+                <X size={16} />
               </button>
 
-              <p className="text-center text-[10px] text-neutral-700 mt-5 flex items-center justify-center gap-1.5">
-                <ShieldCheck size={11} className="text-neutral-600" />
-                256-bit SSL encrypted · Cancel anytime
-              </p>
+              {/* Grid Layout: Landscape on desktop, Portrait on mobile */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-stretch">
+                
+                {/* Left Side: Plan details and Trust info */}
+                <div className="md:col-span-5 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10 pb-6 md:pb-0 md:pr-6">
+                  <div className="space-y-5">
+                    {/* Header */}
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/8 text-[9px] font-black uppercase tracking-wider text-neutral-400 mb-2">
+                        <Lock size={10} className="text-emerald-400 animate-pulse" />
+                        <span>Secure Checkout</span>
+                      </div>
+                      <h3 className="text-xl font-black text-white tracking-tight">Choose payment method</h3>
+                      <p className="text-xs text-neutral-500 mt-1 font-light">Unlock premium AI-powered tools instantly.</p>
+                    </div>
+
+                    {/* Selected Plan Details Card */}
+                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex flex-col justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className={cn("text-base font-black tracking-tight", plan.accentColor)}>
+                            {plan.name} Plan
+                          </span>
+                          {plan.id === "power" && (
+                            <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/20">
+                              Power
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-neutral-500">
+                          {billing === "monthly" ? "Monthly Subscription" : "Yearly Access (No auto-renew)"}
+                        </p>
+                      </div>
+                      <div>
+                        <div className="flex flex-col">
+                          <span className="text-2xl font-black text-white leading-none">
+                            ${usdPrice}
+                          </span>
+                          <span className="text-[9px] text-neutral-500 mt-1">
+                            / {billing === "monthly" ? "month" : "year"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Logo Strip & SSL info (Sticky/Aligned on left) */}
+                  <div className="mt-6 space-y-4">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[8px] text-neutral-600 font-bold uppercase tracking-wider">
+                        Supported Platforms
+                      </span>
+                      <div className="flex flex-wrap items-center gap-3 opacity-55 grayscale hover:grayscale-0 hover:opacity-80 transition-all duration-300">
+                        <span className="text-[9px] font-black text-white border border-white/10 px-1 py-0.5 rounded">UPI</span>
+                        <span className="text-[9px] font-bold text-white">GPay</span>
+                        <span className="text-[9px] font-bold text-white">Paytm</span>
+                        <span className="text-[9px] font-bold text-white">Visa</span>
+                        <span className="text-[9px] font-bold text-white">Mastercard</span>
+                        <span className="text-[9px] font-bold text-white">Apple Pay</span>
+                      </div>
+                    </div>
+
+                    <div className="text-[9px] text-neutral-600 flex items-center gap-1.5 pt-3 border-t border-white/5">
+                      <ShieldCheck size={11} className="text-emerald-500 shrink-0" />
+                      <span>256-bit SSL encrypted connection</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Side: Tab Selector and actual Payment Options */}
+                <div className="md:col-span-7 pt-4 md:pt-0 flex flex-col justify-between min-h-[340px]">
+                  <div>
+                    {/* Stepper indicators */}
+                    <div className="flex items-center justify-center md:justify-end gap-3 mb-5">
+                      <div className="flex items-center gap-1 text-[10px] text-neutral-500 font-bold tracking-wider uppercase">
+                        <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[8px] text-emerald-400 font-bold">
+                          ✓
+                        </div>
+                        <span>Account</span>
+                      </div>
+                      <div className="w-4 h-px bg-white/10" />
+                      <div className="flex items-center gap-1 text-[10px] text-white font-bold tracking-wider uppercase">
+                        <div className="w-3.5 h-3.5 rounded-full bg-white text-black flex items-center justify-center text-[8px] font-black">
+                          2
+                        </div>
+                        <span>Payment</span>
+                      </div>
+                    </div>
+
+                    {/* Tab Selector for Region */}
+                    <div className="relative flex p-1 bg-white/[0.03] border border-white/5 rounded-2xl mb-5">
+                      <button
+                        onClick={() => setActiveTab("global")}
+                        className={cn(
+                          "flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 relative z-10",
+                          activeTab === "global" ? "text-black" : "text-neutral-400 hover:text-neutral-200"
+                        )}
+                      >
+                        <span className="text-xs">🌐</span> PayPal & Global
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("india")}
+                        className={cn(
+                          "flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 relative z-10",
+                          activeTab === "india" ? "text-black" : "text-neutral-400 hover:text-neutral-200"
+                        )}
+                      >
+                        <span className="text-xs">🇮🇳</span> UPI & India Cards
+                      </button>
+                      <motion.div
+                        className="absolute inset-y-1 rounded-xl bg-white shadow-md pointer-events-none"
+                        initial={false}
+                        animate={{
+                          left: activeTab === "global" ? "4px" : "50%",
+                          right: activeTab === "global" ? "50%" : "4px",
+                        }}
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    </div>
+
+                    {/* Tab Contents */}
+                    <div className="min-h-[220px] flex flex-col justify-center">
+                      {activeTab === "global" ? (
+                        <motion.div
+                          key="global-tab"
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 8 }}
+                          transition={{ duration: 0.15 }}
+                          className="space-y-4"
+                        >
+                          {/* PayPal Integration Container */}
+                          <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-3.5">
+                            <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider mb-2 text-center">
+                              Pay with PayPal Balance / Credit Card
+                            </p>
+                            <PayPalSDKButton
+                              plan={plan}
+                              billing={billing}
+                              onSuccess={onPayPalSuccess}
+                              onError={handlePayPalError}
+                            />
+                          </div>
+
+                          {/* Divider */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-px bg-white/5" />
+                            <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider">
+                              or credit card
+                            </span>
+                            <div className="flex-1 h-px bg-white/5" />
+                          </div>
+
+                          {/* LemonSqueezy option */}
+                          <button
+                            id="btn-lemonsqueezy"
+                            onClick={onLemonSqueezy}
+                            disabled={isLemonProcessing || isRazorpayProcessing}
+                            className="w-full flex items-center justify-center gap-3 h-12 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-white/5 hover:border-white/10 transition-all duration-200 active:scale-95 disabled:opacity-60 font-bold text-white text-xs"
+                          >
+                            {isLemonProcessing ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <>
+                                <span className="text-base">🍋</span>
+                                <span>Pay with LemonSqueezy (USD Cards)</span>
+                              </>
+                            )}
+                          </button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="india-tab"
+                          initial={{ opacity: 0, x: 8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -8 }}
+                          transition={{ duration: 0.15 }}
+                          className="space-y-4"
+                        >
+                          <div className="space-y-4 text-center">
+                            <p className="text-xs text-neutral-400 leading-relaxed max-w-sm mx-auto font-light">
+                              Ideal for Indian users. Direct UPI (Google Pay, PhonePe, Paytm, BHIM), RuPay, Netbanking, or domestic Credit/Debit cards.
+                            </p>
+
+                            <button
+                              id="btn-razorpay"
+                              onClick={handleRazorpayCheckout}
+                              disabled={isRazorpayProcessing || isLemonProcessing}
+                              className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:via-indigo-500 hover:to-blue-600 border border-blue-500/30 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 font-bold text-white text-sm shadow-[0_4px_24px_rgba(37,99,235,0.25)] shadow-blue-500/20"
+                            >
+                              {isRazorpayProcessing ? (
+                                <Loader2 size={18} className="animate-spin" />
+                              ) : (
+                                <>
+                                  <CreditCard size={16} className="text-blue-200" />
+                                  <span>Pay with Razorpay</span>
+                                </>
+                              )}
+                            </button>
+                            <p className="text-[10px] text-neutral-500 italic mt-2.5">
+                              * Razorpay converts USD to INR dynamically at checkout.
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-center text-[9px] text-neutral-600 mt-4">
+                    Cancel subscription anytime from your profile settings.
+                  </p>
+                </div>
+
+              </div>
             </div>
           </motion.div>
         </div>
@@ -696,6 +1024,7 @@ export default function PricingPage() {
           setSuccessOpen(true);
         }}
         isLemonProcessing={isProcessing && processingGateway === "lemonsqueezy"}
+        user={user}
       />
       <SuccessModal isOpen={successOpen} onClose={() => setSuccessOpen(false)} planName={successPlanName} />
 

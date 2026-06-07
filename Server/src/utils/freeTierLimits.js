@@ -2,6 +2,11 @@ const Note = require('../models/Note');
 const FlashcardSet = require('../models/FlashcardSet');
 const PracticeTest = require('../models/PracticeTest');
 const CodeSolution = require('../models/CodeSolution');
+const Diagram = require('../models/Diagram');
+const Homework = require('../models/Homework');
+const MathSolution = require('../models/MathSolution');
+const ExamPlan = require('../models/ExamPlan');
+const LanguageLesson = require('../models/LanguageLesson');
 const User = require('../models/User');
 
 /**
@@ -26,14 +31,19 @@ async function checkFreeTierLimits(userId) {
     startOfToday.setUTCHours(0, 0, 0, 0);
 
     // Count generations across all tools created by the user today
-    const [notesCount, flashcardsCount, testsCount, codeCount] = await Promise.all([
+    const [notesCount, flashcardsCount, testsCount, codeCount, diagramsCount, homeworkCount, mathCount, examPlanCount, lessonCount] = await Promise.all([
       Note.countDocuments({ owner: userId, createdAt: { $gte: startOfToday } }),
       FlashcardSet.countDocuments({ owner: userId, createdAt: { $gte: startOfToday } }),
       PracticeTest.countDocuments({ owner: userId, createdAt: { $gte: startOfToday } }),
-      CodeSolution.countDocuments({ userId: userId, createdAt: { $gte: startOfToday } })
+      CodeSolution.countDocuments({ userId: userId, createdAt: { $gte: startOfToday } }),
+      Diagram.countDocuments({ userId: userId, createdAt: { $gte: startOfToday } }),
+      Homework.countDocuments({ owner: userId, createdAt: { $gte: startOfToday } }),
+      MathSolution.countDocuments({ owner: userId, createdAt: { $gte: startOfToday } }),
+      ExamPlan.countDocuments({ owner: userId, createdAt: { $gte: startOfToday } }),
+      LanguageLesson.countDocuments({ owner: userId, createdAt: { $gte: startOfToday } })
     ]);
 
-    const totalToday = notesCount + flashcardsCount + testsCount + codeCount;
+    const totalToday = notesCount + flashcardsCount + testsCount + codeCount + diagramsCount + homeworkCount + mathCount + examPlanCount + lessonCount;
 
     if (totalToday >= 2) {
       return {

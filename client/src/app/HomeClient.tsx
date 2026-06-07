@@ -1,17 +1,16 @@
 "use client";
+
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import HomePortal from "@/components/HomePortal";
 
 // --- Lazy load ALL below-fold sections ---
-// This is the #1 desktop perf fix: on large screens multiple sections
-// are visible at load — this defers their JS parse + render until needed.
+// Defer JS parse & render until sections enter the viewport.
 
 const HowToUse        = dynamic(() => import("@/components/HowToUse"),        { ssr: false });
 const ToolsGlimpse    = dynamic(() => import("@/components/ToolsGlimpse"),    { ssr: false });
 const PricingShowcase = dynamic(() => import("@/components/PricingShowcase"), { ssr: false });
-const ArcadeGlimpse   = dynamic(() => import("@/components/ArcadeGlimpse"),   { ssr: false });
-const FeatureHomeSection = dynamic(() => import("@/components/FeatureHomeSection"), { ssr: false });
+const FAQAccordion    = dynamic(() => import("@/components/FAQAccordion").then(mod => mod.FAQAccordion), { ssr: false });
 const Footer          = dynamic(() => import("@/components/Footer"),          { ssr: false });
 
 // Hook: returns true once the element enters the viewport
@@ -38,20 +37,16 @@ export default function HomeClient() {
   }, []);
 
   // Sentinel refs — one per section. Component renders once sentinel enters viewport.
-
   const howToRef      = useRef<HTMLDivElement>(null);
   const toolsRef      = useRef<HTMLDivElement>(null);
   const pricingRef    = useRef<HTMLDivElement>(null);
-  const arcadeRef     = useRef<HTMLDivElement>(null);
-  const featureRef    = useRef<HTMLDivElement>(null);
+  const faqRef        = useRef<HTMLDivElement>(null);
   const footerRef     = useRef<HTMLDivElement>(null);
-
 
   const showHowTo      = useInView(howToRef,      "400px");
   const showTools      = useInView(toolsRef,      "400px");
   const showPricing    = useInView(pricingRef,    "400px");
-  const showArcade     = useInView(arcadeRef,     "400px");
-  const showFeature    = useInView(featureRef,    "400px");
+  const showFaq        = useInView(faqRef,        "400px");
   const showFooter     = useInView(footerRef,     "400px");
 
   return (
@@ -60,8 +55,6 @@ export default function HomeClient() {
         
         {/* Above fold — always eager */}
         <HomePortal />
-
-
 
         {/* HowToUse */}
         <div ref={howToRef} className="w-full perf-section">
@@ -78,9 +71,9 @@ export default function HomeClient() {
           {showPricing && <PricingShowcase />}
         </div>
 
-        {/* Features */}
-        <div ref={featureRef} className="w-full perf-section">
-          {showFeature && <FeatureHomeSection />}
+        {/* FAQ (For fully populated FAQ page metadata matching page.tsx schema) */}
+        <div ref={faqRef} className="w-full perf-section px-6">
+          {showFaq && <FAQAccordion />}
         </div>
 
       </main>

@@ -30,6 +30,11 @@ const practiceTestSchema = new mongoose.Schema({
   questions: [questionSchema],
   status: { type: String, default: 'completed' },
   visibility: { type: String, enum: ['public', 'private'], default: 'private' },
+  folderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Folder',
+    default: null
+  },
   generationDetails: {
     language: String,
     testType: String,
