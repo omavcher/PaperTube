@@ -24,15 +24,13 @@ const nextConfig: NextConfig = {
   },
 
   webpack: (config, { isServer, dev }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        canvas: false,
-        fs: false,
-        path: false,
-        encoding: false,
-      };
-    }
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      canvas: false,
+      fs: false,
+      path: false,
+      encoding: false,
+    };
 
     if (!dev && !isServer) {
       // In production, enable deterministic chunk IDs for better long-term caching
