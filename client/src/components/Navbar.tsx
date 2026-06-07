@@ -164,22 +164,15 @@ export const Navbar = ({
         </Link>
       </div>
 
-      {/* 4. Rank / Pricing Tab */}
-      {isLoggedIn ? (
-        <Link href="/leaderboard" className="flex flex-col items-center justify-center gap-1.5 group w-full h-full pt-2">
-          <div className="p-1 rounded-xl group-active:bg-white/5 transition-colors">
-            <Trophy size={22} strokeWidth={1.5} className="text-neutral-500 group-hover:text-white transition-colors" />
-          </div>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-600 group-hover:text-neutral-300">Rank</span>
-        </Link>
-      ) : (
-        <Link href="/pricing" className="flex flex-col items-center justify-center gap-1.5 group w-full h-full pt-2">
-          <div className="p-1 rounded-xl group-active:bg-white/5 transition-colors">
-            <Zap size={22} strokeWidth={1.5} className="text-neutral-500 group-hover:text-white transition-colors" />
-          </div>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-600 group-hover:text-neutral-300">Pricing</span>
-        </Link>
-      )}
+      {/* 4. Plan / Pricing Tab */}
+      <Link href="/pricing" className="flex flex-col items-center justify-center gap-1.5 group w-full h-full pt-2">
+        <div className="p-1 rounded-xl group-active:bg-white/5 transition-colors">
+          <Zap size={22} strokeWidth={1.5} className="text-neutral-500 group-hover:text-white transition-colors" />
+        </div>
+        <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-600 group-hover:text-neutral-300">
+          {isLoggedIn && user?.membership?.isActive ? "My Plan" : "Pricing"}
+        </span>
+      </Link>
       
       {/* 5. Profile Tab */}
       <button 
