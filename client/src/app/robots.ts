@@ -40,7 +40,14 @@ export default function robots(): MetadataRoute.Robots {
         disallow: commonDisallows,
       }
     ],
-    sitemap: 'https://paperxify.com/sitemap.xml',
+    sitemap: [
+      'https://paperxify.com/sitemap.xml',
+      'https://paperxify.com/sitemap-us.xml',
+      'https://paperxify.com/sitemap-uk.xml',
+      'https://paperxify.com/sitemap-au.xml',
+      'https://paperxify.com/sitemap-ca.xml',
+      'https://paperxify.com/sitemap-de.xml',
+      'https://paperxify.com/sitemap-eu.xml',
+    ],
   };
 }
-
