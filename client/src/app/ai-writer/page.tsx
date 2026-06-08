@@ -23,6 +23,7 @@ import {
   PenLine,
 } from "lucide-react";
 import Footer from "@/components/Footer";
+import { reviews } from "@/data/reviews";
 
 export const metadata: Metadata = {
   title: "AI Writer Suite | AI Detector, AI Humanizer, Essay Writer & Plagiarism Checker | Paperxify",
@@ -114,6 +115,21 @@ export default function AIWriterPage() {
           "ratingValue": "4.8",
           "ratingCount": "11230",
         },
+        "review": reviews.map(r => ({
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": r.name
+          },
+          "datePublished": r.datePublished,
+          "reviewBody": r.quote,
+          "reviewRating": {
+            "@type": "Rating",
+            "bestRating": "5",
+            "ratingValue": r.ratingValue,
+            "worstRating": "1"
+          }
+        }))
       },
       {
         "@type": "FAQPage",
@@ -128,6 +144,7 @@ export default function AIWriterPage() {
       },
     ],
   };
+
 
   return (
     <div className="min-h-screen bg-[#050505] text-neutral-100 font-sans selection:bg-amber-950/50 relative overflow-hidden">

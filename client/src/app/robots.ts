@@ -1,24 +1,46 @@
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
+  const commonDisallows = ['/admin/', '/profile/', '/note/'];
+  const userAgents = [
+    // Search Engines
+    'Googlebot',
+    'Bingbot',
+    'YandexBot',
+    'Baiduspider',
+    'DuckDuckBot',
+    'Slurp',
+    'Sogou web spider',
+    'ia_archiver',
+    // AI / LLM Crawlers
+    'GPTBot',
+    'ChatGPT-User',
+    'ClaudeBot',
+    'Claude-Web',
+    'Applebot-Extended',
+    'Google-Extended',
+    'PerplexityBot',
+    'cohere-ai',
+    'Meta-ExternalAgent',
+    'Bytespider',
+    'Diffbot',
+    'Amazonbot'
+  ];
+
   return {
     rules: [
-      {
-        userAgent: 'Googlebot',
+      ...userAgents.map(agent => ({
+        userAgent: agent,
         allow: '/',
-        disallow: ['/admin/', '/profile/', '/note/'],
-      },
-      {
-        userAgent: 'Bingbot',
-        allow: '/',
-        disallow: ['/admin/', '/profile/', '/note/'],
-      },
+        disallow: commonDisallows,
+      })),
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/profile/', '/note/'],
-      },
+        disallow: commonDisallows,
+      }
     ],
     sitemap: 'https://paperxify.com/sitemap.xml',
   };
 }
+

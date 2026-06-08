@@ -7,11 +7,12 @@ import HomePortal from "@/components/HomePortal";
 // --- Lazy load ALL below-fold sections ---
 // Defer JS parse & render until sections enter the viewport.
 
-const HowToUse        = dynamic(() => import("@/components/HowToUse"),        { ssr: false });
-const ToolsGlimpse    = dynamic(() => import("@/components/ToolsGlimpse"),    { ssr: false });
-const PricingShowcase = dynamic(() => import("@/components/PricingShowcase"), { ssr: false });
-const FAQAccordion    = dynamic(() => import("@/components/FAQAccordion").then(mod => mod.FAQAccordion), { ssr: false });
-const Footer          = dynamic(() => import("@/components/Footer"),          { ssr: false });
+const HowToUse           = dynamic(() => import("@/components/HowToUse"),           { ssr: false });
+const ToolsGlimpse       = dynamic(() => import("@/components/ToolsGlimpse"),       { ssr: false });
+const PricingShowcase    = dynamic(() => import("@/components/PricingShowcase"),    { ssr: false });
+const TestimonialsCarousel = dynamic(() => import("@/components/TestimonialsCarousel").then(mod => mod.TestimonialsCarousel), { ssr: false });
+const FAQAccordion       = dynamic(() => import("@/components/FAQAccordion").then(mod => mod.FAQAccordion), { ssr: false });
+const Footer             = dynamic(() => import("@/components/Footer"),             { ssr: false });
 
 // Hook: returns true once the element enters the viewport
 function useInView(ref: React.RefObject<HTMLDivElement | null>, rootMargin = "400px") {
@@ -37,17 +38,19 @@ export default function HomeClient() {
   }, []);
 
   // Sentinel refs — one per section. Component renders once sentinel enters viewport.
-  const howToRef      = useRef<HTMLDivElement>(null);
-  const toolsRef      = useRef<HTMLDivElement>(null);
-  const pricingRef    = useRef<HTMLDivElement>(null);
-  const faqRef        = useRef<HTMLDivElement>(null);
-  const footerRef     = useRef<HTMLDivElement>(null);
+  const howToRef        = useRef<HTMLDivElement>(null);
+  const toolsRef        = useRef<HTMLDivElement>(null);
+  const pricingRef      = useRef<HTMLDivElement>(null);
+  const testimonialsRef = useRef<HTMLDivElement>(null);
+  const faqRef          = useRef<HTMLDivElement>(null);
+  const footerRef       = useRef<HTMLDivElement>(null);
 
-  const showHowTo      = useInView(howToRef,      "400px");
-  const showTools      = useInView(toolsRef,      "400px");
-  const showPricing    = useInView(pricingRef,    "400px");
-  const showFaq        = useInView(faqRef,        "400px");
-  const showFooter     = useInView(footerRef,     "400px");
+  const showHowTo        = useInView(howToRef,        "400px");
+  const showTools        = useInView(toolsRef,        "400px");
+  const showPricing      = useInView(pricingRef,      "400px");
+  const showTestimonials = useInView(testimonialsRef, "400px");
+  const showFaq          = useInView(faqRef,          "400px");
+  const showFooter       = useInView(footerRef,       "400px");
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-start py-2 bg-black text-white">
@@ -71,6 +74,11 @@ export default function HomeClient() {
           {showPricing && <PricingShowcase />}
         </div>
 
+        {/* Testimonials */}
+        <div ref={testimonialsRef} className="w-full max-w-6xl mx-auto px-6 py-16 border-t border-white/[0.04] mt-8">
+          {showTestimonials && <TestimonialsCarousel />}
+        </div>
+
         {/* FAQ (For fully populated FAQ page metadata matching page.tsx schema) */}
         <div ref={faqRef} className="w-full perf-section px-6">
           {showFaq && <FAQAccordion />}
@@ -85,3 +93,4 @@ export default function HomeClient() {
     </div>
   );
 }
+

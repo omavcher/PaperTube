@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import HomeClient from "../HomeClient";
+import { reviews } from "@/data/reviews";
 
 export const metadata: Metadata = {
   title: "Paperxify CA | YouTube to Notes AI & YouTube Video Summarizer",
@@ -55,7 +56,22 @@ export default function CAPage() {
           "@type": "AggregateRating",
           "ratingValue": "4.9",
           "ratingCount": "8420"
-        }
+        },
+        "review": reviews.map(r => ({
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": r.name
+          },
+          "datePublished": r.datePublished,
+          "reviewBody": r.quote,
+          "reviewRating": {
+            "@type": "Rating",
+            "bestRating": "5",
+            "ratingValue": r.ratingValue,
+            "worstRating": "1"
+          }
+        }))
       },
       {
         "@context": "https://schema.org",
@@ -92,3 +108,4 @@ export default function CAPage() {
     </>
   );
 }
+

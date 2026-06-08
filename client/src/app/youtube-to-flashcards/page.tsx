@@ -29,6 +29,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import Footer from "@/components/Footer";
+import { reviews } from "@/data/reviews";
 
 export const metadata: Metadata = {
   title: "YouTube to Flashcards AI | Convert YouTube Video to Flashcards | Paperxify",
@@ -116,7 +117,22 @@ export default function YouTubeToFlashcardsPage() {
           "@type": "AggregateRating",
           "ratingValue": "4.9",
           "ratingCount": "9850"
-        }
+        },
+        "review": reviews.map(r => ({
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": r.name
+          },
+          "datePublished": r.datePublished,
+          "reviewBody": r.quote,
+          "reviewRating": {
+            "@type": "Rating",
+            "bestRating": "5",
+            "ratingValue": r.ratingValue,
+            "worstRating": "1"
+          }
+        }))
       },
       {
         "@type": "FAQPage",
@@ -131,6 +147,7 @@ export default function YouTubeToFlashcardsPage() {
       }
     ]
   };
+
 
   return (
     <div className="min-h-screen bg-[#050505] text-neutral-100 font-sans selection:bg-red-900/50 relative overflow-hidden">

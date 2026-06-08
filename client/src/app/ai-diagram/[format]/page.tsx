@@ -533,6 +533,8 @@ export async function generateMetadata({
   };
 }
 
+import { reviews } from "@/data/reviews";
+
 export default async function AIDiagramFormatPage({
   params,
 }: {
@@ -555,6 +557,21 @@ export default async function AIDiagramFormatPage({
             offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
             description: config.description,
             aggregateRating: { "@type": "AggregateRating", ratingValue: "4.9", ratingCount: config.ratingCount },
+            review: reviews.map(r => ({
+              "@type": "Review",
+              "author": {
+                "@type": "Person",
+                "name": r.name
+              },
+              "datePublished": r.datePublished,
+              "reviewBody": r.quote,
+              "reviewRating": {
+                "@type": "Rating",
+                "bestRating": "5",
+                "ratingValue": r.ratingValue,
+                "worstRating": "1"
+              }
+            }))
           },
           {
             "@type": "FAQPage",
@@ -567,6 +584,7 @@ export default async function AIDiagramFormatPage({
         ],
       }
     : null;
+
 
   return (
     <div className="min-h-screen bg-[#050505] text-neutral-100 font-sans selection:bg-cyan-950/50 relative overflow-hidden">

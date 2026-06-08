@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import HomeClient from "./HomeClient";
+import { reviews } from "@/data/reviews";
 
 // Specific, high-impact SEO for the core feature: YouTube Video Link to Notes Converter.
 export const metadata: Metadata = {
@@ -67,7 +68,22 @@ export default function Page() {
           "@type": "AggregateRating",
           "ratingValue": "4.9",
           "ratingCount": "8420"
-        }
+        },
+        "review": reviews.map(r => ({
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": r.name
+          },
+          "datePublished": r.datePublished,
+          "reviewBody": r.quote,
+          "reviewRating": {
+            "@type": "Rating",
+            "bestRating": "5",
+            "ratingValue": r.ratingValue,
+            "worstRating": "1"
+          }
+        }))
       },
       {
         "@context": "https://schema.org",
@@ -120,3 +136,4 @@ export default function Page() {
     </>
   );
 }
+
