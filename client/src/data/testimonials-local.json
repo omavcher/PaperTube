@@ -1,0 +1,827 @@
+{
+  "us": {
+    "region": "us",
+    "testimonials": [
+      {
+        "name": "Emma Smith",
+        "university": "Stanford University",
+        "course": "Computer Science",
+        "quote": "Paperxify transformed how I study for AP Computer Science A at Stanford University. The PDF layouts are print-ready!",
+        "rating": 5,
+        "exam": "AP Computer Science A"
+      },
+      {
+        "name": "Liam Miller",
+        "university": "MIT",
+        "course": "Molecular Biology",
+        "quote": "Summarizing long lecture streams for Molecular Biology is instant. Absolutely essential study hack.",
+        "rating": 5,
+        "exam": "AP Biology"
+      },
+      {
+        "name": "Olivia Davis",
+        "university": "Harvard University",
+        "course": "Macroeconomics",
+        "quote": "The custom flashcards for AP Macroeconomics save me hours of manual note-taking every week.",
+        "rating": 5,
+        "exam": "AP Macroeconomics"
+      },
+      {
+        "name": "Noah Garcia",
+        "university": "Princeton University",
+        "course": "Organic Chemistry",
+        "quote": "Highly recommend this to anyone taking Organic Chemistry. The math solver handles formulas perfectly.",
+        "rating": 5,
+        "exam": "SAT Math"
+      },
+      {
+        "name": "Ava Rodriguez",
+        "university": "Yale University",
+        "course": "Astrophysics",
+        "quote": "Went from struggling in Astrophysics to top of my class at Yale University. Truly elite tool.",
+        "rating": 5,
+        "exam": "ACT Science"
+      },
+      {
+        "name": "William Wilson",
+        "university": "UC Berkeley",
+        "course": "Calculus BC",
+        "quote": "Paperxify transformed how I study for AP US History at UC Berkeley. The PDF layouts are print-ready!",
+        "rating": 5,
+        "exam": "AP US History"
+      },
+      {
+        "name": "Sophia Martinez",
+        "university": "Columbia University",
+        "course": "US History",
+        "quote": "Summarizing long lecture streams for US History is instant. Absolutely essential study hack.",
+        "rating": 5,
+        "exam": "AP Psychology"
+      },
+      {
+        "name": "James Anderson",
+        "university": "UCLA",
+        "course": "Psychology",
+        "quote": "The custom flashcards for AP Chemistry save me hours of manual note-taking every week.",
+        "rating": 4,
+        "exam": "AP Chemistry"
+      },
+      {
+        "name": "Isabella Thomas",
+        "university": "Caltech",
+        "course": "Computer Science",
+        "quote": "Highly recommend this to anyone taking Computer Science. The math solver handles formulas perfectly.",
+        "rating": 5,
+        "exam": "AP Computer Science A"
+      },
+      {
+        "name": "Benjamin Taylor",
+        "university": "University of Chicago",
+        "course": "Molecular Biology",
+        "quote": "Went from struggling in Molecular Biology to top of my class at University of Chicago. Truly elite tool.",
+        "rating": 5,
+        "exam": "AP Biology"
+      },
+      {
+        "name": "Mia Moore",
+        "university": "Stanford University",
+        "course": "Macroeconomics",
+        "quote": "Paperxify transformed how I study for AP Macroeconomics at Stanford University. The PDF layouts are print-ready!",
+        "rating": 5,
+        "exam": "AP Macroeconomics"
+      },
+      {
+        "name": "Lucas Jackson",
+        "university": "MIT",
+        "course": "Organic Chemistry",
+        "quote": "Summarizing long lecture streams for Organic Chemistry is instant. Absolutely essential study hack.",
+        "rating": 3,
+        "exam": "SAT Math"
+      },
+      {
+        "name": "Charlotte Martin",
+        "university": "Harvard University",
+        "course": "Astrophysics",
+        "quote": "The custom flashcards for ACT Science save me hours of manual note-taking every week.",
+        "rating": 5,
+        "exam": "ACT Science"
+      },
+      {
+        "name": "Henry Lee",
+        "university": "Princeton University",
+        "course": "Calculus BC",
+        "quote": "Highly recommend this to anyone taking Calculus BC. The math solver handles formulas perfectly.",
+        "rating": 5,
+        "exam": "AP US History"
+      },
+      {
+        "name": "Amelia Perez",
+        "university": "Yale University",
+        "course": "US History",
+        "quote": "Went from struggling in US History to top of my class at Yale University. Truly elite tool.",
+        "rating": 5,
+        "exam": "AP Psychology"
+      },
+      {
+        "name": "Alexander Thompson",
+        "university": "UC Berkeley",
+        "course": "Psychology",
+        "quote": "Paperxify transformed how I study for AP Chemistry at UC Berkeley. The PDF layouts are print-ready!",
+        "rating": 4,
+        "exam": "AP Chemistry"
+      },
+      {
+        "name": "Harper White",
+        "university": "Columbia University",
+        "course": "Computer Science",
+        "quote": "Summarizing long lecture streams for Computer Science is instant. Absolutely essential study hack.",
+        "rating": 5,
+        "exam": "AP Computer Science A"
+      },
+      {
+        "name": "Michael Harris",
+        "university": "UCLA",
+        "course": "Molecular Biology",
+        "quote": "The custom flashcards for AP Biology save me hours of manual note-taking every week.",
+        "rating": 5,
+        "exam": "AP Biology"
+      },
+      {
+        "name": "Evelyn Sanchez",
+        "university": "Caltech",
+        "course": "Macroeconomics",
+        "quote": "Highly recommend this to anyone taking Macroeconomics. The math solver handles formulas perfectly.",
+        "rating": 5,
+        "exam": "AP Macroeconomics"
+      },
+      {
+        "name": "Elijah Clark",
+        "university": "University of Chicago",
+        "course": "Organic Chemistry",
+        "quote": "Went from struggling in Organic Chemistry to top of my class at University of Chicago. Truly elite tool.",
+        "rating": 5,
+        "exam": "SAT Math"
+      }
+    ]
+  },
+  "uk": {
+    "region": "uk",
+    "testimonials": [
+      {
+        "name": "Oliver Jones",
+        "university": "University of Oxford",
+        "course": "Modern History",
+        "quote": "Superb tool for A-Level Physics revision at University of Oxford. The Markdown notes sync perfectly to Obsidian.",
+        "rating": 5,
+        "exam": "A-Level Physics"
+      },
+      {
+        "name": "George Taylor",
+        "university": "University of Cambridge",
+        "course": "Pure Mathematics",
+        "quote": "Honestly the best study aid for Pure Mathematics. Transcribing lectures is extremely accurate.",
+        "rating": 5,
+        "exam": "GCSE Mathematics"
+      },
+      {
+        "name": "Harry Brown",
+        "university": "London School of Economics (LSE)",
+        "course": "Theoretical Physics",
+        "quote": "Auto generating flashcards for GCSE Chemistry changed my entire revision workflow.",
+        "rating": 5,
+        "exam": "GCSE Chemistry"
+      },
+      {
+        "name": "Jack Williams",
+        "university": "UCL",
+        "course": "Economics & Finance",
+        "quote": "Brilliant interface. Navigating through Economics & Finance transcripts is so simple on mobile.",
+        "rating": 5,
+        "exam": "A-Level Economics"
+      },
+      {
+        "name": "Jacob Wilson",
+        "university": "Imperial College London",
+        "course": "Biomedical Science",
+        "quote": "Essential for A-Level Mathematics prep. The structural breakdowns help clarify tricky topics.",
+        "rating": 5,
+        "exam": "A-Level Mathematics"
+      },
+      {
+        "name": "Leo Johnson",
+        "university": "King's College London",
+        "course": "English Literature",
+        "quote": "Superb tool for GCSE Biology revision at King's College London. The Markdown notes sync perfectly to Obsidian.",
+        "rating": 5,
+        "exam": "GCSE Biology"
+      },
+      {
+        "name": "Arthur Davies",
+        "university": "University of Edinburgh",
+        "course": "Law",
+        "quote": "Honestly the best study aid for Law. Transcribing lectures is extremely accurate.",
+        "rating": 5,
+        "exam": "A-Level Chemistry"
+      },
+      {
+        "name": "Oscar Robinson",
+        "university": "University of Manchester",
+        "course": "Computer Science",
+        "quote": "Auto generating flashcards for Oxbridge Admissions Test changed my entire revision workflow.",
+        "rating": 4,
+        "exam": "Oxbridge Admissions Test"
+      },
+      {
+        "name": "Charlie Wright",
+        "university": "University of Warwick",
+        "course": "Modern History",
+        "quote": "Brilliant interface. Navigating through Modern History transcripts is so simple on mobile.",
+        "rating": 5,
+        "exam": "A-Level Physics"
+      },
+      {
+        "name": "Thomas Thompson",
+        "university": "University of Bristol",
+        "course": "Pure Mathematics",
+        "quote": "Essential for GCSE Mathematics prep. The structural breakdowns help clarify tricky topics.",
+        "rating": 5,
+        "exam": "GCSE Mathematics"
+      },
+      {
+        "name": "Amelia Evans",
+        "university": "University of Oxford",
+        "course": "Theoretical Physics",
+        "quote": "Superb tool for GCSE Chemistry revision at University of Oxford. The Markdown notes sync perfectly to Obsidian.",
+        "rating": 5,
+        "exam": "GCSE Chemistry"
+      },
+      {
+        "name": "Isla Roberts",
+        "university": "University of Cambridge",
+        "course": "Economics & Finance",
+        "quote": "Honestly the best study aid for Economics & Finance. Transcribing lectures is extremely accurate.",
+        "rating": 3,
+        "exam": "A-Level Economics"
+      },
+      {
+        "name": "Emily Carter",
+        "university": "London School of Economics (LSE)",
+        "course": "Biomedical Science",
+        "quote": "Auto generating flashcards for A-Level Mathematics changed my entire revision workflow.",
+        "rating": 5,
+        "exam": "A-Level Mathematics"
+      },
+      {
+        "name": "Ava Walker",
+        "university": "UCL",
+        "course": "English Literature",
+        "quote": "Brilliant interface. Navigating through English Literature transcripts is so simple on mobile.",
+        "rating": 5,
+        "exam": "GCSE Biology"
+      },
+      {
+        "name": "Lily Green",
+        "university": "Imperial College London",
+        "course": "Law",
+        "quote": "Essential for A-Level Chemistry prep. The structural breakdowns help clarify tricky topics.",
+        "rating": 5,
+        "exam": "A-Level Chemistry"
+      },
+      {
+        "name": "Freya Hughes",
+        "university": "King's College London",
+        "course": "Computer Science",
+        "quote": "Superb tool for Oxbridge Admissions Test revision at King's College London. The Markdown notes sync perfectly to Obsidian.",
+        "rating": 4,
+        "exam": "Oxbridge Admissions Test"
+      },
+      {
+        "name": "Evie Edwards",
+        "university": "University of Edinburgh",
+        "course": "Modern History",
+        "quote": "Honestly the best study aid for Modern History. Transcribing lectures is extremely accurate.",
+        "rating": 5,
+        "exam": "A-Level Physics"
+      },
+      {
+        "name": "Grace Lewis",
+        "university": "University of Manchester",
+        "course": "Pure Mathematics",
+        "quote": "Auto generating flashcards for GCSE Mathematics changed my entire revision workflow.",
+        "rating": 5,
+        "exam": "GCSE Mathematics"
+      },
+      {
+        "name": "Mia Hall",
+        "university": "University of Warwick",
+        "course": "Theoretical Physics",
+        "quote": "Brilliant interface. Navigating through Theoretical Physics transcripts is so simple on mobile.",
+        "rating": 5,
+        "exam": "GCSE Chemistry"
+      },
+      {
+        "name": "Poppy Hill",
+        "university": "University of Bristol",
+        "course": "Economics & Finance",
+        "quote": "Essential for A-Level Economics prep. The structural breakdowns help clarify tricky topics.",
+        "rating": 5,
+        "exam": "A-Level Economics"
+      }
+    ]
+  },
+  "ca": {
+    "region": "ca",
+    "testimonials": [
+      {
+        "name": "William Roy",
+        "university": "University of Toronto",
+        "course": "Biochemistry",
+        "quote": "Outstanding notes quality for Biochemistry at University of Toronto. Very helpful format layouts.",
+        "rating": 5,
+        "exam": "Ontario OSSLT"
+      },
+      {
+        "name": "Logan Tremblay",
+        "university": "University of British Columbia (UBC)",
+        "course": "Civil Engineering",
+        "quote": "Helps me summarize massive slide decks and BC Provincial Exam prep videos in minutes.",
+        "rating": 5,
+        "exam": "BC Provincial Exam"
+      },
+      {
+        "name": "Benjamin Gagnon",
+        "university": "McGill University",
+        "course": "Cognitive Science",
+        "quote": "The translation features and Cognitive Science flashcards are highly precise.",
+        "rating": 5,
+        "exam": "AP Biology"
+      },
+      {
+        "name": "Noah Leblanc",
+        "university": "University of Waterloo",
+        "course": "Software Engineering",
+        "quote": "Obsidian exports are clean. A lifesaver for AP Calculus BC prep.",
+        "rating": 5,
+        "exam": "AP Calculus BC"
+      },
+      {
+        "name": "Lucas Cote",
+        "university": "McMaster University",
+        "course": "Political Science",
+        "quote": "I use it daily at McMaster University for Political Science. The AI study room resolves any math doubts instantly.",
+        "rating": 5,
+        "exam": "AP English Literature"
+      },
+      {
+        "name": "Oliver Bouchard",
+        "university": "University of Alberta",
+        "course": "Calculus",
+        "quote": "Outstanding notes quality for Calculus at University of Alberta. Very helpful format layouts.",
+        "rating": 5,
+        "exam": "Provincial Math Exam"
+      },
+      {
+        "name": "Ethan Gauthier",
+        "university": "Queen's University",
+        "course": "Earth Sciences",
+        "quote": "Helps me summarize massive slide decks and Ontario OSSLT prep videos in minutes.",
+        "rating": 5,
+        "exam": "Ontario OSSLT"
+      },
+      {
+        "name": "Liam Morin",
+        "university": "Western University",
+        "course": "Cellular Biology",
+        "quote": "The translation features and Cellular Biology flashcards are highly precise.",
+        "rating": 4,
+        "exam": "BC Provincial Exam"
+      },
+      {
+        "name": "Lucas Lavoie",
+        "university": "University of Toronto",
+        "course": "Biochemistry",
+        "quote": "Obsidian exports are clean. A lifesaver for AP Biology prep.",
+        "rating": 5,
+        "exam": "AP Biology"
+      },
+      {
+        "name": "Jacob Fortin",
+        "university": "University of British Columbia (UBC)",
+        "course": "Civil Engineering",
+        "quote": "I use it daily at University of British Columbia (UBC) for Civil Engineering. The AI study room resolves any math doubts instantly.",
+        "rating": 5,
+        "exam": "AP Calculus BC"
+      },
+      {
+        "name": "Emma Pelletier",
+        "university": "McGill University",
+        "course": "Cognitive Science",
+        "quote": "Outstanding notes quality for Cognitive Science at McGill University. Very helpful format layouts.",
+        "rating": 5,
+        "exam": "AP English Literature"
+      },
+      {
+        "name": "Olivia Belanger",
+        "university": "University of Waterloo",
+        "course": "Software Engineering",
+        "quote": "Helps me summarize massive slide decks and Provincial Math Exam prep videos in minutes.",
+        "rating": 3,
+        "exam": "Provincial Math Exam"
+      },
+      {
+        "name": "Charlotte Gagnon",
+        "university": "McMaster University",
+        "course": "Political Science",
+        "quote": "The translation features and Political Science flashcards are highly precise.",
+        "rating": 5,
+        "exam": "Ontario OSSLT"
+      },
+      {
+        "name": "Sophia Bilodeau",
+        "university": "University of Alberta",
+        "course": "Calculus",
+        "quote": "Obsidian exports are clean. A lifesaver for BC Provincial Exam prep.",
+        "rating": 5,
+        "exam": "BC Provincial Exam"
+      },
+      {
+        "name": "Amelia Gill",
+        "university": "Queen's University",
+        "course": "Earth Sciences",
+        "quote": "I use it daily at Queen's University for Earth Sciences. The AI study room resolves any math doubts instantly.",
+        "rating": 5,
+        "exam": "AP Biology"
+      },
+      {
+        "name": "Chloe Roy",
+        "university": "Western University",
+        "course": "Cellular Biology",
+        "quote": "Outstanding notes quality for Cellular Biology at Western University. Very helpful format layouts.",
+        "rating": 4,
+        "exam": "AP Calculus BC"
+      },
+      {
+        "name": "Ella Tremblay",
+        "university": "University of Toronto",
+        "course": "Biochemistry",
+        "quote": "Helps me summarize massive slide decks and AP English Literature prep videos in minutes.",
+        "rating": 5,
+        "exam": "AP English Literature"
+      },
+      {
+        "name": "Maya Leblanc",
+        "university": "University of British Columbia (UBC)",
+        "course": "Civil Engineering",
+        "quote": "The translation features and Civil Engineering flashcards are highly precise.",
+        "rating": 5,
+        "exam": "Provincial Math Exam"
+      },
+      {
+        "name": "Zoe Cote",
+        "university": "McGill University",
+        "course": "Cognitive Science",
+        "quote": "Obsidian exports are clean. A lifesaver for Ontario OSSLT prep.",
+        "rating": 5,
+        "exam": "Ontario OSSLT"
+      },
+      {
+        "name": "Abigail Bouchard",
+        "university": "University of Waterloo",
+        "course": "Software Engineering",
+        "quote": "I use it daily at University of Waterloo for Software Engineering. The AI study room resolves any math doubts instantly.",
+        "rating": 5,
+        "exam": "BC Provincial Exam"
+      }
+    ]
+  },
+  "au": {
+    "region": "au",
+    "testimonials": [
+      {
+        "name": "Jack Smith",
+        "university": "University of Melbourne",
+        "course": "Marine Biology",
+        "quote": "Optimized my HSC revision for NSW HSC Physics. The diagrams look beautiful.",
+        "rating": 5,
+        "exam": "NSW HSC Physics"
+      },
+      {
+        "name": "William Jones",
+        "university": "University of Sydney",
+        "course": "Mechanical Engineering",
+        "quote": "Truly elite tool for Mechanical Engineering at University of Sydney. Makes ATAR preparation so much simpler.",
+        "rating": 5,
+        "exam": "Victorian VCE Maths"
+      },
+      {
+        "name": "Noah Williams",
+        "university": "Australian National University (ANU)",
+        "course": "Financial Mathematics",
+        "quote": "Converting lecture streams directly to flashcards helps me study on the train.",
+        "rating": 5,
+        "exam": "WACE Chemistry"
+      },
+      {
+        "name": "Oliver Brown",
+        "university": "UNSW Sydney",
+        "course": "Data Science",
+        "quote": "Paperxify is the best AI YouTube notes generator. 10/10 for Data Science prep.",
+        "rating": 5,
+        "exam": "ATAR Physics"
+      },
+      {
+        "name": "Thomas Taylor",
+        "university": "University of Queensland",
+        "course": "Psychology",
+        "quote": "Passed my ATAR Chemistry with high marks thanks to these summaries. Highly recommend!",
+        "rating": 5,
+        "exam": "ATAR Chemistry"
+      },
+      {
+        "name": "Lucas Davies",
+        "university": "Monash University",
+        "course": "Clinical Anatomy",
+        "quote": "Optimized my HSC revision for ATAR Biology. The diagrams look beautiful.",
+        "rating": 5,
+        "exam": "ATAR Biology"
+      },
+      {
+        "name": "Henry Wilson",
+        "university": "University of Western Australia",
+        "course": "Accounting",
+        "quote": "Truly elite tool for Accounting at University of Western Australia. Makes ATAR preparation so much simpler.",
+        "rating": 5,
+        "exam": "ATAR Mathematics"
+      },
+      {
+        "name": "Ethan Evans",
+        "university": "University of Adelaide",
+        "course": "Chemistry",
+        "quote": "Converting lecture streams directly to flashcards helps me study on the train.",
+        "rating": 4,
+        "exam": "NSW HSC Physics"
+      },
+      {
+        "name": "Alexander Thomas",
+        "university": "University of Melbourne",
+        "course": "Marine Biology",
+        "quote": "Paperxify is the best AI YouTube notes generator. 10/10 for Marine Biology prep.",
+        "rating": 5,
+        "exam": "Victorian VCE Maths"
+      },
+      {
+        "name": "James Roberts",
+        "university": "University of Sydney",
+        "course": "Mechanical Engineering",
+        "quote": "Passed my WACE Chemistry with high marks thanks to these summaries. Highly recommend!",
+        "rating": 5,
+        "exam": "WACE Chemistry"
+      },
+      {
+        "name": "Charlotte Johnson",
+        "university": "Australian National University (ANU)",
+        "course": "Financial Mathematics",
+        "quote": "Optimized my HSC revision for ATAR Physics. The diagrams look beautiful.",
+        "rating": 5,
+        "exam": "ATAR Physics"
+      },
+      {
+        "name": "Amelia Smith",
+        "university": "UNSW Sydney",
+        "course": "Data Science",
+        "quote": "Truly elite tool for Data Science at UNSW Sydney. Makes ATAR preparation so much simpler.",
+        "rating": 3,
+        "exam": "ATAR Chemistry"
+      },
+      {
+        "name": "Olivia Jones",
+        "university": "University of Queensland",
+        "course": "Psychology",
+        "quote": "Converting lecture streams directly to flashcards helps me study on the train.",
+        "rating": 5,
+        "exam": "ATAR Biology"
+      },
+      {
+        "name": "Isla Williams",
+        "university": "Monash University",
+        "course": "Clinical Anatomy",
+        "quote": "Paperxify is the best AI YouTube notes generator. 10/10 for Clinical Anatomy prep.",
+        "rating": 5,
+        "exam": "ATAR Mathematics"
+      },
+      {
+        "name": "Emily Brown",
+        "university": "University of Western Australia",
+        "course": "Accounting",
+        "quote": "Passed my NSW HSC Physics with high marks thanks to these summaries. Highly recommend!",
+        "rating": 5,
+        "exam": "NSW HSC Physics"
+      },
+      {
+        "name": "Mia Taylor",
+        "university": "University of Adelaide",
+        "course": "Chemistry",
+        "quote": "Optimized my HSC revision for Victorian VCE Maths. The diagrams look beautiful.",
+        "rating": 4,
+        "exam": "Victorian VCE Maths"
+      },
+      {
+        "name": "Ava Davies",
+        "university": "University of Melbourne",
+        "course": "Marine Biology",
+        "quote": "Truly elite tool for Marine Biology at University of Melbourne. Makes ATAR preparation so much simpler.",
+        "rating": 5,
+        "exam": "WACE Chemistry"
+      },
+      {
+        "name": "Lily Wilson",
+        "university": "University of Sydney",
+        "course": "Mechanical Engineering",
+        "quote": "Converting lecture streams directly to flashcards helps me study on the train.",
+        "rating": 5,
+        "exam": "ATAR Physics"
+      },
+      {
+        "name": "Chloe Evans",
+        "university": "Australian National University (ANU)",
+        "course": "Financial Mathematics",
+        "quote": "Paperxify is the best AI YouTube notes generator. 10/10 for Financial Mathematics prep.",
+        "rating": 5,
+        "exam": "ATAR Chemistry"
+      },
+      {
+        "name": "Grace Thomas",
+        "university": "UNSW Sydney",
+        "course": "Data Science",
+        "quote": "Passed my ATAR Biology with high marks thanks to these summaries. Highly recommend!",
+        "rating": 5,
+        "exam": "ATAR Biology"
+      }
+    ]
+  },
+  "de": {
+    "region": "de",
+    "testimonials": [
+      {
+        "name": "Lukas Schmidt",
+        "university": "LMU München",
+        "course": "Informatik",
+        "quote": "Perfekte Zusammenfassungen für Abitur Mathematik an der LMU München. Sehr zu empfehlen!",
+        "rating": 5,
+        "exam": "Abitur Mathematik"
+      },
+      {
+        "name": "Leon Müller",
+        "university": "TU Berlin",
+        "course": "Maschinenbau",
+        "quote": "Die Übersetzungen von englischen Fachvorträgen ins Deutsche für Maschinenbau sind extrem präzise.",
+        "rating": 5,
+        "exam": "Abitur Physik"
+      },
+      {
+        "name": "Ben Weber",
+        "university": "Heidelberg Universität",
+        "course": "Elektrotechnik",
+        "quote": "Sp spart mir Stunden beim Erstellen von Karteikarten für Elektrotechnik. Geniales Tool.",
+        "rating": 5,
+        "exam": "Abitur Deutsch"
+      },
+      {
+        "name": "Finn Fischer",
+        "university": "Humboldt-Universität Berlin",
+        "course": "Biochemie",
+        "quote": "Sehr gute Struktur. Formeln und Programmcode werden fehlerfrei extrahiert.",
+        "rating": 5,
+        "exam": "Abitur Biologie"
+      },
+      {
+        "name": "Jonas Becker",
+        "university": "RWTH Aachen",
+        "course": "Volkswirtschaftslehre",
+        "quote": "Die Notizen für Volkswirtschaftslehre an der RWTH Aachen helfen mir enorm bei der Klausurvorbereitung.",
+        "rating": 5,
+        "exam": "Abitur Chemie"
+      },
+      {
+        "name": "Luis Hoffmann",
+        "university": "Karlsruher Institut für Technologie",
+        "course": "Physik",
+        "quote": "Perfekte Zusammenfassungen für Numerus Clausus Prep an der Karlsruher Institut für Technologie. Sehr zu empfehlen!",
+        "rating": 5,
+        "exam": "Numerus Clausus Prep"
+      },
+      {
+        "name": "Maximilian Wagner",
+        "university": "Universität Hamburg",
+        "course": "Jura",
+        "quote": "Die Übersetzungen von englischen Fachvorträgen ins Deutsche für Jura sind extrem präzise.",
+        "rating": 5,
+        "exam": "Abitur Mathematik"
+      },
+      {
+        "name": "Felix Meyer",
+        "university": "TU München",
+        "course": "Medizin",
+        "quote": "Sp spart mir Stunden beim Erstellen von Karteikarten für Medizin. Geniales Tool.",
+        "rating": 4,
+        "exam": "Abitur Physik"
+      },
+      {
+        "name": "Noah Schulz",
+        "university": "LMU München",
+        "course": "Informatik",
+        "quote": "Sehr gute Struktur. Formeln und Programmcode werden fehlerfrei extrahiert.",
+        "rating": 5,
+        "exam": "Abitur Deutsch"
+      },
+      {
+        "name": "Elias Becker",
+        "university": "TU Berlin",
+        "course": "Maschinenbau",
+        "quote": "Die Notizen für Maschinenbau an der TU Berlin helfen mir enorm bei der Klausurvorbereitung.",
+        "rating": 5,
+        "exam": "Abitur Biologie"
+      },
+      {
+        "name": "Emma Schmidt",
+        "university": "Heidelberg Universität",
+        "course": "Elektrotechnik",
+        "quote": "Perfekte Zusammenfassungen für Abitur Chemie an der Heidelberg Universität. Sehr zu empfehlen!",
+        "rating": 5,
+        "exam": "Abitur Chemie"
+      },
+      {
+        "name": "Mia Müller",
+        "university": "Humboldt-Universität Berlin",
+        "course": "Biochemie",
+        "quote": "Die Übersetzungen von englischen Fachvorträgen ins Deutsche für Biochemie sind extrem präzise.",
+        "rating": 3,
+        "exam": "Numerus Clausus Prep"
+      },
+      {
+        "name": "Sofia Weber",
+        "university": "RWTH Aachen",
+        "course": "Volkswirtschaftslehre",
+        "quote": "Sp spart mir Stunden beim Erstellen von Karteikarten für Volkswirtschaftslehre. Geniales Tool.",
+        "rating": 5,
+        "exam": "Abitur Mathematik"
+      },
+      {
+        "name": "Lina Fischer",
+        "university": "Karlsruher Institut für Technologie",
+        "course": "Physik",
+        "quote": "Sehr gute Struktur. Formeln und Programmcode werden fehlerfrei extrahiert.",
+        "rating": 5,
+        "exam": "Abitur Physik"
+      },
+      {
+        "name": "Mila Becker",
+        "university": "Universität Hamburg",
+        "course": "Jura",
+        "quote": "Die Notizen für Jura an der Universität Hamburg helfen mir enorm bei der Klausurvorbereitung.",
+        "rating": 5,
+        "exam": "Abitur Deutsch"
+      },
+      {
+        "name": "Ella Hoffmann",
+        "university": "TU München",
+        "course": "Medizin",
+        "quote": "Perfekte Zusammenfassungen für Abitur Biologie an der TU München. Sehr zu empfehlen!",
+        "rating": 4,
+        "exam": "Abitur Biologie"
+      },
+      {
+        "name": "Clara Wagner",
+        "university": "LMU München",
+        "course": "Informatik",
+        "quote": "Die Übersetzungen von englischen Fachvorträgen ins Deutsche für Informatik sind extrem präzise.",
+        "rating": 5,
+        "exam": "Abitur Chemie"
+      },
+      {
+        "name": "Lea Meyer",
+        "university": "TU Berlin",
+        "course": "Maschinenbau",
+        "quote": "Sp spart mir Stunden beim Erstellen von Karteikarten für Maschinenbau. Geniales Tool.",
+        "rating": 5,
+        "exam": "Numerus Clausus Prep"
+      },
+      {
+        "name": "Marie Schulz",
+        "university": "Heidelberg Universität",
+        "course": "Elektrotechnik",
+        "quote": "Sehr gute Struktur. Formeln und Programmcode werden fehlerfrei extrahiert.",
+        "rating": 5,
+        "exam": "Abitur Mathematik"
+      },
+      {
+        "name": "Leni Becker",
+        "university": "Humboldt-Universität Berlin",
+        "course": "Biochemie",
+        "quote": "Die Notizen für Biochemie an der Humboldt-Universität Berlin helfen mir enorm bei der Klausurvorbereitung.",
+        "rating": 5,
+        "exam": "Abitur Physik"
+      }
+    ]
+  }
+}

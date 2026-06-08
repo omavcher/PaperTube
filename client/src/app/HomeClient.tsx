@@ -29,7 +29,7 @@ function useInView(ref: React.RefObject<HTMLDivElement | null>, rootMargin = "40
   return inView;
 }
 
-export default function HomeClient() {
+export default function HomeClient({ region }: { region?: string }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function HomeClient() {
       <main className="flex flex-1 flex-col items-center justify-center w-full">
         
         {/* Above fold — always eager */}
-        <HomePortal />
+        <HomePortal region={region} />
 
         {/* HowToUse */}
         <div ref={howToRef} className="w-full perf-section">
@@ -71,17 +71,17 @@ export default function HomeClient() {
 
         {/* Pricing */}
         <div ref={pricingRef} className="w-full perf-section">
-          {showPricing && <PricingShowcase />}
+          {showPricing && <PricingShowcase region={region} />}
         </div>
 
         {/* Testimonials */}
         <div ref={testimonialsRef} className="w-full max-w-6xl mx-auto px-6 py-16 border-t border-white/[0.04] mt-8">
-          {showTestimonials && <TestimonialsCarousel />}
+          {showTestimonials && <TestimonialsCarousel region={region} />}
         </div>
 
         {/* FAQ (For fully populated FAQ page metadata matching page.tsx schema) */}
         <div ref={faqRef} className="w-full perf-section px-6">
-          {showFaq && <FAQAccordion />}
+          {showFaq && <FAQAccordion region={region} />}
         </div>
 
       </main>

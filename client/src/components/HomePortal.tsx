@@ -19,10 +19,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ToolLivePreview from "@/components/ToolLivePreview";
+import { useRegionConfig } from "@/lib/localization";
 
-export default function HomePortal() {
+interface HomePortalProps {
+  region?: string;
+}
+
+export default function HomePortal({ region }: HomePortalProps) {
   const router = useRouter();
   const [activeIdx, setActiveIdx] = useState(0);
+  const { config } = useRegionConfig(region);
   
   // 3D Card Tilt State & Refs
   const cardRef = useRef<HTMLDivElement>(null);
@@ -192,29 +198,28 @@ export default function HomePortal() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 text-[10px] font-bold uppercase tracking-widest text-neutral-400"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 text-[10px] font-bold uppercase tracking-widest text-neutral-300"
         >
           <Sparkles size={11} className="text-red-500" />
           <span>Paperxify AI Study Suite</span>
         </motion.div>
         
-        <motion.h2
+        <motion.h1
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter leading-tight text-white"
         >
-          Power Up Your Study <br />
-          Workflows with <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-purple-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.25)]">Next-Gen AI</span>
-        </motion.h2>
+          {config.heroTitle}
+        </motion.h1>
         
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-base sm:text-lg text-neutral-400 font-light leading-relaxed max-w-2xl mx-auto"
+          className="text-base sm:text-lg text-neutral-300 font-light leading-relaxed max-w-2xl mx-auto"
         >
-          Stop taking notes manually and let AI synthesize your materials into custom summaries, interactive flowcharts, presentations, or quizzes.
+          {config.heroSubtitle}
         </motion.p>
       </div>
 
@@ -290,7 +295,7 @@ export default function HomePortal() {
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-neutral-500 font-light mt-1.5 leading-relaxed truncate group-hover:text-neutral-400 transition-colors">
+                  <p className="text-[11px] text-neutral-400 font-light mt-1.5 leading-relaxed truncate group-hover:text-neutral-200 transition-colors">
                     {tool.cardDescription}
                   </p>
                 </div>
@@ -407,8 +412,8 @@ export default function HomePortal() {
                   {activeTool.badge}
                 </span>
               </div>
-              <h4 className="text-xl font-black text-white mt-2">{activeTool.title}</h4>
-              <p className="text-xs text-neutral-400 font-light mt-2 leading-relaxed max-w-2xl">{activeTool.description}</p>
+              <h2 className="text-xl font-black text-white mt-2">{activeTool.title}</h2>
+              <p className="text-xs text-neutral-300 font-light mt-2 leading-relaxed max-w-2xl">{activeTool.description}</p>
             </div>
 
             {/* Features & Action section */}
@@ -416,7 +421,7 @@ export default function HomePortal() {
               {/* Checklist grid */}
               <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 flex-1">
                 {activeTool.features.map((feature, fIdx) => (
-                  <div key={fIdx} className="flex items-center gap-2 text-[10.5px] text-neutral-400">
+                  <div key={fIdx} className="flex items-center gap-2 text-[10.5px] text-neutral-300">
                     <div className={cn(
                       "w-4 h-4 rounded-full flex items-center justify-center border shrink-0",
                       activeTool.id === "youtube-notes" ? "bg-red-500/10 border-red-500/20 text-red-400" :
@@ -501,7 +506,7 @@ export default function HomePortal() {
                       {tool.title}
                     </span>
                     {!isActive && (
-                      <span className="text-[9.5px] text-neutral-500 font-light block mt-0.5 leading-none">
+                      <span className="text-[9.5px] text-neutral-400 font-light block mt-0.5 leading-none">
                         {tool.cardDescription.substring(0, 48)}...
                       </span>
                     )}
@@ -544,7 +549,7 @@ export default function HomePortal() {
                     <div className="px-4 pb-5 pt-1.5 border-t border-white/[0.04] flex flex-col gap-4 text-left">
                       
                       {/* Description */}
-                      <p className="text-[11px] text-neutral-400 font-light leading-relaxed">
+                      <p className="text-[11px] text-neutral-300 font-light leading-relaxed">
                         {tool.description}
                       </p>
 
@@ -604,8 +609,8 @@ export default function HomePortal() {
                       {/* Feature Capsules */}
                       <div className="flex flex-wrap gap-1.5">
                         {tool.features.map((feature, fIdx) => (
-                          <span key={fIdx} className="text-[8.5px] text-neutral-400 bg-white/[0.02] border border-white/[0.04] px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
-                            <Check size={8} className="text-neutral-500" />
+                          <span key={fIdx} className="text-[8.5px] text-neutral-300 bg-white/[0.02] border border-white/[0.04] px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
+                            <Check size={8} className="text-neutral-300" />
                             {feature}
                           </span>
                         ))}

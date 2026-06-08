@@ -1,6 +1,8 @@
 import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import BlogClient from "./BlogClient";
+import { generateBlogPostingSchema, generateBreadcrumbSchema } from "@/lib/schema-generators";
+import { SchemaMarkup } from "@/components/SchemaMarkup";
 
 // --- Types ---
 interface ContentBlock {
@@ -117,39 +119,28 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
     notFound();
   }
 
-  // JSON-LD Structured Data (BlogPosting)
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    "headline": post.title,
-    "alternativeHeadline": post.subtitle,
-    "image": [post.coverImage],
-    "author": {
-      "@type": "Person",
-      "name": post.author.name,
-      "jobTitle": post.author.role
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "Paperxify",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://paperxify.com/logo.png"
-      }
-    },
-    "datePublished": post.meta.date,
-    "mainEntityOfPage": {
-        "@type": "WebPage",
-        "@id": `https://paperxify.com/blog/${post.slug}`
-    }
-  };
+  const blogPostSchema = generateBlogPostingSchema({
+    title: post.title,
+    subtitle: post.subtitle,
+    slug: post.slug,
+    coverImage: post.coverImage,
+    datePublished: post.meta.date,
+    authorName: post.author.name,
+    authorRole: post.author.role,
+    authorAvatar: post.author.avatar,
+    description: post.subtitle,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", item: "/" },
+    { name: "Blog", item: "/blog" },
+    { name: post.title, item: `/blog/${post.slug}` }
+  ]);
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <SchemaMarkup schema={blogPostSchema} />
+      <SchemaMarkup schema={breadcrumbSchema} />
       <BlogClient post={post} />
     </>
   );

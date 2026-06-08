@@ -1,0 +1,62 @@
+[
+  {
+    "id": "link-001",
+    "domain": "reddit.com",
+    "url": "https://www.reddit.com/r/college/comments/mock123",
+    "da": 91,
+    "type": "Community",
+    "status": "Active",
+    "anchorText": "Paperxify",
+    "dateDiscovered": "2026-06-01",
+    "lastChecked": "2026-06-08T06:54:33.575Z",
+    "notes": "Posted GPA Calculator in r/college resources thread."
+  },
+  {
+    "id": "link-002",
+    "domain": "dev.to",
+    "url": "https://dev.to/studentdev/notes-maker-ai-3456",
+    "da": 83,
+    "type": "Tech Blog",
+    "status": "Missing",
+    "anchorText": "YouTube to Notes AI tool",
+    "dateDiscovered": "2026-06-03",
+    "lastChecked": "2026-06-08T06:54:34.895Z",
+    "notes": "Shared code-block lecture transcription case study."
+  },
+  {
+    "id": "link-003",
+    "domain": "teachercast.net",
+    "url": "https://www.teachercast.net/tools-for-digital-learning",
+    "da": 48,
+    "type": "EdTech Blog",
+    "status": "Missing",
+    "anchorText": "Paperxify Study Room",
+    "dateDiscovered": "2026-06-04",
+    "lastChecked": "2026-06-08T06:54:37.458Z",
+    "notes": "Requested resource link; pending listing or got removed."
+  },
+  {
+    "id": "link-004",
+    "domain": "medium.com",
+    "url": "https://medium.com/@studypros/how-ai-improves-active-recall-789",
+    "da": 84,
+    "type": "Education Blog",
+    "status": "Missing",
+    "anchorText": "Ultimate Study Hacks Bundle",
+    "dateDiscovered": "2026-06-05",
+    "lastChecked": "2026-06-08T06:54:37.731Z",
+    "notes": "Link active but marked as nofollow by Medium editor guidelines."
+  },
+  {
+    "id": "link-005",
+    "domain": "schoology.com",
+    "url": "https://schoology.com/blog/ai-integration-classrooms",
+    "da": 63,
+    "type": "EdTech Blog",
+    "status": "Missing",
+    "anchorText": "AI slide maker",
+    "dateDiscovered": "2026-06-06",
+    "lastChecked": "2026-06-08T06:54:39.322Z",
+    "notes": "Featured in guest post on flipped learning resources."
+  }
+]

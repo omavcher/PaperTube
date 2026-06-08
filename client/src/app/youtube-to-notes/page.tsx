@@ -5,6 +5,14 @@ import Link from "next/link";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { TestimonialsCarousel } from "@/components/TestimonialsCarousel";
 import {
+  generateSoftwareApplicationSchema,
+  generateFAQSchema,
+  generateHowToSchema,
+  generateVideoObjectSchema,
+  generateBreadcrumbSchema
+} from "@/lib/schema-generators";
+import { SchemaMarkup } from "@/components/SchemaMarkup";
+import {
   Table,
   TableBody,
   TableCell,
@@ -92,64 +100,39 @@ const notesFaqs = [
 ];
 
 export default function YouTubeToNotesPage() {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "WebApplication",
-        "@id": "https://paperxify.com/youtube-to-notes/#webapp",
-        "name": "Paperxify YouTube to Notes AI",
-        "url": "https://paperxify.com/youtube-to-notes",
-        "operatingSystem": "All",
-        "applicationCategory": "EducationalApplication",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD",
-        },
-        "description": "Best free AI YouTube notes generator. Convert any YouTube video link to structured study notes, revision guides, and print-ready PDF summaries instantly.",
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.9",
-          "ratingCount": "12480",
-        },
-        "review": reviews.map(r => ({
-          "@type": "Review",
-          "author": {
-            "@type": "Person",
-            "name": r.name
-          },
-          "datePublished": r.datePublished,
-          "reviewBody": r.quote,
-          "reviewRating": {
-            "@type": "Rating",
-            "bestRating": "5",
-            "ratingValue": r.ratingValue,
-            "worstRating": "1"
-          }
-        }))
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": notesFaqs.map((faq) => ({
-          "@type": "Question",
-          "name": faq.question,
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": faq.answer,
-          },
-        })),
-      },
-    ],
-  };
+  const softwareSchema = generateSoftwareApplicationSchema(
+    "Paperxify YouTube to Notes AI",
+    "Best free AI YouTube notes generator. Convert any YouTube video link to structured study notes, revision guides, and print-ready PDF summaries instantly.",
+    "4.9",
+    "12480"
+  );
 
+  const faqSchema = generateFAQSchema(notesFaqs);
+
+  const howToSchema = generateHowToSchema("How to Convert YouTube Videos to Study Notes", [
+    { name: "Copy and Paste URL", text: "Copy the link of any YouTube lecture or video and paste it into Paperxify." },
+    { name: "Select Note Format", text: "Choose between detailed bullet summaries, outline notes, or flashcards." },
+    { name: "Generate & Edit", text: "Let the AI transcribe, summarize, and outline the video. Edit text inside our built-in markdown editor." },
+    { name: "Export & Study", text: "Export notes as Markdown, high-quality PDF, or sync directly to Notion or Obsidian." }
+  ]);
+
+  const videoSchema = generateVideoObjectSchema(
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "How to Convert YouTube Lectures to Study Notes with Paperxify"
+  );
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", item: "/" },
+    { name: "YouTube to Notes AI", item: "/youtube-to-notes" }
+  ]);
 
   return (
     <div className="min-h-screen bg-[#050505] text-neutral-100 font-sans selection:bg-red-900/50 relative overflow-hidden">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <SchemaMarkup schema={softwareSchema} />
+      <SchemaMarkup schema={faqSchema} />
+      <SchemaMarkup schema={howToSchema} />
+      <SchemaMarkup schema={videoSchema} />
+      <SchemaMarkup schema={breadcrumbSchema} />
 
       {/* Background Atmosphere */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-red-950/5 blur-[140px] rounded-full pointer-events-none z-0" />

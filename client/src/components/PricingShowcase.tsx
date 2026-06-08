@@ -7,6 +7,7 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useRegionConfig } from "@/lib/localization";
 
 // ─── Pricing illusion config ──────────────────────────────────
 const OFFER_DISCOUNT_PCT = 20;
@@ -113,7 +114,8 @@ function MegaOfferBanner() {
 }
 
 // ─── Main Component ───────────────────────────────────────────
-export default function PricingShowcase() {
+export default function PricingShowcase({ region }: { region?: string }) {
+  const { config } = useRegionConfig(region);
   return (
     <section className="bg-black text-white relative overflow-hidden font-sans">
       
@@ -193,25 +195,25 @@ export default function PricingShowcase() {
                   <p className="text-[10px] md:text-xs text-neutral-500 font-bold uppercase tracking-wide">{plan.desc}</p>
                 </div>
 
-                {/* Price block — with illusion */}
+                 {/* Price block — with illusion */}
                 <div className="mb-6 md:mb-8 pb-6 md:pb-8 border-b border-white/5">
                   {/* Fake higher original price — crossed out */}
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm text-neutral-600 line-through font-mono">${origPrice}</span>
+                    <span className="text-sm text-neutral-600 line-through font-mono">{config.currencySymbol}{origPrice}</span>
                     <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[8px] font-black uppercase">
                       -{OFFER_DISCOUNT_PCT}%
                     </span>
                   </div>
                   {/* Actual (discounted-looking) price */}
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl md:text-5xl font-bold text-white tracking-tighter">${plan.price}</span>
+                    <span className="text-4xl md:text-5xl font-bold text-white tracking-tighter">{config.currencySymbol}{plan.price}</span>
                     <span className="text-neutral-500 text-xs md:text-sm font-bold uppercase tracking-widest">/mo</span>
                   </div>
                   {/* Savings row */}
                   <div className="mt-2 flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-emerald-500">✓ You save ${savedAmount}</span>
+                    <span className="text-[10px] font-bold text-emerald-500">✓ You save {config.currencySymbol}{savedAmount}</span>
                     <span className="text-[10px] font-mono text-neutral-600">
-                      ≈ ${plan.daily.toFixed(2)} / day
+                      ≈ {config.currencySymbol}{plan.daily.toFixed(2)} / day
                     </span>
                   </div>
                 </div>

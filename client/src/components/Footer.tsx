@@ -142,7 +142,7 @@ export default function Footer() {
         {/* --- Global Directories / Regional Links (SEO booster) --- */}
         <div className="py-6 border-t border-white/[0.04] border-b border-white/[0.04] mb-8 bg-neutral-900/[0.02] backdrop-blur-[2px]">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <span className="text-[9px] font-extrabold uppercase tracking-widest text-neutral-500 flex items-center gap-1.5 select-none">
+            <span className="text-[9px] font-extrabold uppercase tracking-widest text-neutral-400 flex items-center gap-1.5 select-none">
               <Globe size={11} className="text-neutral-500 animate-spin-slow" /> Target Regions & Localized Engines:
             </span>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-bold text-neutral-400">
@@ -160,7 +160,7 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-            <span className="text-[10px] font-extrabold text-neutral-600 uppercase tracking-widest select-none">
+            <span className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest select-none">
               © {currentYear} Paperxify Inc.
             </span>
             
@@ -172,7 +172,7 @@ export default function Footer() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6 text-neutral-600 shrink-0">
+          <div className="flex items-center gap-6 text-neutral-400 shrink-0">
              <div className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-widest hover:text-white transition-colors cursor-default select-none">
                 <Globe size={11} /> Global / EN
              </div>
@@ -192,7 +192,7 @@ export default function Footer() {
 function FooterColumn({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-5">
-      <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.2em] flex items-center gap-2 select-none">
+      <h3 className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em] flex items-center gap-2 select-none">
         {title}
       </h3>
       <ul className="space-y-3">
@@ -205,7 +205,7 @@ function FooterColumn({ title, children }: { title: string; children: React.Reac
 function FooterLink({ href, label, badge }: { href: string; label: string, badge?: string }) {
   return (
     <li>
-      <Link href={href} className="text-neutral-500 hover:text-white transition-all text-xs font-semibold flex items-center justify-between group">
+      <Link href={href} className="text-neutral-400 hover:text-white transition-all text-xs font-semibold flex items-center justify-between group">
         <span className="group-hover:translate-x-1 transition-transform">{label}</span>
         {badge && (
           <span className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-wide ml-2">
@@ -224,7 +224,7 @@ function SocialIcon({ icon, href, label }: { icon: React.ReactNode; href: string
       target="_blank" 
       rel="noreferrer"
       aria-label={label}
-      className="h-9 w-9 rounded-xl bg-neutral-950 border border-white/5 flex items-center justify-center text-neutral-500 hover:text-white hover:bg-neutral-900 hover:border-white/10 transition-all group"
+      className="h-9 w-9 rounded-xl bg-neutral-950 border border-white/5 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-900 hover:border-white/10 transition-all group"
     >
       <div className="group-hover:scale-110 transition-transform">
         {icon}
@@ -242,7 +242,7 @@ function StatusDot({ label, status }: { label: string, status: 'online' | 'offli
         status === 'latency' ? "bg-cyan-500 shadow-[0_0_8px_#06b6d4]" :
         "bg-red-500"
       )} />
-      <span className="text-[9px] font-extrabold uppercase tracking-widest text-neutral-500 flex items-center gap-1">
+      <span className="text-[9px] font-extrabold uppercase tracking-widest text-neutral-400 flex items-center gap-1">
         {label}
         {status === 'latency' && (
           <span className="text-[8px] font-mono text-cyan-500 font-bold lowercase tracking-normal">42ms</span>

@@ -104,7 +104,7 @@ export default function DEPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <HomeClient />
+      <HomeClient region="de" />
     </>
   );
 }

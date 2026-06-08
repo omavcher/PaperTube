@@ -3,9 +3,24 @@
 import React from "react";
 import { InfiniteMovingCards } from "./ui/infinite-moving-cards";
 import { Star } from "lucide-react";
-import { reviews } from "@/data/reviews";
+import { useRegionConfig } from "@/lib/localization";
 
-export function TestimonialsCarousel() {
+interface TestimonialsCarouselProps {
+  region?: string;
+}
+
+export function TestimonialsCarousel({ region }: TestimonialsCarouselProps) {
+  const { testimonials } = useRegionConfig(region);
+
+  // Format reviews list for InfiniteMovingCards
+  const formattedTestimonials = testimonials.map(t => ({
+    quote: t.quote,
+    name: t.name,
+    location: t.university,
+    time: t.exam, // Subtitle/designation
+    ratingValue: String(t.rating)
+  }));
+
   return (
     <section className="space-y-12">
       <div className="text-center max-w-2xl mx-auto space-y-3">
@@ -21,7 +36,7 @@ export function TestimonialsCarousel() {
 
       <div className="flex flex-col antialiased relative overflow-hidden rounded-3xl">
         <InfiniteMovingCards
-          items={reviews}
+          items={formattedTestimonials}
           direction="left"
           speed="slow"
         />

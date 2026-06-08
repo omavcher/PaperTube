@@ -5,13 +5,14 @@ import "katex/dist/katex.min.css";
 import Script from "next/script";
 import { headers } from "next/headers";
 import { getHreflangs } from "@/lib/hreflang";
+import { generateOrganizationSchema } from "@/lib/schema-generators";
+import { SchemaMarkup } from "@/components/SchemaMarkup";
 
 // Separate viewport export (Next.js 14+ standard)
 export const viewport: Viewport = {
   themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -179,11 +180,12 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <SchemaMarkup schema={generateOrganizationSchema()} />
       </head>
       <body className="antialiased bg-black text-white selection:bg-red-900/50">
-        {/* Google Analytics / Tag Manager (AW-363591459) */}
+        {/* Google Analytics / Tag Manager (G-VK6RMJ2KVV & AW-363591459) */}
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=AW-363591459"
+          src="https://www.googletagmanager.com/gtag/js?id=G-VK6RMJ2KVV"
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -192,6 +194,7 @@ export default function RootLayout({
             function gtag(){window.dataLayer.push(arguments);}
             gtag('js', new Date());
 
+            gtag('config', 'G-VK6RMJ2KVV');
             gtag('config', 'AW-363591459');
           `}
         </Script>

@@ -1,0 +1,88 @@
+{
+  "tools": [
+    {
+      "id": "youtube-to-notes",
+      "title": "YouTube to Notes AI",
+      "url": "/youtube-to-notes",
+      "cta": "Summarize YouTube Video",
+      "tags": ["notes", "summarize", "lecture", "study-guide", "pdf", "transcription", "study-notes"],
+      "anchors": ["YouTube to Notes tool", "AI YouTube note taker", "convert YouTube video to notes"]
+    },
+    {
+      "id": "youtube-to-quiz",
+      "title": "AI Quiz Creator",
+      "url": "/youtube-to-quiz",
+      "cta": "Create YouTube Quiz",
+      "tags": ["quiz", "test", "mcq", "exam-prep", "practice-questions"],
+      "anchors": ["AI quiz generator", "create quiz from video", "YouTube to quiz converter"]
+    },
+    {
+      "id": "youtube-to-flashcards",
+      "title": "AI Flashcard Generator",
+      "url": "/youtube-to-flashcards",
+      "cta": "Generate Study Flashcards",
+      "tags": ["flashcard", "anki", "spaced-repetition", "memorize", "active-recall"],
+      "anchors": ["AI flashcard generator", "create Anki cards from video", "auto generate flashcards"]
+    },
+    {
+      "id": "homework-helper",
+      "title": "AI Homework Helper",
+      "url": "/ai-study/homework-helper",
+      "cta": "Get Homework Help",
+      "tags": ["homework", "study-helper", "tutor", "explain", "answers"],
+      "anchors": ["AI homework helper", "step-by-step homework help", "virtual study helper"]
+    },
+    {
+      "id": "math-solver",
+      "title": "AI Math Solver",
+      "url": "/ai-study/math-solver",
+      "cta": "Solve Math Problem",
+      "tags": ["math", "physics", "calculus", "equations", "solver"],
+      "anchors": ["AI math solver", "solve math from link", "step-by-step math solver"]
+    },
+    {
+      "id": "presentation-generator",
+      "title": "AI Slide Deck & PPT Maker",
+      "url": "/presentation-generator",
+      "cta": "Create Slides from Video",
+      "tags": ["presentation", "ppt", "slides", "slide-deck"],
+      "anchors": ["AI PPT maker", "create slides from YouTube", "AI slide deck generator"]
+    },
+    {
+      "id": "ai-diagram",
+      "title": "AI Diagram Maker",
+      "url": "/ai-diagram",
+      "cta": "Generate Concept Map",
+      "tags": ["diagram", "flowchart", "concept-map", "mind-map", "sequence-diagram"],
+      "anchors": ["AI diagram maker", "generate concept maps", "interactive flowchart creator"]
+    },
+    {
+      "id": "ai-writer",
+      "title": "AI Academic Writer",
+      "url": "/ai-writer",
+      "cta": "Draft Essay with AI",
+      "tags": ["essay", "writing", "academic", "cite", "summary"],
+      "anchors": ["AI essay writer", "draft academic papers", "AI writing assistant"]
+    }
+  ],
+  "sitePages": [
+    {
+      "id": "pricing",
+      "title": "Pricing & Plans",
+      "url": "/pricing",
+      "anchors": ["View pricing packages", "Check Paperxify premium", "subscription options"]
+    },
+    {
+      "id": "leaderboard",
+      "title": "Student Leaderboard",
+      "url": "/leaderboard",
+      "anchors": ["Student leaderboard", "Check top study ranks", "leaderboard rankings"]
+    },
+    {
+      "id": "about",
+      "title": "About Paperxify",
+      "url": "/about",
+      "anchors": ["About our team", "Our education mission", "Paperxify company details"]
+    }
+  ]
+}
