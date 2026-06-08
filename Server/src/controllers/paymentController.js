@@ -116,6 +116,18 @@ async function activateMembership({ userId, planId, billingPeriod, amountUSD, pa
 //  PAYPAL
 // ═════════════════════════════════════════════════════════════════════════════
 
+// Helper to extract detailed error messages from PayPal API responses
+function getDetailedPaypalError(error) {
+  if (error?.response?.data) {
+    const data = error.response.data;
+    if (data.details && Array.isArray(data.details)) {
+      return data.details.map(d => `${d.issue}: ${d.description}`).join("; ") || data.message;
+    }
+    return data.error_description || data.message || data.error || JSON.stringify(data);
+  }
+  return error.message;
+}
+
 // ── Get PayPal OAuth2 access token ───────────────────────────────────────────
 async function getPaypalAccessToken() {
   const clientId     = process.env.PAYPAL_CLIENT_ID;
@@ -200,7 +212,7 @@ exports.createPaypalOrder = async (req, res) => {
     console.error("❌ PayPal create order error:", error?.response?.data || error.message);
     res.status(500).json({
       success: false,
-      message: error?.response?.data?.message || error.message || "Failed to create PayPal order",
+      message: getDetailedPaypalError(error),
     });
   }
 };
@@ -261,7 +273,7 @@ exports.capturePaypalOrder = async (req, res) => {
     console.error("❌ PayPal capture error:", error?.response?.data || error.message);
     res.status(500).json({
       success: false,
-      message: error?.response?.data?.message || error.message || "Failed to capture PayPal order",
+      message: getDetailedPaypalError(error),
     });
   }
 };
