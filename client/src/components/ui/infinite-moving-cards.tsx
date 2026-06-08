@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import React, { useEffect, useState } from "react";
+import { Star } from "lucide-react";
 
 export const InfiniteMovingCards = ({
   items,
@@ -17,6 +18,7 @@ export const InfiniteMovingCards = ({
     time?: string;
     profileName?: string;
     profilePicture?: string;
+    ratingValue?: string;
   }[];
   direction?: "left" | "right";
   speed?: "fast" | "normal" | "slow";
@@ -105,6 +107,21 @@ export const InfiniteMovingCards = ({
                 aria-hidden="true"
                 className="user-select-none pointer-events-none absolute -top-0.5 -left-0.5 -z-1 h-[calc(100%_+_4px)] w-[calc(100%_+_4px)]"
               ></div>
+              {item.ratingValue && (
+                <div className="flex items-center gap-0.5 mb-3 relative z-20">
+                  {[...Array(5)].map((_, i) => {
+                    const rating = Number(item.ratingValue);
+                    const isFilled = i < rating;
+                    return (
+                      <Star
+                        key={i}
+                        size={14}
+                        className={isFilled ? "fill-amber-400 text-amber-400" : "text-zinc-600 fill-zinc-800"}
+                      />
+                    );
+                  })}
+                </div>
+              )}
               <span className="relative z-20 text-sm leading-[1.6] font-normal text-gray-100">
                 {item.quote}
               </span>
