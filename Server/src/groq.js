@@ -1,6 +1,7 @@
 const Groq = require("groq-sdk");
 const dotenv = require("dotenv");
-dotenv.config();
+const path = require("path");
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const client = new Groq(process.env.GROQ_API_KEY);
 

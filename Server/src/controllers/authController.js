@@ -887,11 +887,23 @@ exports.githubAuth = async (req, res) => {
       return res.status(400).json({ success: false, message: "GitHub authorization code is required" });
     }
 
+    const clientId = process.env.GITHUB_CLIENT_ID || process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      console.error("❌ GitHub Client ID or Secret is missing from environment variables");
+      return res.status(500).json({
+        success: false,
+        message: "GitHub authentication failed",
+        error: "GitHub Client ID or Secret is not configured on the server."
+      });
+    }
+
     // Exchange code for token
     console.log("🔄 Exchanging GitHub code for access token...");
     const tokenResponse = await axios.post("https://github.com/login/oauth/access_token", {
-      client_id: process.env.GITHUB_CLIENT_ID || process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID,
-      client_secret: process.env.GITHUB_CLIENT_SECRET,
+      client_id: clientId,
+      client_secret: clientSecret,
       code,
     }, {
       headers: {
@@ -908,7 +920,10 @@ exports.githubAuth = async (req, res) => {
     // Fetch user profile
     console.log("🔄 Fetching GitHub user profile...");
     const userResponse = await axios.get("https://api.github.com/user", {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { 
+        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": "Paperxify-App"
+      }
     });
 
     const profile = userResponse.data;
@@ -918,7 +933,10 @@ exports.githubAuth = async (req, res) => {
     if (!email) {
       console.log("🔄 Fetching GitHub user emails...");
       const emailResponse = await axios.get("https://api.github.com/user/emails", {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { 
+          Authorization: `Bearer ${accessToken}`,
+          "User-Agent": "Paperxify-App"
+        }
       });
       const primaryEmailObj = emailResponse.data.find(e => e.primary && e.verified);
       email = primaryEmailObj ? primaryEmailObj.email : (emailResponse.data[0] ? emailResponse.data[0].email : null);
