@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const html_to_pdf = require("html-pdf-node");
 const Essay = require("../models/Essay");
+const { awardXP } = require("../utils/xpHelper");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
@@ -1475,6 +1476,9 @@ The response should be written in clean, standard Markdown format. Focus on rich
     });
 
     await essay.save();
+
+    // Award XP for successful AI Writer essay generation (+70 XP)
+    await awardXP(userId, 70);
 
     console.log(`✅ Essay Generation Complete. Slug: ${slug}`);
 

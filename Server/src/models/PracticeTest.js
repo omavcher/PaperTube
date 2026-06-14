@@ -25,7 +25,7 @@ const practiceTestSchema = new mongoose.Schema({
   videoUrl: { type: String, required: true },
   videoId: { type: String, required: true },
   title: { type: String, required: true },
-  slug: { type: String, required: true, unique: true, index: true },
+  slug: { type: String, required: true, unique: true },
   transcript: { type: String },
   questions: [questionSchema],
   status: { type: String, default: 'completed' },

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
 const { generateStudyImages } = require('../services/imageGenerationService');
 const { checkFreeTierLimits } = require('../utils/freeTierLimits');
+const { awardXP } = require('../utils/xpHelper');
 
 const FREE_MODELS = ['flash'];
 const MAX_FREE_VIDEO_LENGTH = 1 * 60 * 60; // 1 hour in seconds for free users
@@ -1166,6 +1167,9 @@ exports.createNote = async (req, res) => {
       
       await user.save();
     }
+
+    // Award XP for successful note generation (+50 XP)
+    await awardXP(userId, 50);
 
     console.log('Complete note generation finished successfully:', newNote._id);
 

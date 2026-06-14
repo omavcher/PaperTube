@@ -549,9 +549,9 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
-    const amount = Math.round(parseFloat(finalAmount) * 100); // Convert to paise
+    const amount = Math.round(parseFloat(finalAmount) * 100); // Convert to cents/paise
     if (amount < 100) {
-      return res.status(400).json({ success: false, message: "Amount must be at least ₹1" });
+      return res.status(400).json({ success: false, message: "Amount must be at least $1" });
     }
 
     const options = {
@@ -646,7 +646,12 @@ exports.verifyPayment = async (req, res) => {
       }
 
       // Activate membership and save transaction using the standard helper
-      const amountUSD = parseFloat(finalAmount);
+      let amountUSD = parseFloat(finalAmount);
+      const plan = PLANS[packageId];
+      if (plan && plan[billingPeriod]) {
+        amountUSD = plan[billingPeriod].priceUSD;
+      }
+
       const transaction = await activateMembership({
         userId: req.user._id,
         planId: packageId,

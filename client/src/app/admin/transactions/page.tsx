@@ -2,20 +2,16 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { 
-  DollarSign, ArrowUpRight, ArrowDownRight,
-  Search, Filter, Download, 
-  CheckCircle2, XCircle, Clock,
-  TrendingUp, Activity, Receipt,
-  Calendar, CreditCard, Coins, ShieldCheck, User
+  DollarSign, ArrowUpRight, Search, Download, 
+  CheckCircle2, XCircle, Clock, TrendingUp, Activity, 
+  Receipt, Calendar, Coins, ShieldCheck, User, RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import api from "@/config/api";
 
-// --- Types based on your API Response ---
+// --- Types based on API Response ---
 interface Transaction {
   _id: string;
   paymentId: string;
@@ -31,36 +27,43 @@ interface Transaction {
   timestamp: string;
 }
 
+const getAdminToken = () =>
+  typeof window !== "undefined" ? localStorage.getItem("authToken") || "" : "";
+
 export default function FinancialLedger() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
+  const [isExporting, setIsExporting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // --- Fetch Data ---
-  useEffect(() => {
-    const fetchTransactionData = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('authToken');
-        
-        const response = await api.get('/admin/transactions', {
-          headers: { 
-            'Authorization': `Bearer ${token}` 
-          }
-        });
-
-        if (response.data.success) {
-          setTransactions(response.data.data);
+  const fetchTransactionData = async (showSync = false) => {
+    try {
+      if (showSync) setIsRefreshing(true);
+      else setLoading(true);
+      
+      const token = getAdminToken();
+      const response = await api.get('/admin/transactions', {
+        headers: { 
+          'Authorization': `Bearer ${token}` 
         }
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
-        toast.error("Failed to sync financial ledger");
-      } finally {
-        setLoading(false);
-      }
-    };
+      });
 
+      if (response.data.success) {
+        setTransactions(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast.error("Failed to sync financial ledger");
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchTransactionData();
   }, []);
 
@@ -69,7 +72,7 @@ export default function FinancialLedger() {
     const totalTxns = transactions.length;
     const successfulTxns = transactions.filter(t => t.status === 'success');
     
-    // 1. Gross Revenue (Sum of successful payments)
+    // 1. Gross Revenue
     const grossRevenue = successfulTxns.reduce((sum, t) => sum + t.amount, 0);
     
     // 2. Success Ratio
@@ -85,6 +88,33 @@ export default function FinancialLedger() {
     };
   }, [transactions]);
 
+  // --- Dynamic Sparkline Generation ---
+  const revenueSparkline = useMemo(() => {
+    const sorted = [...transactions]
+      .filter(t => t.status === 'success')
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    
+    if (sorted.length === 0) return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    
+    let runningTotal = 0;
+    const totals = sorted.map(t => {
+      runningTotal += t.amount;
+      return runningTotal;
+    });
+    
+    if (totals.length < 10) {
+      const pad = Array(10 - totals.length).fill(0);
+      return [...pad, ...totals];
+    }
+    
+    const step = Math.floor(totals.length / 10) || 1;
+    const downsampled = [];
+    for (let i = 0; i < 10; i++) {
+      downsampled.push(totals[Math.min(i * step, totals.length - 1)]);
+    }
+    return downsampled;
+  }, [transactions]);
+
   // --- Filtering Logic ---
   const filteredTxns = useMemo(() => {
     return transactions.filter(txn => {
@@ -94,7 +124,8 @@ export default function FinancialLedger() {
         (txn.userName || "").toLowerCase().includes(searchLower) || 
         (txn.userEmail || "").toLowerCase().includes(searchLower) ||
         (txn.paymentId || "").toLowerCase().includes(searchLower) ||
-        (txn.packageName || "").toLowerCase().includes(searchLower);
+        (txn.packageName || "").toLowerCase().includes(searchLower) ||
+        (txn._id || "").toLowerCase().includes(searchLower);
 
       const matchesStatus = statusFilter === "All" || txn.status.toLowerCase() === statusFilter.toLowerCase();
       
@@ -103,119 +134,202 @@ export default function FinancialLedger() {
   }, [transactions, searchQuery, statusFilter]);
 
   const handleExport = () => {
-    // Logic to convert `transactions` to CSV
-    const csvContent = "data:text/csv;charset=utf-8," 
-        + ["ID,User,Package,Amount,Status,Date"].join(",") + "\n" 
-        + transactions.map(e => `${e.paymentId},${e.userEmail},${e.packageName},${e.amount},${e.status},${e.timestamp}`).join("\n");
+    setIsExporting(true);
     
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "financial_ledger.csv");
-    document.body.appendChild(link);
-    link.click();
-    
-    toast.success("Ledger Exported Successfully");
+    setTimeout(() => {
+      try {
+        const headers = ["Transaction ID", "Stripe Payment ID", "User Name", "User Email", "Package Name", "Package Type", "Amount", "Status", "Timestamp"];
+        const rows = transactions.map(t => [
+          t._id,
+          t.paymentId || "MANUAL",
+          t.userName || "Unknown",
+          t.userEmail || "",
+          t.packageName || "",
+          t.packageType || "",
+          t.amount,
+          t.status,
+          t.timestamp
+        ]);
+        
+        const csvContent = "data:text/csv;charset=utf-8," 
+          + [headers.join(",")].concat(rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))).join("\n");
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `financial_ledger_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast.success("Ledger Exported Successfully");
+      } catch (err) {
+        console.error("Export failed:", err);
+        toast.error("Failed to generate ledger export");
+      } finally {
+        setIsExporting(false);
+      }
+    }, 1200);
   };
 
   return (
-    <div className="space-y-10 pb-20">
+    <div className="space-y-6 md:space-y-8 pb-32 md:pb-20">
       
       {/* --- Page Header --- */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">
-            Financial_<span className="text-red-600 underline decoration-red-600/30 underline-offset-8">Ledger</span>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-neutral-900 pb-5">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-mono text-purple-400 bg-purple-500/5 border border-purple-500/15 px-2 py-0.5 rounded uppercase tracking-wider font-bold">
+              Ledger Node
+            </span>
+            <span className="text-[9px] font-mono text-neutral-500">
+              GATEWAY_VERIFIED: SECURE
+            </span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-black italic uppercase tracking-wider text-white">
+            Financial_<span className="text-red-500 underline decoration-red-500/30 underline-offset-8">Ledger</span>
           </h1>
-          <p className="text-[9px] font-black text-neutral-600 uppercase tracking-[0.4em] flex items-center gap-2">
-            <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_emerald]" />
-            Gateway: Stripe_Secure_Link_Established
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+            <p className="text-[9px] font-mono text-neutral-500 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_6px_#10b981]" />
+              Stripe_Secure_Link
+            </p>
+            <span className="text-neutral-800 text-[9px] font-mono hidden xs:inline">|</span>
+            <p className="text-[9px] font-mono text-emerald-400 uppercase tracking-wider bg-emerald-500/5 border border-emerald-500/10 px-2 py-0.5 rounded flex items-center gap-1.5">
+              <span className="h-1 w-1 bg-emerald-400 rounded-full animate-ping" />
+              Webhook: Active_Handshake_Verified
+            </p>
+          </div>
         </div>
-        <button 
-          onClick={handleExport}
-          className="group flex items-center gap-3 px-8 py-3 bg-white/5 border border-white/10 text-neutral-400 hover:text-white hover:border-red-600/50 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all"
-        >
-          <Download size={14} className="group-hover:-translate-y-1 transition-transform" /> Export_Data
-        </button>
+
+        <div className="flex items-center gap-3 self-stretch sm:self-auto justify-end">
+          <button 
+            onClick={() => fetchTransactionData(true)}
+            disabled={isRefreshing || loading}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-[10px] font-mono text-neutral-400 hover:text-white hover:border-neutral-700 transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={12} className={cn("text-neutral-500", isRefreshing && "animate-spin text-red-500")} />
+            {isRefreshing ? "SYNCING..." : "SYNC NOW"}
+          </button>
+          
+          <button 
+            onClick={handleExport}
+            disabled={isExporting || transactions.length === 0}
+            className="flex items-center gap-2 px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 text-[10px] font-mono text-neutral-400 hover:text-white hover:border-red-500/20 rounded-xl transition-all disabled:opacity-50"
+          >
+            {isExporting ? (
+              <>
+                <RefreshCw size={12} className="animate-spin text-red-500" />
+                EXPORTING...
+              </>
+            ) : (
+              <>
+                <Download size={12} />
+                EXPORT_DATA
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* --- Revenue HUD Grid (Real Data) --- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <FinanceCard 
-   label="Gross Revenue" 
-   val={`$${Math.round(metrics.grossRevenue).toLocaleString()}`}
-   sub="Total Verified Volume"
-   icon={DollarSign}
-   color="text-emerald-500" 
-/>
-         <FinanceCard 
-            label="Success Ratio" 
-            val={`${metrics.successRate}%`} 
-            sub={`${transactions.length} Total Attempts`} 
-            icon={Activity} 
-            color="text-red-600" 
-         />
-         <FinanceCard 
-            label="Avg Ticket" 
-            val={`$${metrics.avgTicket}`} 
-            sub="Per User Spend" 
-            icon={TrendingUp} 
-            color="text-blue-500" 
-         />
+      {/* --- Revenue HUD Grid --- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <HUDCard 
+          label="Gross Revenue" 
+          value={`$${Math.round(metrics.grossRevenue).toLocaleString()}`}
+          sub="Total Verified Volume"
+          icon={DollarSign}
+          color="emerald" 
+          sparklineData={revenueSparkline}
+        />
+        
+        <HUDCard 
+          label="Success Ratio" 
+          value={`${metrics.successRate}%`} 
+          sub={`${transactions.length} Total Attempts`} 
+          icon={Activity} 
+          color="purple" 
+          circularProgress={parseFloat(metrics.successRate)}
+        />
+        
+        <HUDCard 
+          label="Average Ticket" 
+          value={`$${metrics.avgTicket}`} 
+          sub="Per User Spend" 
+          icon={TrendingUp} 
+          color="blue" 
+        />
       </div>
 
       {/* --- Filter & Command Bar --- */}
-      <div className="flex flex-col sm:flex-row gap-4">
-         <div className="relative flex-1 group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within:text-red-600 transition-colors" size={16} />
-            <Input 
-              placeholder="Search User, Payment ID, or Package..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-black border-white/5 h-16 pl-14 rounded-3xl focus:border-red-600/50 text-[10px] font-black uppercase tracking-widest text-white shadow-inner"
-            />
-         </div>
-         
-         <div className="flex bg-black border border-white/5 rounded-3xl p-1.5 gap-1">
-            {["All", "Success", "Failed"].map((status) => (
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" size={14} />
+          <input 
+            placeholder="FILTER LEDGER BY EMAIL, PAYMENT ID, OR PRODUCT..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-neutral-950/80 border border-neutral-900 rounded-xl py-3.5 pl-11 pr-10 text-[10px] font-mono text-white placeholder:text-neutral-700 focus:border-red-500/20 focus:outline-none transition-all shadow-inner focus:shadow-[0_0_12px_rgba(239,68,68,0.02)]"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery("")} 
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+            >
+              <XCircle size={14} />
+            </button>
+          )}
+        </div>
+        
+        <div className="flex bg-neutral-950 border border-neutral-900 rounded-xl p-1 gap-1 shrink-0 relative">
+          {["All", "Success", "Failed"].map((status) => {
+            const isActive = statusFilter === status;
+            return (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={cn(
-                  "px-6 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all",
-                  statusFilter === status ? "bg-red-600 text-white shadow-lg shadow-red-900/20" : "text-neutral-600 hover:text-white"
-                )}
+                className="px-5 py-2 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider transition-all relative z-10 whitespace-nowrap min-w-[80px]"
+                style={{ color: isActive ? '#fff' : '#666' }}
               >
                 {status}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeFilterOutline"
+                    className="absolute inset-0 bg-red-500/5 border border-red-500/20 rounded-lg -z-10 shadow-[0_0_10px_rgba(239,68,68,0.05)]"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
               </button>
-            ))}
-         </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* --- Transaction Registry Table --- */}
-      <div className="bg-black border border-white/5 rounded-[3rem] overflow-hidden shadow-2xl border-t-0">
-         <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left border-collapse">
+      <div className="bg-neutral-950/40 border border-neutral-900 rounded-2xl overflow-hidden backdrop-blur-md">
+         
+         {/* Desktop Table View */}
+         <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left border-collapse font-mono">
                <thead>
-                  <tr className="bg-white/[0.01] border-b border-white/5">
-                     <TableHead label="Reference ID" />
-                     <TableHead label="Personnel" />
-                     <TableHead label="Package Detail" />
-                     <TableHead label="Amount" />
-                     <TableHead label="Status" />
-                     <TableHead label="Timestamp" />
+                  <tr className="border-b border-neutral-900 bg-neutral-950/60">
+                     <th className="px-6 py-3.5 text-[8px] font-black uppercase tracking-[0.25em] text-neutral-500">Reference ID</th>
+                     <th className="px-6 py-3.5 text-[8px] font-black uppercase tracking-[0.25em] text-neutral-500">Personnel</th>
+                     <th className="px-6 py-3.5 text-[8px] font-black uppercase tracking-[0.25em] text-neutral-500">Package Detail</th>
+                     <th className="px-6 py-3.5 text-[8px] font-black uppercase tracking-[0.25em] text-neutral-500">Amount</th>
+                     <th className="px-6 py-3.5 text-[8px] font-black uppercase tracking-[0.25em] text-neutral-500">Status</th>
+                     <th className="px-6 py-3.5 text-[8px] font-black uppercase tracking-[0.25em] text-neutral-500">Timestamp</th>
                   </tr>
                </thead>
-               <tbody className="divide-y divide-white/[0.03]">
+               <tbody className="divide-y divide-neutral-900/60">
                   <AnimatePresence mode="popLayout">
                     {loading ? (
                        <tr>
-                         <td colSpan={6} className="p-10 text-center text-neutral-500 text-xs font-mono uppercase animate-pulse">Syncing Ledger...</td>
+                         <td colSpan={6} className="px-6 py-10 text-center text-neutral-500 text-[10px] uppercase tracking-widest animate-pulse">Syncing Ledger...</td>
                        </tr>
                     ) : filteredTxns.length === 0 ? (
                        <tr>
-                         <td colSpan={6} className="p-10 text-center text-neutral-500 text-xs font-mono uppercase">No Transactions Found</td>
+                         <td colSpan={6} className="px-6 py-10 text-center text-neutral-650 text-[10px] uppercase tracking-widest">No Transactions Found</td>
                        </tr>
                     ) : (
                       filteredTxns.map((txn) => (
@@ -225,49 +339,63 @@ export default function FinancialLedger() {
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                           key={txn._id} 
-                          className="group hover:bg-white/[0.02] transition-colors"
+                          className="group hover:bg-neutral-950 transition-colors cursor-default"
                         >
-                           <td className="p-6">
-                              <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-mono font-black text-white group-hover:text-red-500 transition-colors">
-                                    {txn.paymentId?.split('_')[1] || "MANUAL"}
-                                </span>
-                                <span className="text-[8px] font-mono text-neutral-600">
-                                    {txn.orderId?.slice(0, 15)}...
-                                </span>
+                           {/* Reference ID */}
+                           <td className="px-6 py-4">
+                              <div className="flex flex-col gap-0.5">
+                                 <span className="text-[10px] font-bold text-white group-hover:text-red-400 transition-colors flex items-center gap-1.5">
+                                    <Receipt size={11} className="text-neutral-500" />
+                                    {txn.paymentId ? (txn.paymentId.startsWith("pi_") ? txn.paymentId.substring(0, 14) + "..." : txn.paymentId) : "MANUAL_OP"}
+                                 </span>
+                                 <span className="text-[8px] text-neutral-605 select-all">
+                                    ID: {txn._id}
+                                 </span>
                               </div>
                            </td>
-                           <td className="p-6">
+                           
+                           {/* Personnel */}
+                           <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                 <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[9px] font-black text-neutral-400">
-                                    <User size={12} />
+                                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-neutral-900 to-neutral-800 border border-neutral-800 flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-inner">
+                                    {txn.userName ? txn.userName.charAt(0).toUpperCase() : (txn.userEmail ? txn.userEmail.charAt(0).toUpperCase() : <User size={10} />)}
                                  </div>
-                                 <div className="flex flex-col">
-                                    <p className="text-[10px] font-black text-white uppercase tracking-widest">{txn.userName || "Unknown"}</p>
-                                    <p className="text-[8px] text-neutral-500">{txn.userEmail}</p>
+                                 <div className="flex flex-col min-w-0">
+                                    <p className="text-[10px] font-bold text-white uppercase tracking-wider truncate max-w-[150px]">{txn.userName || "Unknown Node"}</p>
+                                    <p className="text-[8px] text-neutral-500 truncate max-w-[150px]">{txn.userEmail}</p>
                                  </div>
                               </div>
                            </td>
-                           <td className="p-6">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className={cn(
-                                    "text-[8px] font-black uppercase italic border-white/10 rounded-lg py-1 px-2 gap-1",
-                                    txn.packageType === 'token' ? "text-blue-400 bg-blue-500/5" : "text-purple-400 bg-purple-500/5"
-                                )}>
-                                   {txn.packageType === 'token' ? <Coins size={10} /> : <ShieldCheck size={10} />}
-                                   {txn.packageName}
-                                </Badge>
+                           
+                           {/* Package Detail */}
+                           <td className="px-6 py-4">
+                              <div className="flex items-center">
+                                 <span className={cn(
+                                     "text-[8px] font-bold uppercase tracking-wider rounded border py-1 px-2.5 flex items-center gap-1.5 shrink-0",
+                                     txn.packageType === 'token' 
+                                      ? "text-blue-400 bg-blue-500/5 border-blue-500/10" 
+                                      : "text-purple-400 bg-purple-500/5 border-purple-500/10"
+                                 )}>
+                                    {txn.packageType === 'token' ? <Coins size={9} /> : <ShieldCheck size={9} />}
+                                    {txn.packageName}
+                                 </span>
                               </div>
                            </td>
-                           <td className="p-6">
-                              <span className="text-xs font-black text-white italic tracking-tighter">${txn.amount.toFixed(2)}</span>
+                           
+                           {/* Amount */}
+                           <td className="px-6 py-4">
+                              <span className="text-[11px] font-bold text-white italic tracking-tighter">${txn.amount.toFixed(2)}</span>
                            </td>
-                           <td className="p-6">
+                           
+                           {/* Status */}
+                           <td className="px-6 py-4">
                               <StatusIndicator status={txn.status} />
                            </td>
-                           <td className="p-6">
-                              <div className="flex items-center gap-2 text-[9px] font-black text-neutral-600 uppercase tracking-tighter">
-                                 <Calendar size={12}/> 
+                           
+                           {/* Timestamp */}
+                           <td className="px-6 py-4">
+                              <div className="flex items-center gap-2 text-[9px] font-bold text-neutral-500 uppercase tracking-tighter">
+                                 <Calendar size={12} className="text-neutral-605"/> 
                                  {new Date(txn.timestamp).toLocaleString('en-US', { 
                                     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
                                  })}
@@ -280,10 +408,68 @@ export default function FinancialLedger() {
                </tbody>
             </table>
          </div>
+
+         {/* Mobile Card View */}
+         <div className="md:hidden divide-y divide-neutral-900/60 bg-neutral-950/20">
+            {loading ? (
+               <div className="p-10 text-center text-neutral-500 text-[10px] font-mono uppercase tracking-widest animate-pulse">Syncing Ledger...</div>
+            ) : filteredTxns.length === 0 ? (
+               <div className="p-10 text-center text-neutral-600 text-[10px] font-mono uppercase tracking-widest">No Transactions Found</div>
+            ) : (
+               filteredTxns.map((txn) => (
+                  <div key={txn._id} className="p-5 space-y-4">
+                     <div className="flex justify-between items-start gap-4">
+                        <div className="space-y-1 min-w-0">
+                           <span className="text-[10px] font-mono font-bold text-white break-all flex items-center gap-1.5">
+                              <Receipt size={10} className="text-neutral-500 shrink-0" />
+                              {txn.paymentId || "MANUAL_OP"}
+                           </span>
+                           <p className="text-[8px] font-mono text-neutral-600 break-all select-all">
+                              ID: {txn._id}
+                           </p>
+                        </div>
+                        <StatusIndicator status={txn.status} />
+                     </div>
+                     
+                     <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-neutral-900 to-neutral-800 border border-neutral-800 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                           {txn.userName ? txn.userName.charAt(0).toUpperCase() : (txn.userEmail ? txn.userEmail.charAt(0).toUpperCase() : <User size={10} />)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                           <p className="text-[10px] font-bold text-white uppercase tracking-wider truncate">{txn.userName || "Unknown Node"}</p>
+                           <p className="text-[8px] text-neutral-500 truncate">{txn.userEmail}</p>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-white italic tracking-tighter shrink-0">${txn.amount.toFixed(2)}</span>
+                     </div>
+
+                     <div className="flex items-center justify-between pt-3 border-t border-neutral-900/60">
+                        <span className={cn(
+                            "text-[8px] font-mono font-bold uppercase tracking-wider rounded border py-0.5 px-2 flex items-center gap-1 shrink-0",
+                            txn.packageType === 'token' 
+                              ? "text-blue-400 bg-blue-500/5 border-blue-500/10" 
+                              : "text-purple-400 bg-purple-500/5 border-purple-500/10"
+                        )}>
+                           {txn.packageType === 'token' ? <Coins size={8} /> : <ShieldCheck size={8} />}
+                           {txn.packageName}
+                        </span>
+                        
+                        <div className="flex items-center gap-1.5 text-[8px] font-mono text-neutral-500 uppercase tracking-tighter">
+                           <Calendar size={10} className="text-neutral-600" /> 
+                           {new Date(txn.timestamp).toLocaleString('en-US', { 
+                              day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
+                           })}
+                        </div>
+                     </div>
+                  </div>
+               ))
+            )}
+         </div>
          
          {/* Table Footer */}
-         <div className="p-8 bg-white/[0.01] border-t border-white/5 text-center">
-            <p className="text-[9px] font-black text-neutral-700 uppercase tracking-[0.5em]">End of Ledger Sync // Total Indexed: {filteredTxns.length}</p>
+         <div className="p-6 bg-neutral-950/60 border-t border-neutral-900/65 text-center">
+            <p className="text-[8px] font-mono font-black text-neutral-600 uppercase tracking-[0.3em]">
+              End of Ledger Sync // Total Indexed: {filteredTxns.length}
+            </p>
          </div>
       </div>
     </div>
@@ -292,23 +478,124 @@ export default function FinancialLedger() {
 
 // --- Specialized UI Components ---
 
-function FinanceCard({ label, val, sub, icon: Icon, color }: any) {
+interface HUDCardProps {
+  label: string;
+  value: string | number;
+  sub: string;
+  icon: any;
+  color: "emerald" | "purple" | "blue";
+  sparklineData?: number[];
+  circularProgress?: number;
+}
+
+function HUDCard({ label, value, sub, icon: Icon, color, sparklineData, circularProgress }: HUDCardProps) {
+  let hoverBorder = "hover:border-red-500/40";
+  let textColor = "text-red-400";
+  let strokeColor = "#ef4444";
+  
+  if (color === "emerald") {
+    hoverBorder = "hover:border-emerald-500/45";
+    textColor = "text-emerald-400";
+    strokeColor = "#10b981";
+  } else if (color === "blue") {
+    hoverBorder = "hover:border-blue-500/45";
+    textColor = "text-blue-400";
+    strokeColor = "#3b82f6";
+  } else if (color === "purple") {
+    hoverBorder = "hover:border-purple-500/45";
+    textColor = "text-purple-400";
+    strokeColor = "#a855f7";
+  }
+
+  // Draw sparkline SVG coordinates
+  let fillPoints = "";
+  let points = "";
+  const width = 140;
+  const height = 40;
+  
+  if (sparklineData && sparklineData.length > 1) {
+    const minVal = Math.min(...sparklineData);
+    const maxVal = Math.max(...sparklineData);
+    const range = maxVal - minVal || 1;
+    
+    points = sparklineData.map((val: number, i: number) => {
+      const x = (i / (sparklineData.length - 1)) * width;
+      const y = height - ((val - minVal) / range) * (height - 8) - 4;
+      return `${x},${y}`;
+    }).join(" ");
+    
+    fillPoints = `0,${height} ${points} ${width},${height}`;
+  }
+
   return (
-    <div className="bg-black border border-white/5 p-8 rounded-[2.5rem] relative overflow-hidden group hover:border-red-600/40 transition-all duration-500 shadow-xl">
-       <div className="absolute -bottom-6 -right-6 p-8 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity duration-700 scale-150"><Icon size={120}/></div>
-       <div className="relative z-10 flex flex-col h-full justify-between">
-          <p className="text-[9px] font-black text-neutral-600 uppercase tracking-[0.4em] mb-4">{label}</p>
-          <div className="flex items-end justify-between">
-             <h4 className="text-4xl font-black italic tracking-tighter text-white leading-none">{val}</h4>
-             <span className={cn(
-               "text-[9px] font-black px-2 py-1 rounded-lg bg-white/5 flex items-center gap-1",
-               color
-             )}>
-               <ArrowUpRight size={10}/>
-               {sub}
-             </span>
+    <div className={cn(
+      "bg-neutral-950/40 border border-neutral-900 p-6 rounded-[2rem] relative overflow-hidden group transition-all duration-300 shadow-xl backdrop-blur-md flex flex-col justify-between min-h-[145px]",
+      hoverBorder
+    )}>
+      {/* Background SVG Sparkline */}
+      {sparklineData && sparklineData.length > 1 && (
+        <div className="absolute bottom-0 right-0 h-14 w-36 opacity-20 group-hover:opacity-35 transition-opacity">
+          <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+            <defs>
+              <linearGradient id={`glow-card-tx-${color}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={strokeColor} stopOpacity="0.4" />
+                <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <polygon points={fillPoints} fill={`url(#glow-card-tx-${color})`} />
+            <polyline points={points} fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      )}
+
+      {/* Decorative Glow */}
+      <div className="absolute -top-12 -left-12 w-24 h-24 rounded-full filter blur-[30px] opacity-[0.03] group-hover:opacity-[0.08] transition-opacity pointer-events-none" style={{ backgroundColor: strokeColor }} />
+
+      <div className="flex items-start justify-between relative z-10 gap-3">
+        <div className="min-w-0">
+          <p className="text-[9px] font-mono text-neutral-500 uppercase tracking-[0.25em] mb-1.5">{label}</p>
+          <h4 className="text-3xl font-mono font-black italic tracking-tight text-white leading-none truncate">
+            {value}
+          </h4>
+        </div>
+        
+        {circularProgress !== undefined ? (
+          <div className="relative h-11 w-11 shrink-0 flex items-center justify-center">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+              <path className="text-neutral-900" strokeWidth="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path className="text-purple-500" strokeDasharray={`${circularProgress}, 100`} strokeWidth="3.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <span className="absolute text-[8px] font-mono font-black text-white">{Math.round(circularProgress)}%</span>
           </div>
-       </div>
+        ) : (
+          <div className={cn("p-2 rounded-xl bg-neutral-900 border border-neutral-850 shrink-0", textColor)}>
+            <Icon size={14} />
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 pt-2.5 border-t border-neutral-900/40 flex items-center justify-between relative z-10">
+        <span className="text-[8px] font-mono text-neutral-500 tracking-tight flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          {sub}
+        </span>
+        
+        {color === "blue" && (
+          <span className="text-[7px] font-mono font-bold text-blue-400 bg-blue-500/5 border border-blue-500/15 px-1.5 py-0.5 rounded uppercase">
+            EST. VOLATILITY: LOW
+          </span>
+        )}
+        {color === "emerald" && (
+          <span className="text-[7px] font-mono font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/15 px-1.5 py-0.5 rounded uppercase flex items-center gap-0.5">
+            <ArrowUpRight size={8} /> +9.2%
+          </span>
+        )}
+        {color === "purple" && (
+          <span className="text-[7px] font-mono font-bold text-purple-400 bg-purple-500/5 border border-purple-500/15 px-1.5 py-0.5 rounded uppercase">
+            TARGET: &gt;95%
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -316,25 +603,17 @@ function FinanceCard({ label, val, sub, icon: Icon, color }: any) {
 function StatusIndicator({ status }: { status: string }) {
   const s = status.toLowerCase();
   const configs: any = {
-    success: { icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-    failed: { icon: XCircle, color: "text-red-600", bg: "bg-red-600/10", border: "border-red-600/20" },
-    pending: { icon: Clock, color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/20" },
+    success: { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
+    failed: { icon: XCircle, color: "text-red-500", bg: "bg-red-500/5", border: "border-red-500/10" },
+    pending: { icon: Clock, color: "text-orange-400", bg: "bg-orange-500/5", border: "border-orange-500/10" },
   };
   const config = configs[s] || configs.pending;
   const { icon: Icon, color, bg, border } = config;
 
   return (
-    <div className={cn("inline-flex items-center gap-2 px-4 py-1.5 rounded-2xl border", bg, border)}>
-       <Icon size={10} className={color} />
-       <span className={cn("text-[8px] font-black uppercase tracking-widest", color)}>{status}</span>
-    </div>
-  );
-}
-
-function TableHead({ label }: { label: string }) {
-  return (
-    <th className="p-6 text-[9px] font-black uppercase tracking-[0.4em] text-neutral-700 italic">
-       {label}
-    </th>
+    <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[8px] font-bold uppercase tracking-wider shrink-0", bg, border, color)}>
+       <Icon size={9} />
+       <span>{status}</span>
+    </span>
   );
 }

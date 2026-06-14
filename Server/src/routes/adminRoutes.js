@@ -6,6 +6,7 @@ const adminController = require('../controllers/adminController');
 const promoController = require('../controllers/promoController');
 
 router.get('/diagnostics', adminAuth, adminController.getDiagnostics);
+router.get('/ai-models/analytics', adminAuth, adminController.getAiModelsAnalytics);
 router.get('/users', adminAuth, adminController.getAllUsers);
 router.delete('/user/:id', adminAuth, adminController.deleteUser);
 router.get('/transactions', adminAuth, adminController.getAllTransactions);
@@ -18,7 +19,7 @@ router.delete('/feedback/:id', adminAuth, adminController.deleteFeedback);
 router.patch('/feedback/:id', adminAuth, adminController.respondToFeedback);
 
 router.get('/analytics/logs', adminAuth, adminController.getAnalytics);
-router.get('/arcade-diagnostics', adminAuth, adminController.getArcadeDiagnostics);
+
 
 router.get('/success-stories/all', adminController.adminGetAllStories);
 router.patch('/success-stories/approve/:id',adminAuth, adminController.approveStory);
@@ -49,21 +50,7 @@ router.get('/reports/analytics/top-reported', adminAuth, adminController.getTopR
 
 
 
-router.get('/comments/analytics',adminAuth , adminController.getCommentAnalytics);
 
-// Main CRUD routes
-router.get('/comments/',adminAuth , adminController.getAllComments);
-router.get('/comments/note/:noteId',adminAuth , adminController.getNoteComments);
-router.get('/comments/:id',adminAuth , adminController.getCommentById);
-router.patch('/comments/:id',adminAuth , adminController.updateComment);
-router.delete('/comments/:id',adminAuth , adminController.deleteComment);
-
-// Reply routes
-router.patch('/comments/:commentId/replies/:replyId',adminAuth , adminController.updateReply);
-router.delete('/comments/:commentId/replies/:replyId',adminAuth , adminController.deleteReply);
-
-// Bulk operations
-router.post('/comments/bulk-delete',adminAuth , adminController.bulkDeleteComments);
 
 
 

@@ -20,6 +20,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const isGoogleConfigured = !!(clientId && clientId !== "YOUR_GOOGLE_CLIENT_ID" && clientId !== "");
+  const disableOneTap = process.env.NEXT_PUBLIC_DISABLE_GOOGLE_ONE_TAP === "true";
 
   // --- GRANULAR VISIBILITY MAP ---
   // Hide Desktop Nav on high-focus tools or admin pages
@@ -71,28 +73,43 @@ export function Providers({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-   useEffect(() => {
-  const updateStreak = async () => {
-    try {
-      const token = localStorage.getItem("authToken");
+  useEffect(() => {
+    const updateStreakAndProfile = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) return;
 
-      await api.post(
-        "/users/update-streak",
-        {}, // 👈 no body needed
-        {
+        // 1. Update the study streak on the backend
+        await api.post(
+          "/users/update-streak",
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            withCredentials: true,
+          }
+        );
+
+        // 2. Fetch the fresh user profile containing the updated streak & details
+        const profileResponse = await api.get("/auth/get-profile", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          withCredentials: true,
-        }
-      );
-    } catch (err) {
-      console.log("Streak error", err);
-    }
-  };
+        });
 
-  updateStreak();
-}, []);
+        if (profileResponse.data?.success && profileResponse.data?.user) {
+          const freshUser = profileResponse.data.user;
+          localStorage.setItem("user", JSON.stringify(freshUser));
+          setUser(freshUser);
+        }
+      } catch (err) {
+        console.log("Failed to sync study streak and user profile:", err);
+      }
+    };
+
+    updateStreakAndProfile();
+  }, []);
 
   
 
@@ -123,7 +140,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <GoogleOAuthProvider clientId={clientId || ""}>
       <Toaster theme="dark" position="top-center" richColors />
       
-      {mounted && <GoogleOneTapLoginWrapper onSuccess={handleLoginSuccess} />}
+      {mounted && isGoogleConfigured && !disableOneTap && <GoogleOneTapLoginWrapper onSuccess={handleLoginSuccess} />}
 
       <LoginDialog isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onSuccess={handleLoginSuccess} />
 

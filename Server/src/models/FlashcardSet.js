@@ -133,7 +133,6 @@ flashcardSetSchema.pre('save', function(next) {
 
 // Indexes for performance
 flashcardSetSchema.index({ owner: 1, createdAt: -1 });
-flashcardSetSchema.index({ slug: 1 });
 flashcardSetSchema.index({ videoId: 1 });
 flashcardSetSchema.index({ 'generationDetails.type': 1 });
 flashcardSetSchema.index({ 'flashcards.nextReview': 1 });

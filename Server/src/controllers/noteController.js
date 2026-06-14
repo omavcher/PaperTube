@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Note = require("../models/Note");
 const User = require("../models/User");
-const Comment = require("../models/Comment");
+
 const Folder = require("../models/Folder");
 const { getTranscript } = require('../youtube-transcript');
 const {GoogleGenAI} = require("@google/genai");
@@ -2108,643 +2108,10 @@ exports.getAPIStatus = async (req, res) => {
   }
 };
 
-exports.explore = async (req, res) => {
-  try {
-    const { 
-      page = 1, 
-      limit = 12, 
-      search = '', 
-      sortBy = 'updatedAt', 
-      sortOrder = 'desc'
-    } = req.query;
-
-    const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.max(1, parseInt(limit));
-    const skip = (pageNum - 1) * limitNum;
-
-    // 0. Extract User Id if present for custom Algorithm Feed
-    const jwt = require("jsonwebtoken");
-    const User = require("../models/User");
-    let userId = null;
-    let followingList = [];
-    
-    const authHeader = req.header('Auth') || req.header('Authorization');
-    if (authHeader) {
-      try {
-        const token = authHeader.replace(/^Bearer\s+/, "");
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        userId = decoded.id;
-        
-        const userDoc = await User.findById(userId).select('followingUsers').lean();
-        if (userDoc && userDoc.followingUsers) {
-          followingList = userDoc.followingUsers;
-        }
-      } catch (e) {
-        // Continue unauthenticated
-      }
-    }
-
-    // 1. Build Query (For both Notes and Flashcards)
-    const matchQuery = { visibility: "public" };
-    const fcMatchQuery = { visibility: "public" };
-    
-    if (search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i');
-      matchQuery.$or = [
-        { title: searchRegex },
-        { content: searchRegex },
-        { transcript: searchRegex }
-      ];
-      // Flashcards don't have 'content'
-      fcMatchQuery.$or = [
-        { title: searchRegex },
-        { transcript: searchRegex }
-      ];
-    }
-
-    // 2. Sort Options
-    const sortOptions = {};
-    if (sortBy === 'alphabetical') {
-        sortOptions['title'] = sortOrder === 'desc' ? -1 : 1;
-    } else {
-        const field = sortBy === 'lastEdit' ? 'updatedAt' : sortBy;
-        sortOptions[field] = sortOrder === 'desc' ? -1 : 1;
-    }
-
-    // Determine if we should use algorithmic recommendation feed
-    const isAlgoFeed = !search.trim() && (sortBy === 'updatedAt' || !sortBy);
-    let items = [];
-    let totalItems = 0;
-
-    const basePipeline = [
-      { $match: matchQuery },
-      { $addFields: { type: 'note' } },
-      { $project: { __v: 0, content: 0, transcript: 0, img_with_url: 0, pdf_data: 0 } },
-      {
-        $unionWith: {
-          coll: 'flashcardsets',
-          pipeline: [
-            { $match: fcMatchQuery },
-            { $addFields: { type: 'flashcard' } },
-            { $project: { __v: 0, flashcards: 0, transcript: 0 } }
-          ]
-        }
-      }
-    ];
-
-    if (isAlgoFeed) {
-      // 3a. Algorithmic Fetch
-      const pipeline = [
-        ...basePipeline,
-        { 
-          $addFields: {
-            algorithmScore: {
-              $add: [
-                { $multiply: [{ $ifNull: ["$views", 0] }, 1] },
-                // Large boost if following the creator
-                { 
-                  $multiply: [
-                    { $cond: [{ $in: ["$owner", followingList] }, 1, 0] },
-                    10000 
-                  ] 
-                },
-                // Recency Boost
-                {
-                  $multiply: [
-                    { $divide: [10000000000, { $add: [{ $subtract: [new Date(), "$createdAt"] }, 1000000] }] },
-                    1
-                  ]
-                },
-                // Add strong random variance so every feed is different
-                { $multiply: [{ $rand: {} }, 100] }
-              ]
-            }
-          }
-        },
-        { $sort: { algorithmScore: -1 } },
-        { $facet: {
-            metadata: [{ $count: "total" }],
-            data: [
-              { $skip: skip },
-              { $limit: limitNum },
-              { $lookup: { from: "users", localField: "owner", foreignField: "_id", as: "ownerDetails" } },
-              { $unwind: { path: "$ownerDetails", preserveNullAndEmptyArrays: true } }
-            ]
-        }}
-      ];
-
-      const aggResult = await Note.aggregate(pipeline);
-      items = aggResult[0].data.map(n => ({ ...n, owner: n.ownerDetails }));
-      totalItems = aggResult[0].metadata.length > 0 ? aggResult[0].metadata[0].total : 0;
-
-    } else {
-      // 3b. Standard Search / Sort
-      const pipeline = [
-        ...basePipeline,
-        { $sort: sortOptions },
-        { $facet: {
-            metadata: [{ $count: "total" }],
-            data: [
-              { $skip: skip },
-              { $limit: limitNum },
-              { $lookup: { from: "users", localField: "owner", foreignField: "_id", as: "ownerDetails" } },
-              { $unwind: { path: "$ownerDetails", preserveNullAndEmptyArrays: true } }
-            ]
-        }}
-      ];
-      
-      const aggResult = await Note.aggregate(pipeline);
-      items = aggResult[0].data.map(n => ({ ...n, owner: n.ownerDetails }));
-      totalItems = aggResult[0].metadata.length > 0 ? aggResult[0].metadata[0].total : 0;
-    }
-
-    const totalPages = Math.ceil(totalItems / limitNum);
-
-    // 5. Transform Data
-    const transformedItems = items.map(note => ({
-      _id: note._id,
-      title: note.title,
-      slug: note.slug,
-      thumbnail: note.thumbnail,
-      videoUrl: note.videoUrl,
-      videoId: note.videoId,
-      createdAt: note.createdAt,
-      updatedAt: note.updatedAt,
-      views: note.views || 0,
-      type: note.type, // Dynamically use the type assigned in aggregation!
-      creator: note.owner ? {
-        _id: note.owner._id,
-        name: note.owner.name,
-        avatarUrl: note.owner.picture,
-        username: note.owner.username
-      } : { 
-        _id: 'unknown', 
-        name: 'Anonymous', 
-        avatarUrl: null 
-      }
-    }));
-
-    // 6. Return Response
-    return res.status(200).json({
-      success: true,
-      message: transformedItems.length > 0 ? "Items fetched successfully" : "No public items found",
-      data: {
-        items: transformedItems,
-        pagination: {
-          currentPage: pageNum,
-          totalPages,
-          totalItems,
-          totalNotes: totalItems, // Backwards compatibility
-          hasNext: pageNum < totalPages,
-          hasPrev: pageNum > 1
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Explore Content Error:", error);
-    return res.status(500).json({ 
-      success: false,
-      message: "Server error while fetching explore content",
-      error: error.message 
-    });
-  }
-};
-
-// Comment System Controllers
-
-// Get comments for a note
-exports.getComments = async (req, res) => {
-  try {
-    const { noteId } = req.params;
-    
-    // Check if note exists
-    const note = await Note.findById(noteId);
-    if (!note) {
-      return res.status(404).json({
-        success: false,
-        message: "Note not found"
-      });
-    }
-
-    // Get comments with user data populated
-    const comments = await Comment.find({ note: noteId })
-      .populate('user', 'name picture')
-      .populate('replies.user', 'name picture username')
-      .sort({ createdAt: -1 })
-      .lean();
-
-    // Transform comments to include userLiked status
-    const userId = req.user?._id;
-    const transformedComments = comments.map(comment => ({
-      ...comment,
-      userLiked: userId ? comment.userLiked.includes(userId) : false,
-      replies: comment.replies.map(reply => ({
-        ...reply,
-        userLiked: userId ? reply.userLiked.includes(userId) : false
-      }))
-    }));
-
-    res.status(200).json({
-      success: true,
-      data: {
-        comments: transformedComments
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Get Comments Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching comments",
-      error: error.message
-    });
-  }
-};
-
-// Create a new comment
-exports.createComment = async (req, res) => {
-  try {
-    const { noteId } = req.params;
-    const { content, isAiResponse = false } = req.body;
-    const user = req.user;
-
-    if (!content || content.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Comment content is required"
-      });
-    }
-
-    // Check if note exists
-    const note = await Note.findById(noteId);
-    if (!note) {
-      return res.status(404).json({
-        success: false,
-        message: "Note not found"
-      });
-    }
-
-    // Create new comment
-    const newComment = new Comment({
-      content: content.trim(),
-      user: user._id,
-      note: noteId,
-      isAiResponse
-    });
-
-    await newComment.save();
-
-    // Populate user data for response
-    await newComment.populate('user', 'name picture');
-
-    res.status(201).json({
-      success: true,
-      message: "Comment created successfully",
-      data: {
-        comment: {
-          ...newComment.toObject(),
-          userLiked: false,
-          replies: []
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Create Comment Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error creating comment",
-      error: error.message
-    });
-  }
-};
-
-// Like/unlike a comment
-exports.likeComment = async (req, res) => {
-  try {
-    const { commentId } = req.params;
-    const user = req.user;
-
-    const comment = await Comment.findById(commentId);
-    if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: "Comment not found"
-      });
-    }
-
-    const userLiked = comment.userLiked.includes(user._id);
-    
-    if (userLiked) {
-      // Unlike the comment
-      comment.userLiked.pull(user._id);
-      comment.likes = Math.max(0, comment.likes - 1);
-    } else {
-      // Like the comment
-      comment.userLiked.push(user._id);
-      comment.likes += 1;
-    }
-
-    await comment.save();
-
-    res.status(200).json({
-      success: true,
-      message: userLiked ? "Comment unliked" : "Comment liked",
-      data: {
-        likes: comment.likes,
-        userLiked: !userLiked
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Like Comment Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error liking comment",
-      error: error.message
-    });
-  }
-};
-
-// Create a reply to a comment
-// Create a reply to a comment
-exports.createReply = async (req, res) => {
-  try {
-    const { commentId } = req.params;
-    const { content, isAiResponse = false } = req.body;
-    const user = req.user;
-
-    if (!content || content.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Reply content is required"
-      });
-    }
-
-    const comment = await Comment.findById(commentId);
-    if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: "Comment not found"
-      });
-    }
-
-    // 1. Create new reply object
-    const newReply = {
-      content: content.trim(),
-      user: user._id,
-      isAiResponse,
-      likes: 0,
-      userLiked: [],
-      createdAt: new Date()
-    };
-
-    // 2. Push to array
-    comment.replies.push(newReply);
-    
-    // 3. Save the parent document
-    await comment.save();
-
-    // 4. FIX: Populate the 'user' field inside the 'replies' array of the PARENT document
-    // We specifically populate the user details for the replies
-    await comment.populate({
-      path: 'replies.user',
-      select: 'name picture username' // Added username just in case your frontend needs it
-    });
-
-    // 5. Retrieve the last reply (the one we just added) which is now populated
-    const savedReply = comment.replies[comment.replies.length - 1];
-
-    res.status(201).json({
-      success: true,
-      message: "Reply created successfully",
-      data: {
-        reply: {
-          ...savedReply.toObject(),
-          userLiked: false // Default state for the creator
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Create Reply Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error creating reply",
-      error: error.message
-    });
-  }
-};
-
-// Like/unlike a reply
-exports.likeReply = async (req, res) => {
-  try {
-    const { commentId, replyId } = req.params;
-    const user = req.user;
-
-    const comment = await Comment.findById(commentId);
-    if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: "Comment not found"
-      });
-    }
-
-    const reply = comment.replies.id(replyId);
-    if (!reply) {
-      return res.status(404).json({
-        success: false,
-        message: "Reply not found"
-      });
-    }
-
-    const userLiked = reply.userLiked.includes(user._id);
-    
-    if (userLiked) {
-      // Unlike the reply
-      reply.userLiked.pull(user._id);
-      reply.likes = Math.max(0, reply.likes - 1);
-    } else {
-      // Like the reply
-      reply.userLiked.push(user._id);
-      reply.likes += 1;
-    }
-
-    await comment.save();
-
-    res.status(200).json({
-      success: true,
-      message: userLiked ? "Reply unliked" : "Reply liked",
-      data: {
-        likes: reply.likes,
-        userLiked: !userLiked
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Like Reply Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error liking reply",
-      error: error.message
-    });
-  }
-};
+// Explore, public notes, and comments features have been permanently removed.
 
 
-// Complete updated endpoint with view tracking
-exports.getNoteALLBySlug = async (req, res) => {
-  try {
-    const { slug } = req.params;
-    
-    if (!slug) {
-      return res.status(400).json({
-        success: false,
-        message: "Slug parameter is required"
-      });
-    }
-
-    // Find note with all necessary fields
-    const note = await Note.findOne({ slug })
-      .populate('owner', 'name picture email username') // Get username directly
-      .select('-pdf_data -transcript -img_with_url')
-      .lean();
-
-    if (!note) {
-      return res.status(404).json({
-        success: false,
-        message: "Note not found"
-      });
-    }
-
-    // Check if note is public
-    if (note.visibility !== "public") {
-      // Optional: Check if user is owner for private/unlisted notes
-      if (req.user && req.user._id.toString() === note.owner._id.toString()) {
-        // Allow owner to view
-      } else {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied. This note is not public."
-        });
-      }
-    }
-
-    // Track unique views using IP/user combination
-    const viewKey = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    const userId = req.user ? req.user._id : null;
-    
-    // Check if this is a unique view (optional: implement redis or cache)
-    const viewIdentifier = userId ? `user:${userId}` : `ip:${viewKey}`;
-    
-    // Use session/redis to prevent rapid refresh spam
-    const viewSessionKey = `view:${note._id}:${viewIdentifier}`;
-    
-    // You would implement this with Redis or session storage
-    // const hasViewed = await redis.get(viewSessionKey);
-    
-    // For now, we'll increment every time but add rate limiting on frontend
-    const now = new Date();
-    
-    // Increment view count with atomic operation
-    const updatedNote = await Note.findByIdAndUpdate(
-      note._id,
-      {
-        $inc: { views: 1 },
-        $set: { lastViewedAt: now },
-        $addToSet: {
-          recentViewers: {
-            viewerId: viewIdentifier,
-            timestamp: now
-          }
-        },
-        // Optional: Track view analytics
-        $push: {
-          viewAnalytics: {
-            date: new Date().toISOString().split('T')[0],
-            hour: now.getHours(),
-            userAgent: req.headers['user-agent'],
-            ip: req.ip,
-            userId: userId
-          }
-        }
-      },
-      { new: true } // Return updated document
-    );
-
-    // Prepare response data
-    const transformedNote = {
-      _id: note._id,
-      title: note.title,
-      slug: note.slug,
-      description: note.description,
-      thumbnail: note.thumbnail,
-      videoUrl: note.videoUrl,
-      videoId: note.videoId,
-      content: note.content,
-      transcript: note.transcript,
-      tags: note.tags || [],
-      category: note.category || 'General',
-      difficulty: note.difficulty || 'beginner',
-      img_with_url: note.img_with_url || [],
-      createdAt: note.createdAt,
-      updatedAt: note.updatedAt,
-      lastEdit: note.updatedAt.toISOString().split('T')[0],
-      visibility: note.visibility || 'private',
-      pdf_data: note.pdf_data || null,
-      downloads: note.downloads || 0,
-      likes: note.likes || 0,
-      isLiked: req.user ? note.likedBy?.includes(req.user._id) : false,
-      isBookmarked: req.user ? note.bookmarkedBy?.includes(req.user._id) : false,
-      commentsCount: note.commentsCount || 0,
-      
-      // Enhanced creator information
-      creator: {
-        _id: note.owner._id,
-        name: note.owner.name || 'Anonymous',
-        avatarUrl: note.owner.picture,
-        email: note.owner.email,
-        username: note.owner.username,
-        totalNotes: note.owner.totalNotes || 0,
-        followers: note.owner.followers || 0,
-        following: note.owner.following || 0,
-        isVerified: note.owner.isVerified || false,
-        bio: note.owner.bio,
-        isFollowing: req.user ? 
-          note.owner.followers?.includes(req.user._id) : false
-      },
-      
-      // Views should come from updated note
-      views: (updatedNote?.views || note.views || 0) + 1 // +1 because we just incremented
-    };
-
-    // Set a cookie or session to prevent multiple views from same user
-    res.cookie(`viewed_${note._id}`, 'true', {
-      maxAge: 3600000, // 1 hour
-      httpOnly: true
-    });
-
-    res.status(200).json({
-      success: true,
-      data: transformedNote,
-      viewTracked: true,
-      uniqueView: true // Implement logic to check uniqueness
-    });
-
-  } catch (error) {
-    console.error("❌ Get Note By Slug Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Error retrieving note",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-
-
-// Get user analytics for profile page
+// Get user analytics for profile page (comments removed)
 exports.getUserAnalytics = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -2789,20 +2156,7 @@ exports.getUserAnalytics = async (req, res) => {
     const noteIds = stats.noteIds;
 
     // Get comments statistics in parallel
-    const [commentsStats, viewsOverTime, notesOverTime, activityData] = await Promise.all([
-      // Comments, replies, and likes count
-      Comment.aggregate([
-        { $match: { note: { $in: noteIds } } },
-        {
-          $group: {
-            _id: null,
-            totalComments: { $sum: 1 },
-            totalReplies: { $sum: { $size: { $ifNull: ["$replies", []] } } },
-            totalLikes: { $sum: "$likes" }
-          }
-        }
-      ]),
-      
+    const [viewsOverTime, notesOverTime, activityData] = await Promise.all([
       // Views over time (last 30 days)
       getViewsOverTime(noteIds),
       
@@ -2813,7 +2167,7 @@ exports.getUserAnalytics = async (req, res) => {
       getActivityData(userId)
     ]);
 
-    const commentsData = commentsStats.length > 0 ? commentsStats[0] : {
+    const commentsData = {
       totalComments: 0,
       totalReplies: 0,
       totalLikes: 0
@@ -3086,11 +2440,8 @@ exports.deleteNote = async (req, res) => {
       });
     }
 
-    // Delete note and its comments in parallel
-    const [deleteNoteResult, deleteCommentsResult] = await Promise.all([
-      Note.deleteOne({ _id: noteId, owner: userId }).session(session),
-      Comment.deleteMany({ note: noteId }).session(session)
-    ]);
+    // Delete note
+    const deleteNoteResult = await Note.deleteOne({ _id: noteId, owner: userId }).session(session);
 
     await session.commitTransaction();
 
@@ -3098,8 +2449,7 @@ exports.deleteNote = async (req, res) => {
       success: true,
       message: "Note deleted successfully",
       data: {
-        noteId: noteId,
-        commentsDeleted: deleteCommentsResult.deletedCount
+        noteId: noteId
       }
     });
 
@@ -3172,23 +2522,17 @@ exports.bulkDeleteNotes = async (req, res) => {
       });
     }
 
-    // Delete notes and their comments in parallel without transactions
-    const [deleteNotesResult, deleteCommentsResult] = await Promise.all([
-      Note.deleteMany({ 
-        _id: { $in: objectIds }, 
-        owner: userId 
-      }),
-      Comment.deleteMany({ 
-        note: { $in: objectIds } 
-      })
-    ]);
+    // Delete notes
+    const deleteNotesResult = await Note.deleteMany({ 
+      _id: { $in: objectIds }, 
+      owner: userId 
+    });
 
     res.status(200).json({
       success: true,
       message: `${deleteNotesResult.deletedCount} notes deleted successfully`,
       data: {
         notesDeleted: deleteNotesResult.deletedCount,
-        commentsDeleted: deleteCommentsResult.deletedCount,
         requestedCount: noteIds.length,
         processedCount: validNoteIds.length
       }
@@ -3220,11 +2564,8 @@ exports.deleteNote = async (req, res) => {
       });
     }
 
-    // Delete note and its comments in parallel without transactions
-    const [deleteNoteResult, deleteCommentsResult] = await Promise.all([
-      Note.deleteOne({ _id: noteId, owner: userId }),
-      Comment.deleteMany({ note: noteId })
-    ]);
+    // Delete note
+    const deleteNoteResult = await Note.deleteOne({ _id: noteId, owner: userId });
 
     if (deleteNoteResult.deletedCount === 0) {
       return res.status(404).json({
@@ -3237,8 +2578,7 @@ exports.deleteNote = async (req, res) => {
       success: true,
       message: "Note deleted successfully",
       data: {
-        noteId: noteId,
-        commentsDeleted: deleteCommentsResult.deletedCount
+        noteId: noteId
       }
     });
 
@@ -3397,59 +2737,6 @@ exports.getNoteAnalytics = async (req, res) => {
       });
     }
 
-    // Get comments for this note
-    const comments = await Comment.find({ note: noteId })
-      .populate('user', 'name picture')
-      .populate('replies.user', 'name picture')
-      .sort({ createdAt: -1 });
-
-    // Calculate engagement metrics
-    const uniqueCommenters = new Set();
-    const engagerMap = new Map();
-
-    comments.forEach(comment => {
-      // Track unique commenters
-      uniqueCommenters.add(comment.user._id.toString());
-
-      // Track engagement per user
-      const userId = comment.user._id.toString();
-      if (!engagerMap.has(userId)) {
-        engagerMap.set(userId, {
-          userId,
-          name: comment.user.name,
-          picture: comment.user.picture,
-          comments: 0,
-          likes: 0
-        });
-      }
-      
-      const engager = engagerMap.get(userId);
-      engager.comments += 1;
-      engager.likes += comment.likes;
-
-      // Also count replies
-      comment.replies.forEach(reply => {
-        const replyUserId = reply.user._id.toString();
-        if (!engagerMap.has(replyUserId)) {
-          engagerMap.set(replyUserId, {
-            userId: replyUserId,
-            name: reply.user.name,
-            picture: reply.user.picture,
-            comments: 0,
-            likes: 0
-          });
-        }
-        const replyEngager = engagerMap.get(replyUserId);
-        replyEngager.comments += 1;
-        replyEngager.likes += reply.likes;
-      });
-    });
-
-    // Convert to array and sort by engagement
-    const topEngagers = Array.from(engagerMap.values())
-      .sort((a, b) => (b.comments + b.likes) - (a.comments + a.likes))
-      .slice(0, 5);
-
     // Generate views over time (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -3477,13 +2764,12 @@ exports.getNoteAnalytics = async (req, res) => {
       data: {
         viewsOverTime,
         engagementMetrics: {
-          totalComments: comments.length,
-          totalReplies: comments.reduce((sum, c) => sum + (c.replies?.length || 0), 0),
-          totalLikes: comments.reduce((sum, c) => sum + (c.likes || 0), 0),
-          uniqueCommenters: uniqueCommenters.size,
-          topEngagers
-        },
-        comments: comments
+          totalComments: 0,
+          totalReplies: 0,
+          totalLikes: note.likes || 0,
+          uniqueCommenters: 0,
+          topEngagers: []
+        }
       }
     });
 
@@ -3548,71 +2834,6 @@ exports.likeNote = async (req, res) => {
 
 
 
-// DELETE MAIN COMMENT (And automatically delete all replies)
-exports.deleteComment = async (req, res) => {
-  try {
-    const { commentId } = req.params;
-    const userId = req.user._id; // Assuming authMiddleware adds user to req
-
-    const comment = await Comment.findById(commentId);
-
-    if (!comment) {
-      return res.status(404).json({ success: false, message: "Comment not found" });
-    }
-
-    // Check if the user deleting is the owner of the comment
-    if (comment.user.toString() !== userId.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized to delete this comment" });
-    }
-
-    // Since replies are embedded in the comment document, 
-    // deleting the document automatically removes the replies.
-    await Comment.findByIdAndDelete(commentId);
-
-    return res.status(200).json({ success: true, message: "Comment and its replies deleted successfully" });
-  } catch (error) {
-    console.error("Delete comment error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-// DELETE A SPECIFIC REPLY
-exports.deleteReply = async (req, res) => {
-  try {
-    const { commentId, replyId } = req.params;
-    const userId = req.user._id;
-
-    // Find the parent comment
-    const comment = await Comment.findById(commentId);
-
-    if (!comment) {
-      return res.status(404).json({ success: false, message: "Parent comment not found" });
-    }
-
-    // Find the specific reply within the array
-    const reply = comment.replies.id(replyId);
-
-    if (!reply) {
-      return res.status(404).json({ success: false, message: "Reply not found" });
-    }
-
-    // Check if user owns the reply
-    if (reply.user.toString() !== userId.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized to delete this reply" });
-    }
-
-    // Remove the reply using Mongoose subdocument .pull() or .remove()
-    // Using $pull is often safer for arrays
-    comment.replies.pull({ _id: replyId });
-    
-    await comment.save();
-
-    return res.status(200).json({ success: true, message: "Reply deleted successfully" });
-  } catch (error) {
-    console.error("Delete reply error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
 
 // --- FOLDER CRUD CONTROLLERS ---
 

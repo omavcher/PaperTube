@@ -12,26 +12,7 @@ const UserTracker = () => {
     setToken(localStorage.getItem("authToken"));
   }, []);
 
-  // Fetch and store user profile if token exists
-  useEffect(() => {
-    if (!isClient || !token) return;
 
-    const Userdatasave = async () => {
-      try {
-        const response = await api.get("/auth/get-profile", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const userData = response.data.user;
-        localStorage.setItem("user", JSON.stringify(userData));
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
-
-    Userdatasave();
-  }, [token, isClient]);
 
   // Track user analytics
   useEffect(() => {

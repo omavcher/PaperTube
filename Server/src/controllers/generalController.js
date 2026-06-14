@@ -1,7 +1,7 @@
 const Bug = require("../models/Bug");
 const Note = require("../models/Note");
 const User = require("../models/User");
-const GameStats = require("../models/GameStats");
+
 const SuccessStory = require('../models/SuccessStory');
 const BlogPost = require('../models/BlogPost');
 const Quiz = require('../models/Quiz');
@@ -68,51 +68,7 @@ exports.leaderboard = async (req, res) => {
 
 
 
-exports.postGameStats = async (req, res) => {
-  try {
-    const {userId , name, email, game, stats , device} = req.body;
-    const newGameStats = new GameStats({
-      userId,
-      name,
-      email,
-      game,
-      stats,
-      device
-    });
 
-    if(userId != 'guest_node') {
-    const userx = await User.findById(userId);
-    if (userx) {
-      userx.totalGamesPlayed = (userx.totalGamesPlayed || 0) + 1;
-      userx.xp = (userx.xp || 0) + Math.floor(stats.score / 10); // Example: 1 XP per 10 points
-      // Update rank based on XP thresholds
-      if (userx.xp >= 1000) { 
-        userx.rank = "legendary";
-      } else if (userx.xp >= 500) {
-        userx.rank = "master";
-      } else {
-        userx.rank = "basic";
-      }
-      await userx.save();
-    }
-  }
-
-    await newGameStats.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Game stats recorded successfully."
-    });
-    }
-  catch (error) {
-    console.error("❌ Post Game Stats Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while recording game stats.",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
 
 
 

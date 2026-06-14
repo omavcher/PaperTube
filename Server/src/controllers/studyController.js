@@ -4,6 +4,7 @@ const MathSolution = require("../models/MathSolution");
 const ExamPlan = require("../models/ExamPlan");
 const LanguageLesson = require("../models/LanguageLesson");
 const { checkFreeTierLimits } = require("../utils/freeTierLimits");
+const { awardXP } = require("../utils/xpHelper");
 const crypto = require("crypto");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -216,6 +217,9 @@ ${additionalPrompt ? `Custom constraints and curriculum context to follow:\n"${a
     });
 
     await homework.save();
+
+    // Award XP for successful study homework helper (+60 XP)
+    await awardXP(userId, 60);
 
     // 6. Deduct tokens from free user
     if (!isSubscribed) {
@@ -461,6 +465,9 @@ Return the response in clean, standard Markdown format. Do not wrap the entire o
     });
 
     await mathSolution.save();
+
+    // Award XP for successful math solver (+60 XP)
+    await awardXP(userId, 60);
 
     // 6. Deduct tokens from free user
     if (!isSubscribed) {
@@ -743,6 +750,9 @@ Make the study tasks highly practical, using active recall (self-quizzing, flash
 
     await examPlan.save();
 
+    // Award XP for successful exam plan (+60 XP)
+    await awardXP(userId, 60);
+
     // Deduct tokens if not subscribed
     if (!isSubscribed) {
       user.tokens = Math.max(0, user.tokens - TOKEN_COST);
@@ -994,6 +1004,9 @@ ${additionalPrompt ? `- Extra Notes: "${additionalPrompt}"` : ""}`;
     });
 
     await lesson.save();
+
+    // Award XP for successful language lesson (+60 XP)
+    await awardXP(userId, 60);
 
     // 6. Deduct tokens for free users
     if (!isSubscribed) {

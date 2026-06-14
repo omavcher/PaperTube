@@ -195,13 +195,13 @@ export default function ContentArchive() {
             />
          </div>
          
-         <div className="flex bg-black border border-white/5 rounded-3xl p-1.5 gap-1">
+         <div className="flex bg-black border border-white/5 rounded-3xl p-1.5 gap-1 w-full lg:w-auto">
             {["All", "Note", "Quiz"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "px-6 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all",
+                  "flex-1 lg:flex-initial px-6 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all",
                   activeTab === tab ? "bg-red-600 text-white shadow-lg shadow-red-900/20" : "text-neutral-600 hover:text-white"
                 )}
               >
@@ -211,8 +211,8 @@ export default function ContentArchive() {
          </div>
       </div>
 
-      {/* CONTENT ARCHIVE TABLE */}
-      <div className="bg-black border border-white/5 rounded-[3.5rem] overflow-hidden shadow-2xl">
+      {/* CONTENT ARCHIVE TABLE (DESKTOP) */}
+      <div className="hidden md:block bg-black border border-white/5 rounded-[3.5rem] overflow-hidden shadow-2xl">
          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
                <thead>
@@ -232,7 +232,7 @@ export default function ContentArchive() {
                     ) : filteredContent.length === 0 ? (
                        <tr><td colSpan={6} className="p-10 text-center text-xs font-mono uppercase text-neutral-500">No Artifacts Found</td></tr>
                     ) : (
-                      filteredContent.map((item) => (
+                       filteredContent.map((item) => (
                         <motion.tr 
                           layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                           key={item.id} className="group hover:bg-white/[0.02] transition-colors"
@@ -264,13 +264,13 @@ export default function ContentArchive() {
                            </td>
                            <td className="p-6 align-top">
                               <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-neutral-900 border border-white/10 flex items-center justify-center text-neutral-500">
-                                  <User size={12} />
-                                </div>
-                                <div>
-                                  <p className="text-[9px] font-black text-white uppercase">{item.ownerName}</p>
-                                  <p className="text-[8px] text-neutral-600 truncate max-w-[150px]">{item.ownerEmail}</p>
-                                </div>
+                                 <div className="h-8 w-8 rounded-lg bg-neutral-900 border border-white/10 flex items-center justify-center text-neutral-500">
+                                   <User size={12} />
+                                 </div>
+                                 <div>
+                                   <p className="text-[9px] font-black text-white uppercase">{item.ownerName}</p>
+                                   <p className="text-[8px] text-neutral-600 truncate max-w-[150px]">{item.ownerEmail}</p>
+                                 </div>
                               </div>
                            </td>
                            <td className="p-6 align-top">
@@ -316,6 +316,84 @@ export default function ContentArchive() {
          <div className="p-8 bg-white/[0.01] border-t border-white/5 text-center">
             <p className="text-[9px] font-black text-neutral-700 uppercase tracking-[0.5em]">Total Archives Indexed: {filteredContent.length} // Sync_Stable</p>
          </div>
+      </div>
+
+      {/* MOBILE CARDS VIEW */}
+      <div className="md:hidden space-y-4">
+        {loading ? (
+          <div className="p-10 text-center text-xs font-mono uppercase text-neutral-500 animate-pulse bg-black border border-white/5 rounded-3xl">Retrieving Data Stream...</div>
+        ) : filteredContent.length === 0 ? (
+          <div className="p-10 text-center text-xs font-mono uppercase text-neutral-500 bg-black border border-white/5 rounded-3xl">No Artifacts Found</div>
+        ) : (
+          filteredContent.map((item) => (
+            <div key={item.id} className="bg-neutral-950 border border-white/5 rounded-3xl p-5 space-y-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[9px] font-mono text-neutral-500 block mb-1">
+                    ID: #{item.id.substring(item.id.length - 8)}
+                  </span>
+                  <h3 className="text-xs font-black uppercase text-white tracking-widest line-clamp-2 leading-relaxed">
+                    {item.title}
+                  </h3>
+                </div>
+                
+                <button onClick={() => toggleVisibility(item.id, item.status)} className="flex-shrink-0">
+                  {item.status === "public" ? (
+                    <div className="flex items-center gap-1.5 text-emerald-500 bg-emerald-500/5 px-2.5 py-1 rounded-full border border-emerald-500/10">
+                      <Globe size={10} /> <span className="text-[7px] font-black uppercase tracking-widest">Public</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-neutral-500 bg-neutral-800 px-2.5 py-1 rounded-full border border-white/5">
+                      <Lock size={10} /> <span className="text-[7px] font-black uppercase tracking-widest">Private</span>
+                    </div>
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="text-[7px] font-bold border-white/10 text-neutral-500 px-1.5 py-0.5 rounded-sm">
+                  {item.type.toUpperCase()}
+                </Badge>
+                <span className="text-[8px] font-mono text-neutral-600">
+                  {new Date(item.date).toLocaleDateString()}
+                </span>
+                {item.model && (
+                  <span className="text-[7px] font-bold text-blue-500 flex items-center gap-1">
+                    <Cpu size={8} /> {item.model}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-7 w-7 rounded-lg bg-neutral-900 border border-white/10 flex items-center justify-center text-neutral-500 flex-shrink-0">
+                    <User size={10} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black text-white uppercase truncate">{item.ownerName}</p>
+                    <p className="text-[7px] text-neutral-600 truncate max-w-[120px]">{item.ownerEmail}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 text-white font-black italic text-xs flex-shrink-0">
+                  <TrendingUp size={10} className="text-emerald-500" /> {item.views}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button className="flex-1 py-2 bg-white/5 border border-white/10 rounded-xl text-[8px] font-black uppercase tracking-wider text-neutral-400 hover:text-white transition-all hover:bg-white/10 flex items-center justify-center gap-1.5">
+                  <ExternalLink size={10} /> Open View
+                </button>
+                <button 
+                  onClick={() => handleDelete(item.id)}
+                  className="flex-1 py-2 bg-red-600/5 border border-red-600/10 rounded-xl text-[8px] font-black tracking-wider text-neutral-500 hover:text-red-500 hover:bg-red-600/10 transition-all flex items-center justify-center gap-1.5 uppercase"
+                >
+                  <Trash2 size={10} /> Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

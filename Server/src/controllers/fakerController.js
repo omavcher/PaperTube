@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Note = require('../models/Note');
-const Comment = require('../models/Comment');
+
 const crypto = require('crypto');
 const { google } = require("googleapis");
 
@@ -167,29 +167,14 @@ exports.injectNote = async (req, res) => {
     }
 };
 
-// 6. SMM Bulk Bot Comments & Engagement
-exports.bulkComments = async (req, res) => {
+// 6. SMM Bot Views & Likes Engagement
+exports.bulkEngagement = async (req, res) => {
     try {
-        const { noteId, comments, views, likes } = req.body; 
+        const { noteId, views, likes } = req.body; 
         
         const note = await Note.findById(noteId);
         if(!note) return res.status(404).json({ success: false, message: "Target note not found" });
 
-        // Add Comments
-        if(comments && comments.length > 0) {
-            const fakeUsers = await User.find({ isFake: true }).limit(comments.length);
-            for (let i = 0; i < comments.length; i++) {
-                const fUser = fakeUsers.length > 0 ? fakeUsers[i % fakeUsers.length] : null; 
-                if(!fUser) break;
-                const cmt = new Comment({
-                    note: noteId,
-                    user: fUser._id,
-                    content: comments[i]
-                });
-                await cmt.save();
-            }
-        }
-        
         // Add Views
         if(views && Number(views) > 0) {
             const vCount = Number(views);
@@ -216,11 +201,12 @@ exports.bulkComments = async (req, res) => {
 
         await note.save();
 
-        res.status(200).json({ success: true, message: `System Updated: Comments injected, ${views || 0} Bot Views added, ${likes || 0} Bot Likes added!` });
+        res.status(200).json({ success: true, message: `System Updated: ${views || 0} Bot Views added, ${likes || 0} Bot Likes added!` });
     } catch(e) {
         res.status(500).json({ success: false, message: e.message });
     }
 };
+
 
 // 7. Extract Prompt String Helper for Client (To manually prompt LLM)
 exports.getPrompt = async (req, res) => {

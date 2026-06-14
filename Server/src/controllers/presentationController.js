@@ -6,6 +6,7 @@ const GeminiClient = require("../utils/geminiClient");
 const pptxgen = require("pptxgenjs");
 const html_to_pdf = require("html-pdf-node");
 const crypto = require("crypto");
+const { awardXP } = require("../utils/xpHelper");
 
 const gemini = new GeminiClient();
 
@@ -535,6 +536,9 @@ Do not include any extra text, comments, markdown tags (like \`\`\`json) or warn
     });
 
     await newPresentation.save();
+
+    // Award XP for successful Slide Deck / PPT generation (+100 XP)
+    await awardXP(userId, 100);
 
     // Deduct tokens for Free users
     if (!isSubscribed) {

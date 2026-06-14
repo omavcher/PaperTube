@@ -6,7 +6,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import api from "@/config/api";
 import Link from "next/link";
-import { Trophy, Zap, ArrowRight, Crown, Star, Medal } from "lucide-react";
+import { Trophy, Zap, ArrowRight, Crown, Star, Medal, Youtube, Layout, Workflow, PenTool, GraduationCap } from "lucide-react";
 
 // --- UTILS ---
 function cn(...inputs: ClassValue[]) {
@@ -51,6 +51,59 @@ interface ApiUserResponse {
   xp: number;
   badge: string;
 }
+
+const XP_QUESTS = [
+  {
+    title: "YouTube to Notes AI",
+    desc: "Convert video lectures, crash courses & tutorials into notes & flashcards.",
+    xp: "+50 XP",
+    badge: "Popular",
+    badgeColor: "text-red-500 bg-red-500/10 border-red-500/20",
+    glowColor: "group-hover:shadow-[0_0_25px_rgba(239,68,68,0.15)] hover:border-red-500/20",
+    href: "/youtube-to-notes",
+    icon: <Youtube className="text-red-500" size={20} />
+  },
+  {
+    title: "AI Slide Deck & PPT Maker",
+    desc: "Transform topics, transcripts, or notes into beautifully structured slide decks.",
+    xp: "+100 XP",
+    badge: "Active",
+    badgeColor: "text-orange-500 bg-orange-500/10 border-orange-500/20",
+    glowColor: "group-hover:shadow-[0_0_25px_rgba(249,115,22,0.15)] hover:border-orange-500/20",
+    href: "/presentation-generator",
+    icon: <Layout className="text-orange-500" size={20} />
+  },
+  {
+    title: "AI Diagram & Flowchart",
+    desc: "Generate concept maps, mind maps & interactive flowcharts from topics.",
+    xp: "+80 XP",
+    badge: "New",
+    badgeColor: "text-cyan-500 bg-cyan-500/10 border-cyan-500/20",
+    glowColor: "group-hover:shadow-[0_0_25px_rgba(6,182,212,0.15)] hover:border-cyan-500/20",
+    href: "/ai-diagram",
+    icon: <Workflow className="text-cyan-500" size={20} />
+  },
+  {
+    title: "AI Writer & Editor",
+    desc: "Draft essays, research summaries & study guides with academic formatting.",
+    xp: "+70 XP",
+    badge: "New",
+    badgeColor: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+    glowColor: "group-hover:shadow-[0_0_25px_rgba(245,158,11,0.15)] hover:border-amber-500/20",
+    href: "/ai-writer",
+    icon: <PenTool className="text-amber-500" size={20} />
+  },
+  {
+    title: "AI Study Room",
+    desc: "Homework helper, step-by-step math solver & MCQ quiz player.",
+    xp: "+60 XP",
+    badge: "New",
+    badgeColor: "text-pink-500 bg-pink-500/10 border-pink-500/20",
+    glowColor: "group-hover:shadow-[0_0_25px_rgba(236,72,153,0.15)] hover:border-pink-500/20",
+    href: "/ai-study",
+    icon: <GraduationCap className="text-pink-500" size={20} />
+  }
+];
 
 // --- MAIN CLIENT COMPONENT ---
 export default function LeaderboardClient({ initialData }: { initialData: LeaderboardUser[] }) {
@@ -181,19 +234,80 @@ export default function LeaderboardClient({ initialData }: { initialData: Leader
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-0.5">Want to climb the ranks?</p>
               <p className="text-base md:text-lg font-black text-white tracking-tight">
-                Play Games & Earn <span className="text-red-500">XP!</span>
+                Study notes, generate flashcards & earn <span className="text-red-500">XP!</span>
               </p>
             </div>
           </div>
-          <Link href="/games">
+          <Link href="/">
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               className="group w-full md:w-auto h-11 px-7 rounded-xl bg-white text-black font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95"
             >
-              <span>Play Now</span> <ArrowRight size={14} />
+              <span>Study Now</span> <ArrowRight size={14} />
             </motion.button>
           </Link>
+        </motion.div>
+
+        {/* ── Earn XP Tasks ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.5 }}
+          className="mb-14"
+        >
+          <div className="flex items-center justify-between mb-5 px-1">
+            <div className="flex items-center gap-2.5">
+              <div className="w-1 h-5 bg-gradient-to-b from-red-500 to-red-600 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.4)]" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-300">
+                Active Study Quests
+              </h2>
+            </div>
+            <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider hidden sm:inline">
+              Interact to earn
+            </span>
+          </div>
+
+          <div className="bg-neutral-900/30 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden divide-y divide-white/[0.03] shadow-2xl">
+            {XP_QUESTS.map((quest) => (
+              <Link key={quest.title} href={quest.href} className="group block">
+                <div className="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-all duration-200 gap-4">
+                  {/* Left Side: Icon & Details */}
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    {/* Icon Container */}
+                    <div className="w-10 h-10 bg-neutral-950 border border-white/5 rounded-xl flex items-center justify-center shrink-0 shadow-inner group-hover:border-red-500/20 transition-all duration-300">
+                      {quest.icon}
+                    </div>
+                    
+                    {/* Text Details */}
+                    <div className="flex flex-col min-w-0 leading-tight">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-xs sm:text-sm text-white group-hover:text-red-400 transition-colors duration-200 truncate">
+                          {quest.title}
+                        </span>
+                        <span className={cn("text-[8px] font-black uppercase px-2 py-0.5 rounded-full border shrink-0 tracking-wider", quest.badgeColor)}>
+                          {quest.badge}
+                        </span>
+                      </div>
+                      <p className="text-neutral-500 text-[10px] sm:text-xs mt-1 truncate max-w-[200px] xs:max-w-[300px] sm:max-w-md md:max-w-lg">
+                        {quest.desc}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right Side: XP & Action Arrow */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="px-2.5 py-1 bg-red-500/5 border border-red-500/10 rounded-full font-mono font-bold text-[10px] sm:text-xs text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.05)]">
+                      {quest.xp}
+                    </span>
+                    <div className="w-8 h-8 rounded-lg border border-white/5 bg-neutral-950 flex items-center justify-center text-neutral-500 group-hover:text-white group-hover:border-white/10 group-hover:bg-neutral-900 transition-all duration-300">
+                      <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform duration-200" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </motion.div>
 
         {/* ── Loading ── */}
@@ -251,18 +365,7 @@ export default function LeaderboardClient({ initialData }: { initialData: Leader
             </motion.div>
 
             {/* ── Mobile bottom CTA ── */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="mt-6 md:hidden"
-            >
-              <Link href="/games">
-                <button className="w-full h-12 bg-white text-black rounded-xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.08)] active:scale-95">
-                  <Zap size={14} fill="currentColor" /> Play Games to Earn XP <ArrowRight size={14} />
-                </button>
-              </Link>
-            </motion.div>
+
           </>
         )}
       </div>

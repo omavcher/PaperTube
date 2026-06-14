@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   Users, UserPlus, FileText, CheckCircle2, 
-  PlayCircle, Eye, Crown, Copy, TerminalSquare, MessageSquare
+  PlayCircle, Eye, Crown, Copy, TerminalSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import api from "@/config/api";
 import { cn } from "@/lib/utils";
 
 export default function FakerDashboard() {
-  const [activeTab, setActiveTab] = useState<"users" | "notes" | "comments">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "notes">("users");
   
   // User State
   const [fakeUsers, setFakeUsers] = useState<any[]>([]);
@@ -41,14 +41,7 @@ export default function FakerDashboard() {
   });
   const [generatedPrompt, setGeneratedPrompt] = useState("");
 
-  // Comments Tab
-  const [commentNoteId, setCommentNoteId] = useState("");
-  const [commentNoteTitle, setCommentNoteTitle] = useState("");
-  const [noteSearchStr, setNoteSearchStr] = useState("");
-  const [foundNotes, setFoundNotes] = useState<any[]>([]);
-  const [bulkComments, setBulkComments] = useState("Awesome note!\nThis really helped me.\nGreat explanation.");
-  const [smmLikes, setSmmLikes] = useState(0);
-  const [smmViews, setSmmViews] = useState(0);
+
 
   // --- API: USERS ---
   const fetchFakeUsers = async () => {
@@ -158,34 +151,7 @@ export default function FakerDashboard() {
     }
   };
 
-  // --- API: COMMENTS ---
-  const handleSubmitComments = async () => {
-    if (!commentNoteId) return toast.error("Enter Target Note ID");
-    const arr = bulkComments.split('\n').map(c => c.trim()).filter(Boolean);
-    
-    // We can allow empty text if they just want views/likes
-    if (!arr.length && !smmLikes && !smmViews) return toast.error("Enter comments, likes, or views");
 
-    setLoading(true);
-    try {
-      const res = await api.post("/admin/faker/comments/bulk", {
-        noteId: commentNoteId,
-        comments: arr,
-        likes: smmLikes,
-        views: smmViews
-      }, { headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
-      toast.success(res.data.message);
-      setCommentNoteId("");
-      setCommentNoteTitle("");
-      setBulkComments("");
-      setSmmLikes(0);
-      setSmmViews(0);
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || "Failed to inject comments");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSearchNotes = async (query: string) => {
     setNoteSearchStr(query);
@@ -211,23 +177,21 @@ export default function FakerDashboard() {
         </div>
         
         {/* Navigation */}
-        <div className="flex bg-[#111] p-1 rounded-xl border border-white/5">
-          <button onClick={() => setActiveTab('users')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2", activeTab === 'users' ? "bg-white text-black" : "text-neutral-500 hover:text-white")}>
+        <div className="flex bg-[#111] p-1 rounded-xl border border-white/5 overflow-x-auto no-scrollbar max-w-full">
+          <button onClick={() => setActiveTab('users')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 whitespace-nowrap", activeTab === 'users' ? "bg-white text-black" : "text-neutral-500 hover:text-white")}>
             <Users size={14} /> User Control
           </button>
-          <button onClick={() => setActiveTab('notes')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2", activeTab === 'notes' ? "bg-white text-black" : "text-neutral-500 hover:text-white")}>
+          <button onClick={() => setActiveTab('notes')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 whitespace-nowrap", activeTab === 'notes' ? "bg-white text-black" : "text-neutral-500 hover:text-white")}>
             <FileText size={14} /> Note Injection
           </button>
-          <button onClick={() => setActiveTab('comments')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2", activeTab === 'comments' ? "bg-white text-black" : "text-neutral-500 hover:text-white")}>
-            <MessageSquare size={14} /> Comments SMM
-          </button>
+
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-180px)]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[calc(100vh-180px)]">
         
         {/* --- LEFT HAND: PERSISTENT USERS LIST --- */}
-        <div className="lg:col-span-3 flex flex-col gap-4 bg-[#0a0a0a] border border-white/10 rounded-2xl p-4 overflow-hidden h-full">
+        <div className="lg:col-span-3 flex flex-col gap-4 bg-[#0a0a0a] border border-white/10 rounded-2xl p-4 overflow-hidden h-[350px] lg:h-full">
           <h3 className="text-[10px] font-bold text-neutral-500 uppercase flex items-center gap-2"><Crown size={12} className="text-red-500" /> Faker Accounts ({fakeUsers.length})</h3>
           
           <div className="flex gap-2">
@@ -259,7 +223,7 @@ export default function FakerDashboard() {
         </div>
 
         {/* --- RIGHT HAND: DYNAMIC CONTENT AREA --- */}
-        <div className="lg:col-span-9 flex flex-col gap-5 h-full overflow-hidden">
+        <div className="lg:col-span-9 flex flex-col gap-5 h-auto lg:h-full overflow-hidden">
            
            {/* TAB: USERS & STATS */}
            {activeTab === 'users' && (
@@ -371,7 +335,7 @@ export default function FakerDashboard() {
                    <Textarea 
                       value={noteForm.content} 
                       onChange={e => setNoteForm({...noteForm, content: e.target.value})} 
-                      className="flex-1 bg-[#111] border-white/10 font-mono text-xs text-neutral-300 min-h-0 resize-none focus-visible:ring-1 focus-visible:ring-green-600 mb-4 p-4"
+                      className="flex-1 bg-[#111] border-white/10 font-mono text-xs text-neutral-300 min-h-[200px] lg:min-h-0 resize-none focus-visible:ring-1 focus-visible:ring-green-600 mb-4 p-4"
                       placeholder="Paste final HTML from ChatGPT here..."
                    />
 
@@ -386,88 +350,7 @@ export default function FakerDashboard() {
              </div>
            )}
 
-           {/* TAB: COMMENTS INJECTOR */}
-           {activeTab === 'comments' && (
-             <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 h-full flex flex-col space-y-6">
-                <div>
-                  <h2 className="text-lg font-black uppercase tracking-tight border-b border-white/10 pb-4 flex items-center gap-2">
-                    <MessageSquare className="text-orange-500" /> SMM Comment Panel
-                  </h2>
-                  <p className="text-xs text-neutral-400 mt-2">Deploy a mass array of fake comments across target nodes.</p>
-                </div>
 
-                <div className="space-y-4 max-w-sm relative z-50">
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-bold text-neutral-500 uppercase">Search Target Note</label>
-                     <Input 
-                        value={noteSearchStr} 
-                        onChange={e => handleSearchNotes(e.target.value)} 
-                        placeholder="Search by note title..." 
-                        className="bg-[#111] border-white/10 text-xs" 
-                     />
-                   </div>
-
-                   {/* Dropdown Suggestions */}
-                   {foundNotes.length > 0 && (
-                     <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden">
-                       {foundNotes.map(n => (
-                         <div 
-                           key={n._id} 
-                           onClick={() => {
-                             setCommentNoteId(n._id);
-                             setCommentNoteTitle(n.title);
-                             setNoteSearchStr("");
-                             setFoundNotes([]);
-                           }}
-                           className="p-3 text-xs border-b border-white/5 hover:bg-white/5 cursor-pointer line-clamp-1"
-                         >
-                           {n.title}
-                         </div>
-                       ))}
-                     </div>
-                   )}
-
-                   {/* Selected Visualizer */}
-                   {commentNoteTitle && (
-                     <div className="p-3 bg-orange-900/20 border border-orange-500/50 rounded-lg text-xs flex justify-between items-center">
-                       <span className="text-orange-200 line-clamp-1 break-all pr-2 font-bold">{commentNoteTitle}</span>
-                       <button onClick={() => {setCommentNoteId(""); setCommentNoteTitle("");}} className="text-orange-500 hover:text-orange-400 font-bold">&times;</button>
-                     </div>
-                   )}
-                </div>
-
-                {/* LIKE & VIEW INJECTION */}
-                <div className="grid grid-cols-2 gap-4 max-w-sm">
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-bold text-neutral-500 uppercase">Bots to Like Note</label>
-                     <Input type="number" value={smmLikes} onChange={e => setSmmLikes(Number(e.target.value))} className="bg-[#111] border-white/10" />
-                   </div>
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-bold text-neutral-500 uppercase">Bot View Impressions</label>
-                     <Input type="number" value={smmViews} onChange={e => setSmmViews(Number(e.target.value))} className="bg-[#111] border-white/10" />
-                   </div>
-                </div>
-
-                <div className="space-y-2 flex-1 flex flex-col">
-                   <div className="flex justify-between items-end">
-                     <label className="text-[10px] font-bold text-neutral-500 uppercase">Comment Array (1 per line)</label>
-                     <Badge variant="outline" className="text-[9px] bg-[#111] border-white/10 text-neutral-400">{bulkComments.split('\n').filter(c => c.trim()).length} Ready</Badge>
-                   </div>
-                   <Textarea 
-                     value={bulkComments} 
-                     onChange={e => setBulkComments(e.target.value)} 
-                     className="flex-1 bg-[#111] border-white/10 text-sm text-neutral-300 resize-none focus-visible:ring-1 focus-visible:ring-orange-500 p-4"
-                     placeholder="Great resource!&#10;Thanks for this.&#10;This is really helpful!"
-                   />
-                </div>
-
-                <div className="flex justify-end pt-4 border-t border-white/10">
-                  <Button onClick={handleSubmitComments} disabled={loading} className="bg-orange-600 hover:bg-orange-700 text-white font-bold uppercase tracking-widest px-8">
-                    Execute Mass Spam
-                  </Button>
-                </div>
-             </div>
-           )}
 
         </div>
       </div>

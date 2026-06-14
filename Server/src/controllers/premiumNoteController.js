@@ -4,6 +4,7 @@ const Note = require('../models/Note');
 const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
 const { generateStudyImages } = require('../services/imageGenerationService');
+const { awardXP } = require('../utils/xpHelper');
 
 const PREMIUM_MODELS = ['canvas', 'scholar', 'atlas'];
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -959,6 +960,9 @@ exports.createNote = async (req, res) => {
     });
     
     await user.save();
+
+    // Award XP for successful note generation (+50 XP)
+    await awardXP(userId, 50);
 
     console.log('Premium note generation finished successfully:', newNote._id);
 

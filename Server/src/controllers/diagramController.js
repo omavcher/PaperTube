@@ -2,6 +2,7 @@ const Diagram = require("../models/Diagram");
 const User = require("../models/User");
 const { checkFreeTierLimits } = require("../utils/freeTierLimits");
 const crypto = require("crypto");
+const { awardXP } = require("../utils/xpHelper");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
@@ -222,6 +223,9 @@ Output Language is "${language}".`;
       nodes: parsedResult.nodes,
       edges: parsedResult.edges || []
     });
+
+    // Award XP for successful Diagram generation (+80 XP)
+    await awardXP(userId, 80);
 
     console.log(`✅ Successfully generated diagram. Saved with slug: ${slug}`);
 

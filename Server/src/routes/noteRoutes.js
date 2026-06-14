@@ -39,7 +39,7 @@ router.get("/", noteController.getNotes);
 router.post("/ytinfo", noteController.getYouTubeInfo);
 router.get("/slug/:slug", authMiddleware, noteController.getNoteBySlug);
 
-router.get("/allw/:slug", noteController.getNoteALLBySlug);
+
 
 
 router.put("/update/:id", authMiddleware, noteController.updateNote);
@@ -53,22 +53,9 @@ router.get('/list', noteController.getUserPDFs);
 
 router.post("/like/:noteId", authMiddleware, noteController.likeNote);
 
-router.get("/explore", noteController.explore);
-
-router.get("/:noteId/comments", noteController.getComments);
 
 
-router.post("/:noteId/comments", authMiddleware, noteController.createComment);
 
-
-router.post("/comments/:commentId/like", authMiddleware, noteController.likeComment);
-
-
-router.post("/comments/:commentId/replies", authMiddleware, noteController.createReply);
-
-router.post("/comments/:commentId/replies/:replyId/like", authMiddleware, noteController.likeReply);
-router.delete("/comments/:commentId", authMiddleware, noteController.deleteComment);
-router.delete("/comments/:commentId/replies/:replyId", authMiddleware, noteController.deleteReply);
 router.get("/analytics", authMiddleware, noteController.getUserAnalytics);
 
 // Note management routes

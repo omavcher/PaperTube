@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import { 
@@ -77,13 +77,13 @@ export default function SEOTracker() {
             />
          </div>
          
-         <div className="flex bg-black border border-white/5 rounded-3xl p-1.5 gap-1">
+         <div className="flex bg-black border border-white/5 rounded-3xl p-1.5 gap-1 overflow-x-auto no-scrollbar max-w-full">
             {["All Domains", "paperxify.com", "heartecho.in", "gatecse.in"].map((domain) => (
               <button
                 key={domain}
                 onClick={() => setActiveDomain(domain)}
                 className={cn(
-                  "px-6 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all",
+                  "px-6 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0 flex-1 sm:flex-initial",
                   activeDomain === domain ? "bg-red-600 text-white shadow-lg shadow-red-900/20" : "text-neutral-600 hover:text-white"
                 )}
               >
@@ -93,8 +93,8 @@ export default function SEOTracker() {
          </div>
       </div>
 
-      {/* SEARCH PERFORMANCE TABLE */}
-      <div className="bg-black border border-white/5 rounded-[3.5rem] overflow-hidden shadow-2xl">
+      {/* SEARCH PERFORMANCE TABLE (DESKTOP) */}
+      <div className="hidden md:block bg-black border border-white/5 rounded-[3.5rem] overflow-hidden shadow-2xl">
          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
                <thead>
@@ -159,28 +159,81 @@ export default function SEOTracker() {
          </div>
       </div>
 
+      {/* MOBILE CARDS VIEW */}
+      <div className="md:hidden space-y-4">
+        {SEO_ARTIFACTS.map((item) => (
+          <div key={item.id} className="bg-neutral-950 border border-white/5 rounded-3xl p-5 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <span className="text-[9px] font-mono text-neutral-500 block mb-1">ID: {item.id}</span>
+                <h3 className="text-xs font-black uppercase text-white tracking-widest line-clamp-2 leading-relaxed">
+                  {item.title}
+                </h3>
+                <span className="text-[8px] font-bold text-red-500 uppercase italic mt-1.5 block">{item.domain}</span>
+              </div>
+              
+              <div className="flex-shrink-0">
+                {item.indexed ? (
+                  <div className="flex items-center gap-1 text-emerald-500 bg-emerald-500/5 px-2.5 py-1 rounded-full border border-emerald-500/10">
+                    <CheckCircle2 size={10} />
+                    <span className="text-[7px] font-black uppercase tracking-widest">Indexed</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-red-500 bg-red-500/5 px-2.5 py-1 rounded-full border border-red-500/10">
+                    <AlertCircle size={10} />
+                    <span className="text-[7px] font-black uppercase tracking-widest">Missing</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 bg-white/[0.02] p-3 rounded-xl border border-white/5 text-center">
+              <div>
+                <p className="text-[7px] font-black text-neutral-600 uppercase">Impressions</p>
+                <p className="text-[10px] font-black text-white italic mt-1">{item.views.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[7px] font-black text-neutral-600 uppercase">Clicks</p>
+                <p className="text-[10px] font-black text-neutral-400 italic mt-1">{item.clicks}</p>
+              </div>
+              <div>
+                <p className="text-[7px] font-black text-neutral-600 uppercase">CTR</p>
+                <p className="text-[10px] font-black text-neutral-500 mt-1">{item.ctr}</p>
+              </div>
+              <div>
+                <p className="text-[7px] font-black text-neutral-600 uppercase">Avg Pos</p>
+                <p className={cn(
+                  "text-[10px] font-black italic mt-1",
+                  item.position < 5 ? "text-emerald-500" : item.position < 20 ? "text-blue-500" : "text-neutral-600"
+                )}>#{item.position}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* PAGE BOTTOM: RE-INDEXING PROTOCOL */}
-      <div className="grid md:grid-cols-2 gap-8">
-         <Card className="bg-neutral-900/20 border border-white/5 rounded-[3rem] p-10 backdrop-blur-3xl shadow-2xl border-t-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+         <Card className="bg-neutral-900/20 border border-white/5 rounded-[3rem] p-6 sm:p-10 backdrop-blur-3xl shadow-2xl border-t-0">
             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-6 flex items-center gap-3">
                <Zap size={14} className="text-red-500" /> Index_Injection_Protocol
             </h3>
             <p className="text-[9px] text-neutral-500 uppercase font-bold leading-relaxed mb-8">
                Force Google to crawl specific URLs from your Paperxify node. Use this for newly generated notes that aren't showing up.
             </p>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
                <input 
                  type="text" 
                  placeholder="Enter full URL to index..." 
-                 className="flex-1 bg-black border border-white/5 rounded-2xl px-6 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-red-600/40 transition-all" 
+                 className="w-full sm:flex-1 bg-black border border-white/5 h-12 rounded-2xl px-6 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-red-600/40 transition-all" 
                />
-               <button className="px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all">
+               <button className="w-full sm:w-auto px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all">
                   Inject
                </button>
             </div>
          </Card>
 
-         <Card className="bg-black border border-white/5 rounded-[3rem] p-10 shadow-2xl border-t-0">
+         <Card className="bg-black border border-white/5 rounded-[3rem] p-6 sm:p-10 shadow-2xl border-t-0">
             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500 mb-6 flex items-center gap-3">
                <Activity size={14} className="text-blue-500" /> Site_Map_Status
             </h3>

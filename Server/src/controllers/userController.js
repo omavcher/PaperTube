@@ -2,7 +2,7 @@
 // controllers/userController.js
 const User = require('../models/User');
 const Note = require('../models/Note');
-const Comment = require('../models/Comment');
+
 const FlashcardSet = require('../models/FlashcardSet');
 const Report = require("../models/Report"); // Import the model
 /**
@@ -38,8 +38,6 @@ exports.getUserProfile = async (req, res) => {
     )
     .limit(50);
 
-    // Get user's comments count
-    const commentsCount = await Comment.countDocuments({ user: user._id });
 
     // Calculate stats
     const totalViews = notes.reduce((sum, note) => sum + (note.views || 0), 0);
@@ -56,13 +54,8 @@ exports.getUserProfile = async (req, res) => {
     }));
 
 
-    // Get followers and following counts (using user's notes likes as proxy)
-    // Note: Since your schema doesn't have followers, we'll use notes likes as engagement metric
-    let totalLikes = 0;
-    for (const note of notes) {
-      const comments = await Comment.find({ note: note._id });
-      totalLikes += comments.reduce((sum, comment) => sum + (comment.likes || 0), 0);
-    }
+    // Get followers and following counts
+    let totalLikes = notes.reduce((sum, note) => sum + (note.likes || 0), 0);
 
     // Generate username from email
     const generatedUsername = user.email.split('@')[0];
@@ -101,7 +94,6 @@ exports.getUserProfile = async (req, res) => {
         totalNotes: notes.length,
         totalViews,
         totalLikes,
-        commentsCount,
         totalPremiumNotes,
         followersCount,
         followingCount
@@ -520,44 +512,6 @@ exports.getUserNotes = async (req, res) => {
   }
 };
 
-/**
- * Get user's comments
- * GET /api/users/:userId/comments
- */
-exports.getUserComments = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { page = 1, limit = 20 } = req.query;
-    const skip = (page - 1) * limit;
-
-    const comments = await Comment.find({ user: userId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .populate('note', 'title slug')
-      .populate('user', 'name picture');
-
-    const totalComments = await Comment.countDocuments({ user: userId });
-
-    return res.status(200).json({
-      success: true,
-      comments,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: totalComments,
-        pages: Math.ceil(totalComments / limit)
-      }
-    });
-  } catch (error) {
-    console.error("❌ Get User Comments Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch user comments",
-      error: error.message
-    });
-  }
-};
 
 /**
  * Update user profile
@@ -624,15 +578,9 @@ exports.getUserStats = async (req, res) => {
     // Calculate views
     const totalViews = notes.reduce((sum, note) => sum + (note.views || 0), 0);
     
-    // Get comments and calculate likes
-    let totalComments = 0;
-    let totalLikes = 0;
-    
-    for (const note of notes) {
-      const comments = await Comment.find({ note: note._id });
-      totalComments += comments.length;
-      totalLikes += comments.reduce((sum, comment) => sum + (comment.likes || 0), 0);
-    }
+    // Calculate likes from note likes field directly
+    const totalLikes = notes.reduce((sum, note) => sum + (note.likes || 0), 0);
+    const totalComments = 0; // Comments feature decommissioned
 
     // Get token usage
     const user = await User.findById(userId).select('tokens tokenUsageHistory');
@@ -915,24 +863,29 @@ exports.updateStreak = async (req, res) => {
     const user = await User.findById(userId);
 
     const today = new Date();
+    const todayStr = today.toDateString();
 
     if (!user.streak.lastVisit) {
       // first visit ever
       user.streak.count = 1;
     } else {
       const last = new Date(user.streak.lastVisit);
-      const diffDays = Math.floor(
-        (today - last) / (1000 * 60 * 60 * 24)
-      );
+      const lastStr = last.toDateString();
 
-      if (isSameDay(today, last)) {
-        // same day → nothing
-      } 
-      else if (diffDays === 1) {
-        user.streak.count += 1;
-      } 
-      else {
-        user.streak.count = 1;
+      if (lastStr === todayStr) {
+        // Same day login — keep streak unchanged
+      } else {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toDateString();
+
+        if (lastStr === yesterdayStr) {
+          // Consecutive day — increment streak
+          user.streak.count += 1;
+        } else {
+          // Missed a day — reset streak back to 1
+          user.streak.count = 1;
+        }
       }
     }
 

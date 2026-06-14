@@ -44,8 +44,7 @@ export const Navbar = ({
   const [tokenInfo, setTokenInfo] = useState<any>(null);
   const pathname = usePathname();
 
-  const isGamePlatform = pathname?.startsWith("/games/") && pathname !== "/games";
-  const finalHideDesktop = hideDesktop || isGamePlatform;
+  const finalHideDesktop = hideDesktop;
 
   useEffect(() => {
     if (isLoggedIn) {

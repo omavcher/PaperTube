@@ -7,57 +7,164 @@ const Analytics = require("../models/Analytics");
 const Bug = require("../models/Bug");
 const mongoose = require("mongoose");
 const Feedback = require("../models/Feedback");
-const GameStats = require("../models/GameStats");
+
 const SuccessStory = require('../models/SuccessStory');
 const BlogPost = require('../models/BlogPost');
 const Report = require("../models/Report");
-const Comment = require("../models/Comment");
+
 const r2Service = require("../utils/r2Service");
+const Presentation = require("../models/Presentation");
+const Diagram = require("../models/Diagram");
+const Essay = require("../models/Essay");
+const AiChat = require("../models/AiChat");
+const PracticeTest = require("../models/PracticeTest");
+const Folder = require("../models/Folder");
+
 
 exports.getDiagnostics = async (req, res) => {
   try {
-    // 1. Basic Counts
-    const totalUsers = await User.countDocuments();
-    const totalNotes = await Note.countDocuments();
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    // 2. Revenue Calculation
-    const totalRevenue = await Transaction.aggregate([
-      { $match: { status: "success" } },
-      { $group: { _id: null, totalAmount: { $sum: "$amount" } } }
+    // ── 1. ALL COUNTS IN PARALLEL ──
+    const [
+      totalUsers,
+      totalNotes,
+      totalPresentations,
+      totalFlashcards,
+      totalQuizzes,
+      totalPracticeTests,
+      totalDiagrams,
+      totalEssays,
+      totalAiChats,
+      totalFolders,
+      totalTransactionCount,
+      openBugs,
+      pendingFeedback,
+      todaySignups,
+      premiumUsers,
+      revenueAgg,
+      sourceDistribution,
+      dailySignups,
+      planDistribution,
+    ] = await Promise.all([
+      User.countDocuments(),
+      Note.countDocuments(),
+      Presentation.countDocuments(),
+      FlashcardSet.countDocuments(),
+      Quiz.countDocuments(),
+      PracticeTest.countDocuments(),
+      Diagram.countDocuments(),
+      Essay.countDocuments(),
+      AiChat.countDocuments(),
+      Folder.countDocuments(),
+      Transaction.countDocuments({ status: "success" }),
+      Bug.countDocuments({ status: { $ne: "resolved" } }),
+      Feedback.countDocuments({ status: "pending" }),
+      User.countDocuments({ createdAt: { $gte: startOfToday } }),
+      User.countDocuments({ "membership.isActive": true }),
+      Transaction.aggregate([
+        { $match: { status: "success" } },
+        { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
+      ]),
+      Analytics.aggregate([
+        { $group: { _id: "$source", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]),
+      User.aggregate([
+        { $match: { createdAt: { $gte: sevenDaysAgo } } },
+        {
+          $group: {
+            _id: {
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
+              day: { $dayOfMonth: "$createdAt" }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } }
+      ]),
+      User.aggregate([
+        { $match: { "membership.isActive": true } },
+        { $group: { _id: "$membership.planId", count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ])
     ]);
 
-    // 3. Source Distribution
-    const sourceDistribution = await Analytics.aggregate([
-      { $group: { _id: "$source", count: { $sum: 1 } } }
+    // ── 2. RECENT CREATIONS ACROSS ALL TOOL TYPES (no populate — avoids strictPopulate errors) ──
+    const [recentNotes, recentPPTs, recentFlashcards, recentQuizzes] = await Promise.all([
+      Note.find().sort({ createdAt: -1 }).limit(4).select('title createdAt owner').lean(),
+      Presentation.find().sort({ createdAt: -1 }).limit(3).select('title createdAt owner').lean(),
+      FlashcardSet.find().sort({ createdAt: -1 }).limit(3).select('title createdAt owner').lean(),
+      Quiz.find().sort({ createdAt: -1 }).limit(3).select('title createdAt userId').lean(),
     ]);
 
-    // 4. Fetch Last 5 Created Items (Populated with User Details)
+    // Collect all unique user IDs for a single bulk lookup
+    const userIdSet = new Set([
+      ...recentNotes.map(n => n.owner?.toString()).filter(Boolean),
+      ...recentPPTs.map(p => p.owner?.toString()).filter(Boolean),
+      ...recentFlashcards.map(f => f.owner?.toString()).filter(Boolean),
+      ...recentQuizzes.map(q => q.userId?.toString()).filter(Boolean),
+    ]);
+    const userDocs = await User.find({ _id: { $in: [...userIdSet] } }).select('name email picture').lean();
+    const userMap = Object.fromEntries(userDocs.map(u => [u._id.toString(), u]));
 
-    // --- NOTES ---
-    const recentNotes = await Note.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate({
-        path: 'owner',
-        select: 'name email' // Only get name and email
-      })
-      .lean()
-      .select('title createdAt thumbnail owner');
+    const resolveUser = (id) => id ? (userMap[id.toString()] || null) : null;
+
+    // ── 3. CONSTRUCT RESPONSE ──
+    const totalRevenue = revenueAgg[0]?.total || 0;
+    const totalContent = totalNotes + totalPresentations + totalFlashcards + totalQuizzes + totalPracticeTests + totalDiagrams + totalEssays;
+    const freeUsers = totalUsers - premiumUsers;
+
+    const recentCreations = [
+      ...recentNotes.map(n => ({ _id: n._id, title: n.title, type: 'note', owner: resolveUser(n.owner), createdAt: n.createdAt })),
+      ...recentPPTs.map(p => ({ _id: p._id, title: p.title, type: 'presentation', owner: resolveUser(p.owner), createdAt: p.createdAt })),
+      ...recentFlashcards.map(f => ({ _id: f._id, title: f.title, type: 'flashcard', owner: resolveUser(f.owner), createdAt: f.createdAt })),
+      ...recentQuizzes.map(q => ({ _id: q._id, title: q.title, type: 'quiz', owner: resolveUser(q.userId), createdAt: q.createdAt })),
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10);
 
 
-    // 5. Construct Response
-    const last5Creations = {
-      notes: recentNotes,
-    };
 
     res.status(200).json({
       success: true,
       data: {
         totalUsers,
+        todaySignups,
+        premiumUsers,
+        freeUsers,
+        planDistribution,
+        dailySignups,
         totalNotes,
-        totalRevenue: totalRevenue[0] ? totalRevenue[0].totalAmount : 0,
+        totalPresentations,
+        totalFlashcards,
+        totalQuizzes,
+        totalPracticeTests,
+        totalDiagrams,
+        totalEssays,
+        totalAiChats,
+        totalFolders,
+        totalContent,
+        totalRevenue,
+        totalTransactions: totalTransactionCount,
+        avgOrderValue: totalTransactionCount > 0 ? Math.round(totalRevenue / totalTransactionCount) : 0,
+        openBugs,
+        pendingFeedback,
         sourceDistribution,
-        last5Creations
+        contentBreakdown: [
+          { label: "Notes", count: totalNotes, color: "#3b82f6", icon: "note" },
+          { label: "Presentations", count: totalPresentations, color: "#a855f7", icon: "ppt" },
+          { label: "Flashcards", count: totalFlashcards, color: "#f59e0b", icon: "flashcard" },
+          { label: "Quizzes", count: totalQuizzes, color: "#10b981", icon: "quiz" },
+          { label: "Practice Tests", count: totalPracticeTests, color: "#ef4444", icon: "test" },
+          { label: "Diagrams", count: totalDiagrams, color: "#06b6d4", icon: "diagram" },
+          { label: "Essays", count: totalEssays, color: "#f97316", icon: "essay" },
+          { label: "AI Chats", count: totalAiChats, color: "#8b5cf6", icon: "chat" },
+        ],
+        last5Creations: { notes: recentNotes.slice(0, 5) },
+        recentCreations,
       }
     });
 
@@ -224,7 +331,7 @@ exports.deleteFeedback = async (req, res) => {
 exports.respondToFeedback = async (req, res) => {
   try {
     const feedbackId = req.params.id;
-    const { response } = req.body;
+    const { response, status, name, email, rating, quote, location } = req.body;
     const feedback = await Feedback.findById(feedbackId);
     if (!feedback) {
       return res.status(404).json({
@@ -232,12 +339,22 @@ exports.respondToFeedback = async (req, res) => {
         message: "Feedback not found."
       });
     }
-    feedback.adminResponse = response;
-    feedback.respondedAt = new Date();
+    
+    if (response !== undefined) {
+      feedback.adminResponse = response;
+      feedback.respondedAt = new Date();
+    }
+    if (status !== undefined) feedback.status = status;
+    if (name !== undefined) feedback.name = name;
+    if (email !== undefined) feedback.email = email;
+    if (rating !== undefined) feedback.rating = rating;
+    if (quote !== undefined) feedback.quote = quote;
+    if (location !== undefined) feedback.location = location;
+
     await feedback.save();
     res.status(200).json({
       success: true,
-      message: "Responded to feedback successfully."
+      message: "Feedback updated successfully."
     });
   }
   catch (error) {
@@ -270,29 +387,7 @@ exports.getAnalytics = async (req, res) => {
 };
 
 
-exports.getArcadeDiagnostics = async (req, res) => {
-  try {
-    // 1. Total Players
-    const totalPlayers = await GameStats.distinct("userId").then(users => users.length);
-    // 2. Global High Scores (Top 10)
-    const arcadeScores = await GameStats.find()
-      .sort({ createdAt: -1 });
-    res.status(200).json({
-      success: true,
-      data: {
-        totalPlayers,
-       arcadeScores
-      }
-    });
-  } catch (error) {
-    console.error("❌ Get Arcade Diagnostics Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching arcade diagnostics.",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
+
 
 
 // Get ALL stories for admin (including unapproved)
@@ -1086,504 +1181,9 @@ exports.getTopReportedUsers = async (req, res) => {
 };
 
 
-// @desc    Get all comments with filtering and pagination
-// @route   GET /api/admin/comments
-// @access  Private/Admin
-exports.getAllComments = async (req, res) => {
-  try {
-    const { 
-      page = 1, 
-      limit = 20, 
-      search = "",
-      noteId,
-      userId,
-      isAiResponse,
-      sortBy = "newest"
-    } = req.query;
+// Comment system has been permanently decommissioned.
+// All comment admin endpoints removed.
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    // Build filter
-    let filter = {};
-    if (noteId) filter.note = noteId;
-    if (userId) filter.user = userId;
-    if (isAiResponse !== undefined) filter.isAiResponse = isAiResponse === 'true';
-    
-    // Search in content
-    if (search) {
-      filter.$or = [
-        { content: { $regex: search, $options: 'i' } },
-        { 'replies.content': { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    // Sort options
-    let sort = {};
-    switch(sortBy) {
-      case 'newest':
-        sort = { createdAt: -1 };
-        break;
-      case 'oldest':
-        sort = { createdAt: 1 };
-        break;
-      case 'most_liked':
-        sort = { likes: -1 };
-        break;
-      case 'most_replies':
-        sort = { replyCount: -1 };
-        break;
-      default:
-        sort = { createdAt: -1 };
-    }
-
-    // Get comments with aggregation for reply count
-    const comments = await Comment.aggregate([
-      { $match: filter },
-      {
-        $addFields: {
-          replyCount: { $size: "$replies" }
-        }
-      },
-      { $sort: sort },
-      { $skip: skip },
-      { $limit: parseInt(limit) },
-      {
-        $lookup: {
-          from: "users",
-          localField: "user",
-          foreignField: "_id",
-          as: "userDetails"
-        }
-      },
-      { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "notes",
-          localField: "note",
-          foreignField: "_id",
-          as: "noteDetails"
-        }
-      },
-      { $unwind: { path: "$noteDetails", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "users",
-          localField: "replies.user",
-          foreignField: "_id",
-          as: "replyUsers"
-        }
-      }
-    ]);
-
-    // Get total count
-    const total = await Comment.countDocuments(filter);
-
-    // Get statistics
-    const stats = {
-      totalComments: await Comment.countDocuments(),
-      totalReplies: await Comment.aggregate([
-        { $group: { _id: null, totalReplies: { $sum: { $size: "$replies" } } } }
-      ]).then(res => res[0]?.totalReplies || 0),
-      aiComments: await Comment.countDocuments({ isAiResponse: true }),
-      totalLikes: await Comment.aggregate([
-        { $group: { _id: null, totalLikes: { $sum: "$likes" } } }
-      ]).then(res => res[0]?.totalLikes || 0),
-      recentActivity: await Comment.countDocuments({
-        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-      })
-    };
-
-    res.status(200).json({
-      success: true,
-      data: {
-        comments,
-        stats,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / parseInt(limit)),
-          totalItems: total,
-          itemsPerPage: parseInt(limit)
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Get All Comments Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching comments",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// @desc    Get single comment by ID
-// @route   GET /api/admin/comments/:id
-// @access  Private/Admin
-exports.getCommentById = async (req, res) => {
-  try {
-    const comment = await Comment.findById(req.params.id)
-      .populate('user', 'name email username picture')
-      .populate('note', 'title slug visibility')
-      .populate('replies.user', 'name email username picture')
-      .lean();
-
-    if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: "Comment not found"
-      });
-    }
-
-    // Get note details
-    const note = await Note.findById(comment.note)
-      .select('title owner views likes')
-      .populate('owner', 'name email');
-
-    res.status(200).json({
-      success: true,
-      data: { ...comment, noteDetails: note }
-    });
-
-  } catch (error) {
-    console.error("❌ Get Comment Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching comment"
-    });
-  }
-};
-
-// @desc    Update comment content
-// @route   PATCH /api/admin/comments/:id
-// @access  Private/Admin
-exports.updateComment = async (req, res) => {
-  try {
-    const { content } = req.body;
-    const commentId = req.params.id;
-
-    if (!content || content.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Content cannot be empty"
-      });
-    }
-
-    const comment = await Comment.findByIdAndUpdate(
-      commentId,
-      { 
-        content: content.trim(),
-        editedBy: req.user._id,
-        editedAt: new Date()
-      },
-      { new: true }
-    ).populate('user', 'name email');
-
-    if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: "Comment not found"
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Comment updated successfully",
-      data: comment
-    });
-
-  } catch (error) {
-    console.error("❌ Update Comment Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while updating comment"
-    });
-  }
-};
-
-// @desc    Delete comment (and all its replies)
-// @route   DELETE /api/admin/comments/:id
-// @access  Private/Admin
-exports.deleteComment = async (req, res) => {
-  try {
-    const comment = await Comment.findByIdAndDelete(req.params.id);
-
-    if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: "Comment not found"
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Comment and all replies deleted successfully",
-      data: { _id: comment._id }
-    });
-
-  } catch (error) {
-    console.error("❌ Delete Comment Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while deleting comment"
-    });
-  }
-};
-
-// @desc    Update a reply
-// @route   PATCH /api/admin/comments/:commentId/replies/:replyId
-// @access  Private/Admin
-exports.updateReply = async (req, res) => {
-  try {
-    const { commentId, replyId } = req.params;
-    const { content } = req.body;
-
-    if (!content || content.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Content cannot be empty"
-      });
-    }
-
-    const comment = await Comment.findById(commentId);
-    if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: "Comment not found"
-      });
-    }
-
-    // Find and update the reply
-    const reply = comment.replies.id(replyId);
-    if (!reply) {
-      return res.status(404).json({
-        success: false,
-        message: "Reply not found"
-      });
-    }
-
-    reply.content = content.trim();
-    reply.editedBy = req.user._id;
-    reply.editedAt = new Date();
-
-    await comment.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Reply updated successfully",
-      data: reply
-    });
-
-  } catch (error) {
-    console.error("❌ Update Reply Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while updating reply"
-    });
-  }
-};
-
-// @desc    Delete a reply
-// @route   DELETE /api/admin/comments/:commentId/replies/:replyId
-// @access  Private/Admin
-exports.deleteReply = async (req, res) => {
-  try {
-    const { commentId, replyId } = req.params;
-
-    const comment = await Comment.findById(commentId);
-    if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: "Comment not found"
-      });
-    }
-
-    // Remove the reply
-    comment.replies = comment.replies.filter(
-      reply => reply._id.toString() !== replyId
-    );
-
-    await comment.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Reply deleted successfully"
-    });
-
-  } catch (error) {
-    console.error("❌ Delete Reply Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while deleting reply"
-    });
-  }
-};
-
-// @desc    Bulk delete comments
-// @route   POST /api/admin/comments/bulk-delete
-// @access  Private/Admin
-exports.bulkDeleteComments = async (req, res) => {
-  try {
-    const { commentIds } = req.body;
-
-    if (!commentIds || !Array.isArray(commentIds) || commentIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide an array of comment IDs"
-      });
-    }
-
-    const result = await Comment.deleteMany({ _id: { $in: commentIds } });
-
-    res.status(200).json({
-      success: true,
-      message: `Successfully deleted ${result.deletedCount} comments`,
-      data: { deletedCount: result.deletedCount }
-    });
-
-  } catch (error) {
-    console.error("❌ Bulk Delete Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while bulk deleting comments"
-    });
-  }
-};
-
-// @desc    Get comments for a specific note
-// @route   GET /api/admin/comments/note/:noteId
-// @access  Private/Admin
-exports.getNoteComments = async (req, res) => {
-  try {
-    const { noteId } = req.params;
-    const { page = 1, limit = 20 } = req.query;
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const comments = await Comment.find({ note: noteId })
-      .populate('user', 'name email username picture')
-      .populate('replies.user', 'name email username picture')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
-
-    const total = await Comment.countDocuments({ note: noteId });
-
-    res.status(200).json({
-      success: true,
-      data: {
-        comments,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / parseInt(limit)),
-          totalItems: total
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Get Note Comments Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching note comments"
-    });
-  }
-};
-
-// @desc    Get comment analytics
-// @route   GET /api/admin/comments/analytics
-// @access  Private/Admin
-exports.getCommentAnalytics = async (req, res) => {
-  try {
-    const { days = 30 } = req.query;
-    
-    const dateLimit = new Date();
-    dateLimit.setDate(dateLimit.getDate() - parseInt(days));
-
-    // Comments over time
-    const commentsOverTime = await Comment.aggregate([
-      { $match: { createdAt: { $gte: dateLimit } } },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-            day: { $dayOfMonth: "$createdAt" }
-          },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } }
-    ]);
-
-    // Top commenters
-    const topCommenters = await Comment.aggregate([
-      { $group: { _id: "$user", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "userInfo"
-        }
-      },
-      { $unwind: "$userInfo" },
-      {
-        $project: {
-          count: 1,
-          "userInfo.name": 1,
-          "userInfo.email": 1,
-          "userInfo.username": 1,
-          "userInfo.picture": 1
-        }
-      }
-    ]);
-
-    // Most commented notes
-    const topNotes = await Comment.aggregate([
-      { $group: { _id: "$note", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 },
-      {
-        $lookup: {
-          from: "notes",
-          localField: "_id",
-          foreignField: "_id",
-          as: "noteInfo"
-        }
-      },
-      { $unwind: "$noteInfo" },
-      {
-        $project: {
-          count: 1,
-          "noteInfo.title": 1,
-          "noteInfo.slug": 1,
-          "noteInfo.views": 1
-        }
-      }
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        timeline: commentsOverTime,
-        topCommenters,
-        topNotes,
-        totalComments: await Comment.countDocuments({ createdAt: { $gte: dateLimit } })
-      }
-    });
-
-  } catch (error) {
-    console.error("❌ Comment Analytics Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching analytics"
-    });
-  }
-};
 
 exports.getPresignedUrl = async (req, res) => {
   try {
@@ -2063,4 +1663,188 @@ exports.adminSetTokenBalance = async (req, res) => {
     console.error("❌ Admin Set Token Balance Error:", error);
     res.status(500).json({ success: false, message: "Server error while setting token balance.", error: error.message });
   }
-};
+};
+
+/**
+ * GET /api/admin/ai-models/analytics
+ *
+ * Compiles stats and details for the 4 generation AI models (Flash, Canvas, Scholar, Atlas).
+ */
+exports.getAiModelsAnalytics = async (req, res) => {
+  try {
+    // 1. Group stats by model
+    const modelStats = await Note.aggregate([
+      {
+        $group: {
+          _id: "$generationDetails.model",
+          count: { $sum: 1 },
+          avgProcessingTime: { $avg: "$generationDetails.processingTime" },
+          totalProcessingTime: { $sum: "$generationDetails.processingTime" },
+          totalTokensCost: { $sum: "$generationDetails.cost" },
+          successCount: {
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] }
+          },
+          failedCount: {
+            $sum: { $cond: [{ $eq: ["$status", "failed"] }, 1, 0] }
+          },
+          processingCount: {
+            $sum: { $cond: [{ $eq: ["$status", "processing"] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    // 2. Daily trend (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const dailyStats = await Note.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: sevenDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            model: "$generationDetails.model"
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { "_id.date": 1 }
+      }
+    ]);
+
+    // Format daily trend data
+    const dates = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().split("T")[0]);
+    }
+
+    const dailyTrend = dates.map(date => {
+      const row = { date };
+      row.flash = 0;
+      row.canvas = 0;
+      row.scholar = 0;
+      row.atlas = 0;
+      
+      dailyStats.forEach(stat => {
+        if (stat._id.date === date && stat._id.model) {
+          const modelKey = stat._id.model.toLowerCase();
+          if (["flash", "canvas", "scholar", "atlas"].includes(modelKey)) {
+            row[modelKey] = stat.count || 0;
+          }
+        }
+      });
+      return row;
+    });
+
+    // Map aggregated statistics
+    const statsMap = {};
+    modelStats.forEach(stat => {
+      if (stat._id) {
+        statsMap[stat._id.toLowerCase()] = {
+          count: stat.count || 0,
+          avgProcessingTime: Math.round((stat.avgProcessingTime || 0) * 10) / 10,
+          totalProcessingTime: stat.totalProcessingTime || 0,
+          totalTokensCost: stat.totalTokensCost || 0,
+          successCount: stat.successCount || 0,
+          failedCount: stat.failedCount || 0,
+          processingCount: stat.processingCount || 0,
+        };
+      }
+    });
+
+    // Merge static details with dynamic DB stats
+    const modelsData = [
+      {
+        id: "flash",
+        name: "Flash",
+        tier: "Free Tier",
+        color: "emerald",
+        description: "The fastest way to turn a lecture into clean notes. Flash produces distraction-free, bullet-format notes with bold terms and definitions auto-detected.",
+        tokenCost: 5,
+        maxVideoLength: "1 hour",
+        speed: "Under 30 seconds",
+        capabilities: [
+          "Clean, academic bullet layout",
+          "Auto-detected bold terms & definitions",
+          "Quick summary at the top",
+          "Under 30-second generation speed",
+          "Supports videos up to 1 hour"
+        ],
+        ...(statsMap["flash"] || { count: 0, avgProcessingTime: 0, totalProcessingTime: 0, totalTokensCost: 0, successCount: 0, failedCount: 0, processingCount: 0 })
+      },
+      {
+        id: "canvas",
+        name: "Canvas",
+        tier: "Pro Tier",
+        color: "blue",
+        description: "Canvas creates modern study cards that feel like a magazine. It integrates contextual images (Unsplash) and video timestamps back to specific segments, perfect for visual learners.",
+        tokenCost: 0,
+        maxVideoLength: "4 hours",
+        speed: "Pro-tier standard speed",
+        capabilities: [
+          "Section card-based visual layouts",
+          "Curated images matching each concept",
+          "Timestamps linked back to the video",
+          "Pro-tier generation quality",
+          "Supports videos up to 4 hours"
+        ],
+        ...(statsMap["canvas"] || { count: 0, avgProcessingTime: 0, totalProcessingTime: 0, totalTokensCost: 0, successCount: 0, failedCount: 0, processingCount: 0 })
+      },
+      {
+        id: "scholar",
+        name: "Scholar",
+        tier: "Pro Tier",
+        color: "purple",
+        description: "Scholar produces textbook-quality notes formatted for PDF export. It auto-generates a table of contents, definitions boxes, data tables, and deep comparative grids.",
+        tokenCost: 0,
+        maxVideoLength: "4 hours",
+        speed: "Pro-tier advanced speed",
+        capabilities: [
+          "Auto-generated table of contents",
+          "H1 → H2 → H3 heading structures",
+          "Key definitions box per section",
+          "Data tables for comparisons",
+          "Clean PDF and Markdown exports"
+        ],
+        ...(statsMap["scholar"] || { count: 0, avgProcessingTime: 0, totalProcessingTime: 0, totalTokensCost: 0, successCount: 0, failedCount: 0, processingCount: 0 })
+      },
+      {
+        id: "atlas",
+        name: "Atlas",
+        tier: "Power Tier",
+        color: "red",
+        description: "Designed for power users processing massive YouTube courses, playlists, or conference talks. Atlas offers chapter-by-chapter breakdowns, cross-section concept linking, and full PDF + Anki deck exports.",
+        tokenCost: 0,
+        maxVideoLength: "12 hours (Playlists)",
+        speed: "Dedicated processing queue",
+        capabilities: [
+          "Processes entire courses & playlists",
+          "Chunked processing handles any length",
+          "Chapter-by-chapter breakdown",
+          "Cross-section concept linking",
+          "Full PDF + Anki deck (.apkg) exports"
+        ],
+        ...(statsMap["atlas"] || { count: 0, avgProcessingTime: 0, totalProcessingTime: 0, totalTokensCost: 0, successCount: 0, failedCount: 0, processingCount: 0 })
+      }
+    ];
+
+    res.status(200).json({
+      success: true,
+      models: modelsData,
+      dailyTrend
+    });
+  } catch (error) {
+    console.error("❌ getAiModelsAnalytics Error:", error);
+    res.status(500).json({ success: false, message: "Server error while gathering AI models telemetry.", error: error.message });
+  }
+};
+

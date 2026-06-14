@@ -330,13 +330,13 @@ export default function BacklinkDashboard() {
             />
           </div>
 
-          <div className="flex bg-black border border-white/5 rounded-2xl p-1 gap-1">
+          <div className="flex bg-black border border-white/5 rounded-2xl p-1 gap-1 overflow-x-auto no-scrollbar max-w-full">
             {(["All", "Active", "No-Follow", "Missing"] as const).map((filter) => (
               <button
                 key={filter}
                 onClick={() => setStatusFilter(filter)}
                 className={cn(
-                  "px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                  "px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0 flex-1 sm:flex-initial",
                   statusFilter === filter ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white"
                 )}
               >
@@ -346,8 +346,8 @@ export default function BacklinkDashboard() {
           </div>
         </div>
 
-        {/* TABLE: SITES DIRECTORY */}
-        <div className="bg-black border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
+        {/* TABLE: SITES DIRECTORY (DESKTOP) */}
+        <div className="hidden md:block bg-black border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -436,6 +436,86 @@ export default function BacklinkDashboard() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* MOBILE CARDS VIEW */}
+        <div className="md:hidden space-y-4">
+          {filteredLinks.length === 0 ? (
+            <div className="p-10 text-center text-[10px] font-bold uppercase tracking-widest text-neutral-600 bg-black border border-white/5 rounded-3xl">
+              No matching backlinks tracked.
+            </div>
+          ) : (
+            filteredLinks.map((link) => (
+              <div key={link.id} className="bg-neutral-950 border border-white/5 rounded-3xl p-5 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-black uppercase text-white tracking-widest truncate">{link.domain}</h3>
+                    <a 
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[9px] text-neutral-500 font-mono flex items-center gap-1 hover:text-red-500 transition-colors mt-1.5"
+                    >
+                      <span className="truncate max-w-[200px]">{link.url}</span> <ExternalLink size={10} className="flex-shrink-0" />
+                    </a>
+                  </div>
+
+                  <div className="flex-shrink-0">
+                    {link.status === "Active" && (
+                      <div className="flex items-center gap-1 text-emerald-500 bg-emerald-500/5 px-2.5 py-1 rounded-full border border-emerald-500/10">
+                        <CheckCircle2 size={10} />
+                        <span className="text-[7px] font-black uppercase tracking-widest">Active</span>
+                      </div>
+                    )}
+                    {link.status === "No-Follow" && (
+                      <div className="flex items-center gap-1 text-amber-500 bg-amber-500/5 px-2.5 py-1 rounded-full border border-amber-500/10">
+                        <ShieldAlert size={10} />
+                        <span className="text-[7px] font-black uppercase tracking-widest">Nofollow</span>
+                      </div>
+                    )}
+                    {link.status === "Missing" && (
+                      <div className="flex items-center gap-1 text-red-500 bg-red-500/5 px-2.5 py-1 rounded-full border border-red-500/10 animate-pulse">
+                        <AlertCircle size={10} />
+                        <span className="text-[7px] font-black uppercase tracking-widest">Missing</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 bg-white/[0.02] p-3 rounded-xl border border-white/5 text-center">
+                  <div>
+                    <p className="text-[7px] font-black text-neutral-600 uppercase">Authority</p>
+                    <p className="text-[10px] font-black text-white italic mt-1">DA {link.da}</p>
+                  </div>
+                  <div>
+                    <p className="text-[7px] font-black text-neutral-600 uppercase">Segment</p>
+                    <p className="text-[9px] font-black text-neutral-400 mt-1 truncate max-w-[80px] mx-auto">{link.type}</p>
+                  </div>
+                  <div>
+                    <p className="text-[7px] font-black text-neutral-600 uppercase">Anchor</p>
+                    <p className="text-[9px] font-bold text-neutral-500 mt-1 truncate max-w-[80px] mx-auto">{link.anchorText}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <a 
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2.5 bg-white/5 border border-white/10 rounded-xl text-[8px] font-black uppercase tracking-wider text-neutral-400 hover:text-white transition-all hover:bg-white/10 flex items-center justify-center gap-1.5"
+                  >
+                    <ExternalLink size={10} /> Visit Link
+                  </a>
+                  <button 
+                    onClick={() => handleDeleteLink(link.id)}
+                    className="flex-1 py-2.5 bg-red-600/5 border border-red-600/10 rounded-xl text-[8px] font-black uppercase tracking-wider text-neutral-500 hover:text-red-500 hover:bg-red-600/10 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 size={10} /> Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
       </div>
