@@ -152,18 +152,6 @@ export default function FakerDashboard() {
   };
 
 
-
-  const handleSearchNotes = async (query: string) => {
-    setNoteSearchStr(query);
-    if (!query.trim()) return setFoundNotes([]);
-    try {
-      const res = await api.get(`/admin/faker/notes/search?query=${query}`, { headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
-      if (res.data.success) {
-        setFoundNotes(res.data.data);
-      }
-    } catch(e) { }
-  };
-
   return (
     <div className="min-h-screen bg-[#050505] text-white p-4 md:p-8 font-sans pb-32">
       <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
