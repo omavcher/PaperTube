@@ -39,7 +39,7 @@ import { LoaderX } from "@/components/LoaderX";
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const username = params.username as string;
+  const username = (params.region || params.username) as string;
 
   // --- States ---
   const [loading, setLoading] = useState(true);
