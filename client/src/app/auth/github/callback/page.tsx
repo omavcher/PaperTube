@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/config/api";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { trackSignup } from "@/utils/analytics";
+import { trackSignup, trackDbActivity } from "@/utils/analytics";
 
 function GithubCallbackContent() {
   const router = useRouter();
@@ -33,6 +33,7 @@ function GithubCallbackContent() {
           
           if (isSignup) {
             trackSignup("github");
+            trackDbActivity("/auth/signup/github");
           }
           
           window.dispatchEvent(new Event("auth-change"));

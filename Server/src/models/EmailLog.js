@@ -24,6 +24,7 @@ const EmailLogSchema = new mongoose.Schema(
         "marketing",
         "custom",
         "admin_alert",
+        "otp",
       ],
       default: "custom",
     },

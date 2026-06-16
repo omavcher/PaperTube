@@ -1,57 +1,24 @@
 /**
  * emailService.js
  *
- * Multi-account Nodemailer service with automatic failover.
- * - Tries EMAIL_ACCOUNTS in order; if one fails, transparently moves to the next.
+ * Integrated Resend email service.
  * - Logs every send attempt to the EmailLog collection.
  * - NEVER throws to callers — returns { success, messageId?, error? }.
- *
- * ENV variables to set (in .env):
- *  EMAIL_ACCOUNT_1_USER=paperxify@gmail.com
- *  EMAIL_ACCOUNT_1_PASS=app_password_here
- *  EMAIL_ACCOUNT_2_USER=backup@gmail.com
- *  EMAIL_ACCOUNT_2_PASS=app_password_here
- *  EMAIL_ACCOUNT_3_USER=third@gmail.com
- *  EMAIL_ACCOUNT_3_PASS=app_password_here
- *  EMAIL_FROM_NAME=Paperxify
  */
 
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const EmailLog = require("../models/EmailLog");
 
-// ─── Build SMTP account pool from ENV ────────────────────────────────────────
-const buildAccountPool = () => {
-  const accounts = [];
-  let i = 1;
-  while (true) {
-    const user = process.env[`EMAIL_ACCOUNT_${i}_USER`];
-    const pass = process.env[`EMAIL_ACCOUNT_${i}_PASS`];
-    if (!user || !pass) break;
-    accounts.push({ user, pass, label: `Account-${i}` });
-    i++;
+// Initialize Resend lazily to prevent server crashes if env key is not loaded yet
+let resend = null;
+const getResendInstance = () => {
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY || "dummy_key");
   }
-
-  // Fallback: if no numbered accounts, try legacy single-account ENV
-  if (accounts.length === 0 && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    accounts.push({
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-      label: "Account-legacy",
-    });
-  }
-
-  return accounts;
+  return resend;
 };
 
-// ─── Create a transporter for a given account ─────────────────────────────────
-const createTransporter = ({ user, pass }) =>
-  nodemailer.createTransport({
-    service: "gmail",
-    auth: { type: "LOGIN", user, pass },
-    tls: { rejectUnauthorized: false },
-  });
-
-// ─── Core send function (with failover) ───────────────────────────────────────
+// ─── Core send function using Resend ──────────────────────────────────────────
 /**
  * sendEmail({ to, toName, subject, html, templateType, templateData, userId })
  * Returns: { success: bool, messageId?: string, provider?: string, error?: string }
@@ -65,8 +32,8 @@ const sendEmail = async ({
   templateData = {},
   userId = null,
 }) => {
-  const accounts = buildAccountPool();
   const fromName = process.env.EMAIL_FROM_NAME || "Paperxify";
+  const apiKey = process.env.RESEND_API_KEY;
 
   // We'll create a log entry and update it after send
   let logEntry = null;
@@ -79,16 +46,16 @@ const sendEmail = async ({
       templateType,
       templateData,
       status: "pending",
-      provider: "",
-      attemptCount: 0,
+      provider: "Resend",
+      attemptCount: 1,
     });
   } catch (logErr) {
     // Log creation failure should never block email sending
     console.error("⚠️ [EmailService] Could not create log entry:", logErr.message);
   }
 
-  if (accounts.length === 0) {
-    const errMsg = "No email accounts configured. Set EMAIL_ACCOUNT_1_USER and EMAIL_ACCOUNT_1_PASS in .env";
+  if (!apiKey) {
+    const errMsg = "Resend API key is not configured. Set RESEND_API_KEY in .env";
     console.error("❌ [EmailService]", errMsg);
     if (logEntry) {
       await EmailLog.findByIdAndUpdate(logEntry._id, { status: "failed", error: errMsg }).catch(() => {});
@@ -96,57 +63,54 @@ const sendEmail = async ({
     return { success: false, error: errMsg };
   }
 
-  let lastError = null;
+  try {
+    console.log(`📧 [EmailService] Attempting send via Resend → ${to}`);
 
-  for (let idx = 0; idx < accounts.length; idx++) {
-    const account = accounts[idx];
-    try {
-      console.log(`📧 [EmailService] Attempting via ${account.label} (${account.user}) → ${to}`);
+    // Standard Resend sandbox from address or custom domain from address
+    const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
+    const fromHeader = `"${fromName}" <${fromEmail}>`;
 
-      const transporter = createTransporter(account);
-      const mailOptions = {
-        from: `"${fromName}" <${account.user}>`,
-        to: toName ? `"${toName}" <${to}>` : to,
-        subject,
-        html,
-      };
+    const response = await getResendInstance().emails.send({
+      from: fromHeader,
+      to: [to],
+      subject,
+      html,
+    });
 
-      const info = await transporter.sendMail(mailOptions);
-
-      console.log(`✅ [EmailService] Sent via ${account.label} — messageId: ${info.messageId}`);
-
-      // Update log entry → success
+    if (response.error) {
+      console.error("❌ [EmailService] Resend returned error:", response.error);
       if (logEntry) {
         await EmailLog.findByIdAndUpdate(logEntry._id, {
-          status: "sent",
-          provider: account.label,
-          messageId: info.messageId,
-          error: null,
-          attemptCount: idx + 1,
+          status: "failed",
+          error: response.error.message || JSON.stringify(response.error),
         }).catch(() => {});
       }
-
-      return { success: true, messageId: info.messageId, provider: account.label };
-    } catch (err) {
-      lastError = err.message;
-      console.warn(
-        `⚠️ [EmailService] ${account.label} failed (attempt ${idx + 1}/${accounts.length}): ${err.message}`
-      );
+      return { success: false, error: response.error.message || "Resend failed to send email" };
     }
+
+    const messageId = response.data?.id || "resend-msg-id";
+    console.log(`✅ [EmailService] Sent via Resend — messageId: ${messageId}`);
+
+    // Update log entry → success
+    if (logEntry) {
+      await EmailLog.findByIdAndUpdate(logEntry._id, {
+        status: "sent",
+        messageId: messageId,
+        error: null,
+      }).catch(() => {});
+    }
+
+    return { success: true, messageId: messageId, provider: "Resend" };
+  } catch (err) {
+    console.error("❌ [EmailService] Resend threw exception:", err.message);
+    if (logEntry) {
+      await EmailLog.findByIdAndUpdate(logEntry._id, {
+        status: "failed",
+        error: err.message,
+      }).catch(() => {});
+    }
+    return { success: false, error: err.message };
   }
-
-  // All accounts exhausted
-  console.error(`❌ [EmailService] All ${accounts.length} account(s) failed. Last error: ${lastError}`);
-
-  if (logEntry) {
-    await EmailLog.findByIdAndUpdate(logEntry._id, {
-      status: "failed",
-      error: lastError,
-      attemptCount: accounts.length,
-    }).catch(() => {});
-  }
-
-  return { success: false, error: lastError };
 };
 
 // ─── Convenience wrappers ─────────────────────────────────────────────────────

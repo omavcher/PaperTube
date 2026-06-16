@@ -45,6 +45,85 @@ export default function AnalyticsMonitor() {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Funnel & Campaign Telemetry Analysis
+  const funnelStats = useMemo(() => {
+    let visits = 0;
+    let signups = 0;
+    let signupGoogle = 0;
+    let signupEmail = 0;
+    let signupGithub = 0;
+    
+    let checkoutClicks = 0;
+    let checkoutPro = 0;
+    let checkoutPower = 0;
+    
+    let successes = 0;
+    let successPro = 0;
+    let successPower = 0;
+
+    let googleAdsVisits = 0;
+    let googleAdsSignups = 0;
+    let googleAdsCheckouts = 0;
+    let googleAdsSuccesses = 0;
+
+    logs.forEach(log => {
+      const path = log.path || "";
+      const source = log.source || "";
+      const utmSource = log.utmSource || "";
+      const utmMedium = log.utmMedium || "";
+
+      const isGoogleAds = utmSource.toLowerCase().includes("google") || 
+                          utmMedium.toLowerCase() === "cpc" ||
+                          source.toLowerCase().includes("google") ||
+                          path.includes("gclid");
+
+      // Categorize
+      if (path.startsWith("/auth/signup")) {
+        signups++;
+        if (path.includes("google")) signupGoogle++;
+        else if (path.includes("email")) signupEmail++;
+        else if (path.includes("github")) signupGithub++;
+        
+        if (isGoogleAds) googleAdsSignups++;
+      } else if (path.includes("checkout-click") || path.includes("payment-start")) {
+        checkoutClicks++;
+        if (path.includes("pro")) checkoutPro++;
+        else if (path.includes("power")) checkoutPower++;
+        
+        if (isGoogleAds) googleAdsCheckouts++;
+      } else if (path.includes("/payment/success")) {
+        successes++;
+        if (path.includes("pro")) successPro++;
+        else if (path.includes("power")) successPower++;
+        
+        if (isGoogleAds) googleAdsSuccesses++;
+      } else {
+        visits++;
+        if (isGoogleAds) googleAdsVisits++;
+      }
+    });
+
+    const totalVisits = visits + signups + checkoutClicks + successes;
+
+    return {
+      totalVisits,
+      signups,
+      signupGoogle,
+      signupEmail,
+      signupGithub,
+      checkoutClicks,
+      checkoutPro,
+      checkoutPower,
+      successes,
+      successPro,
+      successPower,
+      googleAdsVisits,
+      googleAdsSignups,
+      googleAdsCheckouts,
+      googleAdsSuccesses,
+    };
+  }, [logs]);
+
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
@@ -163,6 +242,107 @@ export default function AnalyticsMonitor() {
         <StatHUD label="Auth Rate" val={`${Math.round((logs.filter(l => l.isLoggedIn).length / logs.length) * 100 || 0)}%`} icon={ShieldCheck} color="text-emerald-400" />
         <StatHUD label="Primary Pathway" val={logs[0]?.source || "Direct"} icon={Globe} color="text-blue-400" />
         <StatHUD label="Active Route" val={logs[0]?.path || "/"} icon={Navigation} color="text-yellow-500" />
+      </div>
+
+      {/* --- Conversion Funnel & Campaign Performance Analyzer --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left: Conversion Funnel */}
+        <div className="lg:col-span-6 bg-neutral-950/40 border border-neutral-900 p-6 rounded-[2rem] relative overflow-hidden backdrop-blur-md">
+          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Activity size={48} className="text-red-500" /></div>
+          
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-500 mb-6 flex items-center gap-2">
+            <span className="h-1.5 w-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_red]" />
+            CONVERSION_FUNNEL_TELEMETRY
+          </h3>
+
+          <div className="space-y-6">
+            {/* Step 1: Total Visits */}
+            <FunnelStep 
+              stepNumber="01" 
+              label="Total Traffic Visits" 
+              count={funnelStats.totalVisits} 
+              percentage={100} 
+              barColor="bg-neutral-800" 
+            />
+
+            {/* Step 2: Signups */}
+            <FunnelStep 
+              stepNumber="02" 
+              label="Signups & Registrations" 
+              count={funnelStats.signups} 
+              percentage={funnelStats.totalVisits > 0 ? Math.round((funnelStats.signups / funnelStats.totalVisits) * 100) : 0} 
+              subDetails={`Google: ${funnelStats.signupGoogle} | Email: ${funnelStats.signupEmail} | GitHub: ${funnelStats.signupGithub}`}
+              barColor="bg-blue-600/80" 
+            />
+
+            {/* Step 3: Checkout Initiated */}
+            <FunnelStep 
+              stepNumber="03" 
+              label="Checkout Clicks (High Intent / Trial Starts)" 
+              count={funnelStats.checkoutClicks} 
+              percentage={funnelStats.signups > 0 ? Math.round((funnelStats.checkoutClicks / funnelStats.signups) * 100) : 0} 
+              subDetails={`Pro Trial: ${funnelStats.checkoutPro} | Power Trial: ${funnelStats.checkoutPower}`}
+              barColor="bg-amber-600/80" 
+            />
+
+            {/* Step 4: Successful Conversions */}
+            <FunnelStep 
+              stepNumber="04" 
+              label="Successful Purchases (Trial Activated)" 
+              count={funnelStats.successes} 
+              percentage={funnelStats.checkoutClicks > 0 ? Math.round((funnelStats.successes / funnelStats.checkoutClicks) * 100) : 0} 
+              subDetails={`Pro: ${funnelStats.successPro} | Power: ${funnelStats.successPower}`}
+              barColor="bg-emerald-555/85" 
+            />
+          </div>
+        </div>
+
+        {/* Right: Campaign & Google Ads Performance */}
+        <div className="lg:col-span-6 bg-neutral-950/40 border border-neutral-900 p-6 rounded-[2rem] relative overflow-hidden backdrop-blur-md flex flex-col justify-between">
+          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Globe size={48} className="text-blue-500" /></div>
+          
+          <div>
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-500 mb-5 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_6px_blue]" />
+              GOOGLE_ADS_ROI_CAMPAIGN_ANALYZER
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <StatHUD label="Google Ads Clicks" val={funnelStats.googleAdsVisits + funnelStats.googleAdsSignups + funnelStats.googleAdsCheckouts + funnelStats.googleAdsSuccesses} icon={Globe} color="text-blue-400" />
+              <StatHUD label="Google Ads Signups" val={funnelStats.googleAdsSignups} icon={ShieldCheck} color="text-emerald-400" />
+              <StatHUD label="Google Ads Trials Initiated" val={funnelStats.googleAdsCheckouts} icon={Zap} color="text-yellow-500" />
+              <StatHUD label="Google Ads Conversions" val={funnelStats.googleAdsSuccesses} icon={Activity} color="text-red-500" />
+            </div>
+
+            <div className="p-4 bg-neutral-900/40 border border-neutral-900 rounded-2xl space-y-3">
+              <div className="flex justify-between items-center text-[8px] font-bold text-neutral-600 uppercase tracking-widest border-b border-neutral-900/60 pb-1.5">
+                <span>Metric Ratio</span>
+                <span>Conversion %</span>
+              </div>
+              
+              <div className="flex justify-between items-center text-[10px] py-1 border-b border-neutral-900/40">
+                <span className="text-neutral-400 font-mono">Visitor-to-Signup Ratio</span>
+                <span className="text-white font-bold">{funnelStats.totalVisits > 0 ? ((funnelStats.signups / funnelStats.totalVisits) * 100).toFixed(1) : "0.0"}%</span>
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] py-1 border-b border-neutral-900/40">
+                <span className="text-neutral-400 font-mono">Signup-to-Trial Start Ratio</span>
+                <span className="text-white font-bold">{funnelStats.signups > 0 ? ((funnelStats.checkoutClicks / funnelStats.signups) * 100).toFixed(1) : "0.0"}%</span>
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] py-1">
+                <span className="text-neutral-400 font-mono">Trial Start-to-Subscription Conversion</span>
+                <span className="text-emerald-400 font-bold">{funnelStats.checkoutClicks > 0 ? ((funnelStats.successes / funnelStats.checkoutClicks) * 100).toFixed(1) : "0.0"}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-[9px] text-neutral-500 mt-4 leading-normal italic border-t border-neutral-900/40 pt-3 flex items-center gap-1.5">
+            <Info size={11} className="text-blue-500 shrink-0" />
+            <span>Telemetry excludes admin actions. Google Ads CPC channels are detected dynamically via campaign properties.</span>
+          </div>
+        </div>
       </div>
 
       {/* --- Command Bar --- */}
@@ -564,6 +744,50 @@ export default function AnalyticsMonitor() {
 }
 
 // --- Specialized UI Fragments ---
+
+function FunnelStep({ 
+  stepNumber, 
+  label, 
+  count, 
+  percentage, 
+  subDetails,
+  barColor 
+}: { 
+  stepNumber: string; 
+  label: string; 
+  count: number; 
+  percentage: number; 
+  subDetails?: string;
+  barColor: string;
+}) {
+  return (
+    <div className="space-y-1.5 font-mono">
+      <div className="flex justify-between items-end">
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-neutral-600 font-bold">[{stepNumber}]</span>
+          <span className="text-[10px] font-bold text-neutral-400">{label}</span>
+        </div>
+        <div className="text-right flex items-baseline gap-2">
+          <span className="text-xs font-black text-white">{count}</span>
+          <span className="text-[8px] font-bold text-neutral-600">({percentage}%)</span>
+        </div>
+      </div>
+      <div className="w-full h-2 bg-neutral-900 border border-neutral-850 rounded-full overflow-hidden p-[1px]">
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className={cn("h-full rounded-full", barColor)}
+        />
+      </div>
+      {subDetails && (
+        <p className="text-[8px] text-neutral-600 font-medium tracking-tight">
+          {subDetails}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function StatHUD({ label, val, icon: Icon, color }: any) {
   return (

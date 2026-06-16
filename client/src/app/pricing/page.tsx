@@ -15,7 +15,7 @@ import api from "@/config/api";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
 import { AuthLoginModal } from "@/components/AuthGuard";
-import { trackPurchase } from "@/utils/analytics";
+import { trackPurchase, trackDbActivity } from "@/utils/analytics";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BillingPeriod = "monthly" | "yearly";
@@ -245,6 +245,9 @@ function PayPalSDKButton({
     (window as any).paypal.Buttons({
       style: { layout: "vertical", color: "blue", shape: "pill", label: "pay", height: 48 },
       createOrder: async () => {
+        // Track PayPal payment attempt
+        trackDbActivity(`/pricing/payment-start-paypal/${plan.id}/${billing}`);
+
         const token = localStorage.getItem("authToken");
         const res = await api.post(
           "/payment/paypal/create-order",
@@ -334,6 +337,9 @@ function PaymentMethodModal({
 
   const handleRazorpayCheckout = async () => {
     if (!plan) return;
+    // Track Razorpay payment attempt
+    trackDbActivity(`/pricing/payment-start-razorpay/${plan.id}/${billing}`);
+
     setIsRazorpayProcessing(true);
     const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) {
@@ -948,6 +954,7 @@ export default function PricingPage() {
         : (billingPeriod === "yearly" ? 72 : 9);
 
       trackPurchase(planId, value);
+      trackDbActivity(`/payment/success/${planId}/${billingPeriod}`);
 
       setSuccessPlanName(planName);
       setSuccessOpen(true);
@@ -966,6 +973,9 @@ export default function PricingPage() {
       window.location.href = "/notes";
       return;
     }
+    // Track click on payment plan / initiating checkout in database
+    trackDbActivity(`/pricing/checkout-click/${plan.id}/${billing}`);
+
     const token = localStorage.getItem("authToken");
     if (!token) { setPendingPlan(plan); setShowLoginModal(true); return; }
     // Open payment method picker
@@ -975,6 +985,9 @@ export default function PricingPage() {
   };
 
   const launchLemonSqueezyCheckout = async (plan: Plan) => {
+    // Track LemonSqueezy payment attempt
+    trackDbActivity(`/pricing/payment-start-lemonsqueezy/${plan.id}/${billing}`);
+
     setShowPaymentModal(false);
     setIsProcessing(true);
     setProcessingGateway("lemonsqueezy");
@@ -1036,6 +1049,7 @@ export default function PricingPage() {
             : (pendingCheckoutPlan?.yearlyPrice ?? 72);
 
           trackPurchase(planId, price);
+          trackDbActivity(`/payment/success/${planId}/${billing}`);
 
           setSuccessPlanName(pendingCheckoutPlan?.name || "Pro");
           setSuccessOpen(true);

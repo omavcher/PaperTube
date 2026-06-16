@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import api from "@/config/api";
 import { toast } from "sonner";
-import { trackSignup } from "@/utils/analytics";
+import { trackSignup, trackDbActivity } from "@/utils/analytics";
 
 export interface UserData {
   name?: string;
@@ -117,6 +117,7 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
           localStorage.setItem("user", JSON.stringify({ ...userInfo, ...backendUser }));
           if (isSignup) {
             trackSignup("google");
+            trackDbActivity("/auth/signup/google");
           }
           if (onSuccess) onSuccess(token, backendUser, response.data);
           toast.success(`Welcome back, ${backendUser.name}!`);
@@ -215,6 +216,7 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
           localStorage.setItem("authToken", token);
           localStorage.setItem("user", JSON.stringify(backendUser));
           trackSignup("email");
+          trackDbActivity("/auth/signup/email");
           if (onSuccess) onSuccess(token, backendUser, res.data);
           toast.success(`Account created! Welcome, ${backendUser.name}!`);
           onClose();
