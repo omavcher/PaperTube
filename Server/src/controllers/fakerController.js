@@ -38,13 +38,39 @@ exports.createFakeUsers = async (req, res) => {
             const username = name.toLowerCase().replace(/[^a-z0-9]/g, '') + randomSuffix;
             const email = username + '@fakemail.com';
 
+            // Generate random simulated global coordinates
+            const mockLocations = [
+              { city: "New York", country: "United States", lat: 40.7128, lon: -74.0060 },
+              { city: "London", country: "United Kingdom", lat: 51.5074, lon: -0.1278 },
+              { city: "Mumbai", country: "India", lat: 19.0760, lon: 72.8777 },
+              { city: "Tokyo", country: "Japan", lat: 35.6762, lon: 139.6503 },
+              { city: "Sydney", country: "Australia", lat: -33.8688, lon: 151.2093 },
+              { city: "Paris", country: "France", lat: 48.8566, lon: 2.3522 },
+              { city: "San Francisco", country: "United States", lat: 37.7749, lon: -122.4194 },
+              { city: "Berlin", country: "Germany", lat: 52.5200, lon: 13.4050 },
+              { city: "Toronto", country: "Canada", lat: 43.6532, lon: -79.3832 },
+              { city: "Singapore", country: "Singapore", lat: 1.3521, lon: 103.8198 },
+              { city: "Sao Paulo", country: "Brazil", lat: -23.5505, lon: -46.6333 },
+              { city: "Cape Town", country: "South Africa", lat: -33.9249, lon: 18.4241 }
+            ];
+            const loc = mockLocations[Math.floor(Math.random() * mockLocations.length)];
+            const noiseLat = (Math.random() - 0.5) * 0.8;
+            const noiseLon = (Math.random() - 0.5) * 0.8;
+
             const user = new User({
                 name,
                 username,
                 email,
                 isNewUser: false,
                 isFake: true,
-                picture: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+                picture: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+                country: loc.country,
+                location: {
+                    city: loc.city,
+                    country: loc.country,
+                    latitude: loc.lat + noiseLat,
+                    longitude: loc.lon + noiseLon
+                }
             });
             await user.save();
             count++;

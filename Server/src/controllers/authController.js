@@ -81,12 +81,19 @@ exports.googleAuth = async (req, res) => {
     console.log("👤 User info:", { email, name, picture: !!picture, googleId });
     
     // Handle user creation/update
-    const user = await handleUserAuth({ email, name, picture, googleId });
+    const { user, isNewUser } = await handleUserAuth({
+      email,
+      name,
+      picture,
+      googleId,
+      location: req.body.location,
+      ip: req.ip || req.headers['x-forwarded-for']
+    });
     
     console.log("✅ User processed:", user.email, user._id);
     
     // Send success response
-    return sendAuthResponse(res, user);
+    return sendAuthResponse(res, user, isNewUser);
     
   } catch (error) {
     console.error("❌ Google Auth Error:", error);
@@ -178,13 +185,31 @@ async function handleUserAuth(userInfo) {
   console.log("🔄 Processing user in database...");
   
   try {
-    const { email, name, picture, googleId, githubId, password, country } = userInfo;
+    const { email, name, picture, googleId, githubId, password, country, location, ip } = userInfo;
+    
+    // Resolve user location coordinates
+    let finalLocation = { city: "", country: "", latitude: null, longitude: null };
+    if (location && location.latitude && location.longitude) {
+      finalLocation = {
+        city: location.city || "",
+        country: location.country || location.country_name || "",
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude)
+      };
+    } else if (ip) {
+      const geo = await geocodeIp(ip);
+      if (geo) {
+        finalLocation = geo;
+      }
+    }
     
     // Check if user already exists
     let user = await User.findOne({ email });
+    let isNewUser = false;
 
     if (!user) {
       console.log("👤 Creating new user:", email);
+      isNewUser = true;
       
       // Generate username from email
       const username = generateUsername(email);
@@ -197,7 +222,8 @@ async function handleUserAuth(userInfo) {
         email,
         username,
         picture,
-        country: country || "Unknown",
+        country: finalLocation.country || country || "Unknown",
+        location: finalLocation,
         isVerified: true,
         tokens: 10, // Start with daily allocation
         streak: { count: 1, lastVisit: new Date() },
@@ -265,8 +291,13 @@ async function handleUserAuth(userInfo) {
         lastLogin: now,
         'streak.count': newStreak,
         'streak.lastVisit': now,
+        location: finalLocation,
         ...tokenUpdate,
       };
+
+      if (finalLocation.country) {
+        updateData.country = finalLocation.country;
+      }
 
       if (googleId && !user.googleId) updateData.googleId = googleId;
       if (githubId && !user.githubId) updateData.githubId = githubId;
@@ -281,7 +312,7 @@ async function handleUserAuth(userInfo) {
       console.log("✅ User updated — streak:", newStreak);
     }
     
-    return user;
+    return { user, isNewUser };
     
   } catch (dbError) {
     console.error("❌ Database error:", dbError);
@@ -303,7 +334,7 @@ async function handleUserAuth(userInfo) {
             existingUser.username = generateUsername(email);
             await existingUser.save({ validateBeforeSave: false });
             console.log("✅ Fixed username for existing user");
-            return existingUser;
+            return { user: existingUser, isNewUser: false };
           }
         } catch (fixError) {
           console.error("❌ Failed to fix username error:", fixError);
@@ -313,6 +344,47 @@ async function handleUserAuth(userInfo) {
     
     throw new Error(`Database error: ${dbError.message}`);
   }
+}
+
+// Helper function to geocode user location from IP with local fallbacks
+async function geocodeIp(ip) {
+  if (!ip || ip === "::1" || ip === "127.0.0.1" || ip.startsWith("10.") || ip.startsWith("192.168.")) {
+    // Generate simulated coordinates for testing on localhost
+    const simulatedCities = [
+      { city: "New York", country: "United States", lat: 40.7128, lon: -74.0060 },
+      { city: "London", country: "United Kingdom", lat: 51.5074, lon: -0.1278 },
+      { city: "Mumbai", country: "India", lat: 19.0760, lon: 72.8777 },
+      { city: "Tokyo", country: "Japan", lat: 35.6762, lon: 139.6503 },
+      { city: "Sydney", country: "Australia", lat: -33.8688, lon: 151.2093 },
+      { city: "Paris", country: "France", lat: 48.8566, lon: 2.3522 },
+      { city: "San Francisco", country: "United States", lat: 37.7749, lon: -122.4194 }
+    ];
+    const target = simulatedCities[Math.floor(Math.random() * simulatedCities.length)];
+    const noiseLat = (Math.random() - 0.5) * 0.5;
+    const noiseLon = (Math.random() - 0.5) * 0.5;
+    return {
+      city: target.city,
+      country: target.country,
+      latitude: target.lat + noiseLat,
+      longitude: target.lon + noiseLon
+    };
+  }
+
+  try {
+    const cleanIp = ip.replace(/^::ffff:/, '');
+    const response = await axios.get(`https://ipapi.co/${cleanIp}/json/`, { timeout: 4000 });
+    if (response.data && !response.data.error) {
+      return {
+        city: response.data.city || "Unknown",
+        country: response.data.country_name || "Unknown",
+        latitude: response.data.latitude || null,
+        longitude: response.data.longitude || null
+      };
+    }
+  } catch (error) {
+    console.error("Geocoding IP error:", error.message);
+  }
+  return null;
 }
 
 // Helper function to generate username
@@ -332,7 +404,7 @@ function generateUsername(email) {
 }
 
 // Helper function to send response
-function sendAuthResponse(res, user) {
+function sendAuthResponse(res, user, isSignup = false) {
   // Create JWT session token
   const token = jwt.sign(
     { 
@@ -359,6 +431,7 @@ function sendAuthResponse(res, user) {
         username: user.username,
         googleId: user.googleId
       },
+      isSignup: isSignup,
       expiresIn: 2592000 // 30 days in seconds
     }
   };
@@ -822,17 +895,19 @@ exports.register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Call handleUserAuth to create the user properly (setting streaks, welcome email, tokens, country)
-    const user = await handleUserAuth({
+    const { user } = await handleUserAuth({
       email: emailLower,
       name,
       password: hashedPassword,
       country: country || "Unknown",
+      location: req.body.location,
+      ip: req.ip || req.headers['x-forwarded-for']
     });
 
     // Clean up OTP
     await Otp.deleteOne({ _id: validOtp._id });
 
-    return sendAuthResponse(res, user);
+    return sendAuthResponse(res, user, true);
   } catch (error) {
     console.error("❌ Register Error:", error);
     return res.status(500).json({ success: false, message: error.message || "Registration failed" });
@@ -867,12 +942,14 @@ exports.login = async (req, res) => {
     }
 
     // Update streak and tokens utilizing the unified handleUserAuth helper
-    const updatedUser = await handleUserAuth({
+    const { user: updatedUser } = await handleUserAuth({
       email: user.email,
-      name: user.name
+      name: user.name,
+      location: req.body.location,
+      ip: req.ip || req.headers['x-forwarded-for']
     });
 
-    return sendAuthResponse(res, updatedUser);
+    return sendAuthResponse(res, updatedUser, false);
   } catch (error) {
     console.error("❌ Login Error:", error);
     return res.status(500).json({ success: false, message: error.message || "Login failed" });
@@ -949,14 +1026,16 @@ exports.githubAuth = async (req, res) => {
     console.log(`✅ GitHub Profile: ${profile.login} (${email})`);
 
     // Handle user database sync
-    const user = await handleUserAuth({
+    const { user, isNewUser } = await handleUserAuth({
       email: email.toLowerCase(),
       name: profile.name || profile.login,
       picture: profile.avatar_url,
-      githubId: String(profile.id)
+      githubId: String(profile.id),
+      location: req.body.location,
+      ip: req.ip || req.headers['x-forwarded-for']
     });
 
-    return sendAuthResponse(res, user);
+    return sendAuthResponse(res, user, isNewUser);
   } catch (error) {
     console.error("❌ GitHub OAuth Error:", error);
     return res.status(500).json({

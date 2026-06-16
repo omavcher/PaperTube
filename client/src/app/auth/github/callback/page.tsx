@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/config/api";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { trackSignup } from "@/utils/analytics";
 
 function GithubCallbackContent() {
   const router = useRouter();
@@ -26,9 +27,13 @@ function GithubCallbackContent() {
       try {
         const response = await api.post("/auth/github", { code });
         if (response.data.success && response.data.data) {
-          const { token, user } = response.data.data;
+          const { token, user, isSignup } = response.data.data;
           localStorage.setItem("authToken", token);
           localStorage.setItem("user", JSON.stringify(user));
+          
+          if (isSignup) {
+            trackSignup("github");
+          }
           
           window.dispatchEvent(new Event("auth-change"));
           toast.success(`Welcome back, ${user.name}!`);

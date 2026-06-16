@@ -17,7 +17,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, notFound } from "next/navigation";
 import { toast } from "sonner";
 import { FcComments, FcFeedback } from "react-icons/fc";
 import { Icon2fa, IconAnalyze, IconBrandStorybook, IconReport } from "@tabler/icons-react";
@@ -25,6 +25,7 @@ import { Icon2fa, IconAnalyze, IconBrandStorybook, IconReport } from "@tabler/ic
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -44,22 +45,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
-      router.push("/");
+      setIsAuthorized(false);
+      setCheckingAuth(false);
       return;
     }
 
     try {
       const user = JSON.parse(userData);
-      if (user.email ===process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+      if (user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
         setIsAuthorized(true);
       } else {
-        toast.error("Unauthorized access detected");
-        router.push("/");
+        setIsAuthorized(false);
       }
     } catch (error) {
-      router.push("/");
+      setIsAuthorized(false);
+    } finally {
+      setCheckingAuth(false);
     }
-  }, [router]);
+  }, []);
 
   // Check mobile on mount and resize
   useEffect(() => {
@@ -92,6 +95,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setIsSidebarOpen(false);
     }
   }, [pathname, isMobile]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-[#020202] text-neutral-200 flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+          <span className="text-[10px] font-mono tracking-[0.35em] text-neutral-500 uppercase">
+            Resolving node...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    notFound();
+    return null;
+  }
 
   // Render the main layout
   return (

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/config/api";
+import MapboxGlobalMap from "@/components/MapboxGlobalMap";
 
 // ── TYPES ──────────────────────────────────────────────────────────────────
 interface ContentItem {
@@ -67,6 +68,7 @@ interface Diagnostics {
   // Creations
   last5Creations: { notes: any[] };
   recentCreations: RecentCreation[];
+  mapUsers?: any[];
 }
 
 // ── ICON MAP ───────────────────────────────────────────────────────────────
@@ -248,7 +250,11 @@ export default function AdminDashboard() {
 
               {/* ── TAB: OVERVIEW ─────────────────────────────────────── */}
               {activeTab === "overview" && (
-                <div className="grid lg:grid-cols-12 gap-6">
+                <div className="space-y-6">
+                  {/* Mapbox Global Map - Full Width */}
+                  <MapboxGlobalMap users={data?.mapUsers || []} />
+
+                  <div className="grid lg:grid-cols-12 gap-6">
                   {/* Left: Chart + Terminal */}
                   <div className="lg:col-span-8 space-y-5">
                     {/* Signup trend chart */}
@@ -297,7 +303,8 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
               {/* ── TAB: CONTENT MIX ──────────────────────────────────── */}
               {activeTab === "content" && (

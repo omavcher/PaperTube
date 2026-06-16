@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import api from "@/config/api";
 import { toast } from "sonner";
+import { trackSignup } from "@/utils/analytics";
 
 export interface UserData {
   name?: string;
@@ -25,6 +26,7 @@ export interface BackendResponse {
     token: string;
     expiresIn: number;
     user: UserData;
+    isSignup?: boolean;
   };
 }
 
@@ -52,11 +54,28 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
   const [country, setCountry] = useState("Unknown");
   const [resendCountdown, setResendCountdown] = useState(0);
 
-  // Auto-detect country
+  const [locationData, setLocationData] = useState<{
+    city?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
+  } | null>(null);
+
+  // Auto-detect country and coordinates
   React.useEffect(() => {
     if (!isOpen) return;
     axios.get("https://ipapi.co/json/")
-      .then((res) => { if (res.data?.country_name) setCountry(res.data.country_name); })
+      .then((res) => {
+        if (res.data) {
+          setLocationData({
+            city: res.data.city || "",
+            country: res.data.country_name || "",
+            latitude: res.data.latitude || null,
+            longitude: res.data.longitude || null
+          });
+          if (res.data.country_name) setCountry(res.data.country_name);
+        }
+      })
       .catch(() => {});
   }, [isOpen]);
 
@@ -73,6 +92,7 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
       setFirstName(""); setLastName(""); setEmail(""); setPassword("");
       setConfirmPassword(""); setOtpCode(""); setErrorMessage("");
       setShowPassword(false); setResendCountdown(0); setView("signin");
+      setLocationData(null);
     }
   }, [isOpen]);
 
@@ -89,11 +109,15 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
         const response = await api.post<BackendResponse>("/auth/google", {
           googleAccessToken: accessToken,
           authType: "access_token",
+          location: locationData,
         });
         if (response.data.success && response.data.data) {
-          const { token, user: backendUser } = response.data.data;
+          const { token, user: backendUser, isSignup } = response.data.data;
           localStorage.setItem("authToken", token);
           localStorage.setItem("user", JSON.stringify({ ...userInfo, ...backendUser }));
+          if (isSignup) {
+            trackSignup("google");
+          }
           if (onSuccess) onSuccess(token, backendUser, response.data);
           toast.success(`Welcome back, ${backendUser.name}!`);
           onClose();
@@ -156,7 +180,7 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
       if (!email || !password) { setErrorMessage("Email and password are required"); return; }
       try {
         setFormLoading(true);
-        const res = await api.post<BackendResponse>("/auth/login", { email, password });
+        const res = await api.post<BackendResponse>("/auth/login", { email, password, location: locationData });
         if (res.data.success && res.data.data) {
           const { token, user: backendUser } = res.data.data;
           localStorage.setItem("authToken", token);
@@ -185,11 +209,12 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
       try {
         setFormLoading(true);
         const name = `${firstName} ${lastName}`.trim();
-        const res = await api.post<BackendResponse>("/auth/register", { name, email, password, otpCode, country });
+        const res = await api.post<BackendResponse>("/auth/register", { name, email, password, otpCode, country, location: locationData });
         if (res.data.success && res.data.data) {
           const { token, user: backendUser } = res.data.data;
           localStorage.setItem("authToken", token);
           localStorage.setItem("user", JSON.stringify(backendUser));
+          trackSignup("email");
           if (onSuccess) onSuccess(token, backendUser, res.data);
           toast.success(`Account created! Welcome, ${backendUser.name}!`);
           onClose();

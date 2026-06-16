@@ -48,6 +48,7 @@ exports.getDiagnostics = async (req, res) => {
       sourceDistribution,
       dailySignups,
       planDistribution,
+      mapUsers,
     ] = await Promise.all([
       User.countDocuments(),
       Note.countDocuments(),
@@ -91,7 +92,8 @@ exports.getDiagnostics = async (req, res) => {
         { $match: { "membership.isActive": true } },
         { $group: { _id: "$membership.planId", count: { $sum: 1 } } },
         { $sort: { count: -1 } }
-      ])
+      ]),
+      User.find({ "location.latitude": { $ne: null } }).select("name email membership.isActive location picture").lean()
     ]);
 
     // ── 2. RECENT CREATIONS ACROSS ALL TOOL TYPES (no populate — avoids strictPopulate errors) ──
@@ -163,8 +165,9 @@ exports.getDiagnostics = async (req, res) => {
           { label: "Essays", count: totalEssays, color: "#f97316", icon: "essay" },
           { label: "AI Chats", count: totalAiChats, color: "#8b5cf6", icon: "chat" },
         ],
-        last5Creations: { notes: recentNotes.slice(0, 5) },
+         last5Creations: { notes: recentNotes.slice(0, 5) },
         recentCreations,
+        mapUsers,
       }
     });
 
@@ -180,7 +183,7 @@ exports.getDiagnostics = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('name email membership joinedAt picture').lean();
+    const users = await User.find().select('name email membership joinedAt picture location').lean();
     res.status(200).json({
       success: true,
       data: users
@@ -1233,7 +1236,7 @@ exports.adminGetAllUsersDetailed = async (req, res) => {
 
     const [users, total] = await Promise.all([
       User.find(filter)
-        .select("name email username picture joinedAt tokens membership isFake")
+        .select("name email username picture joinedAt tokens membership isFake location")
         .sort({ joinedAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))

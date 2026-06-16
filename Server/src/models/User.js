@@ -90,6 +90,12 @@ followingUsers: [{
       type: String,
       default: "Unknown",
     },
+    location: {
+      city: { type: String, default: "" },
+      country: { type: String, default: "" },
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
+    },
     picture: {
       type: String,
       default: "",

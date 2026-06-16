@@ -15,6 +15,7 @@ import api from "@/config/api";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
 import { AuthLoginModal } from "@/components/AuthGuard";
+import { trackPurchase } from "@/utils/analytics";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BillingPeriod = "monthly" | "yearly";
@@ -938,8 +939,17 @@ export default function PricingPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
-      const plan = params.get("plan") || "Pro";
-      setSuccessPlanName(plan);
+      const planName = params.get("plan") || "Pro";
+      const billingPeriod = params.get("billing") as "monthly" | "yearly" || "monthly";
+      const planId = planName.toLowerCase() === "power" ? "power" : "pro";
+      
+      const value = planId === "power"
+        ? (billingPeriod === "yearly" ? 144 : 19)
+        : (billingPeriod === "yearly" ? 72 : 9);
+
+      trackPurchase(planId, value);
+
+      setSuccessPlanName(planName);
       setSuccessOpen(true);
       window.history.replaceState({}, "", window.location.pathname);
     }
@@ -975,7 +985,7 @@ export default function PricingPage() {
         {
           planId: plan.id,
           billingPeriod: billing,
-          successUrl: `${window.location.origin}/pricing?payment=success&plan=${encodeURIComponent(plan.name)}&gateway=lemonsqueezy`,
+          successUrl: `${window.location.origin}/pricing?payment=success&plan=${encodeURIComponent(plan.name)}&gateway=lemonsqueezy&billing=${billing}`,
           cancelUrl:  `${window.location.origin}/pricing?payment=cancel`,
         },
         { headers: { Auth: token } }
@@ -1020,6 +1030,13 @@ export default function PricingPage() {
         onLemonSqueezy={() => pendingCheckoutPlan && launchLemonSqueezyCheckout(pendingCheckoutPlan)}
         onPayPalSuccess={() => {
           setShowPaymentModal(false);
+          const planId = pendingCheckoutPlan?.id || "pro";
+          const price = billing === "monthly"
+            ? (pendingCheckoutPlan?.monthlyPrice ?? 9)
+            : (pendingCheckoutPlan?.yearlyPrice ?? 72);
+
+          trackPurchase(planId, price);
+
           setSuccessPlanName(pendingCheckoutPlan?.name || "Pro");
           setSuccessOpen(true);
         }}

@@ -10,6 +10,7 @@ import { Toaster, toast } from "sonner";
 import UserTracker from "@/components/UserTracker";
 import { cn } from "@/lib/utils";
 import { LoginDialog } from "@/components/LoginDialog";
+import { trackSignup } from "@/utils/analytics";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -179,6 +180,12 @@ function GoogleOneTapLoginWrapper({ onSuccess }: any) {
           googleAccessToken: idToken,
           authType: "id_token",
         });
+        if (response.data.success && response.data.data) {
+          const { isSignup } = response.data.data;
+          if (isSignup) {
+            trackSignup("google_onetap");
+          }
+        }
         onSuccess(idToken, userInfo, response.data);
       } catch (error) {
         console.error("One Tap Login Error:", error);
