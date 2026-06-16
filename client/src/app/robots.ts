@@ -46,8 +46,6 @@ export default function robots(): MetadataRoute.Robots {
       'https://paperxify.com/sitemap-uk.xml',
       'https://paperxify.com/sitemap-au.xml',
       'https://paperxify.com/sitemap-ca.xml',
-      'https://paperxify.com/sitemap-de.xml',
-      'https://paperxify.com/sitemap-eu.xml',
     ],
   };
 }

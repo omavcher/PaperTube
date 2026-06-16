@@ -2,8 +2,18 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-pathname', request.nextUrl.pathname);
+  requestHeaders.set('x-pathname', pathname);
+
+  if (pathname.startsWith('/youtube-notes-for-')) {
+    const slug = pathname.replace('/youtube-notes-for-', '');
+    return NextResponse.rewrite(new URL(`/youtube-to-notes/subject/${slug}`, request.url), {
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
 
   return NextResponse.next({
     request: {

@@ -47,14 +47,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/us',
     '/uk',
     '/au',
-    '/ca',
-    '/de',
-    '/eu'
+    '/ca'
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
-    priority: route === '' || ['/us', '/uk', '/au', '/ca', '/de', '/eu'].includes(route) ? 1 : 0.8,
+    priority: route === '' || ['/us', '/uk', '/au', '/ca'].includes(route) ? 1 : 0.8,
+  }));
+
+  const subjectRoutes = [
+    '/youtube-notes-for-biology',
+    '/youtube-notes-for-chemistry',
+    '/youtube-notes-for-physics',
+    '/youtube-notes-for-python',
+    '/youtube-notes-for-machine-learning',
+    '/youtube-notes-for-sat',
+    '/youtube-notes-for-ap-biology',
+    '/youtube-notes-for-gcse-maths',
+    '/youtube-notes-for-a-level-physics',
+    '/youtube-notes-for-atar-chemistry'
+  ].map((route) => ({
+    url: `${baseUrl}${route}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily' as const,
+    priority: 0.9,
   }));
 
   const tools = [
@@ -126,6 +142,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...baseRoutes,
+    ...subjectRoutes,
     ...tools,
     ...storyRoutes,
     ...blogRoutes,
@@ -135,3 +152,4 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...extraAppRoutes
   ];
 }
+
