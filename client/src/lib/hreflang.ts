@@ -4,7 +4,7 @@ export type HrefLang = {
   hrefLang?: string;
 };
 
-const REGIONS = ['us', 'uk', 'au', 'ca', 'de', 'eu'];
+const REGIONS = ['us', 'uk', 'au', 'ca'];
 
 export function getHreflangs(pathname: string): HrefLang[] {
   let cleanPath = pathname || '/';
@@ -72,18 +72,6 @@ export function getHreflangs(pathname: string): HrefLang[] {
     rel: 'alternate',
     hrefLang: 'en-CA',
     href: `${domain}/ca${basePagePath}`,
-  });
-
-  hreflangs.push({
-    rel: 'alternate',
-    hrefLang: 'de',
-    href: `${domain}/de${basePagePath}`,
-  });
-
-  hreflangs.push({
-    rel: 'alternate',
-    hrefLang: 'en',
-    href: `${domain}/eu${basePagePath}`,
   });
 
   hreflangs.push({
