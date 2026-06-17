@@ -4,6 +4,11 @@ import React, { useState, useRef, useEffect, useCallback, use } from "react";
 import { THEMES } from "@/config/themes";
 import { Editor } from "@tinymce/tinymce-react";
 import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
+// @ts-ignore
+import renderMathInElement from "katex/dist/contrib/auto-render";
 import { Button } from "@/components/ui/button";
 import { marked } from "marked";
 // @ts-ignore
@@ -47,6 +52,7 @@ import {
 
 import api from "@/config/api";
 import { LoaderX } from "@/components/LoaderX";
+import { MOCK_NOTES } from "@/config/mock-notes";
 import { LoginDialog } from "@/components/LoginDialog";
 import FlashcardViewer from "@/components/FlashcardViewer";
 import { useRouter } from "next/navigation";
@@ -378,6 +384,8 @@ const PDFPreviewWithThumbnail: React.FC<{
   themeId?: string;
 }> = ({ content, isGenerating = false, onGeneratePDF, themeId = 'atmosphere' }) => {
   const [showFullPreview, setShowFullPreview] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const modalContainerRef = useRef<HTMLDivElement>(null);
 
   // Simple check for HTML: Check if the content starts with an HTML tag
   const isHtml = /^\s*</.test(content);
@@ -391,6 +399,34 @@ const PDFPreviewWithThumbnail: React.FC<{
   const displayCardBg = theme.cardBg;
   const displayFont = theme.font || "'Inter', sans-serif";
 
+  useEffect(() => {
+    const renderMath = (element: HTMLDivElement | null) => {
+      if (element) {
+        try {
+          renderMathInElement(element, {
+            delimiters: [
+              { left: "$$", right: "$$", display: true },
+              { left: "$", right: "$", display: false },
+              { left: "\\(", right: "\\)", display: false },
+              { left: "\\[", right: "\\]", display: true }
+            ],
+            throwOnError: false
+          });
+        } catch (err) {
+          console.error("Error rendering math with KaTeX:", err);
+        }
+      }
+    };
+
+    renderMath(containerRef.current);
+    if (showFullPreview) {
+      const timer = setTimeout(() => {
+        renderMath(modalContainerRef.current);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [content, isGenerating, showFullPreview]);
+
   const renderContent = (className: string) => {
     if (isHtml) {
       return (
@@ -402,7 +438,7 @@ const PDFPreviewWithThumbnail: React.FC<{
     }
     return (
       <div className={className}>
-        <ReactMarkdown>{content}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{content}</ReactMarkdown>
       </div>
     );
   };
@@ -497,6 +533,7 @@ const PDFPreviewWithThumbnail: React.FC<{
           </div>
         ) : (
           <div 
+            ref={containerRef}
             className="w-full max-w-[800px] shadow-2xl border rounded-lg p-5 sm:p-10 md:p-14 flex flex-col premium-note-render"
             style={{ 
               backgroundColor: displayBg, 
@@ -530,6 +567,7 @@ const PDFPreviewWithThumbnail: React.FC<{
             </button>
             <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 custom-scrollbar flex justify-center">
               <div 
+                ref={modalContainerRef}
                 className="w-full max-w-[800px] shadow-2xl border rounded-lg p-5 sm:p-10 md:p-14 flex flex-col premium-note-render"
                 style={{ 
                   backgroundColor: displayBg, 
@@ -1452,6 +1490,28 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         }
       }
 
+      if (MOCK_NOTES[slug]) {
+        const mockNote = MOCK_NOTES[slug];
+        setData({
+          _id: mockNote._id,
+          title: mockNote.title,
+          content: mockNote.content,
+          videoUrl: mockNote.videoUrl,
+          thumbnail: mockNote.thumbnail,
+          generationDetails: mockNote.generationDetails
+        });
+        const rawContent = mockNote.content || "";
+        const isRawHtml = /^\s*</.test(rawContent);
+        let htmlContent = rawContent;
+        if (!isRawHtml && rawContent.trim()) {
+          htmlContent = marked.parse(rawContent) as string;
+        }
+        setMarkdownContent(htmlContent);
+        setMessages(mockNote.messages);
+        setLoading(false);
+        return;
+      }
+
       const res = await api.get(`/notes/slug/${slug}`, { headers: { 'Auth': authToken } });
       setData(res.data);
       
@@ -1538,6 +1598,11 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   // Actions
   const handleSave = async () => {
     if (!data?._id) return;
+    if (data._id.startsWith("mock-note")) {
+      setIsDirty(false);
+      toast.success("Note saved successfully (Mock)");
+      return;
+    }
     try {
       await api.put(`/notes/update/${data._id}`, { content: markdownContent }, { headers: { 'Auth': getAuthToken() } });
       setIsDirty(false);
@@ -1554,6 +1619,11 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       setMessages(prev => prev.map(msg => 
         msg._id === messageId ? { ...msg, feedback } : msg
       ));
+
+      if (data._id.startsWith("mock-note")) {
+        toast.success(feedback === 'good' ? 'Great! Glad you liked it.' : 'Thanks for the feedback. We will improve.');
+        return;
+      }
 
       await api.post('/chat/feedback', {
         noteId: data._id,
@@ -1592,6 +1662,58 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     setIsThinking(true);
 
     try {
+      if (data?._id && data._id.startsWith("mock-note")) {
+        // Wait 1.2 seconds to simulate thinking
+        setTimeout(() => {
+          setIsThinking(false);
+          const responses: Record<string, string[]> = {
+            "mock-note-hackers": [
+              "Interesting question! Under cybersecurity frameworks, detecting AI-powered attacks requires behavior-based anomaly detection. Traditional security filters can't catch perfect language, but they can catch unusual access patterns.",
+              "Exactly. The primary takeaway from this lecture is that organizations need to shift from passive email filters to dynamic authentication and continuous user verification.",
+              "Yes! That is a key vulnerability. Implementing multi-factor authentication (MFA) and strong encryption protocols significantly reduces the blast radius of voice cloning or phishing attempts."
+            ],
+            "mock-note-nextjs": [
+              "Great point! Next.js 15 App Router renders components server-side first, generating HTML that is immediately streamable. Client-side hydration happens seamlessly without blocking the page display.",
+              "Under the hood, Server Actions route requests through post handlers. Next.js manages these routes internally, bypassing standard REST configurations to optimize developer velocity.",
+              "Absolutely. By disabling default caching for GET requests in Next.js 15, the framework aligns with standard web API expectations, reducing cache invalidation bugs."
+            ],
+            "mock-note-deepseek": [
+              "DeepSeek R1's reasoning capability relies heavily on reinforcement learning to discover chains of thought. Traditional LLMs are only fine-tuned via human preference, making R1 more robust for logic.",
+              "Indeed. Open-source weights allow research teams to run models locally, reducing data privacy issues and bringing high-quality reasoning to smaller consumer-grade machines.",
+              "That is correct. While GPT-4o offers rich multimodality and speed, R1's reinforcement learning loops enable deep self-correction that prevents typical LLM logic failures."
+            ],
+            "mock-note-tailwind": [
+              "Using Tailwind CSS Grid is perfect for major layouts. Keep in mind that responsive columns can be nested: you can have a Flex layout inside a Grid card to handle micro-alignments.",
+              "For responsive layouts, remember Tailwind is mobile-first: `grid-cols-1 md:grid-cols-3` means 1 column by default, and 3 columns starting from the medium screen width breakpoint.",
+              "Yes, spacing is key. Using utility classes like `gap-4` or `space-y-2` helps keep margins unified across elements without writing custom CSS properties."
+            ],
+            "mock-note-solid": [
+              "Applying SOLID principles makes React components highly reusable. By separating API calls from presentational tags, you can mock and test your components without invoking a real server.",
+              "The Open/Closed Principle in React is typically implemented using composition. By nesting components with `{children}`, you allow extensions without refactoring parent files.",
+              "Interface segregation is about not forcing components to depend on props they don't use. In React, pass only the specific data a component needs rather than passing the entire big data object."
+            ]
+          };
+          
+          const list = responses[data._id] || [
+            "That's a very good observation. Studies show that active recall and summarizing notes leads to a 50% increase in long-term retention compared to re-reading.",
+            "I'm here to help! Could you clarify if you want me to expand on this point, or generate a quick practice quiz about it?",
+            "Let's break this down further. If we analyze the core concepts in this section, we can see the relationship between input variables and the final generated output."
+          ];
+          
+          // Pick a random response
+          const content = list[Math.floor(Math.random() * list.length)];
+          
+          setMessages(prev => [...prev, {
+            _id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content,
+            timestamp: new Date().toISOString(),
+            mode: currentMode
+          }]);
+        }, 1200);
+        return;
+      }
+
       const authToken = getAuthToken();
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/message`, {
         method: 'POST',
@@ -1684,11 +1806,24 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     
     setIsGeneratingPDF(true);
     try {
-      const res = await api.get(`/notes/generate/pdf?noteId=${data._id}`, { 
-        headers: { 
-          'Auth': getAuthToken()
-        } 
-      });
+      let res;
+      if (data._id.startsWith("mock-note")) {
+        res = await api.post(`/notes/generate/pdf-from-content`, {
+          content: markdownContent,
+          title: data.title,
+          theme: data.generationDetails?.theme || 'blueberry'
+        }, {
+          headers: { 
+            'Auth': getAuthToken()
+          }
+        });
+      } else {
+        res = await api.get(`/notes/generate/pdf?noteId=${data._id}`, { 
+          headers: { 
+            'Auth': getAuthToken()
+          } 
+        });
+      }
       
       if (res.data.success) {
         if (res.data.data.pdf) {
@@ -1760,7 +1895,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       <Lock className="h-12 w-12 text-red-500 mb-4"/>
       <h2 className="text-xl font-bold">Access Restricted</h2>
       <Button onClick={() => setShowLoginDialog(true)} className="mt-4 bg-red-600">Login</Button>
-      <LoginDialog isOpen={showLoginDialog} onClose={() => router.push('/')} onSuccess={() => {setShowLoginDialog(false); loadNoteData();}} />
+      <LoginDialog isOpen={showLoginDialog} onClose={() => router.push('/youtube-to-notes')} onSuccess={() => {setShowLoginDialog(false); loadNoteData();}} />
     </div>
   );
 
@@ -1778,7 +1913,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         
         {/* Header (Mobile Only) */}
         <div className="lg:hidden shrink-0">
-          <Header title={data?.title || "Note"} onBack={() => router.push('/')} />
+          <Header title={data?.title || "Note"} onBack={() => router.push('/youtube-to-notes')} />
         </div>
 
         {/* LEFT PANEL: Editor & Preview */}
@@ -1787,7 +1922,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           {/* Desktop Tabs */}
           <div className="hidden lg:flex p-2 border-b border-neutral-800 gap-2 items-center justify-between bg-neutral-900/50">
              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => router.push('/')}><ArrowLeft className="h-4 w-4 mr-1"/> Home</Button>
+                <Button variant="ghost" size="sm" onClick={() => router.push('/youtube-to-notes')}><ArrowLeft className="h-4 w-4 mr-1"/> Home</Button>
                 <h2 className="font-semibold text-white self-center ml-2">{data?.title}</h2>
              </div>
              <div className="flex bg-black/50 p-1 rounded-lg">

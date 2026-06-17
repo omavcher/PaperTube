@@ -30,7 +30,7 @@ const TOKEN_COST_PER_GENERATION = 5; // Deduct 5 tokens per free generation
 const MODEL_TOKEN_LIMITS = {
   flash: {
     maxInputTokens: 20000,
-    maxOutputTokens: 2500
+    maxOutputTokens: 6000
   }
 };
 
@@ -404,7 +404,7 @@ async function generateImgGEnAI(transcript, language = 'English') {
     'Generate figure names in English.';
 
   const prompt = `For the following transcript, generate figure/topic names suitable for educational image generation in a strict JSON array format.
-- Minimum 1 and Maximum 5 items.
+- Minimum 2 and Maximum 7 items.
 - Each item should be a short, descriptive noun phrase (3-6 words max) that can be used as an image generation prompt.
 - Focus on concrete visual concepts (diagrams, processes, scientific concepts, historical events, etc.).
 - Do not add any extra text, explanation, or formatting.
@@ -722,6 +722,7 @@ STEP 2 — SYNTHESIZE: From your understanding, write ORIGINAL study material th
   • Use concrete examples to illustrate abstract ideas
   • Show connections between concepts
   • ${depthInstruction}
+  • MAXIMUM DEPTH & DETAIL: Write an extremely extensive and thorough document of at least 3000 words that spans 7 to 10 pages when rendered. Cover all concepts, sub-concepts, and background context in absolute depth, with complete definitions and details.
 
 STEP 3 — FORMAT: Present the synthesized knowledge as a beautiful, well-structured Markdown document.
 

@@ -48,6 +48,7 @@ router.get("/get-all-notes", authMiddleware, noteController.getUserNotes);
 
 
 router.get("/generate/pdf", noteController.generatePDF);
+router.post("/generate/pdf-from-content", noteController.generatePDFFromContent);
 router.delete('/delete/:noteId', noteController.deletePDF);
 router.get('/list', noteController.getUserPDFs);
 

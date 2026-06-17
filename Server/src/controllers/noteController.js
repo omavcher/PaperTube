@@ -1730,6 +1730,18 @@ exports.generatePDF = async (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${note.title}</title>
         ${theme.googleFont ? `<link rel="stylesheet" href="${theme.googleFont}">` : `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\\\(', right: '\\\\)', display: false},
+                    {left: '\\\\[', right: '\\\\]', display: true}
+                ],
+                throwOnError: false
+            });"></script>
         <style>
           * {
             margin: 0;
@@ -2010,6 +2022,149 @@ exports.generatePDF = async (req, res) => {
       message: "PDF generation failed", 
       error: error.message
     });
+  }
+};
+
+// Generate PDF from raw content (used for mock/sample notes — no DB lookup needed)
+exports.generatePDFFromContent = async (req, res) => {
+  try {
+    const { content, title, theme: themeId } = req.body;
+
+    if (!content || !title) {
+      return res.status(400).json({ success: false, message: "content and title are required" });
+    }
+
+    console.log("📄 PDF Generation from raw content for:", title);
+
+    // Convert Markdown → HTML
+    let processedContent = '';
+    if (content.includes('<h1') || content.includes('<p>') || content.includes('<div')) {
+      processedContent = content;
+    } else {
+      processedContent = marked.parse(content);
+    }
+
+    // Extract & embed images as base64
+    const imgRegex = /<img[^>]+src="([^">]+)"|!\[[^\]]*\]\(([^)]+)\)/g;
+    const imgUrls = [];
+    let match;
+    while ((match = imgRegex.exec(processedContent)) !== null) {
+      const url = match[1] || match[2];
+      if (url && !imgUrls.includes(url)) imgUrls.push(url);
+    }
+
+    const imageMap = {};
+    if (imgUrls.length > 0) {
+      await Promise.allSettled(imgUrls.map(async (imgUrl) => {
+        try {
+          const imageResponse = await axios.get(imgUrl, {
+            responseType: 'arraybuffer',
+            timeout: 10000,
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+          });
+          const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
+          const contentType = imageResponse.headers['content-type'] || 'image/jpeg';
+          imageMap[imgUrl] = `data:${contentType};base64,${base64Image}`;
+        } catch {
+          imageMap[imgUrl] = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3C/svg%3E`;
+        }
+      }));
+    }
+    imgUrls.forEach(url => {
+      if (imageMap[url]) processedContent = processedContent.split(url).join(imageMap[url]);
+    });
+
+    // Theme
+    const activeThemeId = themeId || 'atmosphere';
+    const theme = THEMES.find(t => t.id === activeThemeId) || THEMES[0];
+    const displayBg = theme.bg;
+    const displayText = theme.text;
+    const displayBorder = theme.border;
+    const displayCardBg = theme.cardBg;
+    const displayFont = theme.font || "'Inter', sans-serif";
+
+    const completeHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${title}</title>
+        ${theme.googleFont ? `<link rel="stylesheet" href="${theme.googleFont}">` : `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\\\(', right: '\\\\)', display: false},
+                    {left: '\\\\[', right: '\\\\]', display: true}
+                ],
+                throwOnError: false
+            });"></script>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: ${displayFont}, -apple-system, sans-serif; color: ${displayText}; padding: 50px 60px; line-height: 1.7; max-width: 1000px; margin: 0 auto; background: ${displayBg}; }
+          h1 { color: ${theme.primary}; font-size: 36px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; line-height: 1.2; }
+          h2 { color: ${theme.primary}; font-size: 24px; font-weight: 700; margin-top: 40px; margin-bottom: 16px; border-bottom: 2px solid ${displayBorder}; padding-bottom: 8px; }
+          h3 { color: ${theme.primary}; font-size: 20px; font-weight: 600; margin-top: 30px; margin-bottom: 12px; }
+          h4 { color: ${theme.primary}; font-size: 16px; font-weight: 600; margin-top: 24px; margin-bottom: 10px; }
+          p { margin-bottom: 18px; font-size: 15px; color: ${displayText}; }
+          img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); margin: 16px 0; display: block; }
+          ul, ol { margin: 16px 0 16px 24px; }
+          li { margin-bottom: 8px; font-size: 15px; }
+          blockquote { border-left: 4px solid ${theme.primary}; padding: 12px 20px; margin: 24px 0; background: ${displayCardBg}; border-radius: 0 8px 8px 0; font-style: italic; }
+          pre { background: ${displayCardBg}; border: 1px solid ${displayBorder}; border-radius: 8px; padding: 20px; overflow-x: auto; margin: 24px 0; }
+          code { font-family: 'Courier New', monospace; font-size: 13px; }
+          table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+          th { background: ${displayCardBg}; color: ${theme.primary}; font-weight: 700; padding: 12px 16px; text-align: left; border: 1px solid ${displayBorder}; }
+          td { padding: 10px 16px; border: 1px solid ${displayBorder}; font-size: 14px; }
+          hr { border: none; border-top: 2px solid ${displayBorder}; margin: 36px 0; }
+          .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 70px; font-weight: 900; color: rgba(220,38,38,0.05); pointer-events: none; z-index: 9999; text-transform: uppercase; letter-spacing: 5px; white-space: nowrap; }
+        </style>
+      </head>
+      <body>
+        <div class="watermark">PaperXify Sample</div>
+        <header>
+          <h1 style="color: ${theme.primary};">${title}</h1>
+          <div style="margin-top:8px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Sample Note • Generated by PaperXify</div>
+        </header>
+        <main style="margin-top:32px;">
+          ${processedContent}
+        </main>
+        <div style="margin-top: 60px; padding: 24px 32px; border-top: 2px solid ${displayBorder}; display: flex; justify-content: space-between; align-items: center; background-color: ${displayCardBg}; border-radius: 16px;">
+          <div>
+            <a href="https://paperxify.com" style="text-decoration:none;">
+              <span style="font-size:20px;font-weight:800;font-style:italic;text-transform:uppercase;color:${theme.primary};">Paper<span style="color:${theme.accent};">Xify</span></span>
+            </a>
+            <div style="font-size:10px;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:1px;font-weight:700;">AI Knowledge Synthesis</div>
+          </div>
+          <div>
+            <a href="https://paperxify.com" style="color:${displayText};font-size:12px;text-decoration:none;font-weight:600;">Convert any YouTube Video to PDF <span style="color:${theme.primary};font-weight:900;margin-left:6px;">&#8594;</span></a>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const options = { format: 'A4', margin: { top: '40px', right: '40px', bottom: '40px', left: '40px' }, printBackground: true, preferCSSPageSize: true, timeout: 30000, waitUntil: 'networkidle0' };
+    const file = { content: completeHTML };
+    const pdfBuffer = await html_to_pdf.generatePdf(file, options);
+
+    const fileName = `${title.replace(/[^\w\s.-]/gi, '_').substring(0, 80)}_sample_${Date.now()}.pdf`;
+    const base64PDF = pdfBuffer.toString('base64');
+
+    console.log("✅ Sample PDF generated:", (pdfBuffer.length / 1024 / 1024).toFixed(2), "MB");
+
+    res.status(200).json({
+      success: true,
+      message: "PDF generated successfully",
+      data: { pdf: base64PDF, fileName, generatedAt: new Date(), noteTitle: title, imagesEmbedded: imgUrls.length }
+    });
+  } catch (error) {
+    console.error("❌ Error generating sample PDF:", error);
+    res.status(500).json({ success: false, message: "PDF generation failed", error: error.message });
   }
 };
 

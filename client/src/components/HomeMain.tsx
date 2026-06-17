@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -1774,6 +1774,70 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
                 </div>
               </div>
 
+              {/* === SAMPLE NOTES SECTION === */}
+              {activeCategory === 'youtube' && outputFormat === 'notes' && (
+                <div className="w-full max-w-3xl mt-4">
+                  <div className="flex items-center gap-2 mb-3 px-0.5">
+                    <span className="relative flex h-1.5 w-1.5 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+                    </span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-neutral-400">Sample Notes</span>
+                    <span className="text-neutral-700 text-[10px] select-none">·</span>
+                    <span className="text-[9px] text-neutral-600 truncate">click to explore, no sign-in</span>
+                    <span className="ml-auto text-[8px] text-neutral-700 hidden sm:block shrink-0">swipe →</span>
+                  </div>
+                  <div
+                    className="flex gap-2 overflow-x-auto snap-x snap-mandatory"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '2px' }}
+                  >
+                    {[
+                      { slug: 'notes-supply-and-demand-g9adizjpds', videoId: 'g9aDizJpd_s', title: 'Supply & Demand', sub: 'CrashCourse', category: '📈 Econ', border: 'hover:border-amber-500/30', glow: 'hover:shadow-[0_0_16px_rgba(251,191,36,0.08)]', pill: 'bg-amber-500/10 text-amber-400 border-amber-500/25', cta: 'text-amber-400' },
+                      { slug: 'notes-stanford-cs229-ml-jgwo_ugts7i', videoId: 'jGwO_UgTS7I', title: 'Neural Networks', sub: 'Stanford CS229', category: '🤖 AI/ML', border: 'hover:border-violet-500/30', glow: 'hover:shadow-[0_0_16px_rgba(167,139,250,0.08)]', pill: 'bg-violet-500/10 text-violet-400 border-violet-500/25', cta: 'text-violet-400' },
+                      { slug: 'notes-biology-cell-structure-urujd5nexc8', videoId: 'URUJD5NEXC8', title: 'Cell Structure', sub: 'Biology', category: '🔬 Bio', border: 'hover:border-emerald-500/30', glow: 'hover:shadow-[0_0_16px_rgba(52,211,153,0.08)]', pill: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25', cta: 'text-emerald-400' },
+                      { slug: 'notes-something-finally-broke-between-us-and-europe-wydd0rf66de', videoId: 'WYDD0RF66DE', title: 'US-Europe Rift', sub: 'CSIS Analysis', category: '🌍 Geo', border: 'hover:border-sky-500/30', glow: 'hover:shadow-[0_0_16px_rgba(56,189,248,0.08)]', pill: 'bg-sky-500/10 text-sky-400 border-sky-500/25', cta: 'text-sky-400' },
+                      { slug: 'notes-mit-804-quantum-physics-lz3bpuko5zc', videoId: 'lZ3bPUKo5zc', title: 'Quantum Physics', sub: 'MIT 8.04', category: '⚛️ Physics', border: 'hover:border-pink-500/30', glow: 'hover:shadow-[0_0_16px_rgba(236,72,153,0.08)]', pill: 'bg-pink-500/10 text-pink-400 border-pink-500/25', cta: 'text-pink-400' },
+                    ].map((item) => (
+                      <div
+                        key={item.slug}
+                        onClick={() => router.push(`/notes/${item.slug}`)}
+                        className={cn(
+                          "group relative flex-shrink-0 snap-start overflow-hidden rounded-xl border border-white/[0.07] bg-neutral-900/50 cursor-pointer transition-all duration-300",
+                          item.border, item.glow
+                        )}
+                        style={{ width: '148px' }}
+                      >
+                        <div className="relative overflow-hidden" style={{ height: '78px' }}>
+                          <img
+                            src={`https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`}
+                            alt={item.title}
+                            className="w-full h-full object-cover opacity-50 group-hover:opacity-70 group-hover:scale-105 transition-all duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-neutral-900/85" />
+                          <span className={cn("absolute bottom-1.5 left-1.5 text-[7px] font-black px-1.5 py-[2px] rounded border backdrop-blur-sm tracking-wide", item.pill)}>
+                            {item.category}
+                          </span>
+                          <span className="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded p-[3px]">
+                            <IconBrandYoutube size={7} className="text-red-400" />
+                          </span>
+                        </div>
+                        <div className="px-2.5 py-2 flex flex-col gap-0.5">
+                          <p className="text-[11px] font-bold text-neutral-100 leading-snug group-hover:text-white transition-colors truncate">
+                            {item.title}
+                          </p>
+                          <p className="text-[8px] text-neutral-600 truncate">{item.sub}</p>
+                          <div className="flex items-center justify-between mt-1.5">
+                            <span className="text-[7px] text-neutral-700">5 min</span>
+                            <span className={cn("text-[7px] font-extrabold flex items-center gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity", item.cta)}>
+                              Open <ArrowRight size={7} className="group-hover:translate-x-0.5 transition-transform" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           ) : (
             /* ================= LOADING STATE ================= */

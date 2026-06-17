@@ -303,7 +303,7 @@ async function generateImgGEnAI(transcript, language = 'English') {
     'Generate figure names in English.';
 
   const prompt = `For the following transcript, generate figure/topic names suitable for educational image generation in a strict JSON array format.
-- Minimum 1 and Maximum 6 items.
+- Minimum 2 and Maximum 7 items.
 - Each item should be a short, descriptive noun phrase (3-6 words max) that can be used as an AI image generation prompt.
 - Focus on concrete visual concepts: diagrams, scientific processes, anatomical structures, historical events, mathematical concepts, engineering systems, etc.
 - Do not add any extra text, explanation, or formatting.
@@ -452,6 +452,7 @@ Using your extracted understanding, construct study material that:
   • Includes your own examples if the transcript's examples are weak
   • Organizes knowledge logically, not in transcription order
   • ${depthInstruction}
+  • MAXIMUM DEPTH AND LENGTH: Write an extremely exhaustive, detailed, and comprehensive study guide of at least 3500-5000 words. Explain every single concept, equation, case study, and logical step in absolute depth, with complete examples and analogies to ensure the document spans at least 7 to 10 full pages of text when rendered.
 
 ═══ STEP 3 — PREMIUM PRESENTATION ═══
 Format the synthesized knowledge as a stunning, print-ready HTML document.
@@ -533,7 +534,14 @@ ${coreIntelligence}
 **DESIGN SYSTEM — SCHOLAR (Academic textbook format):**
 Font: Serif for headings, Sans-serif for body.
 Theme: Oxford Blue (#0f172a) primary | Slate (#475569) secondary | Soft light background.
-No images should be used. This model is purely textual.
+
+**AVAILABLE IMAGES:**
+You have these images available (by title) — use them contextually inside relevant sections:
+${image_titles}
+
+To insert an image, you MUST use the exact placeholder format:
+[IMAGE_PLACEHOLDER: exact_image_title]
+Do not write HTML or markdown for images, ONLY use this exact placeholder on its own line.
 
 **MANDATORY DOCUMENT STRUCTURE:**
 
@@ -587,6 +595,14 @@ ${coreIntelligence}
 **DESIGN SYSTEM — ATLAS (Deep Outline):**
 Theme: Minimalist Slate & Purple | Primary: #581c87 (purple) | Secondary: #3b82f6 (blue).
 Purpose: Chapter-by-chapter detailed breakdown of long videos, playlists, or deep topics.
+
+**AVAILABLE IMAGES:**
+You have these images available (by title) — use them contextually inside relevant sections:
+${image_titles}
+
+To insert an image, you MUST use the exact placeholder format:
+[IMAGE_PLACEHOLDER: exact_image_title]
+Do not write HTML or markdown for images, ONLY use this exact placeholder on its own line.
 
 **MANDATORY DOCUMENT STRUCTURE:**
 
@@ -838,9 +854,9 @@ exports.createNote = async (req, res) => {
       });
     }
 
-    // STEP 2: Generate AI images for premium models (Only Canvas gets visual images)
+    // STEP 2: Generate AI images for premium models (All models get images now)
     let img_with_url = [];
-    if (model === 'canvas') {
+    if (model === 'canvas' || model === 'scholar' || model === 'atlas') {
       console.log('🎨 Generating images for premium model using Google Search...');
       try {
         const figures = await generateImgGEnAI(transcript, settings?.language);
