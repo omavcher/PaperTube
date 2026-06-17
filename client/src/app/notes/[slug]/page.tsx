@@ -409,11 +409,9 @@ const PDFPreviewWithThumbnail: React.FC<{
 
   return (
     <div 
-      className="w-full h-full border shadow-2xl overflow-hidden rounded-lg relative group animate-scale-in flex flex-col premium-note-render-container"
+      className="w-full h-full border-t sm:border border-neutral-800 shadow-2xl overflow-hidden rounded-none sm:rounded-lg relative group animate-scale-in flex flex-col premium-note-render-container"
       style={{ 
-        backgroundColor: displayBg, 
-        color: displayText,
-        borderColor: displayBorder,
+        backgroundColor: "#050505", 
         fontFamily: displayFont
       }}
     >
@@ -422,6 +420,14 @@ const PDFPreviewWithThumbnail: React.FC<{
         <link rel="stylesheet" href={theme.googleFont} />
       )}
       <style dangerouslySetInnerHTML={{ __html: `
+        /* Override root element inline padding to prevent double-padding in preview */
+        .premium-note-render-container .premium-note-render .max-w-none > *[style*="padding" i] {
+          padding: 0px !important;
+          padding-top: 0px !important;
+          padding-bottom: 0px !important;
+          padding-left: 0px !important;
+          padding-right: 0px !important;
+        }
         /* Apply theme font to all note content */
         .premium-note-render-container,
         .premium-note-render-container .premium-note-render,
@@ -482,8 +488,7 @@ const PDFPreviewWithThumbnail: React.FC<{
       `}} />
       {/* Content */}
       <div 
-        className="flex-1 overflow-auto p-6 custom-scrollbar"
-        style={{ backgroundColor: displayBg }}
+        className="flex-1 overflow-auto p-3 sm:p-6 md:p-8 custom-scrollbar flex justify-center bg-[#070707] sm:bg-[#0c0c0c]"
       >
         {isGenerating ? (
           <div className="h-full flex flex-col items-center justify-center">
@@ -491,7 +496,18 @@ const PDFPreviewWithThumbnail: React.FC<{
             <p className="text-neutral-600 text-sm">Creating PDF...</p>
           </div>
         ) : (
-          renderContent("premium-note-render max-w-none")
+          <div 
+            className="w-full max-w-[800px] shadow-2xl border rounded-lg p-5 sm:p-10 md:p-14 flex flex-col premium-note-render"
+            style={{ 
+              backgroundColor: displayBg, 
+              color: displayText,
+              borderColor: displayBorder,
+              minHeight: "297mm",
+              height: "fit-content"
+            }}
+          >
+            {renderContent("max-w-none")}
+          </div>
         )}
       </div>
 
@@ -503,18 +519,28 @@ const PDFPreviewWithThumbnail: React.FC<{
       {showFullPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
           <div 
-            className="rounded-lg w-full max-w-4xl h-[90vh] flex flex-col relative animate-scale-in premium-note-render-container"
+            className="rounded-lg w-full max-w-4xl h-[90vh] flex flex-col relative animate-scale-in"
             style={{ 
-              backgroundColor: displayBg, 
-              color: displayText,
+              backgroundColor: "#050505", 
               fontFamily: displayFont
             }}
           >
             <button className="absolute top-4 right-4 bg-black/50 hover:bg-black/80 rounded-full p-2 text-white z-20" onClick={() => setShowFullPreview(false)}>
               <X className="h-5 w-5" />
             </button>
-            <div className="flex-1 overflow-auto p-8 custom-scrollbar">
-              {renderContent("premium-note-render max-w-none")}
+            <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 custom-scrollbar flex justify-center">
+              <div 
+                className="w-full max-w-[800px] shadow-2xl border rounded-lg p-5 sm:p-10 md:p-14 flex flex-col premium-note-render"
+                style={{ 
+                  backgroundColor: displayBg, 
+                  color: displayText,
+                  borderColor: displayBorder,
+                  minHeight: "297mm",
+                  height: "fit-content"
+                }}
+              >
+                {renderContent("max-w-none")}
+              </div>
             </div>
           </div>
         </div>
@@ -1744,7 +1770,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-red-900/10 rounded-full blur-[120px]" />
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20viewBox=%220%200%20200%20200%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter%20id=%22noise%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.8%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23noise)%22/%3E%3C/svg%3E')] opacity-20 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20viewBox=%220%200%20200%20200%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter%20id=%22noise%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.8%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23noise)%22/%3E%3C/svg%3E')] opacity-[0.02] mix-blend-overlay" />
       </div>
 
       {/* Main Container */}
@@ -1774,9 +1800,9 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           <div className="flex-1 overflow-hidden relative mobile-safe-bottom">
             
             {/* VIEW: PREVIEW */}
-            <div className={`absolute inset-0 p-3 lg:p-6 transition-opacity duration-300 ${mobileView === 'preview' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <div className={`absolute inset-0 p-0 sm:p-3 lg:p-6 transition-opacity duration-300 ${mobileView === 'preview' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}`}>
                <div className="h-full w-full max-w-4xl mx-auto flex flex-col">
-                 <div className="flex justify-between items-center mb-4">
+                 <div className="flex justify-between items-center mb-4 px-4 sm:px-0 mt-3 sm:mt-0">
                     <h3 className="text-lg font-bold text-white">{isFlashcard ? 'Flashcards Preview' : 'Document Preview'}</h3>
                     {!isFlashcard && (
                       <Button size="sm" variant="outline" onClick={() => setShowExportDialog(true)} className="h-8 border-neutral-700 hover:bg-neutral-800 hover:text-white text-neutral-300">
@@ -1841,6 +1867,14 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                         line-height: 1.6;
                         max-width: 800px;
                         margin: 0 auto;
+                      }
+                      /* Override root element inline padding to prevent double-padding in editor */
+                      body > *[style*="padding" i] {
+                        padding: 0px !important;
+                        padding-top: 0px !important;
+                        padding-bottom: 0px !important;
+                        padding-left: 0px !important;
+                        padding-right: 0px !important;
                       }
                       h1, h2, h3, h4, h5, h6 {
                         color: #0f172a;

@@ -1793,6 +1793,14 @@ exports.generatePDF = async (req, res) => {
           .content {
             margin-top: 32px;
           }
+          /* Override root element inline padding to prevent double-padding in PDF */
+          .content > *[style*="padding" i] {
+            padding: 0px !important;
+            padding-top: 0px !important;
+            padding-bottom: 0px !important;
+            padding-left: 0px !important;
+            padding-right: 0px !important;
+          }
           code {
             background-color: ${displayCardBg};
             color: ${theme.accent};

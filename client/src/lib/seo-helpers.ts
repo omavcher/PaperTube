@@ -236,7 +236,9 @@ export function generateMetadataForPage(
     : "YouTube to Notes AI Converter";
 
   return {
-    title: seoConfig.title,
+    title: {
+      absolute: seoConfig.title,
+    },
     description: seoConfig.description,
     keywords: seoConfig.keywords,
     alternates: {

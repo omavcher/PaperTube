@@ -61,8 +61,8 @@ export const BASE_SEO_DATA: Record<string, PageSeoConfig> = {
     ratingCount: "8420"
   },
   "youtube-to-notes": {
-    title: "YouTube Link to Notes AI | Free AI Study Notes Generator | Paperxify",
-    description: "Convert any YouTube link to study notes, active recall flashcards, and mind maps instantly. The best free AI study tool and note taker for global students.",
+    title: "YouTube to Notes AI | Paperxify",
+    description: "Save hours of study time by instantly turning YouTube lectures into structured notes and active recall flashcards. Perfect for students preparing for finals. Paste a link to start free!",
     keywords: ["youtube link to notes", "ai notes", "ai study", "youtube to notes ai", "convert youtube video to notes", "ai youtube notes generator", "free ai note taker from youtube", "youtube study guide generator", "youtube transcript to notes", "turn youtube into notes", "ai lecture notes from youtube", "ai notes from youtube link", "lecture video summarizer", "best ai study tools", "save hours studying with ai"],
     h1: "Free AI YouTube Link to Notes Generator for Students | Paperxify",
     h2: "Convert any YouTube Link",
@@ -81,10 +81,26 @@ export const BASE_SEO_DATA: Record<string, PageSeoConfig> = {
       { feature: "Notion & PDF Export", col2: "Yes (One-Click Sync)", col3: "None", col4: "Manual copying" }
     ],
     faqs: [
-      { question: "How do I convert a YouTube link to study notes using AI?", answer: "Copy the YouTube link of any lecture or tutorial and paste it into the Paperxify input bar. Select your preferred note-taking style—such as Scholar for comprehensive text notes, Flash for quick bullet points, or Canvas for visual flowcharts. Click 'Generate' and your notes will be ready in under 15 seconds." },
-      { question: "Is Paperxify a free AI study tool?", answer: "Yes, Paperxify is a free AI study tool. You can transcribe YouTube links, generate notes, and build flashcards without paying a cent. Premium tiers are available for power users who require unlimited max-context models." },
-      { question: "What note formats can I export?", answer: "Paperxify allows you to export your AI notes directly into Notion, copy the clean Markdown code blocks, or download a publication-ready PDF containing proper mathematical LaTeX syntax and structures." },
-      { question: "Does this AI notes generator support global curricula?", answer: "Yes! Our note taker is used worldwide. It is optimized to recognize and match syllabus terms for AP and SAT in the US, GCSE and A-Levels in the UK, provincial exams in Canada, and VCE/HSC/ATAR in Australia." }
+      {
+        question: "Is there an AI that can take notes from a YouTube video for free?",
+        answer: "Yes, Paperxify is a free AI tool designed specifically to convert YouTube video links into structured study notes, summaries, and flashcards. Simply paste the link, choose your preferred note style, and click generate to get revision-ready notes in under 15 seconds."
+      },
+      {
+        question: "What is the best free NoteGPT or Mindgrasp alternative?",
+        answer: "Paperxify is the top free alternative to NoteGPT, Mindgrasp, and StudyFetch. Unlike general chatbots, it is purpose-built for student study workflows, providing structured academic formatting, LaTeX support for formulas, code syntax highlighting, visual mind maps, and Notion syncing."
+      },
+      {
+        question: "Can I export AI-generated YouTube notes to Notion or PDF?",
+        answer: "Yes, you can export your notes directly to Notion with a single click, copy clean Markdown, or download a publication-grade PDF file. The PDF format fully supports mathematical LaTeX syntax, which is perfect for printing or digital note-taking apps."
+      },
+      {
+        question: "Does this AI YouTube note taker support non-English videos?",
+        answer: "Yes. Paperxify supports transcribing and summarizing YouTube videos in over 50 languages, including English, Spanish, French, German, Hindi, and Mandarin. The AI can also translate foreign language lectures directly into English study guides."
+      },
+      {
+        question: "Can the AI take notes from long YouTube lectures or crash courses?",
+        answer: "Absolutely. Paperxify handles long lecture videos, university seminars, and crash courses up to several hours long. It utilizes high-context AI models to extract key concepts, chronological timelines, definitions, and code segments from the entire video transcript."
+      }
     ],
     ctaTitle: "The Best AI YouTube Notes Generator",
     ctaDesc: "Stop pausing and rewinding. Let AI build your complete study notes automatically from any lecture video. Paste a link to get started.",
@@ -231,8 +247,8 @@ export const REGIONAL_SEO_DATA: Record<string, Record<string, PageSeoConfig>> = 
       ratingCount: "8420"
     },
     "youtube-to-notes": {
-      title: "YouTube Link to Notes AI US | Free AI Study Notes Generator | Paperxify",
-      description: "Convert YouTube video links into structured study notes, active recall flashcards, and AP/college study guides instantly. The best free AI study tool for US students.",
+      title: "YouTube to Notes AI US | Paperxify",
+      description: "Save hours of study time by instantly turning YouTube lectures into structured notes and active recall flashcards. Perfect for US students preparing for AP exams and finals. Paste a link to start free!",
       keywords: ["youtube link to notes", "ai notes", "ai study", "youtube to notes ai us", "convert youtube video to notes usa", "ai lecture notes maker", "free youtube summarizer ap calculus", "video study guide generator"],
       h1: "Free AI YouTube Video to Study Notes Generator for US Students | Paperxify",
       h2: "Convert YouTube Links",
@@ -249,8 +265,18 @@ export const REGIONAL_SEO_DATA: Record<string, Record<string, PageSeoConfig>> = 
         { feature: "Notion & PDF Export", col2: "Yes (One-Click Sync)", col3: "None", col4: "Manual copying" }
       ],
       faqs: [
-        { question: "Can I use Paperxify for AP exam preparation?", answer: "Absolutely! Paste any AP chemistry, physics, biology, or calculus crash course link, and Paperxify will extract key concepts, formulas, and definitions in seconds." },
-        { question: "Does this work for engineering lectures at US colleges?", answer: "Yes, our AI handles complex equations, programming code blocks, and technical terms used in lectures at Stanford, MIT, and other engineering schools." }
+        {
+          question: "Is there a free AI tool to take notes from YouTube in the US?",
+          answer: "Yes, Paperxify is a free AI YouTube note-taking tool available to students and professionals across the United States. It instantly turns lecture links into revision guides and flashcards."
+        },
+        {
+          question: "Can I use Paperxify for AP exam preparation?",
+          answer: "Absolutely! Paste any AP chemistry, physics, biology, or calculus crash course link, and Paperxify will extract key concepts, formulas, and definitions in seconds."
+        },
+        {
+          question: "Does this work for engineering lectures at US colleges?",
+          answer: "Yes, our AI handles complex equations, programming code blocks, and technical terms used in lectures at Stanford, MIT, and other engineering schools."
+        }
       ],
       ctaTitle: "Start Acing Your AP & College Courses",
       ctaDesc: "Convert any YouTube tutorial or lecture video link into structured, print-ready study notes in seconds. Completely free to try.",
@@ -287,8 +313,8 @@ export const REGIONAL_SEO_DATA: Record<string, Record<string, PageSeoConfig>> = 
       ratingCount: "7120"
     },
     "youtube-to-notes": {
-      title: "YouTube Link to Notes AI UK | A-Level & GCSE Revision summaries | Paperxify",
-      description: "Convert YouTube video lectures into revision notes and flashcards instantly. Best free AI study tool and OCR/AQA revision maker for UK students.",
+      title: "YouTube to Notes AI UK | Paperxify",
+      description: "Save hours of GCSE & A-Level revision by instantly converting YouTube video lectures into revision notes and active recall cards. Perfect for UK students. Paste a link to start free!",
       keywords: ["youtube link to notes", "ai notes", "ai study", "youtube to notes ai uk", "gcse maths revision guides", "a level physics summaries", "ocr chemistry note taker", "edexcel history notes maker"],
       h1: "Free AI YouTube Video to A-Level & GCSE Revision Notes Maker | Paperxify",
       h2: "AI-Generated",
@@ -305,8 +331,18 @@ export const REGIONAL_SEO_DATA: Record<string, Record<string, PageSeoConfig>> = 
         { feature: "Notion & PDF Export", col2: "Yes (One-Click Sync)", col3: "None", col4: "Manual copying" }
       ],
       faqs: [
-        { question: "How does the GCSE/A-Level note generator work?", answer: "Simply paste the link of any UK revision channel (like Freesciencelessons or ExamSolutions) and click generate. The AI transcribes the video and formats key syllabus definitions and concepts." },
-        { question: "Can I export my revision notes to Notion?", answer: "Yes, you can copy the markdown or use our one-click export to Notion to keep all your GCSE and A-Level revision organized in one place." }
+        {
+          question: "How does the GCSE/A-Level note generator work?",
+          answer: "Simply paste the link of any UK revision channel (like Freesciencelessons or ExamSolutions) and click generate. The AI transcribes the video and formats key syllabus definitions and concepts."
+        },
+        {
+          question: "Can I export my UK revision notes to Notion?",
+          answer: "Yes, you can copy the markdown or use our one-click export to Notion to keep all your GCSE and A-Level revision organized in one place."
+        },
+        {
+          question: "Does this AI notes generator support AQA, OCR, and Edexcel exams?",
+          answer: "Yes! Paperxify's revision notes generator is optimized to recognize and match syllabus terms and structures for UK exam boards including AQA, OCR, and Edexcel."
+        }
       ],
       ctaTitle: "The Best AI Revision Tool in the UK",
       ctaDesc: "Convert revision lectures, tutorial video walkthroughs, and exam preparation guides into formatted study notes in seconds.",
@@ -343,8 +379,8 @@ export const REGIONAL_SEO_DATA: Record<string, Record<string, PageSeoConfig>> = 
       ratingCount: "6820"
     },
     "youtube-to-notes": {
-      title: "YouTube Link to Notes AI Canada | Canadian Study Guide Generator | Paperxify",
-      description: "Convert YouTube video links into study notes, summaries, and revision guides instantly. Best free AI study tool and OSSLT helper in Canada.",
+      title: "YouTube to Notes AI Canada | Paperxify",
+      description: "Save hours of study time by instantly converting YouTube lectures into structured study guides. Perfect for Canadian students preparing for provincial exams and OSSLT. Paste a link to start free!",
       keywords: ["youtube link to notes", "ai notes", "ai study", "youtube to notes ai canada", "convert youtube video to notes ca", "osslt literacy test prep", "u of t lecture note maker", "waterloo computer science notes"],
       h1: "Free AI YouTube Video to Study Guides & Notes Generator in Canada | Paperxify",
       h2: "AI-Generated",
@@ -361,8 +397,18 @@ export const REGIONAL_SEO_DATA: Record<string, Record<string, PageSeoConfig>> = 
         { feature: "Notion Sync integration", col2: "Yes (Direct upload)", col3: "None", col4: "Manual" }
       ],
       faqs: [
-        { question: "How do I make study notes from a YouTube link in Canada?", answer: "Simply copy your lecture URL, paste it into the Paperxify input bar, choose your output format, and click generate. You will have a formatted study guide in seconds." },
-        { question: "Can I export my Waterloo coding notes to markdown?", answer: "Yes, Paperxify outputs clean markdown with code blocks, which can be downloaded directly or pasted into obsidian or Notion." }
+        {
+          question: "How do I make study notes from a YouTube link in Canada?",
+          answer: "Simply copy your lecture URL, paste it into the Paperxify input bar, choose your output format, and click generate. You will have a formatted study guide in seconds."
+        },
+        {
+          question: "Can I export my Waterloo coding notes to markdown?",
+          answer: "Yes, Paperxify outputs clean markdown with code blocks, which can be downloaded directly or pasted into Obsidian or Notion."
+        },
+        {
+          question: "Can Paperxify help me study for Canadian Provincial Exams?",
+          answer: "Yes! Paste any study tutorial or lecture series, and Paperxify will generate structured outlines, study points, and flashcards optimized for your provincials."
+        }
       ],
       ctaTitle: "The Best Canadian Lecture Summarizer",
       ctaDesc: "Transform complex YouTube tutorials, crash courses, and lectures into structured study guides, flashcards, and diagrams instantly.",
@@ -399,8 +445,8 @@ export const REGIONAL_SEO_DATA: Record<string, Record<string, PageSeoConfig>> = 
       ratingCount: "6320"
     },
     "youtube-to-notes": {
-      title: "YouTube Link to Notes AI AU | ATAR, HSC & VCE Study Notes | Paperxify",
-      description: "Convert YouTube lectures to ATAR revision guides, VCE notes, and HSC summaries instantly. Best free AI study tool and video summarizer in Australia.",
+      title: "YouTube to Notes AI AU | Paperxify",
+      description: "Save hours of study time by converting YouTube lectures to structured ATAR revision guides, VCE notes, and HSC summaries instantly. Perfect for Australian students. Paste a link to start free!",
       keywords: ["youtube link to notes", "ai notes", "ai study", "youtube to notes ai au", "atar physics study guides", "hsc mathematics summaries", "vce biology notes maker", "sydney university note maker"],
       h1: "Free AI YouTube Video to ATAR, HSC & VCE Notes Generator in Australia | Paperxify",
       h2: "AI-Generated",
@@ -417,8 +463,18 @@ export const REGIONAL_SEO_DATA: Record<string, Record<string, PageSeoConfig>> = 
         { feature: "Notion Sync integration", col2: "Yes (Direct upload)", col3: "None", col4: "Manual" }
       ],
       faqs: [
-        { question: "How do I summarize ATAR lectures from YouTube?", answer: "Paste the YouTube video link in Paperxify. Our AI processes the transcript and formats the content using ATAR science, mathematics, and humanities structures." },
-        { question: "Can I export my UniMelb lectures directly to PDF?", answer: "Yes, you can export your generated study notes as high-resolution, print-ready PDF files with academic themes." }
+        {
+          question: "How do I summarize ATAR lectures from YouTube?",
+          answer: "Paste the YouTube video link in Paperxify. Our AI processes the transcript and formats the content using ATAR science, mathematics, and humanities structures."
+        },
+        {
+          question: "Can I export my UniMelb lectures directly to PDF?",
+          answer: "Yes, you can export your generated study notes as high-resolution, print-ready PDF files with academic themes."
+        },
+        {
+          question: "Does it support VCE, HSC, and state curriculums?",
+          answer: "Yes! The AI note taker is optimized to recognize and match syllabus terminology for Australian secondary school curriculums (including NESA in NSW and VCAA in Victoria)."
+        }
       ],
       ctaTitle: "The Ultimate Aussie Study Hack",
       ctaDesc: "Convert revision lectures, tutorial video walkthroughs, and exam preparation guides into formatted study notes in seconds.",
