@@ -6,7 +6,7 @@ const Folder = require("../models/Folder");
 const { getTranscript } = require('../youtube-transcript');
 const {GoogleGenAI} = require("@google/genai");
 const { google } = require("googleapis");
-const html_to_pdf = require("html-pdf-node");
+const pdfService   = require('../services/pdfService');
 dotenv = require("dotenv");
 const axios = require('axios');
 const jwt = require("jsonwebtoken");
@@ -1678,29 +1678,34 @@ exports.generatePDF = async (req, res) => {
     // Download and convert images to base64 concurrently for faster PDF generation
     const imageMap = {};
     
+    // Cap: skip images that would produce a base64 blob > 1.5 MB to protect heap
+    const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
     if (imgUrls.length > 0) {
       console.log(`🔄 Downloading ${imgUrls.length} images concurrently...`);
       await Promise.allSettled(imgUrls.map(async (imgUrl) => {
         try {
           const imageResponse = await axios.get(imgUrl, {
             responseType: 'arraybuffer',
-            timeout: 10000,
+            timeout: 8000,
+            maxContentLength: MAX_IMAGE_BYTES,
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
               'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
             }
           });
-          
+          if (imageResponse.data.byteLength > MAX_IMAGE_BYTES) {
+            throw new Error('Image too large, skipping');
+          }
           const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
           const contentType = imageResponse.headers['content-type'] || 'image/jpeg';
           imageMap[imgUrl] = `data:${contentType};base64,${base64Image}`;
         } catch (imgError) {
-          console.error(`❌ Failed to download image ${imgUrl.substring(0, 50)}...:`, imgError.message);
-          // Fallback placeholder
-          imageMap[imgUrl] = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-family='Arial' font-size='16'%3EImage failed to load%3C/text%3E%3C/svg%3E`;
+          console.warn(`⚠️  Skipping image ${imgUrl.substring(0, 50)}…: ${imgError.message}`);
+          // Lightweight SVG placeholder — no large data
+          imageMap[imgUrl] = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Crect width='400' height='200' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-family='Arial' font-size='14'%3EImage unavailable%3C/text%3E%3C/svg%3E`;
         }
       }));
-      console.log(`` + `✅ Image downloading complete.`);
+      console.log(`✅ Image downloading complete.`);
     }
 
     // Replace the URLs in content with data URLs
@@ -1982,22 +1987,7 @@ exports.generatePDF = async (req, res) => {
 
     console.log("✅ HTML generated with embedded images");
 
-    const options = {
-      format: 'A4',
-      margin: {
-        top: '40px',
-        right: '40px',
-        bottom: '40px',
-        left: '40px'
-      },
-      printBackground: true,
-      preferCSSPageSize: true,
-      timeout: 30000, // 30 second timeout for large PDFs
-      waitUntil: 'networkidle0' // Wait for all resources to load
-    };
-
-    const file = { content: completeHTML };
-    const pdfBuffer = await html_to_pdf.generatePdf(file, options);
+    const pdfBuffer = await pdfService.generatePDF(completeHTML);
 
     console.log("✅ PDF generated, size:", (pdfBuffer.length / 1024 / 1024).toFixed(2), "MB");
 
@@ -2148,9 +2138,7 @@ exports.generatePDFFromContent = async (req, res) => {
       </html>
     `;
 
-    const options = { format: 'A4', margin: { top: '40px', right: '40px', bottom: '40px', left: '40px' }, printBackground: true, preferCSSPageSize: true, timeout: 30000, waitUntil: 'networkidle0' };
-    const file = { content: completeHTML };
-    const pdfBuffer = await html_to_pdf.generatePdf(file, options);
+    const pdfBuffer = await pdfService.generatePDF(completeHTML);
 
     const fileName = `${title.replace(/[^\w\s.-]/gi, '_').substring(0, 80)}_sample_${Date.now()}.pdf`;
     const base64PDF = pdfBuffer.toString('base64');

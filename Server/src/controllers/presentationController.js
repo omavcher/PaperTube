@@ -4,7 +4,7 @@ const User = require("../models/User");
 const Folder = require("../models/Folder");
 const GeminiClient = require("../utils/geminiClient");
 const pptxgen = require("pptxgenjs");
-const html_to_pdf = require("html-pdf-node");
+const pdfService     = require('../services/pdfService');
 const crypto = require("crypto");
 const { awardXP } = require("../utils/xpHelper");
 
@@ -1322,18 +1322,11 @@ exports.exportPDF = async (req, res) => {
 </body>
 </html>`;
 
-    const options = {
-      width: "1920px",
-      height: "1080px",
-      margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
-      printBackground: true,
-      preferCSSPageSize: true,
-      timeout: 45000,
-      waitUntil: "networkidle0"
-    };
-
-    const file = { content: completeHTML };
-    const pdfBuffer = await html_to_pdf.generatePdf(file, options);
+    const pdfBuffer = await pdfService.generatePDF(completeHTML, {
+      width: '1920px',
+      height: '1080px',
+      margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
+    });
 
     const filename = `${presentation.title.replace(/[^\w\s.-]/gi, "_").substring(0, 50)}.pdf`;
     res.setHeader("Content-Type", "application/pdf");
