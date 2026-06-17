@@ -6,14 +6,7 @@ import YouTubeToNotesClient from "@/app/youtube-to-notes/YouTubeToNotesClient";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { SchemaMarkup } from "@/components/SchemaMarkup";
 import { getLocalizedSeo, generateJsonLdForPage } from "@/lib/seo-helpers";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import {
   Check,
   Sparkles,
@@ -22,7 +15,10 @@ import {
   ArrowRight,
   GraduationCap,
   Award,
-  BookOpen
+  BookOpen,
+  Clock,
+  Brain,
+  Laptop
 } from "lucide-react";
 import Footer from "@/components/Footer";
 
@@ -52,7 +48,7 @@ export default function YouTubeToNotesSeoPage({ region }: YouTubeToNotesSeoPageP
         <YouTubeToNotesClient />
 
         {/* --- Global Premium SEO Section --- */}
-        <div className="w-full max-w-6xl mx-auto px-6 py-24 border-t border-white/[0.04] mt-16 space-y-32">
+        <div className="w-full max-w-6xl mx-auto px-6 py-12 md:py-24 border-t border-white/[0.04] mt-8 md:mt-16 space-y-16 md:space-y-32">
           
           {/* Section 1: Detailed Introduction */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -138,36 +134,239 @@ export default function YouTubeToNotesSeoPage({ region }: YouTubeToNotesSeoPageP
           </section>
 
           {/* Section 2: Capabilities Comparison */}
-          <section className="space-y-10">
-            <div className="text-center max-w-2xl mx-auto space-y-3">
-              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">Capabilities Comparison</h2>
-              <p className="text-neutral-400 text-xs sm:text-sm font-light">Why students and researchers globally choose Paperxify for AI-generated YouTube study notes.</p>
+          <section className="space-y-6 md:space-y-10">
+            <div className="text-center max-w-2xl mx-auto space-y-2 md:space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wider mb-2">
+                <Trophy size={12} />
+                <span>Head-to-Head Comparison</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tight">Paperxify vs AI Tools</h2>
+              <p className="text-neutral-400 text-xs sm:text-sm font-light">See why Paperxify is the purpose-built AI note-taker — not a general chatbot workaround.</p>
             </div>
 
-            <div className="border border-white/10 rounded-3xl bg-neutral-950/40 backdrop-blur-md overflow-hidden shadow-2xl">
+            <div className="border border-white/10 rounded-2xl md:rounded-3xl bg-neutral-950/60 backdrop-blur-xl overflow-hidden shadow-[0_0_60px_rgba(220,38,38,0.05)]">
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b border-white/10 hover:bg-neutral-900/30">
-                      <TableHead className="p-5 font-bold text-xs uppercase tracking-widest text-neutral-400">Capabilities</TableHead>
-                      <TableHead className="p-5 font-bold text-xs uppercase tracking-widest text-red-500 bg-red-950/10">Paperxify Notes AI</TableHead>
-                      <TableHead className="p-5 font-bold text-xs uppercase tracking-widest text-neutral-500">Standard Summarizers</TableHead>
-                      <TableHead className="p-5 font-bold text-xs uppercase tracking-widest text-neutral-500">Manual Note-Taking</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="divide-y divide-white/5 text-xs sm:text-sm">
-                    {seoConfig.tableRows.map((row, idx) => (
-                      <TableRow key={idx} className="border-b border-white/5 hover:bg-white/[0.01]">
-                        <TableCell className="p-5 font-semibold text-neutral-200">{row.feature}</TableCell>
-                        <TableCell className="p-5 font-bold text-green-400 bg-red-950/10 flex items-center gap-2">
-                          <Check size={16} className="text-green-500" /> {row.col2}
-                        </TableCell>
-                        <TableCell className="p-5 text-neutral-500">{row.col3}</TableCell>
-                        <TableCell className="p-5 text-neutral-500">{row.col4}</TableCell>
-                      </TableRow>
+                <table className="w-full min-w-[600px] border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      {/* Feature column */}
+                      <th className="text-left px-4 md:px-6 py-5 text-[10px] md:text-xs font-bold uppercase tracking-widest text-neutral-500 w-[30%]">
+                        Feature
+                      </th>
+                      {/* Paperxify - highlighted column */}
+                      <th className="px-3 md:px-4 py-5 bg-gradient-to-b from-red-950/30 to-red-950/10 border-x border-red-500/15 text-center w-[14%]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/paperxify.jpeg" alt="Paperxify logo" className="w-7 h-7 md:w-9 md:h-9 rounded-xl object-cover shadow-lg shadow-red-900/30" />
+                          <span className="text-red-400 font-bold text-[9px] md:text-[10px] uppercase tracking-wider leading-tight text-center">Paperxify</span>
+                        </div>
+                      </th>
+                      {/* ChatGPT */}
+                      <th className="px-3 md:px-4 py-5 text-center w-[14%]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/chatgpt.png" alt="ChatGPT logo" className="w-7 h-7 md:w-8 md:h-8 rounded-xl object-contain bg-[#10a37f]/10 p-1" />
+                          <span className="text-neutral-500 font-semibold text-[9px] md:text-[10px] uppercase tracking-wider">ChatGPT</span>
+                        </div>
+                      </th>
+                      {/* Claude */}
+                      <th className="px-3 md:px-4 py-5 text-center w-[14%]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/claude-color.png" alt="Claude AI logo" className="w-7 h-7 md:w-8 md:h-8 rounded-xl object-contain bg-[#d97706]/10 p-1" />
+                          <span className="text-neutral-500 font-semibold text-[9px] md:text-[10px] uppercase tracking-wider">Claude</span>
+                        </div>
+                      </th>
+                      {/* DeepSeek */}
+                      <th className="px-3 md:px-4 py-5 text-center w-[14%]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/deepseek.png" alt="DeepSeek AI logo" className="w-7 h-7 md:w-8 md:h-8 rounded-xl object-contain bg-blue-900/20 p-1" />
+                          <span className="text-neutral-500 font-semibold text-[9px] md:text-[10px] uppercase tracking-wider">DeepSeek</span>
+                        </div>
+                      </th>
+                      {/* Gemini */}
+                      <th className="px-3 md:px-4 py-5 text-center w-[14%]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/gemini.png" alt="Google Gemini logo" className="w-7 h-7 md:w-8 md:h-8 rounded-xl object-contain bg-indigo-900/20 p-1" />
+                          <span className="text-neutral-500 font-semibold text-[9px] md:text-[10px] uppercase tracking-wider">Gemini</span>
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {[
+                      { feature: "YouTube Link → Instant Notes", paperxify: true, chatgpt: "Manual copy", claude: "Manual copy", deepseek: "Manual copy", gemini: "Partial" },
+                      { feature: "Structured Academic Formatting", paperxify: true, chatgpt: "Basic", claude: "Basic", deepseek: "Basic", gemini: "Basic" },
+                      { feature: "LaTeX & Code Block Detection", paperxify: true, chatgpt: "Partial", claude: "Partial", deepseek: "Partial", gemini: "Partial" },
+                      { feature: "Flashcards & Active Recall", paperxify: true, chatgpt: false, claude: false, deepseek: false, gemini: false },
+                      { feature: "Visual Mind Maps & Diagrams", paperxify: true, chatgpt: false, claude: false, deepseek: false, gemini: false },
+                      { feature: "Notion & PDF Export", paperxify: true, chatgpt: false, claude: false, deepseek: false, gemini: false },
+                      { feature: "Built for Students", paperxify: true, chatgpt: "General AI", claude: "General AI", deepseek: "General AI", gemini: "General AI" },
+                    ].map((row, idx) => (
+                      <tr key={idx} className="hover:bg-white/[0.015] transition-colors group">
+                        <td className="px-4 md:px-6 py-4 text-neutral-300 text-[11px] md:text-xs font-semibold tracking-wide">{row.feature}</td>
+                        {/* Paperxify cell - always highlighted */}
+                        <td className="px-3 md:px-4 py-4 bg-gradient-to-b from-red-950/20 to-red-950/10 border-x border-red-500/10 text-center">
+                          {row.paperxify === true ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
+                                <Check size={10} className="text-green-400" />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-green-400 text-[10px] font-semibold">{String(row.paperxify)}</span>
+                          )}
+                        </td>
+                        {/* ChatGPT */}
+                        <td className="px-3 md:px-4 py-4 text-center">
+                          {row.chatgpt === false ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-neutral-800/50 border border-white/5 flex items-center justify-center">
+                                <span className="text-neutral-600 text-[8px] font-bold">✕</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px] font-medium">{String(row.chatgpt)}</span>
+                          )}
+                        </td>
+                        {/* Claude */}
+                        <td className="px-3 md:px-4 py-4 text-center">
+                          {row.claude === false ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-neutral-800/50 border border-white/5 flex items-center justify-center">
+                                <span className="text-neutral-600 text-[8px] font-bold">✕</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px] font-medium">{String(row.claude)}</span>
+                          )}
+                        </td>
+                        {/* DeepSeek */}
+                        <td className="px-3 md:px-4 py-4 text-center">
+                          {row.deepseek === false ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-neutral-800/50 border border-white/5 flex items-center justify-center">
+                                <span className="text-neutral-600 text-[8px] font-bold">✕</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px] font-medium">{String(row.deepseek)}</span>
+                          )}
+                        </td>
+                        {/* Gemini */}
+                        <td className="px-3 md:px-4 py-4 text-center">
+                          {row.gemini === false ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-neutral-800/50 border border-white/5 flex items-center justify-center">
+                                <span className="text-neutral-600 text-[8px] font-bold">✕</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px] font-medium">{String(row.gemini)}</span>
+                          )}
+                        </td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
+              </div>
+              {/* Bottom note */}
+              <div className="px-4 md:px-6 py-3 border-t border-white/[0.04] flex items-center gap-2">
+                <Check size={11} className="text-green-500 shrink-0" />
+                <span className="text-[10px] text-neutral-600">Paperxify is purpose-built for YouTube-to-notes — not a general-purpose chatbot.</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 3: Why Students Use Paperxify */}
+          <section className="space-y-8 md:space-y-12">
+            <div className="text-center max-w-3xl mx-auto space-y-2 md:space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 md:px-3 md:py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] md:text-xs font-bold uppercase tracking-wider">
+                <Sparkles size={10} className="md:size-[12px]" />
+                <span>Engineered for Academic Success</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-4xl font-black text-white uppercase tracking-tight">
+                Why Students Use Paperxify
+              </h2>
+              <p className="text-neutral-400 text-xs md:text-sm font-light max-w-xl mx-auto leading-relaxed">
+                Transform passive lecture watching into active learning. Discover why students worldwide trust Paperxify to save time and study smarter.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+              {/* Card 1: Save Hours */}
+              <div className="p-4 md:p-8 border border-white/5 rounded-[1.25rem] md:rounded-[2rem] bg-neutral-950/40 hover:bg-neutral-900/20 hover:border-red-500/25 transition-all duration-300 group flex flex-col justify-between">
+                <div className="space-y-2 md:space-y-4">
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Clock className="w-4 h-4 md:w-6 md:h-6" />
+                  </div>
+                  <h3 className="text-xs sm:text-sm md:text-lg font-bold text-white uppercase tracking-wider">Save Hours</h3>
+                  <p className="text-neutral-400 text-[10px] sm:text-xs md:text-sm font-light leading-relaxed">
+                    Stop manually scrubbing through 2-hour lecture videos and hitting pause every 10 seconds. Paperxify instantly converts long YouTube tutorial links and course videos into concise summaries in under 15 seconds.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 2: Better Retention */}
+              <div className="p-4 md:p-8 border border-white/5 rounded-[1.25rem] md:rounded-[2rem] bg-neutral-950/40 hover:bg-neutral-900/20 hover:border-red-500/25 transition-all duration-300 group flex flex-col justify-between">
+                <div className="space-y-2 md:space-y-4">
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Brain className="w-4 h-4 md:w-6 md:h-6" />
+                  </div>
+                  <h3 className="text-xs sm:text-sm md:text-lg font-bold text-white uppercase tracking-wider">Better Retention</h3>
+                  <p className="text-neutral-400 text-[10px] sm:text-xs md:text-sm font-light leading-relaxed">
+                    Our AI notes generator synthesizes knowledge. By using bullet points, bold vocabulary highlights, and structured subheadings, our notes align with cognitive load theory to help you understand complex concepts easily.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 3: Exam Preparation */}
+              <div className="p-4 md:p-8 border border-white/5 rounded-[1.25rem] md:rounded-[2rem] bg-neutral-950/40 hover:bg-neutral-900/20 hover:border-red-500/25 transition-all duration-300 group flex flex-col justify-between">
+                <div className="space-y-2 md:space-y-4">
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <GraduationCap className="w-4 h-4 md:w-6 md:h-6" />
+                  </div>
+                  <h3 className="text-xs sm:text-sm md:text-lg font-bold text-white uppercase tracking-wider">Exam Prep</h3>
+                  <p className="text-neutral-400 text-[10px] sm:text-xs md:text-sm font-light leading-relaxed">
+                    Whether you are preparing for AP Exams, SAT, GCSE, A-Levels, IB, ATAR, or university midterms, Paperxify shapes summaries to match curriculum requirements across the US, UK, Canada, Australia, and Europe.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 4: Active Recall */}
+              <div className="p-4 md:p-8 border border-white/5 rounded-[1.25rem] md:rounded-[2rem] bg-neutral-950/40 hover:bg-neutral-900/20 hover:border-red-500/25 transition-all duration-300 group flex flex-col justify-between">
+                <div className="space-y-2 md:space-y-4">
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Award className="w-4 h-4 md:w-6 md:h-6" />
+                  </div>
+                  <h3 className="text-xs sm:text-sm md:text-lg font-bold text-white uppercase tracking-wider">Active Recall</h3>
+                  <p className="text-neutral-400 text-[10px] sm:text-xs md:text-sm font-light leading-relaxed">
+                    Reading notes passively is ineffective. Turn video links into active study workspaces with integrated flashcards, custom practice quiz formats, and editable canvas flowcharts to close knowledge gaps.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 5: Smart Sync */}
+              <div className="p-4 md:p-8 border border-white/5 rounded-[1.25rem] md:rounded-[2rem] bg-neutral-950/40 hover:bg-neutral-900/20 hover:border-red-500/25 transition-all duration-300 group flex flex-col justify-between">
+                <div className="space-y-2 md:space-y-4">
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Laptop className="w-4 h-4 md:w-6 md:h-6" />
+                  </div>
+                  <h3 className="text-xs sm:text-sm md:text-lg font-bold text-white uppercase tracking-wider">Notion Sync</h3>
+                  <p className="text-neutral-400 text-[10px] sm:text-xs md:text-sm font-light leading-relaxed">
+                    Organize your generated summaries inside a dedicated digital dashboard. Export your lecture notes directly into Notion with a single click, or download beautiful print-ready PDFs for physical binders.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 6: Visual Canvas */}
+              <div className="p-4 md:p-8 border border-white/5 rounded-[1.25rem] md:rounded-[2rem] bg-neutral-950/40 hover:bg-neutral-900/20 hover:border-red-500/25 transition-all duration-300 group flex flex-col justify-between">
+                <div className="space-y-2 md:space-y-4">
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <BookOpen className="w-4 h-4 md:w-6 md:h-6" />
+                  </div>
+                  <h3 className="text-xs sm:text-sm md:text-lg font-bold text-white uppercase tracking-wider">Visual Canvas</h3>
+                  <p className="text-neutral-400 text-[10px] sm:text-xs md:text-sm font-light leading-relaxed">
+                    Paperxify AI maps complex systems, timelines, processes, and concepts into interactive Mermaid-based flowcharts and visual mind maps. Connect the dots across video tutorials visually.
+                  </p>
+                </div>
               </div>
             </div>
           </section>

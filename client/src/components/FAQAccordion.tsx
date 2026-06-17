@@ -114,7 +114,7 @@ export function FAQAccordion({ faqs: customFaqs, region }: FAQAccordionProps) {
   };
 
   return (
-    <section className="w-full max-w-6xl mx-auto py-16">
+    <section className="w-full max-w-6xl mx-auto py-8 md:py-16">
       <div className="flex flex-col lg:flex-row gap-12 lg:gap-24">
         {/* Left Side - Large Title */}
         <div className="lg:w-1/3">

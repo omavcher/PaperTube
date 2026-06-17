@@ -6,14 +6,7 @@ import YouTubeToNotesClient from "@/app/youtube-to-notes/YouTubeToNotesClient";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { SchemaMarkup } from "@/components/SchemaMarkup";
 import { getLocalizedSeo, generateJsonLdForPage } from "@/lib/seo-helpers";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import {
   Check,
   Sparkles,
@@ -106,7 +99,7 @@ export default function YouTubeToNotesSubjectPage({ slug }: YouTubeToNotesSubjec
         <YouTubeToNotesClient />
 
         {/* --- Subject-Specific SEO Section --- */}
-        <div className="w-full max-w-6xl mx-auto px-6 py-24 border-t border-white/[0.04] mt-16 space-y-32">
+        <div className="w-full max-w-6xl mx-auto px-6 py-12 md:py-24 border-t border-white/[0.04] mt-8 md:mt-16 space-y-16 md:space-y-32">
           
           {/* Section 1: Detailed Introduction */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -192,36 +185,141 @@ export default function YouTubeToNotesSubjectPage({ slug }: YouTubeToNotesSubjec
           </section>
 
           {/* Section 2: Capabilities Comparison */}
-          <section className="space-y-10">
-            <div className="text-center max-w-2xl mx-auto space-y-3">
-              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">Capabilities Comparison</h2>
-              <p className="text-neutral-400 text-xs sm:text-sm font-light">Why students and academic researchers globally choose Paperxify for AI-generated {slug} study notes.</p>
+          <section className="space-y-6 md:space-y-10">
+            <div className="text-center max-w-2xl mx-auto space-y-2 md:space-y-3">
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${colors.accentBg} text-xs font-bold uppercase tracking-wider mb-2`}>
+                <Trophy size={12} />
+                <span>Head-to-Head Comparison</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tight">Paperxify vs AI Tools</h2>
+              <p className="text-neutral-400 text-xs sm:text-sm font-light">See why Paperxify is the purpose-built AI note-taker for {slug} — not a general chatbot workaround.</p>
             </div>
 
-            <div className="border border-white/10 rounded-3xl bg-neutral-950/40 backdrop-blur-md overflow-hidden shadow-2xl">
+            <div className="border border-white/10 rounded-2xl md:rounded-3xl bg-neutral-950/60 backdrop-blur-xl overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b border-white/10 hover:bg-neutral-900/30">
-                      <TableHead className="p-5 font-bold text-xs uppercase tracking-widest text-neutral-400">Capabilities</TableHead>
-                      <TableHead className={`p-5 font-bold text-xs uppercase tracking-widest ${colors.tableHeader}`}>Paperxify {slug.charAt(0).toUpperCase() + slug.slice(1)} AI</TableHead>
-                      <TableHead className="p-5 font-bold text-xs uppercase tracking-widest text-neutral-500">Standard Summarizers</TableHead>
-                      <TableHead className="p-5 font-bold text-xs uppercase tracking-widest text-neutral-500">Manual Note-Taking</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="divide-y divide-white/5 text-xs sm:text-sm">
-                    {seoConfig.tableRows.map((row, idx) => (
-                      <TableRow key={idx} className="border-b border-white/5 hover:bg-white/[0.01]">
-                        <TableCell className="p-5 font-semibold text-neutral-200">{row.feature}</TableCell>
-                        <TableCell className={`p-5 font-bold text-green-400 ${colors.tableCell} flex items-center gap-2`}>
-                          <Check size={16} className="text-green-500" /> {row.col2}
-                        </TableCell>
-                        <TableCell className="p-5 text-neutral-500">{row.col3}</TableCell>
-                        <TableCell className="p-5 text-neutral-500">{row.col4}</TableCell>
-                      </TableRow>
+                <table className="w-full min-w-[600px] border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="text-left px-4 md:px-6 py-5 text-[10px] md:text-xs font-bold uppercase tracking-widest text-neutral-500 w-[30%]">
+                        Feature
+                      </th>
+                      {/* Paperxify - subject-colored highlight */}
+                      <th className={`px-3 md:px-4 py-5 ${colors.tableCell} border-x border-white/5 text-center w-[14%]`}>
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/paperxify.jpeg" alt="Paperxify logo" className="w-7 h-7 md:w-9 md:h-9 rounded-xl object-cover shadow-lg" />
+                          <span className={`${colors.accentText} font-bold text-[9px] md:text-[10px] uppercase tracking-wider leading-tight text-center`}>Paperxify</span>
+                        </div>
+                      </th>
+                      {/* ChatGPT */}
+                      <th className="px-3 md:px-4 py-5 text-center w-[14%]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/chatgpt.png" alt="ChatGPT logo" className="w-7 h-7 md:w-8 md:h-8 rounded-xl object-contain bg-[#10a37f]/10 p-1" />
+                          <span className="text-neutral-500 font-semibold text-[9px] md:text-[10px] uppercase tracking-wider">ChatGPT</span>
+                        </div>
+                      </th>
+                      {/* Claude */}
+                      <th className="px-3 md:px-4 py-5 text-center w-[14%]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/claude-color.png" alt="Claude AI logo" className="w-7 h-7 md:w-8 md:h-8 rounded-xl object-contain bg-[#d97706]/10 p-1" />
+                          <span className="text-neutral-500 font-semibold text-[9px] md:text-[10px] uppercase tracking-wider">Claude</span>
+                        </div>
+                      </th>
+                      {/* DeepSeek */}
+                      <th className="px-3 md:px-4 py-5 text-center w-[14%]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/deepseek.png" alt="DeepSeek AI logo" className="w-7 h-7 md:w-8 md:h-8 rounded-xl object-contain bg-blue-900/20 p-1" />
+                          <span className="text-neutral-500 font-semibold text-[9px] md:text-[10px] uppercase tracking-wider">DeepSeek</span>
+                        </div>
+                      </th>
+                      {/* Gemini */}
+                      <th className="px-3 md:px-4 py-5 text-center w-[14%]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <img src="/gemini.png" alt="Google Gemini logo" className="w-7 h-7 md:w-8 md:h-8 rounded-xl object-contain bg-indigo-900/20 p-1" />
+                          <span className="text-neutral-500 font-semibold text-[9px] md:text-[10px] uppercase tracking-wider">Gemini</span>
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {[
+                      { feature: "YouTube Link → Instant Notes", paperxify: true, chatgpt: "Manual copy", claude: "Manual copy", deepseek: "Manual copy", gemini: "Partial" },
+                      { feature: "Subject-Specific Formatting", paperxify: true, chatgpt: "Basic", claude: "Basic", deepseek: "Basic", gemini: "Basic" },
+                      { feature: "LaTeX & Code Block Detection", paperxify: true, chatgpt: "Partial", claude: "Partial", deepseek: "Partial", gemini: "Partial" },
+                      { feature: "Flashcards & Active Recall", paperxify: true, chatgpt: false, claude: false, deepseek: false, gemini: false },
+                      { feature: "Visual Mind Maps & Diagrams", paperxify: true, chatgpt: false, claude: false, deepseek: false, gemini: false },
+                      { feature: "Notion & PDF Export", paperxify: true, chatgpt: false, claude: false, deepseek: false, gemini: false },
+                      { feature: "Built for Students", paperxify: true, chatgpt: "General AI", claude: "General AI", deepseek: "General AI", gemini: "General AI" },
+                    ].map((row, idx) => (
+                      <tr key={idx} className="hover:bg-white/[0.015] transition-colors">
+                        <td className="px-4 md:px-6 py-4 text-neutral-300 text-[11px] md:text-xs font-semibold tracking-wide">{row.feature}</td>
+                        {/* Paperxify cell */}
+                        <td className={`px-3 md:px-4 py-4 ${colors.tableCell} border-x border-white/5 text-center`}>
+                          {row.paperxify === true ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
+                                <Check size={10} className="text-green-400" />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-green-400 text-[10px] font-semibold">{String(row.paperxify)}</span>
+                          )}
+                        </td>
+                        {/* ChatGPT */}
+                        <td className="px-3 md:px-4 py-4 text-center">
+                          {row.chatgpt === false ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-neutral-800/50 border border-white/5 flex items-center justify-center">
+                                <span className="text-neutral-600 text-[8px] font-bold">✕</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px] font-medium">{String(row.chatgpt)}</span>
+                          )}
+                        </td>
+                        {/* Claude */}
+                        <td className="px-3 md:px-4 py-4 text-center">
+                          {row.claude === false ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-neutral-800/50 border border-white/5 flex items-center justify-center">
+                                <span className="text-neutral-600 text-[8px] font-bold">✕</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px] font-medium">{String(row.claude)}</span>
+                          )}
+                        </td>
+                        {/* DeepSeek */}
+                        <td className="px-3 md:px-4 py-4 text-center">
+                          {row.deepseek === false ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-neutral-800/50 border border-white/5 flex items-center justify-center">
+                                <span className="text-neutral-600 text-[8px] font-bold">✕</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px] font-medium">{String(row.deepseek)}</span>
+                          )}
+                        </td>
+                        {/* Gemini */}
+                        <td className="px-3 md:px-4 py-4 text-center">
+                          {row.gemini === false ? (
+                            <div className="flex items-center justify-center">
+                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-neutral-800/50 border border-white/5 flex items-center justify-center">
+                                <span className="text-neutral-600 text-[8px] font-bold">✕</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px] font-medium">{String(row.gemini)}</span>
+                          )}
+                        </td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
+              </div>
+              <div className="px-4 md:px-6 py-3 border-t border-white/[0.04] flex items-center gap-2">
+                <Check size={11} className="text-green-500 shrink-0" />
+                <span className="text-[10px] text-neutral-600">Paperxify is purpose-built for YouTube-to-notes — not a general-purpose chatbot.</span>
               </div>
             </div>
           </section>
