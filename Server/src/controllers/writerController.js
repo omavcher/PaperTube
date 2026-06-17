@@ -1,5 +1,5 @@
 const User = require("../models/User");
-const pdfService     = require('../services/pdfService');
+const html_to_pdf = require("html-pdf-node");
 const Essay = require("../models/Essay");
 const { awardXP } = require("../utils/xpHelper");
 
@@ -1189,7 +1189,20 @@ exports.downloadPlagiarismPdf = async (req, res) => {
       });
     }
 
-    const pdfBuffer = await pdfService.generatePDF(html);
+    const options = {
+      format: 'A4',
+      margin: {
+        top: '0px',
+        right: '0px',
+        bottom: '0px',
+        left: '0px'
+      },
+      printBackground: true,
+      preferCSSPageSize: true
+    };
+
+    const file = { content: html };
+    const pdfBuffer = await html_to_pdf.generatePdf(file, options);
     const base64PDF = pdfBuffer.toString('base64');
 
     return res.status(200).json({

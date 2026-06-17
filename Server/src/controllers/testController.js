@@ -3,7 +3,7 @@ const PracticeTest = require('../models/PracticeTest');
 const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
 const { checkFreeTierLimits, checkVideoDurationLimit } = require('../utils/freeTierLimits');
-const pdfService     = require('../services/pdfService');
+const html_to_pdf = require("html-pdf-node");
 
 const FREE_MODELS = ['flash'];
 const PREMIUM_MODELS = ['canvas', 'scholar', 'atlas'];
@@ -471,7 +471,20 @@ exports.exportPracticeTestPDF = async (req, res) => {
       </html>
     `;
 
-    const pdfBuffer = await pdfService.generatePDF(completeHTML);
+    const options = {
+      format: 'A4',
+      margin: {
+        top: '35px',
+        right: '35px',
+        bottom: '35px',
+        left: '35px'
+      },
+      printBackground: true,
+      preferCSSPageSize: true
+    };
+
+    const file = { content: completeHTML };
+    const pdfBuffer = await html_to_pdf.generatePdf(file, options);
     const fileName = `${test.title.replace(/[^\w\s.-]/gi, '_').substring(0, 80)}_${Date.now()}.pdf`;
     const base64PDF = pdfBuffer.toString('base64');
 
