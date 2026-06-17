@@ -11,7 +11,6 @@ const api = axios.create({
     },
 });
 
-// Response interceptor to handle 401 Unauthorized (Token Expiry) gracefully
 api.interceptors.response.use(
     (response) => response,
     (error) => {
