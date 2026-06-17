@@ -1803,60 +1803,69 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   // Generate PDF and instantly download
   const generatePDF = async () => {
     if (!data?._id) return;
-    
+
     setIsGeneratingPDF(true);
+    const toastId = toast.loading('⏳ Generating PDF — this may take 20–30 seconds…');
+
     try {
       let res;
+      const authToken = getAuthToken();
+
       if (data._id.startsWith("mock-note")) {
         res = await api.post(`/notes/generate/pdf-from-content`, {
           content: markdownContent,
           title: data.title,
           theme: data.generationDetails?.theme || 'blueberry'
         }, {
-          headers: { 
-            'Auth': getAuthToken()
-          }
+          headers: { 'Auth': authToken },
+          timeout: 120_000,   // 2-min timeout for large notes
         });
       } else {
-        res = await api.get(`/notes/generate/pdf?noteId=${data._id}`, { 
-          headers: { 
-            'Auth': getAuthToken()
-          } 
+        res = await api.get(`/notes/generate/pdf?noteId=${data._id}`, {
+          headers: { 'Auth': authToken },
+          timeout: 120_000,
         });
       }
-      
-      if (res.data.success) {
-        if (res.data.data.pdf) {
-          // If PDF is returned as base64, download it directly
-          const pdfData = res.data.data.pdf;
-          const byteCharacters = atob(pdfData);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          const blob = new Blob([byteArray], { type: 'application/pdf' });
-          const url = window.URL.createObjectURL(blob);
-          
-          const a = document.createElement('a');
-          a.style.display = 'none';
-          a.href = url;
-          a.download = res.data.data.fileName || 'Paperxify-Note.pdf';
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
+
+      if (res.data.success && res.data.data?.pdf) {
+        // Efficient base64 → Uint8Array (avoids intermediate sparse Array allocation)
+        const base64 = res.data.data.pdf as string;
+        const binaryStr = atob(base64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
         }
-        
-        toast.success(`PDF generated with ${res.data.data.imagesEmbedded || 0} images`);
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = res.data.data.fileName || `${(data.title || 'Paperxify').replace(/[^\w\s.-]/gi, '_').substring(0, 80)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+
+        // Delay revocation — browser needs time to read the object URL and start the download
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }, 3000);
+
+        toast.success(`✅ PDF downloaded! (${res.data.data.imagesEmbedded || 0} images embedded)`, { id: toastId });
+      } else {
+        toast.error('PDF generation failed — please try again.', { id: toastId });
       }
     } catch (error: any) {
       console.error("PDF Generation Failed:", error);
-      toast.error(error.response?.data?.message || "Failed to generate PDF");
-    } finally { 
-      setIsGeneratingPDF(false); 
+      const msg = error.code === 'ECONNABORTED'
+        ? 'Request timed out — the note may be too large. Try again.'
+        : error.response?.data?.message || "Failed to generate PDF";
+      toast.error(msg, { id: toastId });
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
+
 
   // Export markdown content as .md file
   const exportMarkdown = () => {
