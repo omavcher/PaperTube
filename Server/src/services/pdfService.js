@@ -1,16 +1,17 @@
 /**
  * pdfService.js
- * 
+ *
  * Singleton Puppeteer browser manager for memory-efficient PDF generation.
- * 
+ *
  * Key optimisations vs html-pdf-node:
  *  1. One shared browser process — no per-request Chrome launch (~150 MB saved)
  *  2. Pages are reused via a lightweight pool (concurrency cap = 2)
  *  3. HTML is written to a temp file and loaded via file:// URL — avoids
  *     passing a massive base64-laden string through IPC to the renderer
- *  4. External CDN resources (Google Fonts, KaTeX) are intercepted and
- *     either served from cache or blocked so generation doesn't wait 30 s
+ *  4. External CDN resources (Google Fonts, KaTeX) are intercepted so
+ *     generation never blocks waiting for network
  *  5. Browser is restarted automatically if it crashes
+ *  6. Chrome executable is resolved with fallbacks for Render.com
  */
 
 const puppeteer = require('puppeteer');
@@ -20,16 +21,57 @@ const os        = require('os');
 const crypto    = require('crypto');
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-const MAX_CONCURRENT = 2;        // max simultaneous PDF renders
-const BROWSER_RESTART_MS = 30 * 60 * 1000; // restart browser every 30 min to avoid mem leaks
+const MAX_CONCURRENT     = 2;               // max simultaneous PDF renders
+const BROWSER_RESTART_MS = 30 * 60 * 1000; // restart browser every 30 min
 const PAGE_TIMEOUT_MS    = 60_000;          // 60 s hard timeout per page
 
 // ─── State ───────────────────────────────────────────────────────────────────
-let browser       = null;
-let browserBorn   = 0;
-let activePages   = 0;
-let pendingQueue  = [];
-let restarting    = false;
+let browser      = null;
+let browserBorn  = 0;
+let activePages  = 0;
+let pendingQueue = [];
+let restarting   = false;
+
+// ─── Chrome path resolution ───────────────────────────────────────────────────
+/**
+ * Resolve the Chrome executable path.
+ * Priority:
+ *  1. PUPPETEER_EXECUTABLE_PATH env var (can be set in Render dashboard)
+ *  2. puppeteer.executablePath() — bundled Chrome from postinstall
+ *  3. Common Linux/Render system paths as last resort
+ */
+function findChrome() {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    console.log('[pdfService] Using PUPPETEER_EXECUTABLE_PATH env var');
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
+  try {
+    const ep = puppeteer.executablePath();
+    if (ep && fs.existsSync(ep)) {
+      console.log('[pdfService] Using puppeteer bundled Chrome:', ep);
+      return ep;
+    }
+  } catch (_) {}
+
+  // Common system Chrome paths on Ubuntu (Render's OS)
+  const candidates = [
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/snap/bin/chromium',
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      console.log('[pdfService] Using system Chrome:', p);
+      return p;
+    }
+  }
+
+  console.warn('[pdfService] Chrome path not found — letting Puppeteer auto-detect');
+  return undefined;
+}
 
 // ─── Browser lifecycle ───────────────────────────────────────────────────────
 async function getBrowser() {
@@ -41,7 +83,6 @@ async function getBrowser() {
 
 async function launchBrowser() {
   if (restarting) {
-    // wait for in-progress restart
     await new Promise(r => setTimeout(r, 2000));
     return browser;
   }
@@ -52,13 +93,16 @@ async function launchBrowser() {
       try { await browser.close(); } catch (_) {}
     }
 
+    const executablePath = findChrome();
     console.log('🚀 [pdfService] Launching Puppeteer browser…');
+
     browser = await puppeteer.launch({
       headless: true,
+      executablePath,           // explicit path — avoids cache-lookup failures on Render
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',   // avoids /dev/shm OOM on Linux containers
+        '--disable-dev-shm-usage',      // avoids /dev/shm OOM on Linux containers
         '--disable-gpu',
         '--disable-extensions',
         '--disable-background-networking',
@@ -70,7 +114,7 @@ async function launchBrowser() {
         '--mute-audio',
         '--no-first-run',
         '--safebrowsing-disable-auto-update',
-        '--js-flags=--max-old-space-size=256',  // cap renderer heap
+        '--js-flags=--max-old-space-size=256', // cap renderer heap
         '--memory-pressure-off',
       ],
       timeout: 30_000,
@@ -106,7 +150,7 @@ function acquireSlot() {
 function releaseSlot() {
   if (pendingQueue.length > 0) {
     const next = pendingQueue.shift();
-    next();          // activePages stays the same (passed directly)
+    next();   // activePages stays the same (slot handed directly to next waiter)
   } else {
     activePages--;
   }
@@ -116,9 +160,9 @@ function releaseSlot() {
 
 /**
  * generatePDF(html, options?)
- * 
+ *
  * @param {string} html        - Full HTML document string
- * @param {object} [options]   - Puppeteer PDF options overrides
+ * @param {object} [options]   - Puppeteer page.pdf() option overrides
  * @returns {Promise<Buffer>}  - PDF bytes
  */
 async function generatePDF(html, options = {}) {
@@ -128,20 +172,19 @@ async function generatePDF(html, options = {}) {
   let   page    = null;
 
   try {
-    // Write HTML to temp file — avoids huge IPC message through Chrome's DevTools protocol
+    // Write HTML to temp file — avoids passing a huge string over Chrome DevTools IPC
     fs.writeFileSync(tmpFile, html, 'utf8');
     const fileUrl = `file://${process.platform === 'win32' ? '/' : ''}${tmpFile.replace(/\\/g, '/')}`;
 
     const b = await getBrowser();
     page    = await b.newPage();
 
-    // Block slow/unnecessary external requests to speed up rendering
+    // Intercept requests — block image/xhr/fetch so we never wait on external CDN
     await page.setRequestInterception(true);
     page.on('request', req => {
       const url  = req.url();
       const type = req.resourceType();
 
-      // Allow: document, stylesheet (local), script (local), images (data:)
       if (
         type === 'document' ||
         url.startsWith('data:') ||
@@ -149,7 +192,7 @@ async function generatePDF(html, options = {}) {
       ) {
         req.continue();
       } else if (type === 'font' || type === 'stylesheet' || type === 'script') {
-        // Allow CDN fonts/styles but don't wait for them (they may time out)
+        // Allow CDN fonts/styles/scripts but don't block on them
         req.continue();
       } else {
         req.abort();
@@ -159,16 +202,15 @@ async function generatePDF(html, options = {}) {
     page.setDefaultNavigationTimeout(PAGE_TIMEOUT_MS);
     page.setDefaultTimeout(PAGE_TIMEOUT_MS);
 
-    // Navigate to temp file — much faster than page.setContent() with large strings
+    // Load from file:// — much faster than page.setContent() for large HTML
     await page.goto(fileUrl, {
-      waitUntil: 'domcontentloaded',   // don't wait for network — images are already base64
+      waitUntil: 'domcontentloaded', // images are already base64 — no network needed
       timeout: PAGE_TIMEOUT_MS,
     });
 
     // Give KaTeX / MathJax a brief moment to render math (max 3 s)
     await page.evaluate(() => new Promise(resolve => {
       const t = setTimeout(resolve, 3000);
-      // If renderMathInElement finishes earlier, resolve immediately
       if (typeof window.renderMathInElement === 'undefined') { clearTimeout(t); resolve(); }
     })).catch(() => {});
 
@@ -183,7 +225,6 @@ async function generatePDF(html, options = {}) {
     return pdfBuffer;
 
   } finally {
-    // Always clean up
     if (page) {
       try { await page.close(); } catch (_) {}
     }

@@ -22,3 +22,7 @@ build/
 
 # Mac files
 .DS_Store
+
+# Puppeteer bundled Chrome (downloaded at deploy time, not committed)
+Server/.cache/
+.cache/
