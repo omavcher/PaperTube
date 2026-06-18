@@ -47,6 +47,17 @@ const nextConfig: NextConfig = {
   // Avoid full-page reload on 404 (use soft navigation)
   skipTrailingSlashRedirect: true,
 
+  // Redirect old Sentinel tool URL to AI Metadata Remover
+  async redirects() {
+    return [
+      {
+        source: "/tools/sentinel",
+        destination: "/tools/ai-metadata-remover",
+        permanent: true,
+      },
+    ];
+  },
+
   // Custom headers to allow Googlebot, Bingbot, and all automated tools
   async headers() {
     return [

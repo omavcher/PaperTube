@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import {
   ShieldAlert, Github, BookOpen, InspectionPanel, TableRowsSplitIcon, 
   BinaryIcon, CalculatorIcon, KeyRoundIcon, FileText, QrCode, FileSignature,
   Home, Grid, Settings, ArrowRightLeft, Keyboard, Wrench, Code2, Image as ImageIcon,
-  Globe
+  Globe, Trash2
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,7 @@ const pdfTools = [
   { id: "git-forge", title: "GIT FORGE", description: "Blueprint git flows.", icon: <GitCompare />, category: "Workflows", path: "/tools/git-forge", color: "text-orange-500", isNew: false },
   { id: "image-converter", title: "IMAGE CONV", description: "PNG/JPG/WEBP conv.", icon: <ArrowRightLeft />, category: "Engineering Tools", path: "/tools/image-converter", color: "text-orange-500", isNew: false },
   { id: "typing-speed-test", title: "VELOCITY", description: "Precision WPM test.", icon: <Keyboard />, category: "Engineering Tools", path: "/tools/typing-test", color: "text-red-500", isNew: false },
-  { id: "ai-detector", title: "SENTINEL", description: "Forensic image scans.", icon: <ShieldAlert />, category: "Engineering Tools", path: "/tools/sentinel", color: "text-red-600", isNew: true },
+  { id: "ai-metadata-remover", title: "AI METADATA REMOVER", description: "Strip AI signatures from images.", icon: <Trash2 />, category: "Engineering Tools", path: "/tools/ai-metadata-remover", color: "text-red-500", isNew: true },
   { id: "github-wrapped", title: "WRAPPED", description: "Visual GitHub impact.", icon: <Github />, category: "Career", path: "/tools/github-wrapped", color: "text-white", isNew: true },
   { id: "password-generator", title: "KEY GEN", description: "Secure random secrets.", icon: <KeyRoundIcon />, category: "Engineering Tools", path: "/tools/password-generator", color: "text-violet-400", isNew: true },
   { id: "markdown-editor", title: "MD EDITOR", description: "Real-time syntax preview.", icon: <FileText />, category: "Workflows", path: "/tools/markdown-editor", color: "text-violet-400", isNew: true },
