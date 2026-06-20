@@ -41,9 +41,9 @@ function stripAIMetadataFromPNG(arrayBuffer: ArrayBuffer): { buffer: ArrayBuffer
 
     let keep = true;
 
-    if (type === "caPt") {
+    if (type === "caPt" || type === "caBX") {
       keep = false;
-      log.push("Stripped Content Authenticity Credentials (caPt chunk)");
+      log.push(`Stripped Content Authenticity Credentials (${type} chunk)`);
     } else if (type === "tEXt" || type === "zTXt" || type === "iTXt") {
       const dataStart = offset + 8;
       let keyword = "";
@@ -54,16 +54,39 @@ function stripAIMetadataFromPNG(arrayBuffer: ArrayBuffer): { buffer: ArrayBuffer
       }
 
       const kwLower = keyword.toLowerCase();
+      
+      // Extract visible ASCII characters from chunk payload for signature/keyword scanning
+      let chunkText = "";
+      const maxRead = Math.min(length, 10000);
+      for (let i = 0; i < maxRead; i++) {
+        const charCode = bytes[dataStart + i];
+        if (charCode >= 32 && charCode <= 126) {
+          chunkText += String.fromCharCode(charCode);
+        } else {
+          chunkText += " ";
+        }
+      }
+      const textLower = chunkText.toLowerCase();
+
       if (
         kwLower.includes("parameter") ||
         kwLower.includes("prompt") ||
         kwLower.includes("workflow") ||
         kwLower.includes("comfyui") ||
         (kwLower.includes("software") && (kwLower.includes("stable") || kwLower.includes("midjourney") || kwLower.includes("dall") || kwLower.includes("gemini") || kwLower.includes("chatgpt"))) ||
-        (kwLower.includes("description") && (kwLower.includes("sd-metadata") || kwLower.includes("prompt")))
+        (kwLower.includes("description") && (kwLower.includes("sd-metadata") || kwLower.includes("prompt"))) ||
+        textLower.includes("c2pa") ||
+        textLower.includes("jumbf") ||
+        textLower.includes("provenance") ||
+        textLower.includes("contentcredentials") ||
+        textLower.includes("content credentials") ||
+        textLower.includes("stable diffusion") ||
+        textLower.includes("midjourney") ||
+        textLower.includes("dall-e") ||
+        textLower.includes("comfyui")
       ) {
         keep = false;
-        log.push(`Stripped AI metadata key: "${keyword}" (${type} chunk)`);
+        log.push(`Stripped AI or C2PA metadata key: "${keyword}" (${type} chunk)`);
       }
     }
 
@@ -169,10 +192,14 @@ function stripAIMetadataFromJPEG(arrayBuffer: ArrayBuffer): { buffer: ArrayBuffe
           xmpLower.includes("prompt") ||
           xmpLower.includes("parameter") ||
           xmpLower.includes("creator") ||
-          xmpLower.includes("jumbf")
+          xmpLower.includes("jumbf") ||
+          xmpLower.includes("c2pa") ||
+          xmpLower.includes("provenance") ||
+          xmpLower.includes("content credentials") ||
+          xmpLower.includes("contentcredentials")
         ) {
           keep = false;
-          log.push("Stripped AI-specific XMP metadata (APP1 segment)");
+          log.push("Stripped AI-specific or C2PA XMP metadata (APP1 segment)");
         }
       }
     }
@@ -227,7 +254,10 @@ function stripAIMetadataFromWEBP(arrayBuffer: ArrayBuffer): { buffer: ArrayBuffe
     const paddedSize = size + (size % 2);
     const chunkLength = 8 + paddedSize;
 
-    if (tag === "XMP ") {
+    if (tag === "C2PA" || tag === "JUMB" || tag === "jumb" || tag === "c2pa") {
+      keep = false;
+      log.push(`Stripped C2PA Content Credentials chunk (${tag.trim()} chunk) from WebP`);
+    } else if (tag === "XMP ") {
       const dataStart = offset + 8;
       let xmpString = "";
       const maxRead = Math.min(size, 20000);
@@ -242,10 +272,15 @@ function stripAIMetadataFromWEBP(arrayBuffer: ArrayBuffer): { buffer: ArrayBuffe
         xmpLower.includes("dall") ||
         xmpLower.includes("comfyui") ||
         xmpLower.includes("prompt") ||
-        xmpLower.includes("parameter")
+        xmpLower.includes("parameter") ||
+        xmpLower.includes("c2pa") ||
+        xmpLower.includes("jumbf") ||
+        xmpLower.includes("provenance") ||
+        xmpLower.includes("content credentials") ||
+        xmpLower.includes("contentcredentials")
       ) {
         keep = false;
-        log.push("Stripped AI-specific XMP metadata chunk from WebP");
+        log.push("Stripped AI or C2PA XMP metadata chunk from WebP");
       }
     }
 
