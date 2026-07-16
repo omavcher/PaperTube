@@ -4,9 +4,16 @@ import { reviews } from "@/data/reviews";
 
 // Specific, high-impact SEO for the core feature: YouTube Video Link to Notes Converter.
 export const metadata: Metadata = {
-  title: "Paperxify | YouTube to Notes AI & AI YouTube Note Taker",
-  description: "Convert YouTube videos to study notes instantly. Paperxify is the best free AI YouTube note taker, video summarizer, and NoteGPT alternative for students.",
+  title: "Paperxify — #1 AI Notes Maker | YouTube to AI Notes & AI PDF Generator",
+  description: "The best free AI notes maker for YouTube. Convert any YT video to AI notes, generate AI PDFs, and create study flashcards in seconds. Trusted by 500,000+ students as the top YouTube AI notes generator & NoteGPT alternative.",
   keywords: [
+    "ai notes maker",
+    "yt to ai notes",
+    "ai notes making",
+    "ai pdf generator",
+    "youtube ai notes generator",
+    "ai note maker from youtube",
+    "ai pdf notes generator",
     "youtube to notes ai",
     "ai youtube note taker",
     "youtube video note taker",
@@ -32,8 +39,8 @@ export const metadata: Metadata = {
     canonical: "https://paperxify.com",
   },
   openGraph: {
-    title: "Paperxify | AI Notes Maker & YouTube Notes Generator",
-    description: "Paste a YT link to notes instantly. The best AI notes tool and NoteGPT alternative for generating structured YouTube notes and PDFs.",
+    title: "Paperxify — #1 AI Notes Maker | YouTube to AI Notes & AI PDF Generator",
+    description: "Paste any YT link to instantly make AI notes & export AI PDFs. The best free AI notes maker and YouTube AI notes generator — trusted by 500,000+ students.",
     url: "https://paperxify.com",
     siteName: "Paperxify",
     type: "website",
@@ -54,7 +61,7 @@ export default function Page() {
     "@graph": [
       {
         "@type": "WebApplication",
-        "name": "Paperxify YouTube to Notes AI",
+        "name": "Paperxify — #1 AI Notes Maker & YouTube AI Notes Generator",
         "url": "https://paperxify.com",
         "operatingSystem": "All",
         "applicationCategory": "EducationalApplication",
@@ -63,7 +70,7 @@ export default function Page() {
           "price": "0",
           "priceCurrency": "USD"
         },
-        "description": "The best free AI tool to take notes from youtube. Convert YouTube videos into structured study notes, flashcards, and summaries instantly.",
+        "description": "The best free AI notes maker for YouTube. Convert any YT link to AI notes, generate AI PDFs, and create flashcards in under 15 seconds. Trusted by 500,000+ students.",
         "aggregateRating": {
           "@type": "AggregateRating",
           "ratingValue": "4.9",
@@ -91,10 +98,26 @@ export default function Page() {
         "mainEntity": [
           {
             "@type": "Question",
+            "name": "What is the best AI notes maker for YouTube videos?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Paperxify is the #1 free AI notes maker for YouTube. It automatically converts any YT video link into structured AI notes, flashcards, and mind maps in under 15 seconds. Unlike ChatGPT or general AI tools, Paperxify's AI notes making pipeline is purpose-built for student study workflows with academic formatting, LaTeX math support, and AI PDF export."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I generate an AI PDF from a YouTube video for free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Paperxify includes a built-in AI PDF generator that converts your YouTube video into a print-ready, publication-quality PDF with headers, bullet points, LaTeX math formulas, and code blocks — completely free. Download it or push it to Notion in one click."
+            }
+          },
+          {
+            "@type": "Question",
             "name": "How to convert youtube video to notes using AI?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "To convert a YouTube video to notes, simply paste the YouTube link into Paperxify's AI generator. The AI will instantly transcribe, summarize, and format the lecture into structured study notes and bullet points."
+              "text": "To convert a YouTube video to AI notes, simply paste the YouTube link into Paperxify's AI notes maker. The AI will instantly transcribe, summarize, and format the lecture into structured study notes and bullet points in under 15 seconds."
             }
           },
           {
@@ -102,7 +125,7 @@ export default function Page() {
             "name": "Is there a free AI tool to take notes from youtube?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes, Paperxify offers a free AI tool to summarize YouTube videos into notes. You can generate notes from YouTube lectures with no signup required for basic access."
+              "text": "Yes, Paperxify offers a free AI notes maker that summarizes YouTube videos into structured notes. You can generate AI notes from YouTube lectures with no signup required for basic access."
             }
           },
           {
@@ -110,7 +133,7 @@ export default function Page() {
             "name": "What is the best AI to summarize youtube videos for students?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Paperxify is ranked as the best AI to summarize YouTube videos for students. It generates AI YouTube notes with timestamps, flashcards, and structured PDFs ideal for exam prep."
+              "text": "Paperxify is ranked as the best YouTube AI notes generator for students. It generates AI YouTube notes with timestamps, flashcards, AI PDFs, and structured study guides ideal for exam prep."
             }
           },
           {

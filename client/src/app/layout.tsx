@@ -42,31 +42,47 @@ export async function generateMetadata(): Promise<Metadata> {
       "Paperxify is the ultimate YouTube to notes AI. Generate study notes, transcripts, and flashcards from YouTube videos instantly. The best free AI YouTube summarizer and NoteGPT alternative for students.",
     
     keywords: [
+      // PRIMARY TARGET KEYWORDS (high-priority missing variants added)
+      "ai notes maker",           // #1 missing — high commercial intent
+      "yt to ai notes",           // #2 missing — exact match query
+      "ai notes making",          // #3 missing — process-based query
+      "ai pdf generator",         // #4 missing — output-type query
+      "youtube ai notes generator", // #5 missing — tool-type query
+      "ai note maker from youtube",
+      "ai pdf notes generator",
+      "make notes with ai from youtube",
+      "youtube to ai study notes",
+      "ai notes generator free",
+      "convert yt video to notes ai",
+      "ai notes from youtube video",
+      "best ai notes maker for students",
+      "ai pdf from youtube",
+
       // Primary / Core (Priority 1 & 2)
-      "youtube to notes", "youtube video to notes", "youtube summarizer", "youtube video summarizer", 
-      "youtube to notes ai", "ai youtube note taker", "youtube video note taker", "ai notes from youtube", 
-      "youtube notes generator", "ai youtube notes", "youtube transcript to notes", "turn youtube into notes", 
+      "youtube to notes", "youtube video to notes", "youtube summarizer", "youtube video summarizer",
+      "youtube to notes ai", "ai youtube note taker", "youtube video note taker", "ai notes from youtube",
+      "youtube notes generator", "ai youtube notes", "youtube transcript to notes", "turn youtube into notes",
       "youtube summarizer ai", "ai video note taker", "video to notes ai", "youtube transcript generator",
-      "yt link to notes", "ai notes maker", "video to text ai", "youtube link to notes", "convert youtube to notes ai",
+      "yt link to notes", "video to text ai", "youtube link to notes", "convert youtube to notes ai",
       "study notes from youtube", "ai note taker youtube",
-      
+
       // Long-Tail & Use-Case
-      "how to convert youtube video to notes using ai", "free ai tool to take notes from youtube", 
-      "youtube to notes ai free no signup", "best ai to summarize youtube videos for students", 
-      "generate notes from youtube lecture ai", "ai youtube notes maker with timestamps", 
-      "summarize youtube video into bullet points ai", "youtube to study notes for exam prep", 
-      "paste youtube link get notes instantly", "ai that reads youtube videos and takes notes", 
+      "how to convert youtube video to notes using ai", "free ai tool to take notes from youtube",
+      "youtube to notes ai free no signup", "best ai to summarize youtube videos for students",
+      "generate notes from youtube lecture ai", "ai youtube notes maker with timestamps",
+      "summarize youtube video into bullet points ai", "youtube to study notes for exam prep",
+      "paste youtube link get notes instantly", "ai that reads youtube videos and takes notes",
       "turn youtube into study guide ai", "ai learning assistant video",
-      
+
       // Competitor Alternatives
-      "notegpt alternative", "mindgrasp alternative", "sites like mindgrasp for free", 
+      "notegpt alternative", "mindgrasp alternative", "sites like mindgrasp for free",
       "turbo ai notes alternative", "swiftnotes alternative free", "better than notegpt",
-      "notegpt vs mindgrasp vs paperxify",
-      
+      "notegpt vs mindgrasp vs paperxify", "studyfetch alternative free",
+
       // Geo-Targeted
-      "youtube ai notes free tool", "best ai youtube summarizer", 
+      "youtube ai notes free tool", "best ai youtube summarizer",
       "youtube to notes ai for students", "lecture summarizer ai",
-      
+
       "Paperxify"
     ],
     

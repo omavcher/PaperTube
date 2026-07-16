@@ -34,77 +34,110 @@ export interface PageSeoConfig {
 
 export const BASE_SEO_DATA: Record<string, PageSeoConfig> = {
   home: {
-    title: "Paperxify | YouTube to Notes AI & AI YouTube Note Taker",
-    description: "Convert YouTube videos to study notes instantly. Paperxify is the best free AI YouTube note taker, video summarizer, and NoteGPT alternative for students.",
-    keywords: ["youtube to notes ai", "ai youtube note taker", "youtube video note taker", "ai notes from youtube", "youtube notes generator", "ai youtube notes", "youtube transcript to notes", "turn youtube into notes", "youtube summarizer ai", "notegpt alternative", "mindgrasp alternative"],
-    h1: "Free AI YouTube Video to Study Notes Generator | Paperxify",
-    h2: "Convert YouTube Lectures",
-    h2Accent: "to Study Notes & Flashcards",
-    h2Rest: "Instantly with AI",
-    intro: "Watching a lecture is passive. Paperxify converts any YouTube video into structured, revision-ready study notes automatically. Perfect for college and high school students preparing for exams.",
+    title: "Paperxify — #1 AI Notes Maker | YouTube to AI Notes & AI PDF Generator",
+    description: "The best free AI notes maker for YouTube. Convert any YT video to AI notes, generate AI PDFs, and create study flashcards in seconds. Trusted by 500,000+ students as the top YouTube AI notes generator & NoteGPT alternative.",
+    keywords: [
+      "ai notes maker", "yt to ai notes", "ai notes making", "ai pdf generator", "youtube ai notes generator",
+      "youtube to notes ai", "ai youtube note taker", "youtube video note taker", "ai notes from youtube",
+      "youtube notes generator", "ai youtube notes", "youtube transcript to notes", "turn youtube into notes",
+      "youtube summarizer ai", "ai note maker from youtube", "ai pdf notes generator",
+      "make notes with ai from youtube", "ai notes generator free", "convert yt video to notes ai",
+      "notegpt alternative", "mindgrasp alternative"
+    ],
+    h1: "#1 Free AI Notes Maker — YouTube to AI Notes & AI PDF Generator | Paperxify",
+    h2: "The #1 AI Notes Maker:",
+    h2Accent: "YouTube to AI Notes, Flashcards",
+    h2Rest: "& AI PDF Generator — Free",
+    intro: "Stop rewinding lectures. Paperxify is the best free AI notes maker that turns any YouTube video into structured AI notes, exportable AI PDFs, and active recall flashcards in under 15 seconds. Whether you need YT to AI notes for exam prep or a full AI PDF generator for printing — paste a link and get results instantly.",
     features: [
-      { title: "Multiple Note Styles", desc: "Choose from Flash summaries, Scholar-grade academic notes, or Canvas diagrams." },
-      { title: "PDF & Notion Sync", desc: "Download high-quality PDFs or sync directly to your Notion workspace." }
+      { title: "AI Notes Maker", desc: "Generate structured AI notes from any YouTube link with one click — no manual work needed." },
+      { title: "AI PDF Generator", desc: "Export your AI-generated notes as publication-quality PDFs with LaTeX math support." },
+      { title: "Multiple Note Styles", desc: "Choose from Flash summaries, Scholar-grade academic notes, or Canvas visual diagrams." },
+      { title: "Notion Sync", desc: "Push your AI notes directly to your Notion workspace with a single click." }
     ],
     tableRows: [
-      { feature: "Structured Academic Formatting", col2: "Yes (Headers, Code, LaTeX)", col3: "Plain bullets", col4: "Slow manual work" },
-      { feature: "Multiple Output Architectures", col2: "Yes (Flash, Scholar, Canvas)", col3: "Single format only", col4: "Depends on student" },
-      { feature: "Notion & PDF Export", col2: "Yes (One-click Sync)", col3: "None", col4: "Manual copying" }
+      { feature: "AI Notes Making (YouTube → Notes)", col2: "Yes — Instant AI Notes", col3: "Manual pasting only", col4: "Slow manual work" },
+      { feature: "AI PDF Generator Export", col2: "Yes (LaTeX + Print-Ready)", col3: "None", col4: "Manual copying" },
+      { feature: "Multiple Note Architectures", col2: "Yes (Flash, Scholar, Canvas)", col3: "Single format only", col4: "Depends on student" }
     ],
     faqs: [
-      { question: "How to convert YouTube videos to notes using AI?", answer: "To convert a YouTube video to notes, simply paste the link into Paperxify's AI generator. The AI will instantly transcribe, summarize, and format the lecture." },
-      { question: "Is there a free AI tool to take notes from YouTube?", answer: "Yes, Paperxify is a free AI YouTube note-taking tool available to students and professionals globally." }
+      { question: "What is the best AI notes maker for YouTube videos?", answer: "Paperxify is the #1 free AI notes maker for YouTube. It automatically converts any YT video link into structured AI notes, flashcards, and mind maps. Unlike general chatbots, it is purpose-built for student study workflows with structured academic formatting and AI PDF export." },
+      { question: "Can I generate an AI PDF from a YouTube video for free?", answer: "Yes. Paperxify's built-in AI PDF generator converts your YouTube video into a print-ready PDF with headers, bullet points, LaTeX math formulas, and code blocks — completely free. Download it or push it to Notion in one click." },
+      { question: "How to convert YouTube videos to notes using AI?", answer: "To convert a YouTube video to AI notes, simply paste the YT link into Paperxify's AI notes generator. The AI will instantly transcribe, summarize, and format the lecture into structured study notes in under 15 seconds." },
+      { question: "Is there a free AI tool to take notes from YouTube?", answer: "Yes, Paperxify is a free AI YouTube note-taking tool — the best free AI notes maker — available to students and professionals globally with no signup required for basic access." }
     ],
-    ctaTitle: "The Best AI YouTube Notes Generator",
-    ctaDesc: "Stop pausing and rewinding. Let AI build your complete study notes automatically from any lecture video. Paste a link to get started.",
-    ctaBtn: "Generate Notes Now",
+    ctaTitle: "The #1 Free AI Notes Maker & YouTube AI Notes Generator",
+    ctaDesc: "Stop pausing and rewinding. Let Paperxify's AI notes maker build your complete study notes, AI PDFs, and flashcards from any YouTube lecture automatically.",
+    ctaBtn: "Make AI Notes Now — Free",
     ratingCount: "8420"
   },
   "youtube-to-notes": {
-    title: "YouTube to Notes AI | Paperxify",
-    description: "Save hours of study time by instantly turning YouTube lectures into structured notes and active recall flashcards. Perfect for students preparing for finals. Paste a link to start free!",
-    keywords: ["youtube link to notes", "ai notes", "ai study", "youtube to notes ai", "convert youtube video to notes", "ai youtube notes generator", "free ai note taker from youtube", "youtube study guide generator", "youtube transcript to notes", "turn youtube into notes", "ai lecture notes from youtube", "ai notes from youtube link", "lecture video summarizer", "best ai study tools", "save hours studying with ai"],
-    h1: "Free AI YouTube Link to Notes Generator for Students | Paperxify",
-    h2: "Convert any YouTube Link",
-    h2Accent: "to Structured AI Study Notes",
-    h2Rest: "in Under 15 Seconds",
-    intro: "Watching a lecture is passive; active recall is how you pass. Paperxify is the ultimate free AI study tool designed for students globally—including the US, UK, Canada, Australia, and Europe. Simply paste any YouTube link to generate structured, syllabus-ready study guides, interactive flashcard decks, visual mind maps, and print-friendly PDFs automatically.",
+    title: "YouTube to AI Notes — Free AI Notes Maker & AI PDF Generator | Paperxify",
+    description: "Paperxify is the best free AI notes maker for YouTube. Paste any YT link to instantly generate AI notes, AI PDFs, and flashcards. The top YouTube AI notes generator & free NoteGPT alternative trusted by 500,000+ students.",
+    keywords: [
+      // Core target keywords (missing before)
+      "yt to ai notes", "ai notes maker", "ai notes making", "ai pdf generator", "youtube ai notes generator",
+      "ai note maker from youtube", "ai pdf notes generator", "make notes with ai from youtube",
+      "youtube to ai study notes", "ai notes generator free", "convert yt video to notes ai",
+      "ai notes from youtube video", "best ai notes maker for students", "ai pdf from youtube",
+      // Existing strong keywords
+      "youtube link to notes", "youtube to notes ai", "convert youtube video to notes",
+      "ai youtube notes generator", "free ai note taker from youtube", "youtube study guide generator",
+      "youtube transcript to notes", "turn youtube into notes", "ai lecture notes from youtube",
+      "ai notes from youtube link", "lecture video summarizer", "best ai study tools",
+      "youtube notes generator", "ai youtube note taker", "save hours studying with ai",
+      // Competitor alternatives
+      "notegpt alternative free", "mindgrasp alternative", "studyfetch alternative"
+    ],
+    h1: "Free AI Notes Maker — YouTube to AI Notes & AI PDF Generator for Students | Paperxify",
+    h2: "The #1 Free AI Notes Maker:",
+    h2Accent: "YouTube to AI Notes",
+    h2Rest: "& AI PDF Generator in 15 Seconds",
+    intro: "AI notes making has never been easier. Paperxify is the ultimate free AI notes maker — paste any YouTube link and instantly get structured AI notes, exportable AI PDFs with LaTeX math support, interactive flashcard decks, and visual mind maps. The best YouTube AI notes generator for students globally across the US, UK, Canada, Australia, and Europe. No signup needed to start.",
     features: [
-      { title: "Save Hours Studying", desc: "Instantly condense multi-hour lectures and tutorial videos into high-yield summaries." },
-      { title: "Aesthetic Note Architectures", desc: "Choose from Flash cards, Scholar-grade academic guides, or visual Canvas diagrams." },
-      { title: "Notion & PDF Export", desc: "Sync your generated notes directly to your Notion workspace or download as high-quality printable PDFs." },
+      { title: "AI Notes Maker", desc: "Instantly generate structured AI notes from any YT link — Flash cards, Scholar guides, or Canvas diagrams." },
+      { title: "AI PDF Generator", desc: "Export AI-generated notes as publication-quality PDFs with LaTeX, code blocks, and print-ready formatting." },
+      { title: "Notion Sync", desc: "Sync your AI notes directly to your Notion workspace or copy clean Markdown with one click." },
       { title: "Active Recall Testing", desc: "Practice with auto-generated MCQ tests, fill-in-the-blanks, and interactive study flashcards." }
     ],
     tableRows: [
-      { feature: "Structured Academic Formatting", col2: "Yes (Headers, Code, LaTeX)", col3: "Plain bullet points", col4: "Time-consuming" },
-      { feature: "Multiple Output Architectures", col2: "Yes (Flash, Scholar, Canvas)", col3: "Single format only", col4: "Depends on student" },
-      { feature: "Notion & PDF Export", col2: "Yes (One-Click Sync)", col3: "None", col4: "Manual copying" }
+      { feature: "AI Notes Making (YT Link → AI Notes)", col2: "Yes — Instant & Structured", col3: "Manual copy-paste only", col4: "Time-consuming" },
+      { feature: "AI PDF Generator Export", col2: "Yes (LaTeX + Print-Ready PDF)", col3: "None", col4: "Manual copying" },
+      { feature: "Multiple Output Architectures", col2: "Yes (Flash, Scholar, Canvas)", col3: "Single format only", col4: "Depends on student" }
     ],
     faqs: [
       {
+        question: "What is the best AI notes maker for YouTube videos?",
+        answer: "Paperxify is the #1 free AI notes maker designed specifically for YouTube. It converts any YT link into structured AI notes with headers, bullet points, code blocks, and LaTeX formulas in under 15 seconds. Unlike ChatGPT or general AI tools, Paperxify's AI notes making pipeline is purpose-built for student study workflows — no manual copy-pasting needed."
+      },
+      {
+        question: "Can I generate an AI PDF from a YouTube video?",
+        answer: "Yes. Paperxify includes a built-in AI PDF generator that converts your YouTube video into a print-ready, publication-quality PDF. The AI PDF export fully supports LaTeX mathematical notation, code syntax highlighting, and structured section headers — perfect for printing or importing into Notion."
+      },
+      {
         question: "Is there an AI that can take notes from a YouTube video for free?",
-        answer: "Yes, Paperxify is a free AI tool designed specifically to convert YouTube video links into structured study notes, summaries, and flashcards. Simply paste the link, choose your preferred note style, and click generate to get revision-ready notes in under 15 seconds."
+        answer: "Yes, Paperxify is a free AI notes maker designed specifically to convert YouTube video links into structured study notes, summaries, and flashcards. Simply paste the YT link, choose your preferred note style, and click generate to get revision-ready AI notes in under 15 seconds."
       },
       {
         question: "What is the best free NoteGPT or Mindgrasp alternative?",
-        answer: "Paperxify is the top free alternative to NoteGPT, Mindgrasp, and StudyFetch. Unlike general chatbots, it is purpose-built for student study workflows, providing structured academic formatting, LaTeX support for formulas, code syntax highlighting, visual mind maps, and Notion syncing."
+        answer: "Paperxify is the top free alternative to NoteGPT, Mindgrasp, and StudyFetch. Unlike general chatbots, it is purpose-built AI notes making software for student study workflows, providing structured academic formatting, LaTeX support for formulas, code syntax highlighting, visual mind maps, AI PDF generation, and Notion syncing."
       },
       {
         question: "Can I export AI-generated YouTube notes to Notion or PDF?",
-        answer: "Yes, you can export your notes directly to Notion with a single click, copy clean Markdown, or download a publication-grade PDF file. The PDF format fully supports mathematical LaTeX syntax, which is perfect for printing or digital note-taking apps."
+        answer: "Yes, you can export your AI notes directly to Notion with a single click, copy clean Markdown, or download a publication-grade AI PDF. The AI PDF format fully supports mathematical LaTeX syntax, which is perfect for printing or digital note-taking apps."
       },
       {
-        question: "Does this AI YouTube note taker support non-English videos?",
-        answer: "Yes. Paperxify supports transcribing and summarizing YouTube videos in over 50 languages, including English, Spanish, French, German, Hindi, and Mandarin. The AI can also translate foreign language lectures directly into English study guides."
+        question: "Does this YouTube AI notes generator support non-English videos?",
+        answer: "Yes. Paperxify's YouTube AI notes generator supports transcribing and summarizing videos in over 50 languages, including English, Spanish, French, German, Hindi, and Mandarin. The AI can also translate foreign language lectures directly into English AI study notes."
       },
       {
-        question: "Can the AI take notes from long YouTube lectures or crash courses?",
-        answer: "Absolutely. Paperxify handles long lecture videos, university seminars, and crash courses up to several hours long. It utilizes high-context AI models to extract key concepts, chronological timelines, definitions, and code segments from the entire video transcript."
+        question: "Can the AI notes maker handle long YouTube lectures or crash courses?",
+        answer: "Absolutely. Paperxify's AI notes maker handles long lecture videos, university seminars, and crash courses up to several hours long. It utilizes high-context AI models to extract key concepts, chronological timelines, definitions, and code segments from the entire video transcript."
       }
     ],
-    ctaTitle: "The Best AI YouTube Notes Generator",
-    ctaDesc: "Stop pausing and rewinding. Let AI build your complete study notes automatically from any lecture video. Paste a link to get started.",
-    ctaBtn: "Generate Notes Now",
+    ctaTitle: "The #1 Free AI Notes Maker & YouTube AI Notes Generator",
+    ctaDesc: "Stop pausing and rewinding. Let Paperxify's AI notes maker build your complete AI notes, export as AI PDFs, and generate flashcards from any YouTube lecture automatically. Paste a link to start free.",
+    ctaBtn: "Make AI Notes — Free",
     ratingCount: "12480"
   },
   "presentation-generator": {

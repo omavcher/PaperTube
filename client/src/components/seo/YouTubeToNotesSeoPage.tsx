@@ -47,15 +47,54 @@ export default function YouTubeToNotesSeoPage({ region }: YouTubeToNotesSeoPageP
         {/* Dynamic Client Form Component */}
         <YouTubeToNotesClient />
 
+        {/* ─── Above-Fold Value Prop Strip ─── */}
+        {/* Answers "why Paperxify" without scrolling — surfaces key differentiators */}
+        <div className="w-full border-t border-white/[0.04] bg-neutral-950/60 backdrop-blur-md">
+          <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-center gap-6 md:gap-10">
+            <div className="flex items-center gap-2.5 text-center">
+              <span className="text-red-500 text-lg font-black">⚡</span>
+              <div>
+                <p className="text-white text-xs font-bold uppercase tracking-wider">15-Second AI Notes</p>
+                <p className="text-neutral-500 text-[10px]">Fastest YT to AI notes generator</p>
+              </div>
+            </div>
+            <div className="w-px h-8 bg-white/10 hidden md:block" />
+            <div className="flex items-center gap-2.5 text-center">
+              <span className="text-red-500 text-lg font-black">📄</span>
+              <div>
+                <p className="text-white text-xs font-bold uppercase tracking-wider">AI PDF Generator</p>
+                <p className="text-neutral-500 text-[10px]">LaTeX-ready, print-quality exports</p>
+              </div>
+            </div>
+            <div className="w-px h-8 bg-white/10 hidden md:block" />
+            <div className="flex items-center gap-2.5 text-center">
+              <span className="text-red-500 text-lg font-black">🏆</span>
+              <div>
+                <p className="text-white text-xs font-bold uppercase tracking-wider">#1 AI Notes Maker</p>
+                <p className="text-neutral-500 text-[10px]">500,000+ students trust Paperxify</p>
+              </div>
+            </div>
+            <div className="w-px h-8 bg-white/10 hidden md:block" />
+            <div className="flex items-center gap-2.5 text-center">
+              <span className="text-red-500 text-lg font-black">🧠</span>
+              <div>
+                <p className="text-white text-xs font-bold uppercase tracking-wider">Active Recall</p>
+                <p className="text-neutral-500 text-[10px]">Auto flashcards &amp; practice tests</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* --- Global Premium SEO Section --- */}
         <div className="w-full max-w-6xl mx-auto px-6 py-12 md:py-24 border-t border-white/[0.04] mt-8 md:mt-16 space-y-16 md:space-y-32">
           
           {/* Section 1: Detailed Introduction */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7 space-y-6">
+              {/* Badge — surfaces AI Notes Maker keyword prominently above fold */}
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wider">
                 <Sparkles size={12} />
-                <span>AI-Powered Lecture Note Synthesizer</span>
+                <span>AI Notes Maker &amp; PDF Generator</span>
               </div>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white uppercase">
                 {seoConfig.h2} <span className="text-red-500 bg-clip-text bg-gradient-to-r from-red-600 to-rose-500">{seoConfig.h2Accent}</span> {seoConfig.h2Rest}
@@ -271,6 +310,60 @@ export default function YouTubeToNotesSeoPage({ region }: YouTubeToNotesSeoPageP
               <div className="px-4 md:px-6 py-3 border-t border-white/[0.04] flex items-center gap-2">
                 <Check size={11} className="text-green-500 shrink-0" />
                 <span className="text-[10px] text-neutral-600">Paperxify is purpose-built for YouTube-to-notes — not a general-purpose chatbot.</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 2b: What is an AI Notes Maker? — Keyword-rich explainer targeting all 5 missing terms */}
+          <section className="space-y-8">
+            <div className="text-center max-w-2xl mx-auto space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wider">
+                <Brain size={12} />
+                <span>Understanding AI Notes Making</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
+                What is an <span className="text-red-500">AI Notes Maker</span>?
+              </h2>
+              <p className="text-neutral-400 text-xs sm:text-sm font-light leading-relaxed">
+                An AI notes maker is a tool that automatically converts video content — like YouTube lectures — into structured, revision-ready study notes using artificial intelligence.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-6 border border-white/5 rounded-2xl bg-neutral-950/40 space-y-3">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="text-red-500">①</span> YT to AI Notes — How It Works
+                </h3>
+                <p className="text-neutral-400 text-xs leading-relaxed">
+                  Paperxify's YT to AI notes pipeline works in 3 steps: (1) paste your YouTube URL, (2) the AI extracts and transcribes the full video transcript, (3) it synthesizes the transcript into structured AI notes with headers, bullet points, key definitions, and LaTeX formulas — all in under 15 seconds.
+                </p>
+              </div>
+
+              <div className="p-6 border border-white/5 rounded-2xl bg-neutral-950/40 space-y-3">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="text-red-500">②</span> AI Notes Making vs Manual Note-Taking
+                </h3>
+                <p className="text-neutral-400 text-xs leading-relaxed">
+                  Traditional note-taking requires pausing, rewinding, and writing by hand — taking 3-4× longer than the video itself. AI notes making compresses a 2-hour lecture into structured, exam-ready notes in seconds, covering every key concept the AI detects in the transcript.
+                </p>
+              </div>
+
+              <div className="p-6 border border-white/5 rounded-2xl bg-neutral-950/40 space-y-3">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="text-red-500">③</span> AI PDF Generator — Export & Print
+                </h3>
+                <p className="text-neutral-400 text-xs leading-relaxed">
+                  After AI notes making, Paperxify's built-in AI PDF generator converts your notes into a print-ready document. Every AI PDF export includes properly rendered LaTeX math, code syntax highlighting, structured section headers, and page numbers — ready for printing or digital annotation.
+                </p>
+              </div>
+
+              <div className="p-6 border border-white/5 rounded-2xl bg-neutral-950/40 space-y-3">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="text-red-500">④</span> YouTube AI Notes Generator for Every Subject
+                </h3>
+                <p className="text-neutral-400 text-xs leading-relaxed">
+                  Paperxify's YouTube AI notes generator works across all subjects: mathematics, computer science, history, biology, physics, law, economics, and more. The AI adapts its formatting — using code blocks for programming, LaTeX for formulas, and structured timelines for history.
+                </p>
               </div>
             </div>
           </section>
