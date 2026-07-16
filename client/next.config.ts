@@ -61,12 +61,39 @@ const nextConfig: NextConfig = {
   // Custom headers to allow Googlebot, Bingbot, and all automated tools
   async headers() {
     return [
+      // ── All public pages: allow crawling + CDN caching ──────────────────────
       {
         source: "/:path*",
         headers: [
           {
             key: "X-Robots-Tag",
             value: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+          },
+          // 60s browser cache, 1 day CDN cache, stale-while-revalidate for
+          // near-instant subsequent requests from Googlebot without waiting for full render
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=86400, stale-while-revalidate=3600",
+          },
+        ],
+      },
+      // ── Protected routes: never cache user-specific pages ───────────────────
+      {
+        source: "/(admin|profile|notes)/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      // ── Static assets: long-term immutable caching ───────────────────────────
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },

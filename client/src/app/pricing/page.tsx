@@ -131,8 +131,9 @@ const COMPARE_ROWS = [
 // ─── Social proof counter ─────────────────────────────────────────────────────
 function AnimatedNumber({ target, suffix = "" }: { target: number; suffix?: string }) {
   const [count, setCount] = useState(0);
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true });
+  const ref = useRef<HTMLSpanElement>(null);
+  // amount: 0 means trigger as soon as any pixel enters viewport
+  const inView = useInView(ref, { once: true, amount: 0 });
 
   useEffect(() => {
     if (!inView) return;
@@ -142,11 +143,34 @@ function AnimatedNumber({ target, suffix = "" }: { target: number; suffix?: stri
     let current = 0;
     const timer = setInterval(() => {
       current += increment;
-      if (current >= target) { setCount(target); clearInterval(timer); }
-      else setCount(Math.floor(current));
+      if (current >= target) { setCount(target); clearInterval(timer); return; }
+      setCount(Math.floor(current));
     }, duration / steps);
     return () => clearInterval(timer);
   }, [inView, target]);
+
+  // Safety fallback: if the element is already in the viewport on mount
+  // (above-the-fold placement), ensure the target value always shows.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          observer.disconnect();
+          // Give the framer-motion inView hook time to fire first;
+          // if count is still 0 after 1600 ms, snap to target.
+          const fallback = setTimeout(() => {
+            setCount(prev => (prev === 0 ? target : prev));
+          }, 1600);
+          return () => clearTimeout(fallback);
+        }
+      },
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target]);
 
   return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 }

@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-  const commonDisallows = ['/admin/', '/profile/', '/note/'];
+  const commonDisallows = ['/admin/', '/profile/', '/note/', '/code-solution/', '/flashcards/', '/yt-practice-test/'];
   const userAgents = [
     // Search Engines
     'Googlebot',

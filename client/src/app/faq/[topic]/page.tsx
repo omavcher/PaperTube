@@ -1,4 +1,5 @@
 import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HelpCircle, ChevronRight, ArrowLeft } from "lucide-react";
@@ -89,6 +90,24 @@ export async function generateStaticParams() {
 
 interface PageProps {
   params: Promise<{ topic: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { topic } = await params;
+  const faqData = faqsByTopic[topic];
+  if (!faqData) {
+    return {
+      title: "Frequently Asked Questions | Paperxify"
+    };
+  }
+
+  return {
+    title: `${faqData.title} | Paperxify FAQ`,
+    description: `Find answers to frequently asked questions about ${faqData.title}. Learn how to transcribe YouTube videos to study notes, flashcards, and PDFs using Paperxify.`,
+    alternates: {
+      canonical: `https://paperxify.com/faq/${topic}`,
+    }
+  };
 }
 
 export default async function FAQTopicPage({ params }: PageProps) {
