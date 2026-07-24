@@ -567,7 +567,7 @@ function SignInBtn({ loading }: any) {
   
   return (
     <button onClick={handleOpenLogin} disabled={loading} className="flex items-center gap-2 px-5 py-2 text-xs font-bold uppercase tracking-wide bg-white text-black rounded-xl hover:bg-neutral-200 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-white/5">
-      Sign In
+      Try Free
     </button>
   );
 }

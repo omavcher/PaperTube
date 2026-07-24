@@ -43,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/leaderboard',
     '/notegpt-alternative',
     '/youtube-to-notes',
+    '/youtube-video-summarizer',
     '/ai-study-notes',
     '/us',
     '/uk',

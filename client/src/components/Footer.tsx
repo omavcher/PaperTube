@@ -109,6 +109,7 @@ export default function Footer() {
             
             <FooterColumn title="AI Study Suite">
               <FooterLink href="/youtube-to-notes" label="YouTube to Notes" />
+              <FooterLink href="/youtube-video-summarizer" label="Video Summarizer" />
               <FooterLink href="/presentation-generator" label="Slide & PPT Maker" />
               <FooterLink href="/ai-diagram" label="AI Diagram Studio" />
               <FooterLink href="/ai-writer" label="AI Writer & Editor" />

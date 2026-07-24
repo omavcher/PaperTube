@@ -85,6 +85,13 @@ export default function YouTubeToNotesSeoPage({ region }: YouTubeToNotesSeoPageP
           </div>
         </div>
 
+        {/* Quick Summarizer Interlink Callout */}
+        <div className="w-full bg-neutral-900/40 border-y border-white/5 py-2.5 px-4 text-center">
+          <p className="text-xs text-neutral-400 font-medium">
+            Just want the gist first? Try our <Link href="/youtube-video-summarizer" className="text-red-400 font-bold hover:underline">YouTube video summarizer</Link> before generating full study notes.
+          </p>
+        </div>
+
         {/* --- Global Premium SEO Section --- */}
         <div className="w-full max-w-6xl mx-auto px-6 py-12 md:py-24 border-t border-white/[0.04] mt-8 md:mt-16 space-y-16 md:space-y-32">
           
