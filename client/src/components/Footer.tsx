@@ -121,6 +121,7 @@ export default function Footer() {
               <FooterLink href="/success-stories" label="Success Stories" />
               <FooterLink href="/blog" label="Tech Blog" />
               <FooterLink href="/notegpt-alternative" label="NoteGPT Alternative" />
+              <FooterLink href="/eightify-alternative" label="Eightify Alternative" />
               <FooterLink href="/pricing" label="Pro Membership" badge="New" />
             </FooterColumn>
 
