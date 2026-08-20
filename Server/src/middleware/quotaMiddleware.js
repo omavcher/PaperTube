@@ -5,7 +5,10 @@ const Presentation = require("../models/Presentation");
 const Quiz = require("../models/Quiz");
 const FlashcardSet = require("../models/FlashcardSet");
 const Diagram = require("../models/Diagram");
-const { Homework, MathSolution, ExamPlan, LanguageLesson } = require("../models/Study");
+const Homework = require("../models/Homework");
+const MathSolution = require("../models/MathSolution");
+const ExamPlan = require("../models/ExamPlan");
+const LanguageLesson = require("../models/LanguageLesson");
 
 // ─── Calibrated Quotas Ensuring 70%+ Net Profit Margin ─────────────────────────
 const PLAN_QUOTAS = {
