@@ -1,4 +1,5 @@
 "use client";
+// Paperxify Original Navbar
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { 
@@ -13,7 +14,39 @@ import {
   Layout,
   Workflow,
   PenTool,
-  GraduationCap
+  GraduationCap,
+  Sparkles,
+  BookOpen,
+  History,
+  Heart,
+  LayoutGrid,
+  Code2,
+  FileText,
+  Package,
+  Settings,
+  Users,
+  Lightbulb,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ChevronRight,
+  MessageSquare,
+  Gift,
+  Bell,
+  Tag,
+  Calculator,
+  Languages,
+  ShieldAlert,
+  FileSearch,
+  Newspaper,
+  Presentation,
+  GitBranch,
+  HelpCircle,
+  Layers,
+  Search,
+  Trash2,
+  Clock,
+  RefreshCw,
+  ArrowUpRight
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import Link from "next/link";
@@ -36,8 +69,19 @@ export const Navbar = ({
   onLoginSuccess, 
   authLoading,
   hideDesktop,
-  hideMobile 
-}: any) => {
+  hideMobile,
+  sidebarExpanded,
+  onToggleSidebar
+}: { 
+  isLoggedIn?: boolean; 
+  user?: any; 
+  onLoginSuccess?: any; 
+  authLoading?: boolean;
+  hideDesktop?: boolean;
+  hideMobile?: boolean;
+  sidebarExpanded?: boolean;
+  onToggleSidebar?: () => void;
+}) => {
   const [visible, setVisible] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { scrollY } = useScroll();
@@ -76,43 +120,89 @@ export const Navbar = ({
 
   return (
     <>
-      {/* --- DESKTOP NAVIGATION --- */}
+      {/* --- DESKTOP NAVIGATION (APPLE IOS LIQUID GLASS SCROLL-ANIMATED) --- */}
       {!finalHideDesktop && (
         <nav className={cn(
-          "fixed top-0 inset-x-0 z-[100] transition-all duration-500 hidden lg:block font-sans pointer-events-none", 
-          visible ? "pt-4" : "pt-0"
+          "fixed top-0 inset-x-0 z-[100] transition-all duration-500 hidden lg:block font-sans pointer-events-none",
+          sidebarExpanded !== undefined ? (sidebarExpanded ? "lg:pl-[248px]" : "lg:pl-[64px]") : "",
+          visible ? "pt-3" : "pt-0"
         )}>
           <div className="container mx-auto px-4 flex justify-center pointer-events-auto">
             <div
               className={cn(
-                "flex items-center justify-between px-6 py-4 w-full relative transition-all duration-300 transform-gpu",
+                "flex items-center justify-between w-full relative transition-all duration-500 transform-gpu",
                 visible
-                  ? "max-w-[1200px] rounded-3xl bg-[rgba(10,10,10,0.85)] backdrop-blur-md border border-white/[0.08] shadow-2xl"
-                  : "max-w-7xl rounded-none bg-transparent border border-transparent"
+                  ? "max-w-[1240px] px-5 py-2 rounded-full bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/[0.08] shadow-[0_12px_32px_rgba(0,0,0,0.8)]"
+                  : "max-w-7xl px-6 py-4 rounded-none bg-transparent border border-transparent"
               )}
             >
-              <Link href="/" className="group flex items-center shrink-0">
-      <span className="text-xl font-black italic tracking-tighter uppercase text-white">
-        Paper<span className="text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]">xify</span>
-      </span>
-    </Link>
+              {/* Left: Brand Logo + [AI] Badge */}
+              <Link href="/" className="flex items-center gap-1.5 group shrink-0">
+                <span className="text-xl font-black italic tracking-tighter uppercase text-white">
+                  PAPER<span className="text-[#ef4444]">XIFY</span>
+                </span>
+                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-white/10 ml-1">
+                  AI
+                </span>
+              </Link>
 
-              {/* Center Nav */}
-              <div className="flex items-center gap-1 bg-black/20 p-1 rounded-2xl border border-white/5 backdrop-blur-sm mx-5 transform-gpu">
-  <NavEntry href="/" icon={<Home size={14} />} label="Home" />
-  <NavDropdown label="AI Study Suite" items={AI_STUDY_SUITE} />
-  <NavDropdown label="Backpack" items={SUPPORT_TOOLS} />
-  <NavEntry href="/pricing" icon={<Zap size={14} />} label={user?.membership?.isActive ? "My Plan" : "Pricing"} />
-</div>
+              {/* Center: Sleek Navigation Pill Menu */}
+              <div className="flex items-center gap-1 bg-[#0d0d0d]/80 border border-white/[0.08] backdrop-blur-xl px-1.5 py-1 rounded-full shadow-md">
+                <Link
+                  href="/"
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all",
+                    pathname === "/" || pathname === "/dashboard"
+                      ? "text-white bg-white/[0.08]"
+                      : "text-neutral-300 hover:text-white hover:bg-white/[0.04]"
+                  )}
+                >
+                  <Home size={13} className={pathname === "/" || pathname === "/dashboard" ? "text-red-500" : "text-neutral-400"} />
+                  <span>Home</span>
+                </Link>
 
-              {/* Right Actions */}
-              <div className="flex items-center gap-4">
-                {/* Token Counter (Non-Subscribers) */}
-                {isLoggedIn && tokenInfo && !tokenInfo.isSubscribed && (
-                    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-neutral-900 border border-white/10 rounded-full">
-                        <Coins size={14} className="text-blue-400" />
-                        <span className="text-xs font-bold text-white">{tokenInfo.tokens}</span>
-                    </div>
+                <NavDropdown
+                  label="AI Study Suite"
+                  icon={<BookOpen size={13} />}
+                  items={AI_STUDY_SUITE}
+                />
+
+                <NavDropdown
+                  label="Backpack"
+                  icon={<ToolCase size={13} />}
+                  items={SUPPORT_TOOLS}
+                />
+
+                <Link
+                  href="/pricing"
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all",
+                    pathname === "/pricing"
+                      ? "text-white bg-white/[0.08]"
+                      : "text-neutral-300 hover:text-white hover:bg-white/[0.04]"
+                  )}
+                >
+                  <Zap size={13} className="text-neutral-400" />
+                  <span>Pricing</span>
+                </Link>
+              </div>
+
+              {/* Right: User Profile Pill & Notification Bell */}
+              <div className="flex items-center gap-2.5">
+                {/* Plan Badge */}
+                {isLoggedIn && (
+                  <Link
+                    href="/pricing"
+                    className={cn(
+                      "hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase transition-all",
+                      tokenInfo?.isSubscribed || user?.membership?.isActive
+                        ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
+                        : "bg-white/[0.05] text-neutral-300 border border-white/10 hover:text-white hover:bg-white/[0.08]"
+                    )}
+                  >
+                    <Crown size={12} className={tokenInfo?.isSubscribed || user?.membership?.isActive ? "text-amber-400 fill-amber-400/20" : "text-neutral-400"} />
+                    <span>{tokenInfo?.isSubscribed || user?.membership?.isActive ? "PRO" : "FREE"}</span>
+                  </Link>
                 )}
                 
                 {isLoggedIn ? (
@@ -120,6 +210,9 @@ export const Navbar = ({
                 ) : (
                   <SignInBtn loading={authLoading} />
                 )}
+
+                {/* Notification Bell Button with red notification dot */}
+                <NotificationBell />
               </div>
             </div>
           </div>
@@ -218,82 +311,167 @@ export const Navbar = ({
 
 /* --- Optimized Sub-Components --- */
 
-
 const UserHUD = ({ user, onLogout }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   const membership = user?.membership;
   const isActive = membership?.isActive === true;
-  const planInfo = PLANS.find(p => p.id === membership?.planId) || { name: "Standard", color: "text-neutral-400", border: "border-neutral-600", bg: "bg-neutral-800" };
-  
+  const userName = user?.name || "Om Awchar";
+  const userEmail = user?.email || "omawchar07@gmail.com";
+  const userAvatar = user?.picture;
+  const initialLetter = (userName?.[0] || "O").toUpperCase();
   const streakCount = user?.streak?.count || 0;
-  const lastVisit = user?.streak?.lastVisit ? new Date(user.streak.lastVisit).toLocaleDateString() : "Just Started";
 
   return (
     <div className="relative font-sans" onMouseEnter={() => setIsOpen(true)} onMouseLeave={() => setIsOpen(false)}>
-      <button className="flex items-center gap-3 p-1 pl-3 bg-neutral-900/50 border border-white/10 rounded-full hover:bg-neutral-800 transition-colors">
-        <div className="flex flex-col items-end leading-none">
-            <span className="text-[10px] font-bold text-white uppercase tracking-tight">{user?.name?.split(' ')[0]}</span>
-            <span className={cn("text-[8px] font-bold uppercase tracking-widest", planInfo.color)}>
-                {isActive ? planInfo.name : "Free Tier"}
-            </span>
+      {/* User Profile Pill Capsule Button */}
+      <button className="flex items-center gap-2.5 px-3 py-1.5 bg-[#111111] hover:bg-[#161616] border border-white/[0.08] hover:border-white/20 rounded-full transition-all cursor-pointer shadow-md">
+        <div className="flex flex-col text-right leading-none">
+          <span className="text-xs font-bold text-white tracking-tight">{userName}</span>
+          <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-0.5">
+            {isActive ? "PRO SCHOLAR" : "FREE TIER"}
+          </span>
         </div>
-        <div className={cn("h-8 w-8 rounded-full border overflow-hidden bg-black", isActive ? planInfo.border : "border-white/20")}>
-            <img src={user?.picture || "/avatar.png"} alt="u" className="w-full h-full object-cover" />
+        <div className="w-7 h-7 rounded-full border border-white/10 overflow-hidden bg-neutral-800 flex items-center justify-center font-bold text-white text-xs relative shrink-0">
+          {userAvatar ? (
+            <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
+          ) : (
+            <span>{initialLetter}</span>
+          )}
+          <span className="w-2 h-2 rounded-full bg-red-500 absolute -top-0.5 -right-0.5 shadow-[0_0_6px_rgba(239,68,68,0.9)] ring-2 ring-black" />
         </div>
       </button>
 
+      {/* Open Profile Dropdown Menu */}
       <AnimatePresence>
         {isOpen && (
           <motion.div 
-            initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+            initial={{ opacity: 0, y: 8, scale: 0.96 }} 
             animate={{ opacity: 1, y: 0, scale: 1 }} 
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-full right-0 mt-4 w-72 bg-[#0a0a0a] border border-white/10 rounded-3xl p-2 shadow-2xl backdrop-blur-md z-[110] overflow-hidden transform-gpu"
+            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            className="absolute top-full right-0 mt-3 w-64 bg-[#0c0c0c]/95 border border-white/[0.09] backdrop-blur-2xl rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(239,68,68,0.15)] z-[120] space-y-2.5 overflow-hidden"
           >
             {/* User Header */}
-            <div className="flex items-center gap-4 p-4 mb-2 bg-neutral-900/30 rounded-2xl">
-                 <div className={cn("h-10 w-10 rounded-full border overflow-hidden", isActive ? planInfo.border : "border-white/10")}>
-                    <img src={user?.picture} className="w-full h-full object-cover" />
-                 </div>
-                 <div>
-                    <p className="text-sm font-bold text-white">{user?.name}</p>
-                    <p className="text-[10px] text-neutral-500 font-mono">{user?.email}</p>
-                 </div>
+            <div className="flex items-center gap-2.5 p-1.5">
+              <div className="w-8 h-8 rounded-full border border-white/10 overflow-hidden bg-neutral-800 flex items-center justify-center font-bold text-white text-xs shrink-0">
+                {userAvatar ? (
+                  <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{initialLetter}</span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate leading-tight">{userName}</p>
+                <p className="text-[10px] text-neutral-400 font-mono truncate">{userEmail}</p>
+              </div>
             </div>
 
-            {/* Streak Card */}
-            <div className="mx-2 mb-2 p-4 bg-gradient-to-r from-orange-600/10 via-amber-600/15 to-transparent border border-orange-500/20 rounded-2xl flex items-center justify-between shadow-[inset_0_0_15px_rgba(249,115,22,0.05)] relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 blur-2xl rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                <div className="relative z-10 space-y-1">
-                    <span className="text-[8px] font-extrabold text-orange-500 uppercase tracking-[0.15em] block">Study Streak</span>
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-3xl font-black text-white leading-none tracking-tight font-mono">{streakCount}</span>
-                        <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">{streakCount === 1 ? "day" : "days"}</span>
-                    </div>
-                    <span className="text-[8.5px] font-medium text-neutral-400 block leading-tight">
-                      {streakCount > 0 ? "🔥 You're on fire! Keep it up." : "⚡ Start study to build streak!"}
-                    </span>
-                </div>
-                <div className="relative z-10 h-12 w-12 bg-orange-500/15 border border-orange-500/20 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 shadow-[0_0_20px_rgba(249,115,22,0.1)] shrink-0">
-                    <Flame size={20} className={cn("transition-colors", streakCount > 0 ? "text-orange-500 fill-orange-500/20 animate-pulse" : "text-neutral-500")} />
-                </div>
+            {/* Study Streak Card */}
+            <div className="bg-[#141414] border border-white/[0.06] rounded-xl p-2.5 flex items-center justify-between shadow-inner">
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-extrabold text-red-500 uppercase tracking-wider block">
+                  Study Streak
+                </span>
+                <p className="text-xs font-bold text-white">
+                  {streakCount} Days
+                </p>
+                <p className="text-[8.5px] text-neutral-400 leading-tight">
+                  {streakCount > 0 ? "🔥 Keep it up!" : "Start studying to build streak!"}
+                </p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-red-950/60 border border-red-500/25 flex items-center justify-center text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)] shrink-0">
+                <Flame size={16} className={cn(streakCount > 0 ? "text-red-500 animate-pulse" : "text-red-400")} />
+              </div>
             </div>
 
-            {/* Actions */}
-            <div className="space-y-1 p-1">
-              <HUDLink href="/profile" icon={<UserCircle size={16} />} label="Profile" />
-              <HUDLink href="/leaderboard" icon={<Trophy size={16} />} label="Leaderboard" />
-              <HUDLink href="/pricing" icon={<Coins size={16} />} label="Pricing" />
-              
-              <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors mt-2">
-                <LogOut size={16} /> Log Out
+            {/* Links */}
+            <div className="space-y-0.5 pt-1 border-t border-white/[0.04]">
+              <Link href="/profile" className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.05] transition-colors">
+                <UserCircle size={14} className="text-neutral-400" />
+                <span>Profile</span>
+              </Link>
+              <Link href="/leaderboard" className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.05] transition-colors">
+                <Trophy size={14} className="text-neutral-400" />
+                <span>Leaderboard</span>
+              </Link>
+              <Link href="/pricing" className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.05] transition-colors">
+                <Tag size={14} className="text-neutral-400" />
+                <span>Pricing</span>
+              </Link>
+            </div>
+
+            {/* Log out */}
+            <div className="pt-1 border-t border-white/[0.04]">
+              <button 
+                onClick={onLogout} 
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer"
+              >
+                <LogOut size={13} />
+                <span>Log Out</span>
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+  );
+};
+
+const NotificationBell = () => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        title="Notifications"
+        className="w-8 h-8 rounded-full bg-[#111111] hover:bg-[#181818] border border-white/[0.08] hover:border-white/20 flex items-center justify-center text-neutral-300 hover:text-white transition-all cursor-pointer relative shadow-md"
+      >
+        <Bell size={14} />
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 absolute top-1.5 right-1.5 shadow-[0_0_6px_rgba(239,68,68,0.9)]" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            className="absolute top-full right-0 mt-3 w-72 bg-[#0c0c0c]/95 border border-white/[0.09] backdrop-blur-2xl rounded-2xl p-3 shadow-2xl z-[120] space-y-2"
+          >
+            <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.06]">
+              <span className="text-xs font-bold text-white">Notifications</span>
+              <span className="text-[9px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">1 New</span>
+            </div>
+            <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.04] space-y-0.5">
+              <p className="text-[11px] font-semibold text-white">🎉 Welcome to Paperxify AI!</p>
+              <p className="text-[9.5px] text-neutral-400 leading-snug">Generate smart notes, quizzes, and mind maps in seconds.</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const SidebarNavLink = ({ href, icon, label, active, highlighted, onClose }: any) => {
+  return (
+    <Link
+      href={href}
+      onClick={onClose}
+      className={cn(
+        "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group",
+        highlighted || active
+          ? "bg-red-500/10 border-l-2 border-red-500 text-red-400 font-semibold shadow-[inset_0_0_15px_rgba(239,68,68,0.08)]"
+          : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
+      )}
+    >
+      <div className={cn(
+        "shrink-0 transition-colors",
+        highlighted || active ? "text-red-500" : "text-neutral-400 group-hover:text-white"
+      )}>
+        {icon}
+      </div>
+      <span className="truncate">{label}</span>
+    </Link>
   );
 };
 
@@ -304,193 +482,400 @@ const HUDLink = ({ href, icon, label }: any) => (
 )
 
 const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authLoading, onLogout, tokenInfo }: any) => {
-  const isActive = user?.membership?.isActive;
-  const planInfo = PLANS.find(p => p.id === user?.membership?.planId) || { name: "Standard", color: "text-neutral-400", border: "border-neutral-600", bg: "bg-neutral-800" };
+  const pathname = usePathname();
+  const userName = isLoggedIn ? (user?.name || "User") : "Guest User";
+  const userAvatar = user?.picture || "/avatar.png";
+  const isPro = Boolean(user?.membership?.isActive || tokenInfo?.isSubscribed);
+  const planName = user?.membership?.planName || tokenInfo?.planName || (isPro ? "Pro Scholar" : "Free Plan");
+  const currentCredits = Number(tokenInfo?.tokens ?? user?.tokens ?? user?.credits ?? 0);
+  const maxCredits = Number(tokenInfo?.maxTokens ?? user?.membership?.maxTokens ?? (isPro ? 2000 : 50));
+  const creditPercent = maxCredits > 0 ? Math.min(100, Math.max(0, (currentCredits / maxCredits) * 100)) : 0;
+  
+  const [mobileCreations, setMobileCreations] = useState<any[]>([]);
+  const [mobileLoading, setMobileLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isLoggedIn) {
+        const token = localStorage.getItem("authToken");
+        setMobileLoading(true);
+        api.get('/users/creations/recent?limit=10', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => {
+          if (res.data.success) {
+            setMobileCreations(res.data.data || []);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setMobileLoading(false));
+      } else {
+        try {
+          const local = localStorage.getItem("paperxify_local_history");
+          if (local) {
+            setMobileCreations(JSON.parse(local).slice(0, 8));
+          }
+        } catch {}
+      }
+    }
+  }, [isOpen, isLoggedIn]);
+
+  const getCreationIcon = (type: string) => {
+    switch (type) {
+      case 'notes':
+        return <Youtube size={13} className="text-red-500 shrink-0" />;
+      case 'presentation':
+      case 'ppt':
+        return <Presentation size={13} className="text-orange-400 shrink-0" />;
+      case 'quiz':
+        return <HelpCircle size={13} className="text-purple-400 shrink-0" />;
+      case 'flashcard':
+        return <Layers size={13} className="text-blue-400 shrink-0" />;
+      case 'diagram':
+        return <GitBranch size={13} className="text-emerald-400 shrink-0" />;
+      default:
+        return <GraduationCap size={13} className="text-cyan-400 shrink-0" />;
+    }
+  };
   
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div 
-          initial={{ y: "100%" }} 
-          animate={{ y: 0 }} 
-          exit={{ y: "100%" }} 
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed inset-0 z-[150] bg-[#0a0a0a] flex flex-col lg:hidden"
-        >
-          {/* Header */}
-          <div className="flex justify-between items-center p-6 border-b border-white/10">
-             <div className="flex items-center gap-2">
-                <Terminal size={18} className="text-white" />
-                <span className="text-sm font-bold text-white uppercase tracking-widest">Menu</span>
-             </div>
-             <button onClick={onClose} className="p-2 bg-neutral-900 rounded-full text-white"><X size={20} /></button>
-          </div>
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-[140] bg-black/80 backdrop-blur-sm lg:hidden"
+          />
 
-          <div className="flex-1 overflow-y-auto p-6 font-sans">
-            {isLoggedIn ? (
-                <div className="space-y-8">
-                    {/* User Profile Info Card */}
-                    <div className="bg-neutral-900/40 border border-white/5 rounded-3xl p-5 relative overflow-hidden">
-                        {/* Background Elements */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
-                        
-                        <div className="flex items-start gap-4 relative z-10">
-                            <div className={cn("h-16 w-16 rounded-2xl border-2 overflow-hidden shrink-0 bg-black/50", isActive ? planInfo.border : "border-white/10")}>
-                                <img src={user?.picture || "/avatar.png"} className="w-full h-full object-cover" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-xl font-bold text-white leading-tight truncate">{user?.name}</h3>
-                                <p className="text-xs text-neutral-500 mb-2 truncate">{user?.email}</p>
-                                <span className={cn("text-[10px] font-bold uppercase px-2 py-1 bg-white/5 rounded inline-block", planInfo.color)}>
-                                    {isActive ? planInfo.name : "Free Plan"}
-                                </span>
-                            </div>
-                        </div>
+          {/* Side Navigation Drawer */}
+          <motion.div 
+            initial={{ x: "-100%" }} 
+            animate={{ x: 0 }} 
+            exit={{ x: "-100%" }} 
+            transition={{ type: "spring", damping: 26, stiffness: 240 }}
+            className="fixed inset-y-0 left-0 z-[150] w-72 sm:w-80 max-w-[85vw] bg-[#070707] border-r border-white/10 flex flex-col justify-between font-sans lg:hidden shadow-2xl overflow-hidden"
+          >
+            {/* Header with Logo + Close Button */}
+            <div className="flex justify-between items-center p-4 border-b border-white/[0.08]">
+              <Link href="/" onClick={onClose} className="flex items-center gap-1.5">
+                <span className="text-base font-black italic tracking-tight uppercase text-white">
+                  Paper<span className="text-[#ef4444]">xify</span>
+                </span>
+                <span className="text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                  AI
+                </span>
+              </Link>
+              <button 
+                onClick={onClose} 
+                className="w-8 h-8 rounded-full bg-neutral-900 border border-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
 
-                        {/* Stats box */}
-                        <div className="grid grid-cols-2 gap-3 mt-5 relative z-10">
-                             {/* Streak Card */}
-                             <div className="bg-gradient-to-br from-orange-600/10 via-amber-600/15 to-transparent border border-orange-500/20 rounded-2xl p-3.5 flex flex-col justify-between h-28 relative overflow-hidden group shadow-[inset_0_0_15px_rgba(249,115,22,0.03)]">
-                                 <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/5 blur-xl rounded-full pointer-events-none" />
-                                 <div className="flex justify-between items-start w-full relative z-10">
-                                     <span className="text-[8px] font-extrabold text-orange-500 uppercase tracking-widest block">Streak</span>
-                                     <Flame size={16} className={cn("transition-colors", (user?.streak?.count || 0) > 0 ? "text-orange-500 fill-orange-500/15 animate-pulse" : "text-neutral-500")} />
-                                 </div>
-                                 <div className="relative z-10">
-                                     <div className="flex items-baseline gap-1">
-                                         <span className="text-2xl font-black text-white tracking-tight font-mono">{user?.streak?.count || 0}</span>
-                                         <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider">{(user?.streak?.count || 0) === 1 ? "day" : "days"}</span>
-                                     </div>
-                                     <p className="text-[8px] text-neutral-500 leading-normal font-medium mt-1 truncate">
-                                       {(user?.streak?.count || 0) > 0 ? "🔥 Keep it up!" : "⚡ Start study"}
-                                     </p>
-                                 </div>
-                             </div>
-
-                             {/* Credits Card */}
-                             {(!tokenInfo || !tokenInfo.isSubscribed) && (
-                                 <div className="bg-gradient-to-br from-blue-600/10 via-cyan-600/15 to-transparent border border-blue-500/20 rounded-2xl p-3.5 flex flex-col justify-between h-28 relative overflow-hidden group shadow-[inset_0_0_15px_rgba(59,130,246,0.03)]">
-                                     <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 blur-xl rounded-full pointer-events-none" />
-                                     <div className="flex justify-between items-start w-full relative z-10">
-                                         <span className="text-[8px] font-extrabold text-blue-400 uppercase tracking-widest block">Tokens</span>
-                                         <Coins size={16} className="text-blue-400 fill-blue-500/15" />
-                                     </div>
-                                     <div className="relative z-10">
-                                         <span className="text-2xl font-black text-white tracking-tight font-mono">{tokenInfo?.tokens || user?.credits || 0}</span>
-                                         <p className="text-[8px] text-neutral-500 leading-normal font-medium mt-1">Available Credits</p>
-                                     </div>
-                                 </div>
-                             )}
-                        </div>
+            {/* Scrollable Navigation List */}
+            <div className="flex-1 overflow-y-auto px-3 py-3.5 space-y-4 no-scrollbar">
+              
+              {/* Category 1: CORE WORKSPACE */}
+              <div>
+                <p className="text-[9.5px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5">
+                  CORE WORKSPACE
+                </p>
+                <div className="space-y-1">
+                  <Link
+                    href="/"
+                    onClick={onClose}
+                    className={cn(
+                      "flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all",
+                      pathname === "/" || pathname === "/dashboard"
+                        ? "bg-red-950/20 border border-red-500/40 text-red-400 font-semibold shadow-[inset_0_0_12px_rgba(239,68,68,0.08)]"
+                        : "bg-[#0f0f0f] border border-white/[0.04] text-neutral-300"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Home size={15} />
+                      <span>Dashboard</span>
                     </div>
+                    <MenuIcon size={12} className="text-red-500/80" />
+                  </Link>
 
-                    {/* Navigation */}
-                    <div className="space-y-6">
-                        <div>
-                            <p className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-3">System</p>
-                            <Link href="/profile" onClick={onClose} className="flex items-center gap-4 p-4 bg-neutral-900/40 hover:bg-neutral-900/60 rounded-2xl border border-white/5 transition-all mb-3">
-                                <div className="text-white shrink-0"><UserCircle size={18} /></div>
-                                <div>
-                                    <p className="text-sm font-bold text-white">Profile</p>
-                                    <p className="text-[10px] text-neutral-500">Manage your account and settings.</p>
-                                </div>
-                            </Link>
-                            
-                            <div className="grid grid-cols-2 gap-3">
-                              {SUPPORT_TOOLS.map((tool, i) => (
-                                  <Link key={i} href={tool.href} onClick={onClose} className="flex flex-col gap-2 p-3.5 bg-neutral-900/40 hover:bg-neutral-900/60 active:scale-[0.98] rounded-2xl border border-white/5 transition-all">
-                                      <div className="text-white p-1.5 bg-neutral-950 rounded-lg w-fit shrink-0">{tool.icon}</div>
-                                      <div>
-                                          <p className="text-xs font-bold text-white tracking-tight leading-tight">{tool.title}</p>
-                                          <p className="text-[9px] text-neutral-500 mt-1 leading-snug line-clamp-2">{tool.desc}</p>
-                                      </div>
-                                  </Link>
-                              ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <p className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-3">AI Study Suite</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {AI_STUDY_SUITE.map((tool, i) => (
-                                  <Link key={i} href={tool.href} onClick={onClose} className="flex flex-col gap-2 p-3.5 bg-neutral-900/40 hover:bg-neutral-900/60 active:scale-[0.98] rounded-2xl border border-white/5 transition-all">
-                                      <div className="flex items-center justify-between w-full">
-                                        <div className="text-white p-1.5 bg-neutral-950 rounded-lg shrink-0">{tool.icon}</div>
-                                        {tool.badge && (
-                                            <span className={cn("text-[6px] font-black uppercase px-1 py-0.5 rounded border shrink-0", tool.badgeColor)}>
-                                                {tool.badge}
-                                            </span>
-                                        )}
-                                      </div>
-                                      <div>
-                                          <p className="text-xs font-bold text-white tracking-tight leading-tight">{tool.title}</p>
-                                          <p className="text-[9px] text-neutral-500 mt-1 leading-snug line-clamp-2">{tool.desc}</p>
-                                      </div>
-                                  </Link>
-                              ))}
-                            </div>
-                        </div>
+                  <Link
+                    href="/youtube-to-notes"
+                    onClick={onClose}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-[#111111] border-l-2 border-red-500 text-white font-medium transition-all"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Youtube size={15} className="text-red-500" />
+                      <span>YouTube to Notes</span>
                     </div>
+                    <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">CORE</span>
+                  </Link>
 
-                    <button onClick={onLogout} className="w-full mt-8 py-4 rounded-2xl bg-red-500/10 text-red-500 font-bold uppercase text-xs tracking-widest border border-red-500/20 active:scale-95 transition-transform">
-                        Terminate Session
-                    </button>
+                  <Link
+                    href="/presentation-generator"
+                    onClick={onClose}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-[#0f0f0f] border border-white/[0.04] text-neutral-300 hover:text-white"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Presentation size={15} className="text-orange-400" />
+                      <span>AI Presentation (PPT)</span>
+                    </div>
+                    <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">HOT</span>
+                  </Link>
+
+                  <Link
+                    href="/profile"
+                    onClick={onClose}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-[#0f0f0f] border border-white/[0.04] text-neutral-300 hover:text-white"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <BookOpen size={15} />
+                      <span>Backpack Library</span>
+                    </div>
+                    <ChevronRight size={13} className="text-neutral-500" />
+                  </Link>
                 </div>
-            ) : (
-                <div className="space-y-6">
-                    {/* Guest Greeting Card */}
-                    <div className="bg-neutral-900/40 border border-white/5 rounded-3xl p-6 relative overflow-hidden flex flex-col items-center text-center">
-                        <div className="h-14 w-14 bg-neutral-950 rounded-2xl flex items-center justify-center border border-white/10 mb-4 shrink-0 rotate-3">
-                            <User size={24} className="text-white" />
-                        </div>
-                        <h3 className="text-lg font-bold text-white">Guest User</h3>
-                        <p className="text-xs text-neutral-500 mt-1 mb-4 leading-relaxed">Log in to unlock full credits and save your notes.</p>
-                        <SignInBtn loading={authLoading} />
-                    </div>
+              </div>
 
-                    {/* Navigation */}
-                    <div className="space-y-6">
-                        <div>
-                            <p className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-3">System</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {SUPPORT_TOOLS.map((tool, i) => (
-                                  <Link key={i} href={tool.href} onClick={onClose} className="flex flex-col gap-2 p-3.5 bg-neutral-900/40 hover:bg-neutral-900/60 active:scale-[0.98] rounded-2xl border border-white/5 transition-all">
-                                      <div className="text-white p-1.5 bg-neutral-950 rounded-lg w-fit shrink-0">{tool.icon}</div>
-                                      <div>
-                                          <p className="text-xs font-bold text-white tracking-tight leading-tight">{tool.title}</p>
-                                          <p className="text-[9px] text-neutral-500 mt-1 leading-snug line-clamp-2">{tool.desc}</p>
-                                      </div>
-                                  </Link>
-                              ))}
-                            </div>
+              {/* Category 1.5: RECENT CREATIONS */}
+              {mobileCreations.length > 0 && (
+                <div>
+                  <p className="text-[9.5px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5 flex items-center justify-between">
+                    <span>RECENT CREATIONS ({mobileCreations.length})</span>
+                    <History size={10} className="text-red-500" />
+                  </p>
+                  <div className="space-y-1">
+                    {mobileCreations.map((item) => (
+                      <Link
+                        key={item.id || item._id}
+                        href={item.url || `/notes/${item.slug}`}
+                        onClick={onClose}
+                        className="flex items-center justify-between p-2 rounded-xl bg-[#0e0e0e] border border-white/[0.04] hover:border-white/10 text-xs transition-all"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-1">
+                          <div className="p-1 rounded bg-black/40 border border-white/[0.06] shrink-0">
+                            {getCreationIcon(item.type)}
+                          </div>
+                          <p className="text-[11.5px] font-medium text-neutral-200 truncate">
+                            {item.title}
+                          </p>
                         </div>
-
-                        <div>
-                            <p className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-3">AI Study Suite</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {AI_STUDY_SUITE.map((tool, i) => (
-                                  <Link key={i} href={tool.href} onClick={onClose} className="flex flex-col gap-2 p-3.5 bg-neutral-900/40 hover:bg-neutral-900/60 active:scale-[0.98] rounded-2xl border border-white/5 transition-all">
-                                      <div className="flex items-center justify-between w-full">
-                                        <div className="text-white p-1.5 bg-neutral-950 rounded-lg shrink-0">{tool.icon}</div>
-                                        {tool.badge && (
-                                            <span className={cn("text-[6px] font-black uppercase px-1 py-0.5 rounded border shrink-0", tool.badgeColor)}>
-                                                {tool.badge}
-                                            </span>
-                                        )}
-                                      </div>
-                                      <div>
-                                          <p className="text-xs font-bold text-white tracking-tight leading-tight">{tool.title}</p>
-                                          <p className="text-[9px] text-neutral-500 mt-1 leading-snug line-clamp-2">{tool.desc}</p>
-                                      </div>
-                                  </Link>
-                              ))}
-                            </div>
-                        </div>
-                    </div>
+                        <ArrowUpRight size={11} className="text-neutral-500 shrink-0" />
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-            )}
-          </div>
-        </motion.div>
+              )}
+
+              {/* Category 2: AI STUDY ROOM */}
+              <div>
+                <p className="text-[9.5px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5">
+                  AI STUDY ROOM
+                </p>
+                <div className="space-y-0.5">
+                  {[
+                    { href: "/ai-study/homework-helper", icon: GraduationCap, label: "Homework Helper" },
+                    { href: "/ai-study/math-solver", icon: Calculator, label: "AI Math Solver" },
+                    { href: "/ai-study/exam-planner", icon: Calendar, label: "Exam Prep Planner", badge: "NEW" },
+                    { href: "/ai-study/language-tutor", icon: Languages, label: "AI Language Tutor", badge: "AUDIO" },
+                    { href: "/youtube-to-quiz", icon: HelpCircle, label: "YouTube to Quiz" },
+                    { href: "/youtube-to-flashcards", icon: Layers, label: "AI Flashcards" },
+                  ].map((item, idx) => (
+                    <Link
+                      key={idx}
+                      href={item.href}
+                      onClick={onClose}
+                      className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-neutral-400 hover:text-white hover:bg-white/[0.04] transition-all"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <item.icon size={15} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/30 text-red-400">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category 3: WRITER & DIAGRAMS */}
+              <div>
+                <p className="text-[9.5px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5">
+                  WRITER & DIAGRAMS
+                </p>
+                <div className="space-y-0.5">
+                  {[
+                    { href: "/ai-writer/ai-detector", icon: ShieldAlert, label: "AI Detector & Certs", badge: "VERIFIED" },
+                    { href: "/ai-writer/ai-humanizer", icon: Sparkles, label: "AI Humanizer" },
+                    { href: "/ai-writer/essay-writer", icon: FileText, label: "AI Essay Writer" },
+                    { href: "/ai-writer/plagiarism", icon: FileSearch, label: "Plagiarism Checker" },
+                    { href: "/ai-diagram", icon: GitBranch, label: "AI Mind Maps & Charts" },
+                  ].map((item, idx) => (
+                    <Link
+                      key={idx}
+                      href={item.href}
+                      onClick={onClose}
+                      className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-neutral-400 hover:text-white hover:bg-white/[0.04] transition-all"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <item.icon size={15} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/30 text-red-400">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category 4: DEV UTILITIES & COMMUNITY */}
+              <div>
+                <p className="text-[9.5px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5">
+                  DEV UTILITIES & COMMUNITY
+                </p>
+                <div className="space-y-0.5">
+                  {[
+                    { href: "/tools", icon: LayoutGrid, label: "All 25+ Developer Tools" },
+                    { href: "/tools/code-to-image", icon: Code2, label: "Code to Image" },
+                    { href: "/leaderboard", icon: Trophy, label: "Global Leaderboard" },
+                    { href: "/success-stories", icon: MessageSquare, label: "Success Stories" },
+                    { href: "/blog", icon: Newspaper, label: "Blog & Tutorials" },
+                    { href: "/pricing", icon: Zap, label: "Pricing & Plans" },
+                  ].map((item, idx) => (
+                    <Link
+                      key={idx}
+                      href={item.href}
+                      onClick={onClose}
+                      className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-neutral-400 hover:text-white hover:bg-white/[0.04] transition-all"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <item.icon size={15} />
+                        <span>{item.label}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Upgrade to Pro Scholar Card */}
+              <div className="bg-gradient-to-b from-[#180a0c] to-[#0c0506] border border-red-500/30 rounded-2xl p-3.5 shadow-[0_0_20px_rgba(239,68,68,0.12)] relative overflow-hidden">
+                <Sparkles size={12} className="absolute top-2.5 right-2.5 text-red-500/40 pointer-events-none" />
+                <div className="flex items-start gap-2.5 mb-2.5">
+                  <div className="w-8 h-8 rounded-full bg-red-950/80 border border-red-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-[0_0_12px_rgba(239,68,68,0.3)]">
+                    <Crown size={15} className="fill-amber-400/20" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-white tracking-tight">
+                        Upgrade to <span className="text-red-500">Pro Scholar</span>
+                      </h4>
+                      <ChevronRight size={12} className="text-neutral-500" />
+                    </div>
+                    <p className="text-[10px] text-neutral-400 mt-0.5 leading-snug">
+                      Unlock 120 Pro notes, slide decks, quizzes & priority AI!
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/pricing"
+                  onClick={onClose}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold text-xs shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all cursor-pointer"
+                >
+                  <Zap size={13} className="fill-white" />
+                  <span>Upgrade Now</span>
+                </Link>
+              </div>
+
+            </div>
+
+            {/* Bottom User Profile & Credits Bar */}
+            <div className="p-3 border-t border-white/[0.08] bg-[#090909]">
+              {isLoggedIn ? (
+                <div className="bg-[#0e0e0e] border border-white/[0.06] rounded-2xl p-2.5 space-y-2">
+                  <div 
+                    onClick={() => {
+                      onClose();
+                      window.location.href = "/profile";
+                    }} 
+                    className="flex items-center justify-between group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-8 h-8 rounded-full border border-neutral-700 overflow-hidden bg-neutral-800 shrink-0">
+                        <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white truncate leading-tight">{userName}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Crown size={10} className={cn(isPro ? "text-red-500 fill-red-500/20" : "text-neutral-500")} />
+                          <span className={cn("text-[10px] font-semibold leading-none", isPro ? "text-red-500" : "text-neutral-400")}>
+                            {planName}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight size={13} className="text-neutral-500 shrink-0" />
+                  </div>
+
+                  <div className="pt-1 border-t border-white/[0.04] space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-[10.5px] font-medium text-neutral-300">
+                        <Zap size={11} className="text-amber-400 fill-amber-400" />
+                        <span>{currentCredits.toLocaleString()} / {maxCredits.toLocaleString()} Credits</span>
+                      </div>
+                      <Link
+                        href="/pricing"
+                        onClick={onClose}
+                        className="text-[9.5px] font-bold text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-md"
+                      >
+                        Top Up +
+                      </Link>
+                    </div>
+                    <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.7)]" 
+                        style={{ width: `${creditPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[#0e0e0e] border border-white/[0.06] rounded-2xl p-3 space-y-2.5 text-center">
+                  <div className="flex items-center gap-2.5 text-left">
+                    <div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-neutral-400 shrink-0">
+                      <User size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white leading-tight">Welcome to Paperxify</p>
+                      <p className="text-[10px] text-neutral-400 mt-0.5 truncate">Sign in to save study notes</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      onClose();
+                      window.dispatchEvent(new Event("open-login"));
+                    }}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#ef4444] hover:bg-[#dc2626] text-white font-medium text-xs shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    <User size={12} />
+                    <span>Sign In / Register</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
@@ -525,31 +910,37 @@ const NavEntry = ({ href, label, icon }: any) => (
     </Link>
 );
 
-const NavDropdown = ({ label, items }: any) => {
+const NavDropdown = ({ label, icon, items }: any) => {
     const [open, setOpen] = useState(false);
     return (
       <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-        <button className="flex items-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-neutral-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
-          {label} <ChevronDown size={10} className={cn("transition-transform", open && "rotate-180")} />
+        <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.04] rounded-full transition-all cursor-pointer">
+          {icon && <span className="text-neutral-400">{icon}</span>}
+          <span>{label}</span>
+          <ChevronDown size={11} className={cn("text-neutral-500 transition-transform duration-200", open && "rotate-180 text-white")} />
         </button>
         <AnimatePresence>
           {open && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-              className="absolute top-full left-0 mt-2 w-80 bg-[#0a0a0a] border border-white/10 rounded-2xl p-2 shadow-2xl backdrop-blur-md transform-gpu z-[110]"
+            <motion.div 
+              initial={{ opacity: 0, y: 8, scale: 0.96 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 350, damping: 28 }}
+              className="absolute top-full left-0 mt-2 w-80 bg-[#0c0c0c]/95 border border-white/[0.08] rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(239,68,68,0.1)] backdrop-blur-2xl transform-gpu z-[110]"
             >
               {items.map((item: any, i: number) => (
-                <Link key={i} href={item.href} className="flex items-start gap-3 p-3 hover:bg-white/5 rounded-xl group transition-all">
-                  <div className="p-2 bg-neutral-900 rounded-lg text-neutral-400 group-hover:text-white transition-colors shrink-0">{item.icon}</div>
+                <Link key={i} href={item.href} className="flex items-start gap-3 p-2.5 hover:bg-white/[0.05] rounded-xl group transition-all">
+                  <div className="p-2 bg-neutral-900/80 border border-white/[0.06] rounded-lg text-neutral-400 group-hover:text-red-400 group-hover:border-red-500/30 transition-all shrink-0">{item.icon}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-white uppercase tracking-wide">{item.title}</p>
+                      <p className="text-xs font-bold text-white group-hover:text-red-400 transition-colors">{item.title}</p>
                       {item.badge && (
-                        <span className={cn("text-[7px] font-black uppercase px-1.5 py-0.5 rounded border shrink-0", item.badgeColor)}>
+                        <span className={cn("text-[8px] font-black uppercase px-1.5 py-0.5 rounded border shrink-0", item.badgeColor)}>
                           {item.badge}
                         </span>
                       )}
                     </div>
-                    <p className="text-[9px] text-neutral-500 font-medium mt-1 leading-normal">{item.desc}</p>
+                    <p className="text-[10px] text-neutral-400 font-normal mt-0.5 leading-snug">{item.desc}</p>
                   </div>
                 </Link>
               ))}

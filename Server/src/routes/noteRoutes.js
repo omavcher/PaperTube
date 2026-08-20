@@ -4,31 +4,29 @@ const authMiddleware = require("../middleware/authMiddleware");
 const {
   requireSubscriptionOrTokens,
 } = require("../middleware/accessControl");
+const { enforceQuota } = require("../middleware/quotaMiddleware");
 const freeNoteController = require('../controllers/freeNoteController.js');
 const premiumNoteController = require('../controllers/premiumNoteController');
 
-
 const router = express.Router();
 
-const NOTE_GENERATION_TOKEN_COST = 25;
-
-
-// Free model routes (token-based)
+// Free model routes (plan quota checked: 3/day free, 120/mo Pro, 350/mo Power)
 router.post('/free',
-  // requireSubscriptionOrTokens({ 
-  //   tokenCost: NOTE_GENERATION_TOKEN_COST, 
-  //   actionLabel: "generate notes with free models" 
-  // }), 
   authMiddleware,
+  enforceQuota("notes"),
   freeNoteController.createNote
 );
 
-// Premium model routes (subscription-based)
+// Premium model routes (requires active Pro or Power membership)
 router.post('/premium',
-  // requireActiveSubscription("Premium subscription required for premium models"),
   authMiddleware,
+  enforceQuota("notes"),
   premiumNoteController.createNote
 );
+
+// Job Status & Progress Tracking
+router.get('/job/:jobId/status', authMiddleware, freeNoteController.getJobStatus);
+router.post('/job/:jobId/cancel', authMiddleware, freeNoteController.cancelJob);
 
 
 

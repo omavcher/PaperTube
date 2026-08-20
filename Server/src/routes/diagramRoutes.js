@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 const diagramController = require("../controllers/diagramController");
 const authMiddleware = require("../middleware/authMiddleware");
+const { enforceQuota } = require("../middleware/quotaMiddleware");
 
 // 🔹 Generate new AI diagram (authenticating user first)
-router.post("/generate", authMiddleware, diagramController.generateDiagram);
+router.post("/generate", authMiddleware, enforceQuota("diagrams"), diagramController.generateDiagram);
 
 // 🔹 Retrieve logged-in user's diagram generation history
 router.get("/history", authMiddleware, diagramController.getUserDiagramHistory);

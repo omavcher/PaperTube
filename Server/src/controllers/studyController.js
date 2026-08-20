@@ -29,11 +29,19 @@ async function callOpenRouter(systemPrompt, userPrompt, modelTier, customModelId
   ];
 
   let modelsToTry = [];
+  const isMultimodal = Array.isArray(userPrompt);
 
-  if (customModelId === "canvas") {
-    modelsToTry = [PRO_MODEL, "google/gemini-2.5-flash"];
+  if (isMultimodal) {
+    modelsToTry = [
+      "google/gemini-2.5-flash",
+      "google/gemini-2.5-flash:free",
+      "meta-llama/llama-3.2-11b-vision-instruct:free",
+      "google/gemini-2.5-pro"
+    ];
+  } else if (customModelId === "canvas") {
+    modelsToTry = [PRO_MODEL, "google/gemini-2.5-flash", "google/gemini-2.5-flash:free"];
   } else if (customModelId === "scholar" || customModelId === "atlas") {
-    modelsToTry = [POWER_MODEL, PRO_MODEL, "google/gemini-2.5-flash"];
+    modelsToTry = [POWER_MODEL, PRO_MODEL, "google/gemini-2.5-flash", "google/gemini-2.5-flash:free"];
   } else {
     // Free model 'flash'
     modelsToTry = FREE_MODELS;
@@ -643,36 +651,58 @@ exports.generateExamPlan = async (req, res) => {
     }
 
     // 4. Construct system prompt
-    const systemPrompt = `You are a world-class AI Exam Preparation Planner. Your task is to generate a highly detailed and customized day-by-day and week-by-week study calendar/schedule to help the user prepare for their upcoming exam.
-You must output the plan strictly in a valid JSON format. Do not wrap the JSON inside markdown code blocks (do not output \`\`\`json ... \`\`\`), just output the raw JSON text itself.
+    const systemPrompt = `You are a world-class AI Exam Preparation Planner and strategist (competing with RemNote, Notion AI Study, and Khanmigo).
+Your task is to generate a comprehensive, highly customized day-by-day and week-by-week study roadmap and calendar to guarantee top-percentile performance for the specified exam.
 
-The JSON response MUST match the following typescript interface exactly:
+You must output the plan strictly as a valid JSON object. Do not wrap in markdown codeblocks (\`\`\`json ... \`\`\`), output the raw JSON text directly.
+
+The JSON response MUST adhere strictly to this schema:
 {
-  "title": string, // E.g., "SAT Prep Plan", "MCAT Prep Plan"
+  "title": string, // E.g., "SAT 1550+ Mastery Roadmap", "MCAT High-Yield Study Schedule"
   "examName": string,
   "targetDate": string, // YYYY-MM-DD
   "dailyHours": string,
   "prepLevel": string,
+  "estimatedTotalHours": number,
+  "readinessTargetScore": string, // E.g., "Top 1% Percentile", "Score: 1520-1580"
+  "highYieldTopics": Array<{
+    "topic": string,
+    "weightage": string, // E.g. "25-30% of total score"
+    "priority": "High" | "Medium" | "Low",
+    "coreConcepts": Array<string>
+  }>,
   "phases": Array<{
-    "name": string, // E.g. "Phase 1: Foundation Building"
-    "duration": string, // E.g. "Weeks 1-4"
+    "name": string, // E.g. "Phase 1: Diagnostic & Foundation"
+    "duration": string, // E.g. "Weeks 1-2"
     "description": string,
+    "milestoneGoal": string,
     "tasks": Array<string>
+  }>,
+  "mockExamSchedule": Array<{
+    "testName": string,
+    "targetWeek": string,
+    "targetScoreBenchmark": string,
+    "purpose": string
   }>,
   "weeks": Array<{
     "weekNumber": number,
-    "focus": string, // Core focus of the week
+    "focus": string,
+    "hoursTarget": number,
     "days": Array<{
-      "day": number, // Day number (1 to 7)
-      "topic": string, // Topic name
-      "tasks": Array<string>, // Specific study tasks for this day
-      "hours": number // Suggested hours for this day (based on dailyHours)
+      "day": number, // 1 to 7
+      "topic": string,
+      "tasks": Array<string>,
+      "hours": number,
+      "recallCheck": string
     }>
+  }>,
+  "studyProtocols": Array<{
+    "technique": string,
+    "instruction": string
   }>
 }
 
-Generate a comprehensive day-by-day list for Week 1 (7 days), and then week-by-week summaries for subsequent weeks (for weeks 2 to 6, you can include the weeks array item with its focus and an empty or summarized days list, or general weekly tasks). This keeps the token size compact and fast.
-Make the study tasks highly practical, using active recall (self-quizzing, flashcards) and spaced repetition techniques.`;
+Ensure week 1 contains day-by-day actionable task lists (7 days), and weeks 2 to 6 contain targeted weekly focuses and milestones. Include active recall routines, error logging, and timed mock milestones.`;
 
     const userPrompt = `Create a custom exam prep plan with these inputs:
 - Exam Name: "${prompt}"
@@ -700,31 +730,209 @@ Make the study tasks highly practical, using active recall (self-quizzing, flash
     } catch (e) {
       console.warn("⚠️ AI did not return valid JSON. Wrapping response inside a fallback JSON structure.");
       content = JSON.stringify({
-        title: `${prompt} Preparation Plan`,
+        title: `${prompt} Mastery Preparation Roadmap`,
         examName: prompt,
         targetDate,
         dailyHours,
         prepLevel,
+        estimatedTotalHours: 120,
+        readinessTargetScore: "Top Percentile Benchmark",
+        highYieldTopics: [
+          {
+            topic: "Core Foundational Theory & Principles",
+            weightage: "35% of Exam",
+            priority: "High",
+            coreConcepts: ["Axiomatic formulas", "System definitions", "Standard derivations"]
+          },
+          {
+            topic: "High-Yield Problem Solving & Applications",
+            weightage: "40% of Exam",
+            priority: "High",
+            coreConcepts: ["Multi-step analytical reasoning", "Speed calculations", "Boundary checks"]
+          },
+          {
+            topic: "Advanced Edge Cases & Synthesis",
+            weightage: "25% of Exam",
+            priority: "Medium",
+            coreConcepts: ["Complex integration", "Uncommon problem variants", "Time management"]
+          }
+        ],
         phases: [
           {
-            name: "Phase 1: Foundation",
-            duration: "Weeks 1-4",
-            description: "Read, study core subjects, and make summaries.",
-            tasks: [additionalPrompt || "Review exam syllabus details."]
+            name: "Phase 1: Baseline Diagnostic & Core Theory",
+            duration: "Weeks 1–2",
+            description: "Map all syllabus concepts and establish baseline diagnostic scores.",
+            milestoneGoal: "Zero conceptual gaps in top 50% high-yield topics",
+            tasks: [
+              "Conduct full syllabus audit and highlight high-yield chapters",
+              "Review foundational textbook formulas and summary sheets",
+              "Take initial baseline diagnostic exam to isolate weakness areas"
+            ]
+          },
+          {
+            name: "Phase 2: High-Yield Problem Sets & Sprints",
+            duration: "Weeks 3–4",
+            description: "Solve targeted chapter question banks with deep retrospective review.",
+            milestoneGoal: "85%+ accuracy on medium-to-hard difficulty sets",
+            tasks: [
+              "Solve 40+ practice problems daily across weak sections",
+              "Maintain error journal for common analytical slips",
+              "Formulate active-recall flashcard deck for instant retrieval"
+            ]
+          },
+          {
+            name: "Phase 3: Timed Full-Length Mocks & Speed Tuning",
+            duration: "Weeks 5–6",
+            description: "Simulate test-day conditions with strict time limits and endurance testing.",
+            milestoneGoal: "Achieve target score across 3 consecutive timed mocks",
+            tasks: [
+              "Take 3 full-length timed mock exams under real test conditions",
+              "Analyze time spent per question block to eliminate bottlenecks",
+              "Final high-yield formula memorization and summary checklist review"
+            ]
+          }
+        ],
+        mockExamSchedule: [
+          {
+            testName: "Diagnostic Baseline Mock",
+            targetWeek: "Week 1 (Day 1)",
+            targetScoreBenchmark: "Initial Baseline",
+            purpose: "Identify initial knowledge gaps and calibrate daily focus."
+          },
+          {
+            testName: "Midterm Progress Mock",
+            targetWeek: "Week 3 (Day 7)",
+            targetScoreBenchmark: "75th Percentile Target",
+            purpose: "Measure retention after core high-yield topic drills."
+          },
+          {
+            testName: "Final Simulated Mock",
+            targetWeek: "Week 6 (Day 4)",
+            targetScoreBenchmark: "95th+ Percentile Target",
+            purpose: "Full test-day simulation with strict pacing."
           }
         ],
         weeks: [
           {
             weekNumber: 1,
-            focus: "Initial Assessment and Study Setup",
+            focus: "Diagnostic Test, Syllabus Mapping & Core Problem Sets",
+            hoursTarget: 20,
             days: [
               {
                 day: 1,
-                topic: "Diagnostic Prep Setup",
-                tasks: ["Gather prep materials", "Plan daily study schedule"],
-                hours: 2
+                topic: "Diagnostic Baseline Assessment & Syllabus Audit",
+                hours: 3,
+                tasks: [
+                  "Complete 90-minute timed baseline diagnostic test",
+                  "Catalog incorrect questions into error journal categories"
+                ],
+                recallCheck: "Can you list your 3 weakest syllabus domains?"
+              },
+              {
+                day: 2,
+                topic: "High-Yield Chapter 1-3 Core Theory",
+                hours: 3,
+                tasks: [
+                  "Summarize key formulas on active-recall index cards",
+                  "Solve 25 targeted foundation practice problems"
+                ],
+                recallCheck: "Explain fundamental theorem without looking at notes."
+              },
+              {
+                day: 3,
+                topic: "Analytical Problem Sets & Technique Drills",
+                hours: 3,
+                tasks: [
+                  "Execute Section 2 question bank under 45-min timer",
+                  "Redo all missed questions from Day 1 diagnostic"
+                ],
+                recallCheck: "Identify shortcut methods for multi-step questions."
+              },
+              {
+                day: 4,
+                topic: "Mid-Week Mini Quiz & Speed Optimization",
+                hours: 3,
+                tasks: [
+                  "Take timed 30-question speed sprint",
+                  "Review timing bottlenecks and pacing strategy"
+                ],
+                recallCheck: "Calculate average time spent per question."
+              },
+              {
+                day: 5,
+                topic: "Secondary Topics & Cross-Concept Integration",
+                hours: 3,
+                tasks: [
+                  "Study intermediate concept relationships and edge cases",
+                  "Solve 20 interdisciplinary integration exercises"
+                ],
+                recallCheck: "How does Concept A interact with Boundary Condition B?"
+              },
+              {
+                day: 6,
+                topic: "Weekly Review & Comprehensive Flashcard Deck",
+                hours: 3,
+                tasks: [
+                  "Run through full 100-card spaced repetition deck",
+                  "Re-solve all questions logged in Error Journal"
+                ],
+                recallCheck: "100% retention on all Week 1 core formulas."
+              },
+              {
+                day: 7,
+                topic: "Weekly Milestone Benchmark & Recovery",
+                hours: 2,
+                tasks: [
+                  "Take 45-minute Week 1 review test",
+                  "Plan Week 2 targeted chapter schedule"
+                ],
+                recallCheck: "Confirm score improvement over Day 1 baseline."
               }
             ]
+          },
+          {
+            weekNumber: 2,
+            focus: "Intensive Practice, Speed Drills & Question Bank Mastery",
+            hoursTarget: 20,
+            days: []
+          },
+          {
+            weekNumber: 3,
+            focus: "Midterm Mock, Weakness Elimination & Pacing",
+            hoursTarget: 22,
+            days: []
+          },
+          {
+            weekNumber: 4,
+            focus: "Advanced Problem Variants & Section Mastery",
+            hoursTarget: 22,
+            days: []
+          },
+          {
+            weekNumber: 5,
+            focus: "Full-Length Mocks & Test-Day Simulation",
+            hoursTarget: 24,
+            days: []
+          },
+          {
+            weekNumber: 6,
+            focus: "Final Polishing, Formula Retention & Test-Day Readiness",
+            hoursTarget: 15,
+            days: []
+          }
+        ],
+        studyProtocols: [
+          {
+            technique: "Feynman Active Recall Protocol",
+            instruction: "Explain core theorems out loud in simple terms without consulting your notes before solving practice sets."
+          },
+          {
+            technique: "24-Hour Error Journal Cycle",
+            instruction: "Log every incorrect question into your error notebook and re-solve it 24 hours later and 7 days later."
+          },
+          {
+            technique: "Timed Endurance Blocks",
+            instruction: "Structure daily study into 50-minute focused blocks followed by 10-minute breaks to build exam-day focus."
           }
         ],
         rawMessage: content

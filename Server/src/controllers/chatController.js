@@ -1,10 +1,161 @@
+// controllers/chatController.js
+// PaperChat AI Personal Tutor & Knowledge Reasoning Engine for Paperxify
+// Ingests structured Knowledge IR, clickable timestamps, Socratic study modes, and multi-tier model routing.
+
 const Note = require("../models/Note");
 const AiChat = require("../models/AiChat");
+const User = require("../models/User");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-// OpenRouter model for PaperChat
-const CHAT_MODEL = "openrouter/free";
+// OpenRouter model routing matrix by user subscription tier
+const CHAT_MODELS_BY_TIER = {
+  free: [
+    'deepseek/deepseek-chat',
+    'google/gemini-2.0-flash-001',
+    'meta-llama/llama-3.3-70b-instruct',
+    'openai/gpt-4o-mini'
+  ],
+  pro: [
+    'openai/gpt-4o-mini',
+    'deepseek/deepseek-chat',
+    'meta-llama/llama-3.3-70b-instruct'
+  ],
+  scholar: [
+    'openai/gpt-4o-mini',
+    'deepseek/deepseek-chat',
+    'meta-llama/llama-3.3-70b-instruct'
+  ],
+  power: [
+    'openai/gpt-4o',
+    'anthropic/claude-3.5-sonnet',
+    'deepseek/deepseek-r1',
+    'openai/gpt-4o-mini'
+  ]
+};
+
+/**
+ * Helper to parse time string like "01:23:45" or "05:30" into seconds
+ */
+function parseTimeToSeconds(timeStr) {
+  if (!timeStr) return 0;
+  const clean = timeStr.replace(/[^\d:]/g, '');
+  const parts = clean.split(':').map(Number);
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return 0;
+}
+
+function isValidTimestamp(ts) {
+  if (!ts) return false;
+  const clean = ts.replace(/[^\d:]/g, '').trim();
+  if (!clean || clean === '00:00' || clean === '0:00' || clean === '00:00:00' || clean === '0') return false;
+  return parseTimeToSeconds(clean) > 0;
+}
+
+/**
+ * Format video timestamps into direct clickable YouTube markdown links
+ */
+function formatTimestampLinks(text, videoId) {
+  if (!text || !videoId) return text || "";
+  const baseVideoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  // Range timestamps: [00:00 - 01:00]
+  let formatted = text.replace(/(?<!!)\[\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*\](?!\()/g, (match, start, end) => {
+    const sec = parseTimeToSeconds(start);
+    if (sec <= 0) return "";
+    return `[⏱️ ${start} - ${end}](${baseVideoUrl}&t=${sec}s)`;
+  });
+
+  // Single timestamps: [ 01:23:45 ]
+  formatted = formatted.replace(/(?<!!)\[\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*\](?!\()/g, (match, time) => {
+    const sec = parseTimeToSeconds(time);
+    if (sec <= 0) return "";
+    return `[⏱️ ${time}](${baseVideoUrl}&t=${sec}s)`;
+  });
+
+  return formatted;
+}
+
+/**
+ * Build structured Knowledge IR context from Note document
+ */
+function buildGroundedKnowledgeContext(note) {
+  const kir = note.knowledgeIR || {};
+  const kg = kir.knowledgeGraph || {};
+  const videoId = note.videoId || "";
+  const baseVideoUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : (note.videoUrl || "https://www.youtube.com");
+
+  const chaptersSummary = (note.chapters || kir.chapters || []).map(ch => {
+    const startSec = ch.start || ch.startSeconds || 0;
+    const endSec = ch.end || ch.endSeconds || 0;
+    const timeLabel = startSec > 0 ? `(${startSec}s - ${endSec}s)` : '';
+    return `- **${ch.title}** ${timeLabel}: ${ch.summary || ''}`;
+  }).join('\n') || 'None';
+
+  const definitions = (kg.definitions || []).slice(0, 20).map(d => 
+    `- **${d.term}**: ${d.definition} ${isValidTimestamp(d.timestamp) ? `(Timestamp: ${d.timestamp})` : ''}`
+  ).join('\n') || 'None';
+
+  const formulas = (kg.formulas || []).slice(0, 15).map(f => 
+    `- Formula: $$${f.latex}$$ | Variables: ${f.variables || 'N/A'} ${isValidTimestamp(f.timestamp) ? `(Timestamp: ${f.timestamp})` : ''}`
+  ).join('\n') || 'None';
+
+  const keyPoints = (kg.keyPoints || []).slice(0, 20).map(p => 
+    `- ${p.point} ${isValidTimestamp(p.timestamp) ? `(${p.timestamp})` : ''}`
+  ).join('\n') || 'None';
+
+  const commonMistakes = (kg.commonMistakes || []).slice(0, 8).map(m => 
+    `- ⚠️ Misconception: "${m.mistake}" ➔ Correct: "${m.correction}"`
+  ).join('\n') || 'None';
+
+  const examTips = (kg.examTips || []).slice(0, 8).map(e => 
+    `- 🎯 ${e.tip}`
+  ).join('\n') || 'None';
+
+  const codeSnippets = (kg.codeSnippets || []).slice(0, 5).map(c => 
+    `\`\`\`${c.language || 'text'}\n${c.code}\n\`\`\`\nExplanation: ${c.explanation || ''}`
+  ).join('\n\n') || 'None';
+
+  // Compact content excerpt for direct citation
+  const noteExcerpt = (note.content || '').substring(0, 3500);
+
+  return {
+    videoId,
+    baseVideoUrl,
+    title: note.title,
+    contextBlock: `
+### 📚 DOCUMENT METADATA
+- **Title**: "${note.title}"
+- **Video ID**: ${videoId}
+- **Base Video URL**: ${baseVideoUrl}
+
+### 📑 CHAPTER TIMESTAMPS
+${chaptersSummary}
+
+### 🔑 CANONICAL DEFINITIONS
+${definitions}
+
+### 🧮 FORMULAS & MATHEMATICAL PRINCIPLES
+${formulas}
+
+### 🔴 HIGH YIELD KEY POINTS
+${keyPoints}
+
+### ⚠️ COMMON MISCONCEPTIONS & PITFALLS
+${commonMistakes}
+
+### 🎯 EXAM PREP TIPS
+${examTips}
+
+### 💻 CODE ARTIFACTS
+${codeSnippets}
+
+### 📝 NOTE CONTENT EXCERPT
+${noteExcerpt}
+`
+  };
+}
 
 /**
  * Get all messages for a specific note
@@ -15,151 +166,244 @@ exports.getMessages = async (req, res) => {
     if (!noteId) {
       return res.status(400).json({ error: "noteId is required" });
     }
+    if (noteId.startsWith("mock-note") || noteId.length !== 24) {
+      return res.json({ messages: [] });
+    }
     const aiChat = await AiChat.findOne({ noteId });
-    if (!aiChat) {
+    if (!aiChat || !aiChat.messages) {
       return res.json({ messages: [] });
     }
     res.json({ messages: aiChat.messages });
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching chat messages:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 /**
- * Handle a new chat message with streaming response
+ * Handle new tutor message with streaming response & active knowledge grounding
  */
 exports.handleMessage = async (req, res) => {
   try {
-    const { noteId, message, mode, chatModelPersona, chatModelId } = req.body;
+    const { 
+      noteId, 
+      message, 
+      mode = "tutor", 
+      selectedText, 
+      chatModelId,
+      userPlan = "free",
+      noteTitle,
+      noteContent,
+      videoUrl
+    } = req.body;
+
     if (!noteId || !message) {
       return res.status(400).json({ error: "noteId and message are required" });
     }
 
-    const note = await Note.findById(noteId);
+    let note = null;
+    if (noteId && !noteId.startsWith("mock-note") && noteId.length === 24) {
+      note = await Note.findById(noteId).catch(() => null);
+    }
+
+    // Support mock notes and direct note content
     if (!note) {
-      return res.status(404).json({ error: "Note not found" });
+      note = {
+        _id: noteId,
+        title: noteTitle || "Lecture Study Guide",
+        content: noteContent || "",
+        videoUrl: videoUrl || "https://www.youtube.com",
+        videoId: (videoUrl && videoUrl.match(/(?:youtu\.be\/|v=)([\w-]{11})/)?.[1]) || "",
+        chapters: [],
+        knowledgeIR: {
+          knowledgeGraph: {
+            definitions: [],
+            formulas: [],
+            keyPoints: [],
+            commonMistakes: [],
+            examTips: [],
+            codeSnippets: []
+          }
+        }
+      };
     }
 
     // Fetch or create chat document
-    let aiChat = await AiChat.findOne({ noteId });
-    if (!aiChat) {
-      aiChat = new AiChat({ noteId, messages: [] });
+    let aiChat = null;
+    try {
+      if (!noteId.startsWith("mock-note") && noteId.length === 24) {
+        aiChat = await AiChat.findOne({ noteId });
+        if (!aiChat) {
+          aiChat = new AiChat({ noteId, messages: [] });
+        }
+      }
+    } catch (err) {
+      console.warn("Could not find or init AiChat:", err.message);
+      aiChat = null;
     }
 
-    // Get recent chat history (last 5 exchanges)
-    const recentMessages = aiChat.messages.slice(-10).map(m => ({
+    // Recent chat history
+    const recentMessages = aiChat ? aiChat.messages.slice(-8).map(m => ({
       role: m.role,
       content: m.content
-    }));
+    })) : [];
 
-    // Build mode-specific system prompt
-    const noteContent = note.content.substring(0, 4000);
-    const transcript = (note.transcript || "").substring(0, 2000);
+    // Build Grounded Knowledge Context
+    const { videoId, baseVideoUrl, title, contextBlock } = buildGroundedKnowledgeContext(note);
 
-    const modePrompts = {
-      summarize: `
-You are **PaperChat AI** in **Summarize Mode**. Your only job is to create a beautifully structured summary.
+    // Mode-specific instructions with distinctive output architectures
+    const modeSystemInstructions = {
+      tutor: `You are PaperChat AI, the student's personal Socratic AI Tutor.
+Your goal is to guide the student to deep mastery of "${title}" through intuitive reasoning and active learning.
+Structure your response in this EXACT format:
+### 💡 Core Intuition
+(Explain the underlying concept clearly and why it matters)
 
-## NOTE CONTENT:
-${noteContent}
+### 📚 Step-by-Step Breakdown
+(1. First step / building block)
+(2. Second step / transition)
+(3. Final insight)
 
-## TRANSCRIPT:
-${transcript}
+### 🎯 Socratic Check Question
+(Ask 1 brief, thought-provoking question to test if the student truly understands. E.g. "What happens if...?")
 
-## STRICT OUTPUT FORMAT (follow exactly):
-Produce a clean Markdown summary using this structure:
-1. **## 📋 Summary** — 2-3 sentence overview
-2. **## 🔑 Key Points** — 5-8 bullet points, each starting with a bold keyword
-3. **## 💡 Core Concepts** — sub-section per major concept with 1-2 sentence explanation
-4. **## ⚡ Quick Takeaways** — 3 single-line actionable insights
+Cite exact video timestamps: [⏱️ HH:MM:SS](${baseVideoUrl}&t=Xs).`,
 
-Use **bold** for all important terms. Keep bullets concise. No fluff.`,
+      study: `You are PaperChat AI in Active Study Session Mode for "${title}".
+Conduct a structured academic study session.
+Structure your response in this EXACT format:
+### 🎓 Lecture Milestone & Objective
+(Define the learning objective for this section)
 
-      quiz: `
-You are **PaperChat AI** in **Quiz Mode**. Generate a structured multiple-choice quiz based strictly on the note.
+### 📖 In-Depth Explanation
+(Clear, comprehensive conceptual explanation with bold keywords)
 
-## NOTE CONTENT:
-${noteContent}
+### 🧠 Knowledge Verification Checkpoint
+(Interactive review question for the student to reflect on)`,
 
-## TRANSCRIPT:
-${transcript}
+      exam_prep: `You are PaperChat AI in High-Yield Exam Preparation Mode for "${title}".
+Focus exclusively on score-boosting takeaways and avoiding marks loss:
+Structure your response in this EXACT format:
+### 🔴 High-Yield Exam Takeaways
+(Top testable bullet points that frequently appear on exams)
 
-## STRICT OUTPUT FORMAT (follow exactly):
-Generate exactly 6 questions in this Markdown format:
+### ⚠️ Common Exam Traps & Pitfalls
+(Crucial mistakes, common misconceptions, and tricky edge cases students lose marks on)
 
----
-### 🧠 Quiz: [Note Title or Topic]
-*Test your understanding of this note.*
+### 🎯 Typical Exam Question & Mark Scheme
+(Sample exam question with answer keywords and grading points)
 
----
+### ⚡ Memory Mnemonic / Hook
+(1-liner memory aid or formula hook)`,
 
-**Q1. [Question text here?]**
-- A) [Option]
-- B) [Option]
-- C) [Option]
-- D) [Option]
+      quick: `You are PaperChat AI in Quick Answer Mode.
+Provide an ultra-crisp, direct, zero-fluff factual answer.
+Structure your response in this EXACT format:
+### ⚡ Quick Takeaway
+(Direct 1-2 sentence core answer)
 
-✅ **Answer:** [Correct option letter)] — *[Brief explanation why]*
+- **Key Fact 1**: (bullet point)
+- **Key Fact 2**: (bullet point)
+- **Source**: [⏱️ HH:MM:SS](${baseVideoUrl}&t=Xs)`,
 
----
+      deep_dive: `You are PaperChat AI in Academic Deep Dive Mode.
+Deliver an exhaustive, university-level theoretical breakdown of "${title}":
+Structure your response in this EXACT format:
+### 🔬 Theoretical Foundations & Principles
+(Detailed conceptual and architectural explanation)
 
-**Q2. [Question text here?]**
-- A) [Option]
-...
+### 🧮 Mathematical & Technical Formulation
+(Formal notation, KaTeX math $$ formula $$, and parameter definitions)
 
-(repeat for Q3 through Q6)
+### ⚙️ Production Trade-offs & Edge Cases
+(Real-world system constraints, complexity analysis, and edge failure modes)`,
 
----
-*🎯 Score yourself after answering all questions!*
+      explain_simply: `You are PaperChat AI in Explain Simply (ELI5) Mode.
+Explain the requested concept using relatable real-world analogies and simple language.
+Structure your response in this EXACT format:
+### 💡 The Everyday Analogy
+(Start with: "Imagine you are..." and tell a simple, vivid story that makes the concept instantly clear)
 
-Only use content from the note. Make questions varied (factual, conceptual, application).`,
+### 🧩 How It Works in Plain English
+(1. First simple step)
+(2. Second simple step)
+(3. Result)
 
-      explain: `
-You are **PaperChat AI** in **Explain Mode**. Break down complex ideas into simple, crystal-clear explanations.
+### 💬 Golden Rule in One Sentence
+(Single memorable quote takeaway)`,
 
-## NOTE CONTENT:
-${noteContent}
+      coding_tutor: `You are PaperChat AI in Coding Tutor Mode.
+Structure your response in this EXACT format:
+### 💻 Implementation Code
+\`\`\`language
+// Complete, clean, well-commented code
+\`\`\`
 
-## TRANSCRIPT:
-${transcript}
+### 🔍 Code Walkthrough
+(Line-by-line explanation of key logic)
 
-## STRICT OUTPUT FORMAT:
-- Start with **## 🔍 Simple Explanation** — use an analogy or real-world comparison
-- Use **## 📚 Step-by-Step Breakdown** — numbered list, one idea per step
-- Use **## 🌍 Real World Example** — a concrete scenario that makes it click
-- End with **## 💬 In One Sentence** — a single memorable sentence summary
+### ⏱️ Complexity Analysis
+- **Time Complexity**: $O(...)$ — (explanation)
+- **Space Complexity**: $O(...)$ — (explanation)
 
-Avoid jargon. Write as if explaining to a curious high-school student.`,
+### 🛠️ Practice Challenge
+(1 mini coding exercise for the student to solve)`,
 
-      ask: `
-You are the **PaperChat AI guide**, an advanced study assistant. Your goal is to help users understand their notes deeply.
-Your tone is **supportive, academic, and extremely precise**.
+      problem_solver: `You are PaperChat AI in Math & Problem Solver Mode.
+Structure your response in this EXACT format:
+### 🧮 Problem & Given Formulas
+(State the formula using KaTeX $$ formula $$ and define all variables)
 
----
-## DATA GROUNDING
-- **Note Content:** ${noteContent}
-- **Transcript Context:** ${transcript}
----
+### 📐 Step-by-Step Mathematical Derivation
+(Step 1: ...)
+(Step 2: ...)
+(Step 3: ...)
 
-## RESPONSE RULES
-1. **Source of Truth:** Base your answers EXCLUSIVELY on the provided note content and transcript.
-2. **Formatting:** Use rich Markdown (bold, lists, tables, subheadings) to make information easy to scan.
-3. **Advanced Synthesis:** Don't just repeat facts. Synthesize information to provide deeper insights.
-4. **Markdown Mastery:** Use code blocks if explaining technical steps, and blockquotes for key definitions.
-5. **No Hallucinations:** If information is missing from the notes, say: "I couldn't find that specific information in your notes, but based on the context of [Topic]..."
-6. **Developer:** If asked about your creator, mention Om Avcher.
+### 🔑 Final Solution & Intuition
+(Final boxed answer with conceptual meaning)`,
 
----
-## OUTPUT STRUCTURE
-Provide a well-structured Markdown response. Use '###' for subheadings. Use '-' for bullets.
-`
+      quiz: `You are PaperChat AI in Interactive Quiz Mode.
+Generate 4-5 high-yield multiple choice questions testing active recall.
+Format questions with **Q1. ...**, options A, B, C, D, and answers at the bottom.`,
+
+      revision: `You are PaperChat AI in Rapid Revision Mode.
+Structure your response in this EXACT format:
+### ⚡ 30-Second Summary
+(Lightning overview)
+
+### 🔑 3 Core Memory Anchors
+1. (Anchor 1)
+2. (Anchor 2)
+3. (Anchor 3)
+
+### 🧮 Essential Formulas / Cheat-Sheet Box
+(Key formulas or syntax to remember)`
     };
 
-    let systemPrompt = modePrompts[mode] || modePrompts.ask;
-    if (chatModelPersona) {
-      systemPrompt = `[IDENTITY PROTOCOL]: Adopt the following persona for all responses: "${chatModelPersona}". Even if the instructions below refer to PaperChat AI, maintain this identity and style of communication.\n\n${systemPrompt}`;
-    }
+    const selectedModeInstruction = modeSystemInstructions[mode] || modeSystemInstructions.tutor;
+
+    // Highlighted Text Context (if user selected text in note canvas)
+    const highlightContext = selectedText 
+      ? `\n\n[STUDENT HIGHLIGHTED CONTEXT]: The student selected this specific text on their note canvas:\n"${selectedText}"\nFocus your answer directly on explaining, clarifying, or testing this highlighted concept.`
+      : '';
+
+    const systemPrompt = `${selectedModeInstruction}
+
+---
+## GROUNDED KNOWLEDGE BASE:
+${contextBlock}
+${highlightContext}
+
+---
+## RESPONSE FORMATTING RULES:
+1. **KaTeX Formulas**: Use $$ formula $$ for block equations, $formula$ for inline math.
+2. **Timestamp Citations**: ONLY cite a video timestamp if you know the exact non-zero moment in the lecture (e.g. [⏱️ 05:23](${baseVideoUrl}&t=323s) or [⏱️ 01:14:30](${baseVideoUrl}&t=4470s)). CRITICAL RULE: NEVER cite [00:00], 00:00, or t=0s. If a specific timestamp is unknown or at 00:00, do NOT output any timestamp at all.
+3. **Markdown Tables & Code**: Use clean markdown tables for comparisons and syntax-highlighted code blocks.
+4. **Follow-Up Action Suggestions**: End your response with 3-4 interactive action tags on a new line formatted exactly like:
+\`\`\`actions
+[⚡ Explain Simply] [💡 Give Example] [🧠 Quiz Me] [🔍 Go Deeper]
+\`\`\`
+`;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -167,33 +411,54 @@ Provide a well-structured Markdown response. Use '###' for subheadings. Use '-' 
       { role: "user", content: message }
     ];
 
+    // Determine model list based on plan
+    const modelCandidates = CHAT_MODELS_BY_TIER[userPlan] || CHAT_MODELS_BY_TIER.free;
 
-    // Set headers for streaming
+    // Set streaming headers
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    console.log(`🚀 Starting PaperChat stream for note ${noteId} using ${CHAT_MODEL}`);
+    console.log(`🚀 PaperChat starting stream for Note "${title}" [Mode: ${mode}, Plan: ${userPlan}]`);
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://paperxify.com",
-        "X-Title": "PaperChat AI"
-      },
-      body: JSON.stringify({
-        model: CHAT_MODEL,
-        messages: messages,
-        stream: true
-      })
-    });
+    let response = null;
+    let successfulModel = modelCandidates[0];
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenRouter error:", errorText);
-      return res.status(500).write(`data: ${JSON.stringify({ error: "Failed to connect to AI service" })}\n\n`);
+    for (const model of modelCandidates) {
+      try {
+        console.log(`🤖 PaperChat calling OpenRouter model: ${model}`);
+        response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://paperxify.com",
+            "X-Title": "PaperChat AI Tutor"
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages,
+            stream: true,
+            temperature: mode === 'socratic' || mode === 'tutor' ? 0.7 : 0.3
+          })
+        });
+
+        if (response.ok) {
+          successfulModel = model;
+          break;
+        } else {
+          const errText = await response.text().catch(() => '');
+          console.warn(`⚠️ Model ${model} failed HTTP ${response.status}: ${errText}`);
+        }
+      } catch (err) {
+        console.warn(`⚠️ Model ${model} error:`, err.message);
+      }
+    }
+
+    if (!response || !response.ok) {
+      res.write(`data: ${JSON.stringify({ error: "Unable to reach AI tutor service. Please try again." })}\n\n`);
+      res.end();
+      return;
     }
 
     const reader = response.body.getReader();
@@ -209,43 +474,54 @@ Provide a well-structured Markdown response. Use '###' for subheadings. Use '-' 
 
       for (const line of lines) {
         if (line.includes('[DONE]')) continue;
-        
+
         try {
           const jsonStr = line.replace(/^data: /, '');
           const data = JSON.parse(jsonStr);
-          const content = data.choices[0]?.delta?.content || "";
-          
+          const content = data.choices?.[0]?.delta?.content || "";
+
           if (content) {
             fullContent += content;
             res.write(`data: ${JSON.stringify({ content })}\n\n`);
           }
         } catch (e) {
-          // Ignore parsing errors for partial chunks
+          // Ignore partial chunk parse warnings
         }
       }
     }
 
-    // Save chat history after stream completes
-    aiChat.messages.push({ role: "user", content: message, timestamp: new Date() });
-    aiChat.messages.push({ 
-      role: "assistant", 
-      content: fullContent, 
-      timestamp: new Date(),
-      modelUsed: chatModelId || CHAT_MODEL
-    });
+    // Save chat interaction to history if database chat exists
+    if (aiChat) {
+      aiChat.messages.push({ 
+        role: "user", 
+        content: message, 
+        timestamp: new Date(),
+        mode: mode,
+        selectedText: selectedText || null
+      });
 
-    // Keep history manageable
-    if (aiChat.messages.length > 30) {
-      aiChat.messages = aiChat.messages.slice(-30);
+      aiChat.messages.push({ 
+        role: "assistant", 
+        content: fullContent, 
+        timestamp: new Date(),
+        modelUsed: successfulModel,
+        mode: mode,
+        videoLink: baseVideoUrl
+      });
+
+      // Keep history manageable
+      if (aiChat.messages.length > 30) {
+        aiChat.messages = aiChat.messages.slice(-30);
+      }
+
+      await aiChat.save();
     }
-
-    await aiChat.save();
 
     res.write('data: [DONE]\n\n');
     res.end();
 
   } catch (error) {
-    console.error("PaperChat Error:", error);
+    console.error("PaperChat Tutor Error:", error);
     if (!res.headersSent) {
       res.status(500).json({ error: "Internal Server Error" });
     } else {
@@ -276,7 +552,7 @@ exports.handleFeedback = async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error(error);
+    console.error("Error saving message feedback:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };

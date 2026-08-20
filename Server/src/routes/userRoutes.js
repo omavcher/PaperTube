@@ -27,6 +27,9 @@ router.get('/suggested', authMiddleware, userController.getSuggestedUsers);
 router.post('/:userId/report', authMiddleware, userController.reportUser);
 router.post('/update-streak', authMiddleware, userController.updateStreak);
 router.get('/tokens',authMiddleware, userController.getTokenBalance);
+router.get('/quota-status', authMiddleware, userController.getQuotaStatus);
+router.get('/creations/recent', authMiddleware, userController.getRecentCreations);
+router.delete('/creations/:type/:id', authMiddleware, userController.deleteCreation);
 
 router.post('/follow-status', authMiddleware, userController.checkFollowStatus);
 router.get('/:userId/mutual-followers', authMiddleware, userController.getMutualFollowers);

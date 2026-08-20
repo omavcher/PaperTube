@@ -58,7 +58,7 @@ export default function SubscriptionDialog({
       highlight: true,
       icon: <GraduationCap className="w-5 h-5 text-red-500" />,
       features: [
-        { text: "15 comprehensive generations daily", included: true },
+        { text: "120 Pro generations monthly (4/day)", included: true },
         { text: "Analyze lectures up to 4 hours long", included: true },
         { text: "Access to all 20+ visual themes", included: true },
         { text: "Watermark-free PDF & Markdown exports", included: true },
@@ -69,12 +69,12 @@ export default function SubscriptionDialog({
     },
     {
       name: "Power Scholar",
-      description: "Uncapped potential for advanced researchers.",
+      description: "Massive capacity for researchers & creators.",
       monthlyPrice: 19,
       yearlyPrice: 144,
       icon: <Sparkles className="w-5 h-5 text-purple-400" />,
       features: [
-        { text: "Unlimited daily generations (No cap)", included: true },
+        { text: "350 Power generations monthly (12/day)", included: true },
         { text: "Analyze vast streams up to 12 hours", included: true },
         { text: "Batch process entire playlists", included: true },
         { text: "Export directly to Anki (.apkg)", included: true },
@@ -106,7 +106,7 @@ export default function SubscriptionDialog({
               Elevate Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-amber-500">Research Capacity</span>
             </DialogTitle>
             <DialogDescription className="text-neutral-400 max-w-lg mx-auto text-sm font-light leading-relaxed">
-              You have reached the limits of the standard tier. Upgrade your workspace to unlock professional-grade AI analysis, unlimited lecture processing, and advanced integrations.
+              You have reached the limits of the standard tier. Upgrade your workspace to unlock professional-grade AI analysis, deep lecture processing, and advanced integrations.
             </DialogDescription>
           </DialogHeader>
  

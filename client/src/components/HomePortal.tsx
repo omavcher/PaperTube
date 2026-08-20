@@ -1,646 +1,741 @@
 "use client";
-
-import React, { useState, useRef } from "react";
+// Paperxify HomePortal - Apple & Linear-Grade Hero, Metrics & Tools Showroom
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { 
+  Zap, 
   Sparkles, 
-  Layout, 
+  ShieldCheck, 
+  Youtube, 
+  LayoutGrid, 
+  Play, 
+  Volume2, 
+  Settings, 
+  Maximize, 
+  FileText, 
+  Presentation, 
+  HelpCircle, 
+  Layers, 
+  GitBranch, 
+  Code2, 
+  FileCheck2, 
+  Grid, 
+  Users, 
+  Clock, 
+  Trophy, 
   ArrowRight, 
-  BrainCircuit,
-  Workflow,
-  PenTool,
-  GraduationCap,
-  Youtube,
-  Play,
-  Lock,
+  ChevronLeft, 
+  ChevronRight, 
   Check,
-  ChevronDown
+  Subtitles,
+  Download,
+  Share2,
+  Bookmark,
+  GraduationCap,
+  Calculator,
+  Calendar,
+  Languages,
+  ShieldAlert,
+  FileSearch,
+  Database,
+  Network,
+  Cpu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ToolLivePreview from "@/components/ToolLivePreview";
-import { useRegionConfig } from "@/lib/localization";
 
 interface HomePortalProps {
   region?: string;
 }
 
+// Student avatars data
+const AVATARS = [
+  { name: "Sarah K.", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80" },
+  { name: "David M.", img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80" },
+  { name: "Priya P.", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80" },
+  { name: "Alex R.", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80" }
+];
+
+// 20+ Tools Section Carousel Data
+const TOOLS_CAROUSEL = [
+  {
+    id: "yt-notes",
+    title: "YouTube to Notes",
+    desc: "AI video notes & timestamps",
+    icon: Youtube,
+    iconColor: "text-red-400",
+    badge: "Popular",
+    href: "/youtube-to-notes",
+  },
+  {
+    id: "yt-ppt",
+    title: "YouTube to PPT",
+    desc: "AI generated presentations",
+    icon: Presentation,
+    iconColor: "text-orange-400",
+    badge: "Popular",
+    href: "/presentation-generator",
+  },
+  {
+    id: "quiz-gen",
+    title: "YouTube to Quiz",
+    desc: "Auto-generate quizzes",
+    icon: HelpCircle,
+    iconColor: "text-purple-400",
+    badge: "AI Study",
+    href: "/youtube-to-quiz",
+  },
+  {
+    id: "ai-flashcards",
+    title: "AI Flashcards",
+    desc: "Spaced repetition flashcards",
+    icon: Layers,
+    iconColor: "text-blue-400",
+    href: "/youtube-to-flashcards",
+  },
+  {
+    id: "mind-maps",
+    title: "AI Mind Maps",
+    desc: "Visual diagrams & flowcharts",
+    icon: GitBranch,
+    iconColor: "text-emerald-400",
+    badge: "Visual",
+    href: "/ai-diagram",
+  },
+  {
+    id: "homework-helper",
+    title: "AI Homework Helper",
+    desc: "Step-by-step problem solver",
+    icon: GraduationCap,
+    iconColor: "text-amber-400",
+    href: "/ai-study/homework-helper",
+  },
+  {
+    id: "math-solver",
+    title: "AI Math Solver",
+    desc: "LaTeX proofs & calculus solver",
+    icon: Calculator,
+    iconColor: "text-cyan-400",
+    href: "/ai-study/math-solver",
+  },
+  {
+    id: "exam-planner",
+    title: "Exam Prep Planner",
+    desc: "Personalized study schedules",
+    icon: Calendar,
+    iconColor: "text-pink-400",
+    badge: "New",
+    href: "/ai-study/exam-planner",
+  },
+  {
+    id: "language-tutor",
+    title: "AI Language Tutor",
+    desc: "Speech TTS & native dialogues",
+    icon: Languages,
+    iconColor: "text-violet-400",
+    badge: "Audio",
+    href: "/ai-study/language-tutor",
+  },
+  {
+    id: "ai-detector",
+    title: "AI Detector & Cert",
+    desc: "Authenticity verify & certs",
+    icon: ShieldAlert,
+    iconColor: "text-yellow-400",
+    badge: "Verified",
+    href: "/ai-writer/ai-detector",
+  },
+  {
+    id: "ai-humanizer",
+    title: "AI Humanizer",
+    desc: "Bypass AI detectors cleanly",
+    icon: Sparkles,
+    iconColor: "text-emerald-400",
+    href: "/ai-writer/ai-humanizer",
+  },
+  {
+    id: "essay-writer",
+    title: "AI Essay Writer",
+    desc: "Structured citations & thesis",
+    icon: FileText,
+    iconColor: "text-blue-400",
+    href: "/ai-writer/essay-writer",
+  },
+  {
+    id: "plagiarism",
+    title: "Plagiarism Checker",
+    desc: "Deep source similarity check",
+    icon: FileSearch,
+    iconColor: "text-rose-400",
+    href: "/ai-writer/plagiarism",
+  },
+  {
+    id: "flowchart",
+    title: "Flowchart Maker",
+    desc: "AI workflow architecture",
+    icon: Network,
+    iconColor: "text-indigo-400",
+    href: "/ai-diagram/flowchart",
+  },
+  {
+    id: "sequence-diagram",
+    title: "Sequence Diagram",
+    desc: "API calls & message lifelines",
+    icon: GitBranch,
+    iconColor: "text-teal-400",
+    href: "/ai-diagram/sequence",
+  },
+  {
+    id: "er-diagram",
+    title: "ER & DB Diagram",
+    desc: "Database schema modeling",
+    icon: Database,
+    iconColor: "text-sky-400",
+    href: "/ai-diagram/er",
+  },
+  {
+    id: "code-to-image",
+    title: "Code to Image",
+    desc: "Convert snippets to images",
+    icon: Code2,
+    iconColor: "text-cyan-400",
+    href: "/tools/code-to-image",
+  },
+  {
+    id: "sql-architect",
+    title: "SQL Architect",
+    desc: "Query visualizer & optimizer",
+    icon: Cpu,
+    iconColor: "text-amber-400",
+    href: "/tools/sql-architect",
+  },
+  {
+    id: "pdf-tools",
+    title: "PDF Suite",
+    desc: "Merge, split & convert docs",
+    icon: FileCheck2,
+    iconColor: "text-rose-400",
+    href: "/tools",
+  },
+  {
+    id: "all-more",
+    title: "Explore All 25+ Tools",
+    desc: "Complete developer & student kit",
+    icon: Grid,
+    iconColor: "text-neutral-400",
+    badge: "All",
+    href: "/tools",
+  },
+];
+
 export default function HomePortal({ region }: HomePortalProps) {
   const router = useRouter();
-  const [activeIdx, setActiveIdx] = useState(0);
-  const { config } = useRegionConfig(region);
-  
-  // 3D Card Tilt State & Refs
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [tiltStyle, setTiltStyle] = useState("perspective(1000px) rotateX(4deg) rotateY(-6deg) scale3d(1, 1, 1)");
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [activeTab, setActiveTab] = useState("notes");
 
-  const tools = [
-    {
-      id: "youtube-notes",
-      title: "YouTube to Notes AI",
-      shortTitle: "YT Notes",
-      cardDescription: "Convert video lectures, crash courses & tutorials into notes & flashcards.",
-      description: "Convert any YouTube lecture, crash course, or tutorial into clean structured notes, flashcard decks, and practice tests instantly.",
-      features: [
-        "Interactive video transcripts",
-        "Flashcard deck generator",
-        "Practice quiz generation",
-        "Export notes to PDF & Markdown"
-      ],
-      previewImg: "/pro/home_papertu1.avif",
-      previewGif: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3N2cXBpdmh3d3V4OXA5bDR1OTZ6cTR0dHRxdTV1NmRxZzVnYmxsZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l3q2t2KAyvdxzyV1S/giphy.gif",
-      previewUrl: "paperxify.com/youtube-to-notes",
-      icon: Youtube,
-      iconColor: "text-red-500",
-      activeTextClass: "text-red-400",
-      badge: "Popular & Active",
-      badgeColor: "rgba(220, 38, 38, 0.15)",
-      badgeTextColor: "#f87171",
-      glowColor: "rgba(220, 38, 38, 0.2)",
-      cta: "Launch Tool",
-      action: () => router.push("/youtube-to-notes"),
-      disabled: false
-    },
-    {
-      id: "ai-ppt",
-      title: "AI Slide Deck & PPT Maker",
-      shortTitle: "Slide Maker",
-      cardDescription: "Transform topics, transcripts, or notes into beautifully structured slide decks.",
-      description: "Transform topics, transcripts, or notes into beautifully structured slide decks and study presentation PPT files automatically.",
-      features: [
-        "Topic to slide outlining",
-        "PDF & PPTX file exports",
-        "Curated visual slide designs",
-        "Custom layout configuration"
-      ],
-      previewImg: "/pro/home_papertu2.avif",
-      previewGif: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3N2cXBpdmh3d3V4OXA5bDR1OTZ6cTR0dHRxdTV1NmRxZzVnYmxsZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKSjRrfIPjei156/giphy.gif",
-      previewUrl: "paperxify.com/presentation-generator",
-      icon: Layout,
-      iconColor: "text-orange-500",
-      activeTextClass: "text-orange-400",
-      badge: "Active Tool",
-      badgeColor: "rgba(249, 115, 22, 0.15)",
-      badgeTextColor: "#fdba74",
-      glowColor: "rgba(249, 115, 22, 0.15)",
-      cta: "Launch Tool",
-      action: () => router.push("/presentation-generator"),
-      disabled: false
-    },
-    {
-      id: "ai-diagram",
-      title: "AI Diagram & Flowchart",
-      shortTitle: "Diagrams",
-      cardDescription: "Generate concept maps, mind maps & interactive flowcharts from topics.",
-      description: "Generate visual concept maps, mind maps, and interactive flowcharts from topics or notes to study visually.",
-      features: [
-        "Flowcharts & mindmaps",
-        "Sequence & state diagrams",
-        "Class & ER diagrams",
-        "Mermaid.js interactive editor"
-      ],
-      previewImg: "/pro/home_papertu3.avif",
-      previewGif: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3N2cXBpdmh3d3V4OXA5bDR1OTZ6cTR0dHRxdTV1NmRxZzVnYmxsZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT9IgzoKnwFNmISR8I/giphy.gif",
-      previewUrl: "paperxify.com/ai-diagram",
-      icon: Workflow,
-      iconColor: "text-cyan-500",
-      activeTextClass: "text-cyan-400",
-      badge: "New Release",
-      badgeColor: "rgba(6, 182, 212, 0.15)",
-      badgeTextColor: "#22d3ee",
-      glowColor: "rgba(6, 182, 212, 0.15)",
-      cta: "Launch Tool",
-      action: () => router.push("/ai-diagram"),
-      disabled: false
-    },
-    {
-      id: "ai-writer",
-      title: "AI Writer & Editor",
-      shortTitle: "Writer",
-      cardDescription: "Draft essays, research summaries & study guides with academic formatting.",
-      description: "Draft high-quality essays, research summaries, study guides, and blog posts with advanced academic formatting.",
-      features: [
-        "AI Essay & Summarizer writer",
-        "Custom citation styles",
-        "Plagiarism & detector scanner",
-        "Rich text editor workspace"
-      ],
-      previewImg: "/pro/home_papertu4.avif",
-      previewGif: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3N2cXBpdmh3d3V4OXA5bDR1OTZ6cTR0dHRxdTV1NmRxZzVnYmxsZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26tn33aiTi1jkl6H6/giphy.gif",
-      previewUrl: "paperxify.com/ai-writer",
-      icon: PenTool,
-      iconColor: "text-amber-500",
-      activeTextClass: "text-amber-400",
-      badge: "New Release",
-      badgeColor: "rgba(245, 158, 11, 0.15)",
-      badgeTextColor: "#fbbf24",
-      glowColor: "rgba(245, 158, 11, 0.15)",
-      cta: "Launch Tool",
-      action: () => router.push("/ai-writer"),
-      disabled: false
-    },
-    {
-      id: "ai-study",
-      title: "AI Study Room",
-      shortTitle: "Study Room",
-      cardDescription: "Homework helper, step-by-step math solver & MCQ quiz player.",
-      description: "Supercharge your learning with AI Homework Helper, step-by-step AI Math Solver, and instant AI Quiz Generator tools.",
-      features: [
-        "Concept homework helper",
-        "Step-by-step LaTeX math solver",
-        "Interactive quiz taker & scoring",
-        "Feynman learning workspace"
-      ],
-      previewImg: "/pro/home_papertu5.avif",
-      previewGif: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3N2cXBpdmh3d3V4OXA5bDR1OTZ6cTR0dHRxdTV1NmRxZzVnYmxsZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l2SpUNVz1T25rQcEw/giphy.gif",
-      previewUrl: "paperxify.com/ai-study",
-      icon: GraduationCap,
-      iconColor: "text-pink-500",
-      activeTextClass: "text-pink-400",
-      badge: "New Release",
-      badgeColor: "rgba(236, 72, 153, 0.15)",
-      badgeTextColor: "#f472b6",
-      glowColor: "rgba(236, 72, 153, 0.15)",
-      cta: "Launch Tool",
-      action: () => router.push("/ai-study"),
-      disabled: false
-    }
-  ];
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(typeof window !== "undefined" && window.innerWidth >= 1024);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  const activeTool = tools[activeIdx];
-
-  // 3D Card Tilt Math
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (window.matchMedia("(hover: none)").matches) return;
-    
-    const el = cardRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const xc = rect.width / 2;
-    const yc = rect.height / 2;
-    const rotateY = -(xc - x) / 18; // tilt intensity
-    const rotateX = (yc - y) / 12;
-    setTiltStyle(`perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`);
+  const scrollCarousel = (direction: "left" | "right") => {
+    if (!carouselRef.current) return;
+    const cardWidth = 160;
+    const scrollAmount = direction === "left" ? -cardWidth * 2 : cardWidth * 2;
+    carouselRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
   };
 
-  const handleMouseLeave = () => {
-    setTiltStyle("perspective(1000px) rotateX(4deg) rotateY(-6deg) scale3d(1, 1, 1)");
+  const handleCarouselScroll = () => {
+    if (!carouselRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+    const maxScroll = scrollWidth - clientWidth;
+    if (maxScroll > 0) {
+      setCarouselIndex(Math.min(1, Math.max(0, scrollLeft / maxScroll)));
+    }
   };
 
   return (
-    <section className="w-full max-w-6xl mx-auto px-6 pt-20 pb-12 text-center relative z-10 selection:bg-red-900/50 font-sans">
+    <div className="w-full max-w-full flex flex-col items-center selection:bg-red-500/20 font-sans overflow-x-hidden">
       
-      {/* Hero Header */}
-      <div className="space-y-6 max-w-3xl mx-auto mb-10">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 text-[10px] font-bold uppercase tracking-widest text-neutral-300"
-        >
-          <Sparkles size={11} className="text-red-500" />
-          <span>Paperxify AI Study Suite</span>
-        </motion.div>
+      {/* ─────────────────────────────────────────────────────────────
+          1. HERO SECTION (Desktop 2-col, Mobile 1-col)
+      ────────────────────────────────────────────────────────────── */}
+      <section className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 sm:pb-6 relative overflow-hidden">
         
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter leading-tight text-white"
-        >
-          {config.heroTitle}
-        </motion.h1>
-        
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-base sm:text-lg text-neutral-300 font-light leading-relaxed max-w-2xl mx-auto"
-        >
-          {config.heroSubtitle}
-        </motion.p>
-      </div>
+        {/* Subtle Ambient Vignette Behind Hero */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] sm:w-[700px] lg:w-[900px] h-[250px] sm:h-[350px] bg-red-600/[0.04] blur-[120px] rounded-full pointer-events-none -z-10" />
 
-      {/* ── DESKTOP/LAPTOP SHOWROOM VIEW ── */}
-      <div className="hidden lg:grid grid-cols-12 gap-10 items-stretch text-left mt-10">
-        
-        {/* Left Column (Vertical Category List - 5 cols) */}
-        <div className="col-span-5 flex flex-col gap-4.5 justify-center">
-          {tools.map((tool, idx) => {
-            const ToolIcon = tool.icon;
-            const isActive = idx === activeIdx;
-            return (
-              <button
-                key={tool.id}
-                onClick={() => setActiveIdx(idx)}
-                className={cn(
-                  "relative text-left w-full m-1 p-5 rounded-2xl border transition-all duration-300 outline-none flex items-center gap-4 group cursor-pointer overflow-hidden",
-                  isActive
-                    ? tool.id === "youtube-notes" ? "border-red-500/30 bg-red-500/[0.03] shadow-[0_4px_20px_-5px_rgba(239,68,68,0.15)]" :
-                      tool.id === "ai-ppt" ? "border-orange-500/30 bg-orange-500/[0.03] shadow-[0_4px_20px_-5px_rgba(249,115,22,0.15)]" :
-                      tool.id === "ai-diagram" ? "border-cyan-500/30 bg-cyan-500/[0.03] shadow-[0_4px_20px_-5px_rgba(6,182,212,0.15)]" :
-                      tool.id === "ai-writer" ? "border-amber-500/30 bg-amber-500/[0.03] shadow-[0_4px_20px_-5px_rgba(245,158,11,0.15)]" :
-                      "border-pink-500/30 bg-pink-500/[0.03] shadow-[0_4px_20px_-5px_rgba(236,72,153,0.15)]"
-                    : "border-white/[0.04] bg-white/[0.01] hover:border-white/[0.1] hover:bg-white/[0.02]"
-                )}
-              >
-                {/* Active indicator bar */}
-                {isActive && (
-                  <motion.div
-                    layoutId="desktopActiveBar"
-                    className={cn("absolute left-0 top-0 bottom-0 w-[4px]",
-                      tool.id === "youtube-notes" ? "bg-red-500 shadow-[0_0_8px_#ef4848]" :
-                      tool.id === "ai-ppt" ? "bg-orange-500 shadow-[0_0_8px_#f97316]" :
-                      tool.id === "ai-diagram" ? "bg-cyan-500 shadow-[0_0_8px_#06b6d4]" :
-                      tool.id === "ai-writer" ? "bg-amber-500 shadow-[0_0_8px_#f59e0b]" :
-                      "bg-pink-500 shadow-[0_0_8px_#ec4899]"
-                    )}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  />
-                )}
-                
-                {/* Brand Icon Container */}
-                <div className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center border transition-all duration-300 shrink-0",
-                  isActive
-                    ? tool.id === "youtube-notes" ? "bg-red-500/10 border-red-500/30 shadow-[0_0_12px_rgba(239,68,68,0.2)] text-red-500" :
-                      tool.id === "ai-ppt" ? "bg-orange-500/10 border-orange-500/30 shadow-[0_0_12px_rgba(249,115,22,0.2)] text-orange-500" :
-                      tool.id === "ai-diagram" ? "bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.2)] text-cyan-500" :
-                      tool.id === "ai-writer" ? "bg-amber-500/10 border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.2)] text-amber-500" :
-                      "bg-pink-500/10 border-pink-500/30 shadow-[0_0_12px_rgba(236,72,153,0.2)] text-pink-500"
-                    : "bg-white/[0.02] border-white/[0.05] text-neutral-500 group-hover:text-neutral-300"
-                )}>
-                  <ToolIcon size={20} className={isActive ? "animate-pulse" : ""} />
-                </div>
-                
-                {/* Content */}
-                <div className="flex-1 min-w-0 pr-4">
-                  <div className="flex items-center gap-2">
-                    <span className={cn("text-[14px] font-extrabold transition-colors leading-tight",
-                      isActive ? "text-white" : "text-neutral-400 group-hover:text-neutral-200"
-                    )}>
-                      {tool.title}
-                    </span>
-                    {tool.badge && (
-                      <span 
-                        className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full border border-white/[0.02] shrink-0 scale-90 origin-left"
-                        style={{
-                          background: tool.badgeColor,
-                          color: tool.badgeTextColor
-                        }}
-                      >
-                        {tool.badge.split(" ")[0]}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-neutral-400 font-light mt-1.5 leading-relaxed truncate group-hover:text-neutral-200 transition-colors">
-                    {tool.cardDescription}
-                  </p>
-                </div>
-
-                {/* Micro-arrow indicator */}
-                <ArrowRight 
-                  size={14} 
-                  className={cn(
-                    "text-neutral-600 transition-all duration-300 group-hover:text-neutral-400 shrink-0",
-                    isActive ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2"
-                  )} 
-                />
-              </button>
-            );
-          })}
-        </div>
-        
-        {/* Right Column (Showroom visual mock + features/CTA - 7 cols) */}
-        <div className="col-span-7 flex flex-col gap-6 justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
           
-          {/* Main 3D tilt preview */}
-          <div className="relative w-full">
+          {/* ──── LEFT HERO COLUMN ──── */}
+          <motion.div 
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="col-span-1 lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left space-y-3.5 sm:space-y-4 max-w-xl lg:max-w-none mx-auto lg:mx-0 w-full"
+          >
             
-            {/* Radial brand-colored glow backdrop */}
-            <div 
-              className="absolute -inset-10 opacity-30 blur-[100px] rounded-full pointer-events-none transition-all duration-500 z-0" 
-              style={{
-                background: `radial-gradient(circle, ${activeTool.glowColor} 0%, transparent 70%)`
-              }}
-            />
+            {/* Top Pill Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] sm:text-xs font-medium text-neutral-300 backdrop-blur-md shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span>Your Complete AI Study Partner</span>
+            </div>
 
-            {/* Tilt Box */}
-            <div 
-              ref={cardRef}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-              onClick={() => activeTool.action()}
-              className={cn(
-                "relative w-full aspect-[16/9.5] rounded-2xl border bg-black/85 overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)] transition-all duration-300 ease-out cursor-pointer group/preview z-10",
-                activeTool.id === "youtube-notes" ? "border-red-500/10 hover:border-red-500/30 hover:shadow-[0_0_35px_rgba(239,68,68,0.25)]" :
-                activeTool.id === "ai-ppt" ? "border-orange-500/10 hover:border-orange-500/30 hover:shadow-[0_0_35px_rgba(249,115,22,0.25)]" :
-                activeTool.id === "ai-diagram" ? "border-cyan-500/10 hover:border-cyan-500/30 hover:shadow-[0_0_35px_rgba(6,182,212,0.25)]" :
-                activeTool.id === "ai-writer" ? "border-amber-500/10 hover:border-amber-500/30 hover:shadow-[0_0_35px_rgba(245,158,11,0.25)]" :
-                "border-pink-500/10 hover:border-pink-500/30 hover:shadow-[0_0_35px_rgba(236,72,153,0.25)]"
-              )}
-              style={{ 
-                transform: tiltStyle,
-                transformStyle: "preserve-3d"
-              }}
-            >
-              {/* Browser control bar */}
-              <div className="h-8 bg-neutral-950/80 border-b border-white/[0.04] flex items-center justify-between px-3.5 z-20 relative select-none">
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <div className={cn("w-1.5 h-1.5 rounded-full", 
-                    activeTool.id === "youtube-notes" ? "bg-red-500/70" :
-                    activeTool.id === "ai-ppt" ? "bg-orange-500/70" :
-                    activeTool.id === "ai-diagram" ? "bg-cyan-500/70" :
-                    activeTool.id === "ai-writer" ? "bg-amber-500/70" :
-                    "bg-pink-500/70"
-                  )} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                </div>
-                
-                <div className="bg-white/5 border border-white/[0.04] rounded-md px-3 py-0.5 text-[8.5px] font-mono text-neutral-400 flex items-center gap-1 truncate max-w-[240px] text-center">
-                  <Lock size={7.5} className="text-neutral-500 shrink-0" />
-                  <span className="truncate">{activeTool.previewUrl}</span>
-                </div>
-                <div className="w-[18px] h-1 bg-white/10 rounded-full shrink-0" />
-              </div>
+            {/* Main Headline */}
+            <h1 className="text-[32px] sm:text-4xl lg:text-[46px] font-extrabold tracking-tight text-white leading-[1.08] lg:leading-[1.1]">
+              Turn YouTube Videos <br />
+              into <span className="text-[#ef4444]">Smart Study Notes</span>
+            </h1>
 
-              {/* Viewport content */}
-              <div className="absolute inset-x-0 bottom-0 top-8 overflow-hidden bg-[#050505] flex items-center justify-center">
-                <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/75 border border-white/10 backdrop-blur-md">
-                  <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse",
-                    activeTool.id === "youtube-notes" ? "bg-red-500 shadow-[0_0_6px_#ef4848]" :
-                    activeTool.id === "ai-ppt" ? "bg-orange-500 shadow-[0_0_6px_#f97316]" :
-                    activeTool.id === "ai-diagram" ? "bg-cyan-500 shadow-[0_0_6px_#06b6d4]" :
-                    activeTool.id === "ai-writer" ? "bg-amber-500 shadow-[0_0_6px_#f59e0b]" :
-                    "bg-pink-500 shadow-[0_0_6px_#ec4899]"
-                  )} />
-                  <span className="text-[7.5px] font-bold uppercase tracking-widest text-neutral-400">Live Preview</span>
-                </div>
-                 <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/[0.015] to-white/0 pointer-events-none z-10" />
+            {/* Supporting Subtitle */}
+            <p className="text-xs sm:text-sm lg:text-[15px] text-neutral-400 font-normal leading-relaxed max-w-md">
+              From lectures to mastery. Generate structured notes, PDFs, presentations, quizzes, flashcards & mind maps in seconds with AI.
+            </p>
 
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTool.id}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="w-full h-full select-none pointer-events-none group-hover/preview:scale-103 transition-transform duration-500"
+            {/* Social Proof Row */}
+            <div className="flex items-center justify-center lg:justify-start gap-2.5 pt-0.5">
+              {/* Overlapping Avatars */}
+              <div className="flex items-center -space-x-2">
+                {AVATARS.map((avatar, idx) => (
+                  <div 
+                    key={idx} 
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-neutral-950 overflow-hidden bg-neutral-800 shadow-sm relative shrink-0"
                   >
-                    <ToolLivePreview toolId={activeTool.id} />
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </div>
-          </div>
-
-          {/* Details below preview */}
-          <div className="bg-neutral-900/35 border border-white/[0.04] p-6 rounded-2xl space-y-5 flex flex-col justify-between">
-            {/* Header info */}
-            <div>
-              <div className="flex items-center gap-3.5">
-                <span 
-                  className="inline-flex text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-white/[0.03]"
-                  style={{
-                    background: activeTool.badgeColor,
-                    color: activeTool.badgeTextColor
-                  }}
-                >
-                  {activeTool.badge}
-                </span>
-              </div>
-              <h2 className="text-xl font-black text-white mt-2">{activeTool.title}</h2>
-              <p className="text-xs text-neutral-300 font-light mt-2 leading-relaxed max-w-2xl">{activeTool.description}</p>
-            </div>
-
-            {/* Features & Action section */}
-            <div className="flex items-center justify-between gap-6 pt-5 border-t border-white/[0.04] w-full">
-              {/* Checklist grid */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 flex-1">
-                {activeTool.features.map((feature, fIdx) => (
-                  <div key={fIdx} className="flex items-center gap-2 text-[10.5px] text-neutral-300">
-                    <div className={cn(
-                      "w-4 h-4 rounded-full flex items-center justify-center border shrink-0",
-                      activeTool.id === "youtube-notes" ? "bg-red-500/10 border-red-500/20 text-red-400" :
-                      activeTool.id === "ai-ppt" ? "bg-orange-500/10 border-orange-500/20 text-orange-400" :
-                      activeTool.id === "ai-diagram" ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" :
-                      activeTool.id === "ai-writer" ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
-                      "bg-pink-500/10 border-pink-500/20 text-pink-400"
-                    )}>
-                      <Check size={9} strokeWidth={3} />
-                    </div>
-                    <span className="truncate">{feature}</span>
+                    <img 
+                      src={avatar.img} 
+                      alt={avatar.name} 
+                      className="w-full h-full object-cover" 
+                      loading="eager"
+                    />
                   </div>
                 ))}
               </div>
 
-              {/* Action Button */}
+              {/* Stars + Rating Text */}
+              <div className="flex flex-col text-left">
+                <div className="flex items-center gap-0.5 text-amber-400 text-xs leading-none">
+                  {"★★★★★"}
+                </div>
+                <span className="text-[10.5px] sm:text-xs font-medium text-neutral-300 mt-0.5">
+                  Loved by 200,000+ Students
+                </span>
+              </div>
+            </div>
+
+            {/* CTA Buttons Row */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full pt-1">
               <button
-                onClick={() => activeTool.action()}
-                className={cn(
-                  "flex items-center justify-center gap-2.5 h-12 px-7 rounded-xl text-black font-extrabold uppercase tracking-widest text-[11px] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shrink-0 group/btn cursor-pointer",
-                  activeTool.id === "youtube-notes" ? "bg-red-500 hover:bg-red-600 text-white shadow-[0_6px_20px_rgba(239,68,68,0.25)] hover:shadow-[0_8px_25px_rgba(239,68,68,0.35)]" :
-                  activeTool.id === "ai-ppt" ? "bg-orange-500 hover:bg-orange-600 text-white shadow-[0_6px_20px_rgba(249,115,22,0.25)] hover:shadow-[0_8px_25px_rgba(249,115,22,0.35)]" :
-                  activeTool.id === "ai-diagram" ? "bg-cyan-500 hover:bg-cyan-600 text-white shadow-[0_6px_20px_rgba(6,182,212,0.25)] hover:shadow-[0_8px_25px_rgba(6,182,212,0.35)]" :
-                  activeTool.id === "ai-writer" ? "bg-amber-500 hover:bg-amber-600 text-white shadow-[0_6px_20px_rgba(245,158,11,0.25)] hover:shadow-[0_8px_25px_rgba(245,158,11,0.35)]" :
-                  "bg-pink-500 hover:bg-pink-600 text-white shadow-[0_6px_20px_rgba(236,72,153,0.25)] hover:shadow-[0_8px_25px_rgba(236,72,153,0.35)]"
-                )}
+                onClick={() => router.push("/youtube-to-notes")}
+                className="flex items-center justify-center gap-2 h-11 sm:h-12 px-6 rounded-xl bg-[#ef4444] hover:bg-[#dc2626] text-white font-medium text-xs sm:text-sm tracking-wide shadow-sm hover:shadow-md transition-all transform active:scale-[0.98] cursor-pointer w-full sm:w-auto"
               >
-                <span>{activeTool.cta}</span>
-                <ArrowRight size={12} className="group-hover/btn:translate-x-1 transition-transform duration-200" />
+                <svg className="w-4 h-4 fill-white shrink-0" viewBox="0 0 24 24">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+                <span>Upload YouTube Video</span>
+              </button>
+
+              <button
+                onClick={() => router.push("/tools")}
+                className="flex items-center justify-center gap-2 h-11 sm:h-12 px-5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.16] text-neutral-200 font-medium text-xs sm:text-sm transition-all active:scale-[0.98] cursor-pointer w-full sm:w-auto"
+              >
+                <LayoutGrid size={14} className="text-neutral-400" />
+                <span>Explore AI Tools</span>
               </button>
             </div>
-          </div>
 
-        </div>
-      </div>
+            {/* Hero Trust Features */}
+            <div className="flex items-center justify-center lg:justify-start flex-wrap gap-3 sm:gap-4 pt-1 text-[11px] sm:text-xs text-neutral-400 font-normal">
+              <div className="flex items-center gap-1.5">
+                <Zap size={12} className="text-neutral-300" />
+                <span>Instant & Precise</span>
+              </div>
+              <span className="text-neutral-700">•</span>
+              <div className="flex items-center gap-1.5">
+                <Sparkles size={12} className="text-neutral-300" />
+                <span>LaTeX & Code Support</span>
+              </div>
+              <span className="text-neutral-700">•</span>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck size={12} className="text-neutral-300" />
+                <span>Encrypted & Private</span>
+              </div>
+            </div>
 
-      {/* ── MOBILE/TABLET COMPACT VIEW (Vertical Accordion) ── */}
-      <div className="lg:hidden flex flex-col gap-3.5 w-full max-w-md mx-auto mt-6">
-        {tools.map((tool, idx) => {
-          const ToolIcon = tool.icon;
-          const isActive = idx === activeIdx;
-          
-          return (
-            <div
-              key={tool.id}
-              className={cn(
-                "w-full rounded-2xl border transition-all duration-300 relative overflow-hidden",
-                isActive
-                  ? tool.id === "youtube-notes" ? "border-red-500/30 bg-red-500/[0.03] shadow-[0_4px_20px_-5px_rgba(239,68,68,0.15)]" :
-                    tool.id === "ai-ppt" ? "border-orange-500/30 bg-orange-500/[0.03] shadow-[0_4px_20px_-5px_rgba(249,115,22,0.15)]" :
-                    tool.id === "ai-diagram" ? "border-cyan-500/30 bg-cyan-500/[0.03] shadow-[0_4px_20px_-5px_rgba(6,182,212,0.15)]" :
-                    tool.id === "ai-writer" ? "border-amber-500/30 bg-amber-500/[0.03] shadow-[0_4px_20px_-5px_rgba(245,158,11,0.15)]" :
-                    "border-pink-500/30 bg-pink-500/[0.03] shadow-[0_4px_20px_-5px_rgba(236,72,153,0.15)]"
-                  : "border-white/[0.04] bg-white/[0.01]"
-              )}
+          </motion.div>
+
+          {/* ──── RIGHT HERO PRODUCT PREVIEW (macOS/iPadOS Glass Showroom) ──── */}
+          {isDesktop && (
+            <div 
+              data-desktop-preview="true"
+              className="hidden lg:block lg:col-span-6 w-full max-w-lg lg:max-w-none mx-auto"
             >
-              
-              {/* Header block (clickable tab toggle) */}
-              <button
-                onClick={() => setActiveIdx(idx)}
-                className="w-full flex items-center justify-between p-4 sm:p-4.5 outline-none select-none text-left"
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.45, delay: 0.08 }}
               >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center border transition-all duration-300 shrink-0",
-                    isActive
-                      ? tool.id === "youtube-notes" ? "bg-red-500/15 border-red-500/30 text-red-400 animate-pulse" :
-                        tool.id === "ai-ppt" ? "bg-orange-500/15 border-orange-500/30 text-orange-400 animate-pulse" :
-                        tool.id === "ai-diagram" ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400 animate-pulse" :
-                        tool.id === "ai-writer" ? "bg-amber-500/15 border-amber-500/30 text-amber-400 animate-pulse" :
-                        "bg-pink-500/15 border-pink-500/30 text-pink-400 animate-pulse"
-                      : "bg-white/5 border-white/10 text-neutral-400"
-                  )}>
-                    <ToolIcon size={16} />
-                  </div>
+                {/* Outer Glassmorphic Window Card */}
+                <div className="relative rounded-2xl bg-[#09090c] border border-white/[0.08] backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden transition-all">
                   
-                  <div>
-                    <span className={cn(
-                      "text-xs font-extrabold uppercase tracking-wider block transition-colors",
-                      isActive ? "text-white" : "text-neutral-400"
-                    )}>
-                      {tool.title}
-                    </span>
-                    {!isActive && (
-                      <span className="text-[9.5px] text-neutral-400 font-light block mt-0.5 leading-none">
-                        {tool.cardDescription.substring(0, 48)}...
+                  {/* Window Title Bar */}
+                  <div className="px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06] flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500/40" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/40" />
+                      <span className="text-[11px] font-medium text-neutral-400 ml-2">
+                        CS229: Machine Learning • Stanford
                       </span>
-                    )}
+                    </div>
+
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-medium text-emerald-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>AI Ready</span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  {tool.badge && !isActive && (
-                    <span 
-                      className="text-[7.5px] font-extrabold uppercase px-1.5 py-0.5 rounded-full border border-white/[0.02] scale-90 shrink-0"
-                      style={{
-                        background: tool.badgeColor,
-                        color: tool.badgeTextColor
-                      }}
-                    >
-                      {tool.badge.split(" ")[0]}
-                    </span>
-                  )}
-                  
-                  <ChevronDown 
-                    size={14} 
-                    className={cn(
-                      "text-neutral-500 transition-transform duration-300 shrink-0",
-                      isActive ? "rotate-180 text-white" : ""
-                    )}
-                  />
-                </div>
-              </button>
-
-              {/* Animated Expansion Content Panel */}
-              <AnimatePresence initial={false}>
-                {isActive && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-4 pb-5 pt-1.5 border-t border-white/[0.04] flex flex-col gap-4 text-left">
+                  {/* Body Workspace Grid */}
+                  <div className="p-4 space-y-3.5">
+                    
+                    {/* Video Player + Output Checklist Grid */}
+                    <div className="grid grid-cols-12 gap-3 items-stretch">
                       
-                      {/* Description */}
-                      <p className="text-[11px] text-neutral-300 font-light leading-relaxed">
-                        {tool.description}
-                      </p>
-
-                      {/* visual GIF browser preview */}
+                      {/* Video Player Mockup (7 cols) */}
                       <div 
-                        onClick={() => tool.action()}
-                        className={cn(
-                          "relative w-full aspect-[16/9.5] rounded-xl border bg-black/85 overflow-hidden shadow-[0_12px_30px_-8px_rgba(0,0,0,0.85)] cursor-pointer",
-                          tool.id === "youtube-notes" ? "border-red-500/10 active:border-red-500/30" :
-                          tool.id === "ai-ppt" ? "border-orange-500/10 active:border-orange-500/30" :
-                          tool.id === "ai-diagram" ? "border-cyan-500/10 active:border-cyan-500/30" :
-                          tool.id === "ai-writer" ? "border-amber-500/10 active:border-amber-500/30" :
-                          "border-pink-500/10 active:border-pink-500/30"
-                        )}
+                        onClick={() => router.push("/youtube-to-notes")}
+                        className="col-span-7 relative aspect-[16/10] rounded-xl overflow-hidden bg-black border border-white/[0.06] group cursor-pointer"
                       >
-                        {/* Chrome bar */}
-                        <div className="h-7 bg-neutral-950/80 border-b border-white/[0.04] flex items-center justify-between px-2.5 z-20 relative select-none">
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <div className={cn("w-1 h-1 rounded-full", 
-                              tool.id === "youtube-notes" ? "bg-red-500/70" :
-                              tool.id === "ai-ppt" ? "bg-orange-500/70" :
-                              tool.id === "ai-diagram" ? "bg-cyan-500/70" :
-                              tool.id === "ai-writer" ? "bg-amber-500/70" :
-                              "bg-pink-500/70"
-                            )} />
-                            <div className="w-1 h-1 rounded-full bg-white/10" />
-                            <div className="w-1 h-1 rounded-full bg-white/10" />
+                        <img 
+                          src="/stanford-lecture.jpg" 
+                          alt="Stanford ML Lecture" 
+                          className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                        />
+
+                        {/* Subtle Dark Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 pointer-events-none" />
+
+                        {/* Play Button */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-[#ef4444] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                            <Play size={13} className="fill-white translate-x-0.5" />
                           </div>
-                          
-                          <div className="bg-white/5 border border-white/[0.04] rounded-md px-2 py-0.5 text-[7px] font-mono text-neutral-400 flex items-center gap-0.5 truncate max-w-[150px] text-center">
-                            <Lock size={6.5} className="text-neutral-500 shrink-0" />
-                            <span className="truncate">{tool.previewUrl}</span>
-                          </div>
-                          <div className="w-[12px] h-0.5 bg-white/10 rounded-full shrink-0" />
                         </div>
 
-                        {/* Viewport */}
-                        <div className="absolute inset-x-0 bottom-0 top-7 overflow-hidden bg-[#050505] flex items-center justify-center">
-                          <div className="absolute top-2 right-2 z-20 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-black/75 border border-white/10 backdrop-blur-md">
-                            <span className={cn("w-1 h-1 rounded-full animate-pulse",
-                              tool.id === "youtube-notes" ? "bg-red-500 shadow-[0_0_6px_#ef4848]" :
-                              tool.id === "ai-ppt" ? "bg-orange-500 shadow-[0_0_6px_#f97316]" :
-                              tool.id === "ai-diagram" ? "bg-cyan-500 shadow-[0_0_6px_#06b6d4]" :
-                              tool.id === "ai-writer" ? "bg-amber-500 shadow-[0_0_6px_#f59e0b]" :
-                              "bg-pink-500 shadow-[0_0_6px_#ec4899]"
-                            )} />
-                            <span className="text-[6.5px] font-bold uppercase tracking-widest text-neutral-400">Live Preview</span>
+                        {/* Video Controls Bar */}
+                        <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/95 to-transparent space-y-1">
+                          <div className="w-full h-0.5 bg-white/20 rounded-full overflow-hidden">
+                            <div className="w-[38%] h-full bg-[#ef4444]" />
                           </div>
-
-
-                          <div className="w-full h-full select-none pointer-events-none">
-                            <ToolLivePreview toolId={tool.id} />
+                          <div className="flex items-center justify-between text-[9px] text-neutral-300 font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <Volume2 size={9} />
+                              <span>12:45 / 1:24:36</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Settings size={9} />
+                              <Maximize size={9} />
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Feature Capsules */}
-                      <div className="flex flex-wrap gap-1.5">
-                        {tool.features.map((feature, fIdx) => (
-                          <span key={fIdx} className="text-[8.5px] text-neutral-300 bg-white/[0.02] border border-white/[0.04] px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
-                            <Check size={8} className="text-neutral-300" />
-                            {feature}
-                          </span>
+                      {/* AI Output Tabs Checklist (5 cols) */}
+                      <div className="col-span-5 flex flex-col justify-between gap-1 bg-white/[0.02] rounded-xl p-1.5 border border-white/[0.05]">
+                        {[
+                          { id: "notes", title: "Smart Notes", icon: FileText, color: "text-red-400" },
+                          { id: "ppt", title: "PPT Slides", icon: Presentation, color: "text-orange-400" },
+                          { id: "quiz", title: "Interactive Quiz", icon: HelpCircle, color: "text-purple-400" },
+                          { id: "cards", title: "Flashcards", icon: Layers, color: "text-blue-400" },
+                          { id: "mindmap", title: "Mind Map", icon: GitBranch, color: "text-emerald-400" }
+                        ].map((item) => (
+                          <div 
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            className={cn(
+                              "flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer text-left",
+                              activeTab === item.id 
+                                ? "bg-white/[0.08] border-white/[0.12]" 
+                                : "bg-transparent border-transparent hover:bg-white/[0.03]"
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <div className={cn("w-4 h-4 rounded flex items-center justify-center shrink-0", item.color)}>
+                                <item.icon size={11} />
+                              </div>
+                              <span className="text-[10px] font-medium text-neutral-200 truncate">
+                                {item.title}
+                              </span>
+                            </div>
+                            <Check size={9} className="text-emerald-400 shrink-0" strokeWidth={2.5} />
+                          </div>
                         ))}
                       </div>
 
-                      {/* Launch Button */}
-                      <button
-                        onClick={() => tool.action()}
-                        className={cn(
-                          "flex items-center justify-center gap-2 h-10 px-6 rounded-xl text-black font-extrabold uppercase tracking-widest text-[9.5px] transition-all active:scale-[0.97] w-full shadow-lg",
-                          tool.id === "youtube-notes" ? "bg-red-500 hover:bg-red-600 text-white shadow-[0_4px_12px_rgba(239,68,68,0.3)]" :
-                          tool.id === "ai-ppt" ? "bg-orange-500 hover:bg-orange-600 text-white shadow-[0_4px_12px_rgba(249,115,22,0.3)]" :
-                          tool.id === "ai-diagram" ? "bg-cyan-500 hover:bg-cyan-600 text-white shadow-[0_4px_12px_rgba(6,182,212,0.3)]" :
-                          tool.id === "ai-writer" ? "bg-amber-500 hover:bg-amber-600 text-white shadow-[0_4px_12px_rgba(245,158,11,0.3)]" :
-                          "bg-pink-500 hover:bg-pink-600 text-white shadow-[0_4px_12px_rgba(236,72,153,0.3)]"
-                        )}
-                      >
-                        <span>{tool.cta}</span>
-                        <ArrowRight size={11} />
-                      </button>
-
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
+                    {/* AI Structured Notes Preview Snippet */}
+                    <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <div className="flex items-center gap-1.5 font-semibold text-neutral-200">
+                          <Sparkles size={11} className="text-red-400" />
+                          <span>Generated Summary & Formulas</span>
+                        </div>
+                        <span className="text-[9px] text-neutral-500 font-mono">04:12 Timestamp</span>
+                      </div>
+
+                      <p className="text-[10.5px] text-neutral-400 leading-snug font-normal">
+                        • <strong className="text-neutral-300">Cost Function:</strong> <span className="font-mono text-neutral-300 text-[10px]">J(θ) = 1/2m ∑ (h_θ(x) - y)²</span> calculates regression error across m training examples.
+                      </p>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-white/[0.04] text-[9.5px] text-neutral-400">
+                        <div className="flex items-center gap-2">
+                          <span className="px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-neutral-300">PDF Ready</span>
+                          <span className="px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-neutral-300">Notion Sync</span>
+                        </div>
+                        <span className="text-neutral-500">Processed in 8.4s</span>
+                      </div>
+                    </div>
+
+                  </div>
+
+                </div>
+              </motion.div>
             </div>
-          );
-        })}
-      </div>
-    </section>
+          )}
+
+        </div>
+      </section>
+
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. STATISTICS STRIP (5 Metrics In 1 Row)
+      ────────────────────────────────────────────────────────────── */}
+      <section className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="w-full rounded-2xl bg-[#09090c] border border-white/[0.08] backdrop-blur-xl py-3.5 px-3 sm:px-6 shadow-sm">
+          <div className="grid grid-cols-5 divide-x divide-white/[0.06] text-center">
+            
+            {/* Stat 1: 200K+ Students */}
+            <div className="flex flex-col items-center justify-center px-1 sm:px-4 py-0.5">
+              <div className="text-neutral-300 mb-1">
+                <Users size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2} />
+              </div>
+              <span className="text-xs sm:text-base lg:text-lg font-bold text-white tracking-tight leading-tight">
+                200K+
+              </span>
+              <span className="text-[8.5px] sm:text-[11px] text-neutral-400 font-normal leading-tight mt-0.5">
+                Active Learners
+              </span>
+            </div>
+
+            {/* Stat 2: 5M+ Notes Generated */}
+            <div className="flex flex-col items-center justify-center px-1 sm:px-4 py-0.5">
+              <div className="text-neutral-300 mb-1">
+                <FileText size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2} />
+              </div>
+              <span className="text-xs sm:text-base lg:text-lg font-bold text-white tracking-tight leading-tight">
+                5M+
+              </span>
+              <span className="text-[8.5px] sm:text-[11px] text-neutral-400 font-normal leading-tight mt-0.5">
+                Notes Generated
+              </span>
+            </div>
+
+            {/* Stat 3: 10M+ Hours Saved */}
+            <div className="flex flex-col items-center justify-center px-1 sm:px-4 py-0.5">
+              <div className="text-neutral-300 mb-1">
+                <Clock size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2} />
+              </div>
+              <span className="text-xs sm:text-base lg:text-lg font-bold text-white tracking-tight leading-tight">
+                10M+
+              </span>
+              <span className="text-[8.5px] sm:text-[11px] text-neutral-400 font-normal leading-tight mt-0.5">
+                Hours Saved
+              </span>
+            </div>
+
+            {/* Stat 4: #1 AI Study Platform */}
+            <div className="flex flex-col items-center justify-center px-1 sm:px-4 py-0.5">
+              <div className="text-neutral-300 mb-1">
+                <Trophy size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2} />
+              </div>
+              <span className="text-xs sm:text-base lg:text-lg font-bold text-white tracking-tight leading-tight">
+                #1
+              </span>
+              <span className="text-[8.5px] sm:text-[11px] text-neutral-400 font-normal leading-tight mt-0.5">
+                AI Study Suite
+              </span>
+            </div>
+
+            {/* Stat 5: 99.9% Secure & Private */}
+            <div className="flex flex-col items-center justify-center px-1 sm:px-4 py-0.5">
+              <div className="text-neutral-300 mb-1">
+                <ShieldCheck size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2} />
+              </div>
+              <span className="text-xs sm:text-base lg:text-lg font-bold text-white tracking-tight leading-tight">
+                99.9%
+              </span>
+              <span className="text-[8.5px] sm:text-[11px] text-neutral-400 font-normal leading-tight mt-0.5">
+                Accuracy Rate
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+
+      {/* ─────────────────────────────────────────────────────────────
+          3. TRUSTED ORGANIZATIONS SECTION
+      ────────────────────────────────────────────────────────────── */}
+      <section className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 text-center">
+        <h3 className="text-xs sm:text-sm font-medium text-neutral-400 tracking-tight mb-3.5 sm:mb-4">
+          Trusted by Students & Researchers from
+        </h3>
+
+        {/* 6 Partner Cards Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { name: "Google", img: "/homepage_con/google.png", scale: "scale-105", sub: "Research & innovation" },
+            { name: "Microsoft", img: "/homepage_con/microsoft.png", scale: "scale-100", sub: "Global tech & cloud" },
+            { name: "Stanford University", img: "/homepage_con/stainford.png", scale: "scale-100", sub: "Academic excellence" },
+            { name: "MIT", img: "/homepage_con/mit.png", scale: "scale-100", sub: "Engineering & science" },
+            { name: "Harvard University", img: "/homepage_con/havard.png", scale: "scale-100", sub: "Higher education" },
+            { name: "National University of Singapore", img: "/homepage_con/nus.png", scale: "scale-100", sub: "Global research" },
+          ].map((partner, idx) => (
+            <div 
+              key={idx} 
+              className="bg-[#09090c] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-3.5 flex flex-col items-center justify-between text-center transition-all duration-200 group overflow-hidden"
+            >
+              <div className="h-8 sm:h-9 w-full flex items-center justify-center overflow-hidden">
+                <img 
+                  src={partner.img} 
+                  alt={partner.name} 
+                  className={cn("h-6 sm:h-7 w-auto max-w-[100px] max-h-7 object-contain opacity-75 group-hover:opacity-100 transition-opacity", partner.scale)}
+                />
+              </div>
+              <p className="text-[10px] text-neutral-500 group-hover:text-neutral-400 font-normal leading-tight mt-2 transition-colors">
+                {partner.sub}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+
+      {/* ─────────────────────────────────────────────────────────────
+          4. 20+ POWERFUL TOOLS SECTION & CAROUSEL
+      ────────────────────────────────────────────────────────────── */}
+      <section className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 overflow-hidden">
+        
+        {/* Section Header */}
+        <div className="flex items-start sm:items-end justify-between gap-2 mb-3.5 sm:mb-5">
+          <div>
+            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[9.5px] font-medium text-neutral-400 uppercase tracking-wider mb-1.5">
+              <span>All-In-One Toolkit</span>
+            </div>
+            <h2 className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-tight">
+              20+ Powerful Tools for Students & Developers
+            </h2>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Everything you need to convert lectures, synthesize notes, and study faster.
+            </p>
+          </div>
+
+          {/* Right Action + Arrow Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => router.push("/tools")}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-full transition-all cursor-pointer group"
+            >
+              <span>View All Tools</span>
+              <ArrowRight size={11} className="text-neutral-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+        </div>
+
+        {/* Carousel Cards with Controls */}
+        <div className="relative group/carousel">
+          {/* Left Arrow Button */}
+          <button
+            onClick={() => scrollCarousel("left")}
+            className="absolute -left-2 sm:-left-3 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#09090c] border border-white/10 hover:border-white/20 text-neutral-300 hover:text-white flex items-center justify-center shadow-md transition-all cursor-pointer active:scale-95 opacity-0 group-hover/carousel:opacity-100 sm:opacity-90"
+            aria-label="Previous"
+          >
+            <ChevronLeft size={14} />
+          </button>
+
+          {/* Right Arrow Button */}
+          <button
+            onClick={() => scrollCarousel("right")}
+            className="absolute -right-2 sm:-right-3 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#09090c] border border-white/10 hover:border-white/20 text-neutral-300 hover:text-white flex items-center justify-center shadow-md transition-all cursor-pointer active:scale-95 opacity-0 group-hover/carousel:opacity-100 sm:opacity-90"
+            aria-label="Next"
+          >
+            <ChevronRight size={14} />
+          </button>
+
+          {/* Cards Container */}
+          <div 
+            ref={carouselRef}
+            onScroll={handleCarouselScroll}
+            className="flex items-stretch gap-3 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1 w-full max-w-full"
+          >
+            {TOOLS_CAROUSEL.map((tool) => {
+              const Icon = tool.icon;
+              return (
+                <div
+                  key={tool.id}
+                  onClick={() => router.push(tool.href)}
+                  className="w-[140px] sm:w-[155px] lg:w-[165px] min-w-[140px] sm:min-w-[155px] lg:min-w-[165px] flex-1 rounded-2xl p-4 bg-[#09090c] border border-white/[0.07] hover:border-white/[0.16] transition-all duration-200 cursor-pointer snap-start flex flex-col justify-between group hover:-translate-y-0.5 relative overflow-hidden"
+                >
+                  {/* Popular Tag */}
+                  {tool.badge && (
+                    <span className="absolute top-2.5 right-2.5 text-[8px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400">
+                      {tool.badge}
+                    </span>
+                  )}
+
+                  {/* Card Icon */}
+                  <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-white/[0.08] transition-colors">
+                    <Icon size={17} className={tool.iconColor} />
+                  </div>
+
+                  {/* Card Content */}
+                  <div>
+                    <h3 className="text-xs sm:text-[13px] font-bold text-white tracking-tight group-hover:text-red-400 transition-colors leading-tight">
+                      {tool.title}
+                    </h3>
+                    <p className="text-[10px] text-neutral-400 mt-0.5 leading-snug line-clamp-2">
+                      {tool.desc}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Carousel Bottom Indicator Bar */}
+        <div className="flex justify-center mt-3 sm:mt-4">
+          <div className="w-16 sm:w-20 h-1 bg-white/[0.06] rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-[#ef4444] rounded-full transition-all duration-300"
+              style={{
+                width: "40%",
+                transform: `translateX(${carouselIndex * 150}%)`
+              }}
+            />
+          </div>
+        </div>
+
+      </section>
+
+    </div>
   );
 }
+

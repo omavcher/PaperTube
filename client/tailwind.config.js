@@ -7,6 +7,20 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          "var(--font-sans)",
+          "'Plus Jakarta Sans'",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "'Segoe UI'",
+          "Roboto",
+          "Helvetica",
+          "Arial",
+          "sans-serif",
+        ],
+        logo: ["var(--font-logo)", "'Fjalla One'", "'Montserrat'", "sans-serif"],
+      },
       colors: {
         neutral: {
           650: "#4d4d4d",

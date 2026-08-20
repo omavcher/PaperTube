@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const html_to_pdf = require("html-pdf-node");
 const Essay = require("../models/Essay");
+const AICertificate = require("../models/AICertificate");
 const { awardXP } = require("../utils/xpHelper");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -1575,6 +1576,94 @@ exports.updateEssay = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error updating essay",
+      error: error.message
+    });
+  }
+};
+
+// 🔹 POST /api/writer/certificate
+exports.saveCertificate = async (req, res) => {
+  try {
+    const { 
+      certId, 
+      aiProbability, 
+      humanProbability, 
+      confidence, 
+      verdictTitle, 
+      verdictDesc, 
+      features, 
+      llmFeedback, 
+      multiModelScores, 
+      textSnippet 
+    } = req.body;
+
+    if (!certId) {
+      return res.status(400).json({ success: false, message: "Certificate ID is required." });
+    }
+
+    const userId = req.user ? req.user.id : null;
+
+    const cert = await AICertificate.findOneAndUpdate(
+      { certId },
+      {
+        certId,
+        userId,
+        aiProbability: aiProbability ?? 0,
+        humanProbability: humanProbability ?? 100,
+        confidence: confidence ?? 94,
+        verdictTitle: verdictTitle || "AI Content & Integrity Analysis",
+        verdictDesc: verdictDesc || "",
+        features: features || {},
+        llmFeedback: llmFeedback || {},
+        multiModelScores: multiModelScores || {},
+        textSnippet: textSnippet || "",
+        issuedBy: "Paperxify Academic Integrity Office (paperxify.com)",
+        issueDate: new Date()
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Certificate saved successfully",
+      certificate: cert
+    });
+  } catch (error) {
+    console.error("❌ Save Certificate Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error saving certificate",
+      error: error.message
+    });
+  }
+};
+
+// 🔹 GET /api/writer/certificate/:certId
+exports.getCertificateById = async (req, res) => {
+  try {
+    const { certId } = req.params;
+    
+    if (!certId) {
+      return res.status(400).json({ success: false, message: "Certificate ID is required." });
+    }
+
+    const cert = await AICertificate.findOne({ certId });
+    if (!cert) {
+      return res.status(404).json({
+        success: false,
+        message: "Certificate record not found."
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      certificate: cert
+    });
+  } catch (error) {
+    console.error("❌ Get Certificate Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error retrieving certificate",
       error: error.message
     });
   }

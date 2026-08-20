@@ -1,9 +1,12 @@
 // controllers/freeNoteController.js
 const User = require('../models/User');
 const Note = require('../models/Note');
+const GenerationJob = require('../models/GenerationJob');
 const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
 const { generateStudyImages } = require('../services/imageGenerationService');
+const { getVerifiedSearchImage, getVerifiedImagesForFigures } = require('../services/imageSearchService');
+const { generateLectureNotePipeline } = require('../services/notesEngineService');
 const { checkFreeTierLimits } = require('../utils/freeTierLimits');
 const { awardXP } = require('../utils/xpHelper');
 
@@ -57,55 +60,25 @@ const mapDetailLevel = (level) => {
   return mapping[level] || level;
 };
 
-// Function to get image links from Google Custom Search
+// Function to get verified image link from Google / Multi-provider Search
 const getImgLink = async (query, count = 1) => {
   try {
-    const apiKey = 'AIzaSyAkD0dWuBRTharsqXlhh-Bv05ek6AdzhlI';
-    const cx = '6606604e9a50d4c0d';
-
-    const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
-      query
-    )}&cx=${cx}&searchType=image&num=${count}&key=${apiKey}`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!data.items || data.items.length === 0) {
-      console.log("No images found for query:", query);
-      return [];
-    }
-
-    const blockedDomains = [
-      "instagram.com", "facebook.com", "twitter.com", "youtube.com", "youtube.in",
-      "tiktok.com", "snapchat.com", "linkedin.com", "flickr.com", "vimeo.com",
-      "quora.com", "medium.com", "whatsapp.com", "telegram.org", "discord.com",
-      "weibo.com", "vk.com", "twitch.tv", "netflix.com", "hulu.com",
-      "primevideo.com", "spotify.com", "soundcloud.com", "bandcamp.com",
-      "mixcloud.com", "patreon.com"
-    ];
-    
-    const imgLinks = data.items
-      .filter(item => !blockedDomains.some(domain => item.displayLink.includes(domain)))
-      .map(item => item.link);
-
-    return imgLinks;
+    const verifiedUrl = await getVerifiedSearchImage(query);
+    return verifiedUrl ? [verifiedUrl] : [];
   } catch (err) {
-    console.error("Error fetching image links:", err);
+    console.error("Error fetching verified image links:", err);
     return [];
   }
 };
 
-// Function to generate objects array {title, img_url} from figure names
+// Function to generate objects array {title, img_url} from figure names with strict verification
 const generateImgObjects = async (figures) => {
-  const result = [];
-  for (const title of figures) {
-    const links = await getImgLink(title, 1);
-    result.push({
-      title,
-      img_url: links.length > 0 ? links[0] : null,
-    });
+  try {
+    return await getVerifiedImagesForFigures(figures);
+  } catch (err) {
+    console.error("Error in generateImgObjects:", err);
+    return figures.map(title => ({ title, img_url: null }));
   }
-  return result;
 };
 
 const extractVideoId = (url) => {
@@ -988,7 +961,25 @@ exports.createNote = async (req, res) => {
       // Continue with default title if video info fetch fails
     }
 
-    console.log('Starting complete note generation process...');
+    // Create asynchronous GenerationJob
+    const jobId = crypto.randomUUID();
+    const job = new GenerationJob({
+      jobId,
+      userId,
+      videoId,
+      videoUrl,
+      videoTitle,
+      duration: videoDuration || 0,
+      plan: isSubscribed ? (user.membership?.planId || 'pro') : 'free',
+      model,
+      status: 'PROCESSING_TRANSCRIPT',
+      progress: 5,
+      currentStage: 'Transcript Ingestion',
+      currentMessage: 'Connecting to transcript and processing audio boundaries...'
+    });
+    await job.save();
+
+    console.log(`Starting complete note generation process [Job ID: ${jobId}]...`);
     console.log('Settings received:', { language: settings?.language, detailLevel: settings?.detailLevel, prompt });
     console.log('User subscription status:', isSubscribed ? 'Subscribed' : 'Free user');
     
@@ -1002,101 +993,66 @@ exports.createNote = async (req, res) => {
         throw new Error('Transcript is empty or unavailable for this video');
       }
       console.log(`Found ${transcript.split('\n').length} transcript segments`);
-      
-      // Check transcript token limits for the specific model
-      const estimatedTokens = estimateTokenCount(transcript);
-      const modelLimits = MODEL_TOKEN_LIMITS[model];
-      
-      console.log(`Transcript estimated tokens: ${estimatedTokens}, Model max input: ${modelLimits.maxInputTokens}`);
-      
-      // If transcript is too long, truncate it to fit within the model's token limit
-      // (~4 chars per token), so we can still generate notes instead of erroring out
-      if (estimatedTokens > modelLimits.maxInputTokens) {
-        const maxChars = modelLimits.maxInputTokens * 4;
-        transcript = transcript.substring(0, maxChars);
-        // Try to end at a clean line boundary
-        const lastNewline = transcript.lastIndexOf('\n');
-        if (lastNewline > maxChars * 0.8) {
-          transcript = transcript.substring(0, lastNewline);
-        }
-        console.log(`⚠️ Transcript truncated from ~${estimatedTokens} to ~${estimateTokenCount(transcript)} tokens to fit ${model} model limits. Proceeding with generation.`);
-      }
     } catch (error) {
       console.error('Transcript fetch failed:', error);
+      job.status = 'FAILED';
+      job.error = error.message;
+      await job.save();
+
       return res.status(400).json({
         success: false,
         message: "Sorry, this video does not have a proper format and clear pronunciation. Please try another video."
       });
     }
 
-    // STEP 2: Generate AI images for all free models
-    // Free tier → use Google custom search for image links
-    let img_with_url = [];
-    console.log('🎨 Generating images for free models using Google Search...');
+    // Progress update helper
+    const updateJobProgress = async (update) => {
+      try {
+        await GenerationJob.findOneAndUpdate(
+          { jobId },
+          {
+            $set: {
+              status: update.status || 'GENERATING_NOTES',
+              progress: update.progress || 50,
+              currentStage: update.currentStage || 'Processing',
+              currentMessage: update.currentMessage || 'Building notes...',
+              tokenUsage: update.tokenUsage || { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+              estimatedCost: update.estimatedCost || 0
+            }
+          }
+        );
+      } catch (err) {
+        console.warn('⚠️ Job progress update error:', err.message);
+      }
+    };
+
+    // STEP 2 & 3: Run 7-Layer Note Generation Pipeline
+    let pipelineResult;
     try {
-      const figures = await generateImgGEnAI(transcript, settings?.language);
-      if (figures && figures.length > 0) {
-        img_with_url = await generateImgObjects(figures);
-        console.log(`✅ Image retrieval complete: ${img_with_url.length} image(s) ready`);
-      } else {
-        console.log('No visual topics identified – skipping image generation');
-      }
-    } catch (imgErr) {
-      console.error('⚠️ Image generation failed (non-critical):', imgErr.message);
-      // Continue without images – note generation must not fail because of this
-    }
-
-    // STEP 3: Generate PDF content using appropriate AI
-    console.log(`Generating PDF content with ${model} model...`);
-    console.log(`Language: ${settings?.language || 'English'}, Detail Level: ${settings?.detailLevel || 'Standard Notes'}`);
-    
-    const image_titles = img_with_url.map(img => img.title).join(', ');
-    const ai_prompt = getModelPrompt(model, transcript, prompt, image_titles, videoUrl, settings);
-
-    const systemPromptContent = (settings?.format === 'flashcards')
-      ? "You are an expert at creating educational flashcards from video transcripts. Always output a valid JSON array of flashcard objects only."
-      : "You are an expert at creating educational study notes from video transcripts. Always output clean, valid Markdown. Do not wrap in HTML tags, output Markdown only.";
-
-    const messages = [
-      {
-        role: "system",
-        content: systemPromptContent
-      },
-      {
-        role: "user",
-        content: ai_prompt
-      }
-    ];
-
-    // Use appropriate API based on subscription status
-    let response;
-    const modelLimits = MODEL_TOKEN_LIMITS[model];
-    
-    if (isSubscribed) {
-      // Subscribed users get premium model with higher limits
-      console.log('Using premium OpenRouter model for subscribed user');
-      response = await premiumOpenRouterChatCompletion(messages, {
-        temperature: 0.7,
-        max_tokens: modelLimits.maxOutputTokens,
-        timeout: 120000
+      pipelineResult = await generateLectureNotePipeline({
+        jobId,
+        videoId,
+        title: videoTitle,
+        channel: 'YouTube Lecture',
+        duration: videoDuration || 0,
+        transcriptSegments: transcript,
+        userPlan: isSubscribed ? (user.membership?.planId || 'pro') : 'free',
+        detailLevel: mapDetailLevel(settings?.detailLevel) || 'Standard Notes',
+        onProgress: updateJobProgress
       });
-    } else {
-      // Free users use the free model queue
-      console.log('Using free OpenRouter models');
-      response = await openRouterChatCompletion(messages, {
-        temperature: 0.7,
-        max_tokens: modelLimits.maxOutputTokens,
-        timeout: 90000
+    } catch (pipelineErr) {
+      console.error('❌ Pipeline generation error:', pipelineErr);
+      job.status = 'FAILED';
+      job.error = pipelineErr.message;
+      await job.save();
+
+      return res.status(500).json({
+        success: false,
+        message: `Generation pipeline error: ${pipelineErr.message}`
       });
     }
 
-    if (!response.success) {
-      throw new Error(`AI generation failed: ${response.error}`);
-    }
-
-    console.log('AI content generation completed successfully');
-
-    // STEP 4: Create complete note with all generated content
+    // STEP 4: Create complete note with structured Knowledge IR & Content
     const randomSuffix = crypto.randomBytes(4).toString('hex');
     const note_slug = (videoTitle || "untitled")
       .toLowerCase()
@@ -1105,6 +1061,10 @@ exports.createNote = async (req, res) => {
       .substring(0, 50) + "-" + randomSuffix;
 
     const processingTime = Math.floor((Date.now() - startTime) / 1000);
+    const formattedImages = (pipelineResult.images || []).map(img => ({
+      title: img.title || 'Illustration',
+      img_url: img.img_url || null
+    }));
 
     const newNote = new Note({
       owner: userId,
@@ -1113,22 +1073,13 @@ exports.createNote = async (req, res) => {
       title: videoTitle,
       slug: note_slug,
       transcript: transcript,
-      content: (() => {
-        let finalContent = stripMarkdownFences(response.content);
-        if (img_with_url && img_with_url.length > 0) {
-          img_with_url.forEach(img => {
-            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`\\[IMAGE_PLACEHOLDER:\\s*${escapeRegExp(img.title)}\\]`, 'gi');
-            
-            const imgHtml = `\n<div style="text-align:center;margin:20px 0">\n  <img src="${img.img_url}" alt="${img.title}" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">\n  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: ${img.title}</p>\n</div>\n`;
-            finalContent = finalContent.replace(regex, imgHtml);
-          });
-        }
-        return finalContent;
-      })(),
+      content: pipelineResult.content,
+      knowledgeIR: pipelineResult.knowledgeIR,
+      chapters: pipelineResult.chapters || [],
+      jobId,
       status: 'completed',
       visibility: 'public',
-      img_with_url: img_with_url,
+      img_with_url: formattedImages,
       generationDetails: {
         model: model,
         language: settings?.language || 'English',
@@ -1141,11 +1092,29 @@ exports.createNote = async (req, res) => {
         processingTime: processingTime,
         type: isSubscribed ? 'premium' : 'free',
         cost: isSubscribed ? 0 : TOKEN_COST_PER_GENERATION,
-        aiModel: response.model
+        aiModel: 'OpenRouter Multi-Model Pipeline',
+        tokenUsage: pipelineResult.tokenUsage,
+        estimatedCost: pipelineResult.estimatedCost
       },
     });
 
     await newNote.save();
+
+    // Mark job as completed
+    await GenerationJob.findOneAndUpdate(
+      { jobId },
+      {
+        $set: {
+          status: 'COMPLETED',
+          progress: 100,
+          currentStage: 'Complete',
+          currentMessage: 'Study note generated successfully!',
+          noteId: newNote._id,
+          slug: newNote.slug,
+          completedAt: new Date()
+        }
+      }
+    );
 
     // STEP 5: Update user - deduct tokens if not subscribed
     let remainingTokens = user.tokens;
@@ -1270,6 +1239,170 @@ exports.getVideoInfo = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch video information",
+      error: error.message
+    });
+  }
+};
+
+// ─── Asynchronous Generation Job Tracking ───
+exports.getJobStatus = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const userId = req.user.id;
+
+    const job = await GenerationJob.findOne({ jobId, userId });
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      job: {
+        jobId: job.jobId,
+        status: job.status,
+        progress: job.progress,
+        currentStage: job.currentStage,
+        currentMessage: job.currentMessage,
+        tokenUsage: job.tokenUsage,
+        estimatedCost: job.estimatedCost,
+        noteId: job.noteId,
+        slug: job.slug,
+        error: job.error,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching job status:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch job status",
+      error: error.message
+    });
+  }
+};
+
+exports.cancelJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const userId = req.user.id;
+
+    const job = await GenerationJob.findOne({ jobId, userId });
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found"
+      });
+    }
+
+    if (job.status === 'COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        message: "Job is already completed"
+      });
+    }
+
+    job.status = 'CANCELLED';
+    job.currentStage = 'Cancelled';
+    job.currentMessage = 'Job was cancelled by user';
+    job.completedAt = new Date();
+    await job.save();
+
+    res.json({
+      success: true,
+      message: "Job cancelled successfully",
+      jobId: job.jobId
+    });
+  } catch (error) {
+    console.error('Error cancelling job:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to cancel job",
+      error: error.message
+    });
+  }
+};
+
+// ─── Asynchronous Generation Job Tracking ───
+exports.getJobStatus = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const userId = req.user.id;
+
+    const job = await GenerationJob.findOne({ jobId, userId });
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      job: {
+        jobId: job.jobId,
+        status: job.status,
+        progress: job.progress,
+        currentStage: job.currentStage,
+        currentMessage: job.currentMessage,
+        tokenUsage: job.tokenUsage,
+        estimatedCost: job.estimatedCost,
+        noteId: job.noteId,
+        slug: job.slug,
+        error: job.error,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching job status:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch job status",
+      error: error.message
+    });
+  }
+};
+
+exports.cancelJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const userId = req.user.id;
+
+    const job = await GenerationJob.findOne({ jobId, userId });
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found"
+      });
+    }
+
+    if (job.status === 'COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        message: "Job is already completed"
+      });
+    }
+
+    job.status = 'CANCELLED';
+    job.currentStage = 'Cancelled';
+    job.currentMessage = 'Job was cancelled by user';
+    job.completedAt = new Date();
+    await job.save();
+
+    res.json({
+      success: true,
+      message: "Job cancelled successfully",
+      jobId: job.jobId
+    });
+  } catch (error) {
+    console.error('Error cancelling job:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to cancel job",
       error: error.message
     });
   }

@@ -40,7 +40,7 @@ export default function YouTubeToNotesSeoPage({ region }: YouTubeToNotesSeoPageP
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)] pointer-events-none z-0" />
 
       {/* Main Content */}
-      <main className="relative z-10 w-full flex flex-col items-center">
+      <main className="relative z-10 w-full max-w-full flex flex-col items-center overflow-x-hidden">
         {/* H1 SEO Target Title */}
         <h1 className="sr-only">{seoConfig.h1}</h1>
 

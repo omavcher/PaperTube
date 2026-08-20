@@ -17,13 +17,13 @@ export default function YouTubeToNotesClient() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-start w-full">
+    <div className="flex flex-col items-center justify-start w-full max-w-full overflow-x-hidden">
       {/* 1. Main Converter Form */}
       <HomeMain />
 
       {/* 2. User Notes Library (auth-gated) */}
       {isAuthenticated && (
-        <div className="w-full mt-4 border-t border-white/[0.04] pt-8">
+        <div className="w-full border-t border-white/[0.06]">
           <HomeWorkspace />
         </div>
       )}

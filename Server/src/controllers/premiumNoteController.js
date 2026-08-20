@@ -1,9 +1,11 @@
 // controllers/premiumNoteController.js
 const User = require('../models/User');
 const Note = require('../models/Note');
+const GenerationJob = require('../models/GenerationJob');
 const crypto = require('crypto');
 const { getTranscript } = require('../youtube-transcript');
 const { generateStudyImages } = require('../services/imageGenerationService');
+const { generateLectureNotePipeline } = require('../services/notesEngineService');
 const { awardXP } = require('../utils/xpHelper');
 
 const PREMIUM_MODELS = ['canvas', 'scholar', 'atlas'];
@@ -818,7 +820,25 @@ exports.createNote = async (req, res) => {
       // Continue with default title if video info fetch fails
     }
 
-    console.log('Starting premium note generation process...');
+    // Create asynchronous GenerationJob
+    const jobId = crypto.randomUUID();
+    const job = new GenerationJob({
+      jobId,
+      userId,
+      videoId,
+      videoUrl,
+      videoTitle,
+      duration: videoDuration || 0,
+      plan: userPlanId,
+      model,
+      status: 'PROCESSING_TRANSCRIPT',
+      progress: 5,
+      currentStage: 'Transcript Ingestion',
+      currentMessage: 'Connecting to transcript and processing audio boundaries...'
+    });
+    await job.save();
+
+    console.log(`Starting premium note generation process [Job ID: ${jobId}]...`);
     console.log('Premium Model:', model, 'Settings:', { language: settings?.language, detailLevel: settings?.detailLevel, prompt });
     
     // STEP 1: Fetch transcript
@@ -829,89 +849,67 @@ exports.createNote = async (req, res) => {
       if (!transcript || transcript.trim().length === 0) {
         throw new Error('Transcript is empty or unavailable for this video');
       }
-      
-      // Check token limit
-      const estimatedTokens = estimateTokenCount(transcript);
-      console.log(`Transcript length: ${transcript.length} chars, estimated tokens: ${estimatedTokens}`);
-      
-      // If transcript is too long, truncate gracefully instead of erroring out
-      if (estimatedTokens > MAX_INPUT_TOKENS) {
-        const maxChars = MAX_INPUT_TOKENS * 4;
-        transcript = transcript.substring(0, maxChars);
-        const lastNewline = transcript.lastIndexOf('\n');
-        if (lastNewline > maxChars * 0.8) {
-          transcript = transcript.substring(0, lastNewline);
-        }
-        console.log(`⚠️ Transcript truncated from ~${estimatedTokens} to ~${estimateTokenCount(transcript)} tokens for premium model. Proceeding with generation.`);
-      }
-      
       console.log(`Found ${transcript.split('\n').length} transcript segments`);
     } catch (error) {
       console.error('Transcript fetch failed:', error);
+      job.status = 'FAILED';
+      job.error = error.message;
+      await job.save();
+
       return res.status(400).json({
         success: false,
         message: "Sorry, this video does not have a proper format and clear pronunciation. Please try another video."
       });
     }
 
-    // STEP 2: Generate AI images for premium models (All models get images now)
-    let img_with_url = [];
-    if (model === 'canvas' || model === 'scholar' || model === 'atlas') {
-      console.log('🎨 Generating images for premium model using Google Search...');
+    // Progress update helper
+    const updateJobProgress = async (update) => {
       try {
-        const figures = await generateImgGEnAI(transcript, settings?.language);
-        if (figures && figures.length > 0) {
-          img_with_url = await generateImgObjects(figures);
-          console.log(`✅ Image retrieval complete: ${img_with_url.length} image(s) ready`);
-        } else {
-          console.log('No visual topics identified – skipping image generation');
-        }
-      } catch (imgErr) {
-        console.error('⚠️ Image generation failed (non-critical):', imgErr.message);
-        // Continue without images – premium note generation must not fail
+        await GenerationJob.findOneAndUpdate(
+          { jobId },
+          {
+            $set: {
+              status: update.status || 'GENERATING_NOTES',
+              progress: update.progress || 50,
+              currentStage: update.currentStage || 'Processing',
+              currentMessage: update.currentMessage || 'Building notes...',
+              tokenUsage: update.tokenUsage || { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+              estimatedCost: update.estimatedCost || 0
+            }
+          }
+        );
+      } catch (err) {
+        console.warn('⚠️ Job progress update error:', err.message);
       }
+    };
+
+    // STEP 2 & 3: Run 7-Layer Note Generation Pipeline
+    let pipelineResult;
+    try {
+      pipelineResult = await generateLectureNotePipeline({
+        jobId,
+        videoId,
+        title: videoTitle,
+        channel: 'YouTube Lecture',
+        duration: videoDuration || 0,
+        transcriptSegments: transcript,
+        userPlan: userPlanId,
+        detailLevel: mapDetailLevel(settings?.detailLevel) || 'Comprehensive',
+        onProgress: updateJobProgress
+      });
+    } catch (pipelineErr) {
+      console.error('❌ Pipeline generation error:', pipelineErr);
+      job.status = 'FAILED';
+      job.error = pipelineErr.message;
+      await job.save();
+
+      return res.status(500).json({
+        success: false,
+        message: `Generation pipeline error: ${pipelineErr.message}`
+      });
     }
 
-    // STEP 3: Generate premium PDF content using OpenRouter
-    console.log(`Generating premium PDF content with ${model} model using OpenRouter...`);
-    
-    const image_titles = img_with_url.map(img => img.title).join(', ');
-    const ai_prompt = getPremiumModelPrompt(model, transcript, prompt, image_titles, videoUrl, settings);
-
-    const systemPromptContent = (settings?.format === 'flashcards')
-      ? "You are an expert at creating educational flashcards from video transcripts. Always output a valid JSON array of flashcard objects only."
-      : "You are an expert at creating educational PDF content from video transcripts. Always output valid HTML with inline styles only.";
-
-    const messages = [
-      {
-        role: "system",
-        content: systemPromptContent
-      },
-      {
-        role: "user",
-        content: ai_prompt
-      }
-    ];
-
-    const response = await openRouterChatCompletion(messages, {
-      temperature: 0.7,
-      max_tokens: MAX_OUTPUT_TOKENS,
-      timeout: 120000 // 2 minute timeout
-    });
-
-    if (!response.success) {
-      throw new Error(`AI generation failed: ${response.error}`);
-    }
-
-    const content = response.content;
-    
-    if (!content) {
-      throw new Error('AI generation failed - no content returned');
-    }
-
-    console.log('Premium AI content generation completed successfully');
-
-    // STEP 4: Create complete premium note with all generated content
+    // STEP 4: Create complete premium note with structured Knowledge IR & Content
     const randomSuffix = crypto.randomBytes(4).toString('hex');
     const note_slug = (videoTitle || "untitled")
       .toLowerCase()
@@ -920,6 +918,10 @@ exports.createNote = async (req, res) => {
       .substring(0, 50) + "-" + randomSuffix;
 
     const processingTime = Math.floor((Date.now() - startTime) / 1000);
+    const formattedImages = (pipelineResult.images || []).map(img => ({
+      title: img.title || 'Illustration',
+      img_url: img.img_url || null
+    }));
 
     const newNote = new Note({
       owner: userId,
@@ -928,39 +930,48 @@ exports.createNote = async (req, res) => {
       title: videoTitle,
       slug: note_slug,
       transcript: transcript,
-      content: (() => {
-        let finalContent = stripMarkdownFences(content);
-        if (img_with_url && img_with_url.length > 0) {
-          img_with_url.forEach(img => {
-            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`\\[IMAGE_PLACEHOLDER:\\s*${escapeRegExp(img.title)}\\]`, 'gi');
-            
-            const imgHtml = `\n<div style="text-align:center;margin:20px 0">\n  <img src="${img.img_url}" alt="${img.title}" style="max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">\n  <p style="color:#64748b;font-size:12px;font-style:italic;margin:6px 0 0">Fig: ${img.title}</p>\n</div>\n`;
-            finalContent = finalContent.replace(regex, imgHtml);
-          });
-        }
-        return finalContent;
-      })(),
+      content: pipelineResult.content,
+      knowledgeIR: pipelineResult.knowledgeIR,
+      chapters: pipelineResult.chapters || [],
+      jobId,
       status: 'completed',
       visibility: 'private',
-      img_with_url: img_with_url,
+      img_with_url: formattedImages,
       generationDetails: {
         model: model,
         language: settings?.language || 'English',
-        detailLevel: mapDetailLevel(settings?.detailLevel) || 'Standard Notes',
+        detailLevel: mapDetailLevel(settings?.detailLevel) || 'Comprehensive',
         prompt: prompt || "",
         format: format || 'notes',
-        theme: req.body.theme || 'blueberry',
+        theme: req.body.theme || 'kraft',
         flashcardCount: flashcardCount,
         generatedAt: new Date(),
         processingTime: processingTime,
         type: 'premium',
-        aiModel: response.model,
-        tokenUsage: response.usage
+        cost: 0,
+        aiModel: 'OpenRouter Multi-Model Pipeline',
+        tokenUsage: pipelineResult.tokenUsage,
+        estimatedCost: pipelineResult.estimatedCost
       }
     });
 
     await newNote.save();
+
+    // Mark job as completed
+    await GenerationJob.findOneAndUpdate(
+      { jobId },
+      {
+        $set: {
+          status: 'COMPLETED',
+          progress: 100,
+          currentStage: 'Complete',
+          currentMessage: 'Study note generated successfully!',
+          noteId: newNote._id,
+          slug: newNote.slug,
+          completedAt: new Date()
+        }
+      }
+    );
 
     // STEP 5: Add note to user's notes array
     if (!user.notes) user.notes = [];
@@ -1008,7 +1019,7 @@ exports.createNote = async (req, res) => {
         userPrompt: prompt || "No additional instructions",
         modelFeatures: PREMIUM_FEATURES[model]?.features || [],
         processingTime: `${processingTime} seconds`,
-        tokenUsage: response.usage
+        tokenUsage: pipelineResult.tokenUsage || { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
       }
     });
 

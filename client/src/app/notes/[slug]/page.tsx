@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, use } from "react";
-import { THEMES } from "@/config/themes";
+import { createPortal } from "react-dom";
+import { THEMES, NoteTheme, getThemePlan, isThemePremium } from "@/config/themes";
 import { Editor } from "@tinymce/tinymce-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -13,14 +14,10 @@ import { Button } from "@/components/ui/button";
 import { marked } from "marked";
 // @ts-ignore
 import TurndownService from "turndown";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 
 import {
   Download,
-  Bold,
-  Italic,
-  List as ListIcon,
   Send,
   Save,
   Loader2,
@@ -46,9 +43,19 @@ import {
   Lightbulb,
   Zap,
   ArrowRight,
-  Check
+  Check,
+  ZoomIn,
+  ZoomOut,
+  Copy,
+  Maximize2,
+  Share2,
+  Palette,
+  GraduationCap,
+  Target,
+  Search,
+  Code,
+  Calculator
 } from "lucide-react";
-
 
 import api from "@/config/api";
 import { LoaderX } from "@/components/LoaderX";
@@ -57,342 +64,223 @@ import { LoginDialog } from "@/components/LoginDialog";
 import FlashcardViewer from "@/components/FlashcardViewer";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // --- AUTH HELPERS ---
 const getAuthToken = () => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return localStorage.getItem("authToken");
   }
   return null;
 };
 
-const isAuthenticated = () => !!getAuthToken();
-
 // --- TYPES ---
-interface ApiMessage { _id: string; role: string; content: string; timestamp: string; videoLink?: string; feedback?: "good" | "bad" | null; mode?: string; }
-interface ApiMessagesResponse { messages: ApiMessage[]; }
-interface NoteData { _id: string; title: string; content: string; thumbnail?: string; generationDetails?: any; videoUrl?: string; }
-
-// --- STYLES ---
-const iphoneStyles = `
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-@keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes bounceFeedback { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.95); } }
-@keyframes gradient-x { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-@keyframes glow-pulse { 0%, 100% { box-shadow: 0 0 8px rgba(220,38,38,0.4); } 50% { box-shadow: 0 0 20px rgba(220,38,38,0.8), 0 0 40px rgba(220,38,38,0.3); } }
-
-.animate-fade-in-up { animation: fadeInUp 0.4s ease-out; }
-.animate-scale-in { animation: scaleIn 0.3s ease-out; }
-.animate-slide-in-right { animation: slideInRight 0.4s ease-out; }
-.animate-bounce-feedback { animation: bounceFeedback 0.2s ease-in-out; }
-.animate-gradient-x { background-size: 200% 200%; animation: gradient-x 3s ease infinite; }
-.animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
-
-.glass-effect { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-.smooth-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.bounce-feedback:active { transform: scale(0.95); }
-
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
-
-/* Mobile Optimizations */
-.mobile-safe-bottom { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
-.h-dvh-screen { height: 100dvh; }
-
-/* PaperChat Input */
-.paperchat-textarea {
-  resize: none;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #e5e5e5;
-  font-size: 14px;
-  line-height: 1.6;
-  width: 100%;
-  min-height: 22px;
-  max-height: 140px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #333 transparent;
+interface ApiMessage {
+  _id: string;
+  role: string;
+  content: string;
+  timestamp: string;
+  videoLink?: string;
+  feedback?: "good" | "bad" | null;
+  mode?: string;
 }
-.paperchat-textarea::placeholder { color: #555; }
-.paperchat-textarea::-webkit-scrollbar { width: 4px; }
-.paperchat-textarea::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-
-.paperchat-input-box {
-  background: #0f0f0f;
-  border: 1px solid #2a2a2a;
-  border-radius: 16px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+interface ApiMessagesResponse {
+  messages: ApiMessage[];
 }
-.paperchat-input-box:focus-within {
-  border-color: #3f3f3f;
-  box-shadow: 0 0 0 1px rgba(220,38,38,0.15), 0 4px 20px rgba(0,0,0,0.4);
+interface NoteData {
+  _id: string;
+  title: string;
+  content: string;
+  thumbnail?: string;
+  generationDetails?: any;
+  videoUrl?: string;
 }
 
-/* Chat prose overflow fix */
-.chat-prose { word-break: break-word; overflow-wrap: anywhere; min-width: 0; }
-.chat-prose pre { white-space: pre-wrap; word-break: break-word; overflow-x: auto; max-width: 100%; }
-.chat-prose table { display: block; overflow-x: auto; max-width: 100%; }
-.chat-prose img { max-width: 100%; }
-.chat-prose * { max-width: 100%; }
+type UserPlan = "free" | "pro" | "power";
 
-.mode-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px 3px 8px;
-  border-radius: 20px;
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  color: #888;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-  white-space: nowrap;
-}
-.mode-chip:hover { background: #222; border-color: #3a3a3a; color: #aaa; }
-.mode-chip.active { background: #1e0a0a; border-color: #dc2626; color: #f87171; }
+// --- CHAT AI MODELS ---
+const CHAT_AI_MODELS = [
+  {
+    id: "paperchat",
+    name: "PaperChat",
+    desc: "Paperxify's native AI model",
+    logoUrl: "/paperxify.jpeg",
+    logoFallback: "📄",
+    tier: "free" as const,
+    accentColor: "#ef4444",
+    freeLimit: Infinity,
+    persona: "You are PaperChat, Paperxify's own advanced AI study assistant. You are expert at helping students understand notes, generate quizzes, and explain complex topics clearly."
+  },
+  {
+    id: "gpt4o",
+    name: "ChatGPT 4o",
+    desc: "OpenAI · Frontier Intelligence",
+    logoUrl: "/chatgpt.png",
+    logoFallback: "🤖",
+    tier: "pro" as const,
+    accentColor: "#10b981",
+    freeLimit: 2,
+    persona: "You are ChatGPT 4o, OpenAI's most advanced model. You provide detailed, accurate, and well-reasoned responses with exceptional clarity."
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek V4 Flash",
+    desc: "DeepSeek · Logic & Reasoning",
+    logoUrl: "/deepseek.png",
+    logoFallback: "🐬",
+    tier: "pro" as const,
+    accentColor: "#3b82f6",
+    freeLimit: 2,
+    persona: "You are DeepSeek V4 Flash, an advanced language model trained by DeepSeek. You are highly accurate, extremely fast, and provide deep reasoning and clear assistance."
+  },
+  {
+    id: "claude",
+    name: "Claude 3.5",
+    desc: "Anthropic · Nuanced Thought",
+    logoUrl: "/claude-color.png",
+    logoFallback: "🌟",
+    tier: "power" as const,
+    accentColor: "#f97316",
+    freeLimit: 2,
+    persona: "You are Claude 3.5 by Anthropic. You are thoughtful, nuanced, and highly accurate. You excel at deep reasoning and safe, helpful responses."
+  },
+  {
+    id: "gemini",
+    name: "Gemini 2.0",
+    desc: "Google DeepMind · Multimodal",
+    logoUrl: "/gemini.png",
+    logoFallback: "♊",
+    tier: "power" as const,
+    accentColor: "#4285f4",
+    freeLimit: 2,
+    persona: "You are Gemini 2.0 by Google DeepMind. You are a multimodal AI that provides precise, structured, and helpful academic assistance."
+  }
+];
 
-.plus-btn {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  display: flex; align-items: center; justify-content: center;
-  color: #888;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-.plus-btn:hover { background: #222; border-color: #444; color: #ccc; }
+const PLAN_UNLIMITED: Record<UserPlan, string[]> = {
+  free: ["paperchat"],
+  pro: ["paperchat", "gpt4o", "deepseek"],
+  power: ["paperchat", "gpt4o", "deepseek", "claude", "gemini"]
+};
 
-.send-btn {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  border: none;
-  display: flex; align-items: center; justify-content: center;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(220,38,38,0.3);
-}
-.send-btn:hover:not(:disabled) { transform: scale(1.08); box-shadow: 0 4px 16px rgba(220,38,38,0.5); }
-.send-btn:active:not(:disabled) { transform: scale(0.95); }
-.send-btn:disabled { background: #2a2a2a; box-shadow: none; cursor: not-allowed; color: #555; }
+const PLAN_META: Record<UserPlan, { label: string; color: string }> = {
+  free: { label: "Free", color: "#9ca3af" },
+  pro: { label: "Pro", color: "#a855f7" },
+  power: { label: "Power", color: "#f59e0b" }
+};
 
-.action-menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  background: #111;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  padding: 6px;
-  min-width: 200px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-  z-index: 100;
-}
-.action-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  color: #ccc;
-  font-size: 13px;
-  transition: background 0.15s;
-}
-.action-menu-item:hover { background: #1a1a1a; color: #fff; }
-.action-menu-item .icon-wrap { width: 24px; height: 24px; border-radius: 6px; background: #1a1a1a; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+const TIER_REQUIRED_PLAN: Record<string, UserPlan> = {
+  free: "free",
+  pro: "pro",
+  power: "power"
+};
 
-.mode-menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 40px;
-  background: #111;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  padding: 6px;
-  min-width: 220px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-  z-index: 100;
-}
-.mode-menu-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  color: #ccc;
-  font-size: 13px;
-  transition: background 0.15s;
-}
-.mode-menu-item:hover { background: #1a1a1a; }
-.mode-menu-item.selected { background: #1e0a0a; color: #f87171; }
-.mode-menu-item .check-icon { width: 14px; height: 14px; margin-left: auto; opacity: 0; color: #dc2626; flex-shrink: 0; }
-.mode-menu-item.selected .check-icon { opacity: 1; }
+const CHAT_MODES = [
+  { id: "tutor", label: "AI Tutor", description: "Guided Socratic reasoning & knowledge checks", icon: Brain, color: "#8b5cf6" },
+  { id: "study", label: "Study Mode", description: "Interactive 1-on-1 lecture study session", icon: GraduationCap, color: "#3b82f6" },
+  { id: "exam_prep", label: "Exam Prep", description: "High-yield topics, pitfalls & test tips", icon: Target, color: "#ef4444" },
+  { id: "quick", label: "Quick Answer", description: "Direct, concise, bulleted facts", icon: Zap, color: "#eab308" },
+  { id: "deep_dive", label: "Deep Dive", description: "Exhaustive academic & mathematical analysis", icon: Search, color: "#06b6d4" },
+  { id: "explain_simply", label: "Explain Simply", description: "Intuitive ELI5 everyday analogies", icon: Lightbulb, color: "#f97316" },
+  { id: "coding_tutor", label: "Coding Tutor", description: "Code syntax, tracing & practice challenges", icon: Code, color: "#10b981" },
+  { id: "problem_solver", label: "Problem Solver", description: "Step-by-step KaTeX math problem solver", icon: Calculator, color: "#ec4899" },
+  { id: "quiz", label: "Quiz Me", description: "Active recall test with instant evaluation", icon: Brain, color: "#10b981" },
+  { id: "revision", label: "Revision", description: "Lightning 2-minute memory summary", icon: RefreshCw, color: "#6366f1" }
+];
 
+const QUICK_ACTIONS = [
+  { label: "Teach me the core concept", icon: Brain, color: "#8b5cf6" },
+  { label: "What are the high-yield exam points?", icon: Target, color: "#ef4444" },
+  { label: "Quiz me on this topic", icon: GraduationCap, color: "#3b82f6" },
+  { label: "Explain in simple ELI5 terms", icon: Lightbulb, color: "#f59e0b" },
+  { label: "List all formulas & equations", icon: Calculator, color: "#ec4899" },
+  { label: "Give a 2-minute fast revision", icon: RefreshCw, color: "#6366f1" }
+];
 
-/* ── Premium Colorful Note Renderer (PDF Matching Styles) ── */
-.premium-note-render {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color: #1e293b;
-  line-height: 1.7;
+// --- TIMESTAMP UTILITIES ---
+function extractYouTubeVideoId(url?: string): string | null {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  return match ? match[1] : null;
 }
-.premium-note-render h1 {
-  color: #0f172a; 
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  margin-bottom: 14px;
-  line-height: 1.2;
-}
-.premium-note-render h2 {
-  color: #1d4ed8 !important; 
-  font-size: 22px;
-  font-weight: 700;
-  margin-top: 32px;
-  margin-bottom: 14px;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 8px;
-}
-.premium-note-render h3 {
-  color: #334155; 
-  font-size: 18px;
-  font-weight: 600;
-  margin-top: 24px;
-  margin-bottom: 10px;
-}
-.premium-note-render h4 {
-  color: #475569;
-  font-size: 15px;
-  font-weight: 600;
-  margin-top: 20px;
-  margin-bottom: 8px;
-}
-.premium-note-render p {
-  margin-bottom: 16px;
-  font-size: 15px;
-  color: #334155;
-}
-.premium-note-render img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-  margin: 20px auto;
-  display: block;
-  border: 1px solid #e2e8f0;
-}
-.premium-note-render code {
-  background-color: #f1f5f9;
-  color: #0f172a;
-  padding: 3px 6px;
-  border-radius: 6px;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
-  border: 1px solid #e2e8f0;
-}
-.premium-note-render pre {
-  background-color: #0f172a;
-  color: #f8fafc;
-  padding: 16px;
-  border-radius: 12px;
-  overflow-x: auto;
-  margin: 20px 0;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-.premium-note-render pre code {
-  background-color: transparent;
-  color: inherit;
-  border: none;
-  padding: 0;
-}
-.premium-note-render blockquote {
-  background-color: #f8fafc;
-  border-left: 4px solid #3b82f6 !important;
-  padding: 14px 18px;
-  border-radius: 0 12px 12px 0;
-  margin: 20px 0;
-  color: #475569;
-  font-style: italic;
-}
-.premium-note-render table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
-  margin: 20px 0;
-  font-size: 14px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-}
-.premium-note-render th, .premium-note-render td {
-  border-bottom: 1px solid #e2e8f0;
-  padding: 10px 12px;
-  text-align: left;
-}
-.premium-note-render th {
-  background-color: #f8fafc;
-  font-weight: 600;
-  color: #0f172a;
-}
-.premium-note-render tr:last-child td {
-  border-bottom: none;
-}
-.premium-note-render ul, .premium-note-render ol {
-  margin: 16px 0;
-  padding-left: 20px;
-  color: #334155;
-}
-.premium-note-render li {
-  margin-bottom: 6px;
-  font-size: 15px;
-}
-.premium-note-render li::marker {
-  color: #3b82f6 !important;
-  font-weight: 600;
-}
-.premium-note-render hr {
-  border: none;
-  border-top: 2px solid #e2e8f0;
-  margin: 32px 0;
-}
-`;
 
-// --- COMPONENTS ---
+function parseTimeToSeconds(timeStr: string): number {
+  if (!timeStr) return 0;
+  const clean = timeStr.replace(/[^\d:]/g, "");
+  const parts = clean.split(":").map(Number);
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  } else if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+  return 0;
+}
 
-// 1. PDF Preview
-const PDFPreviewWithThumbnail: React.FC<{ 
-  content: string; 
+function makeTimestampsClickable(content: string, videoUrl?: string): string {
+  if (!content) return "";
+
+  const videoId = extractYouTubeVideoId(videoUrl);
+  const baseVideoUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : (videoUrl || "https://www.youtube.com");
+
+  // 1. Replace range timestamps: [00:00 - 01:00] or [01:00:00 - 02:00:00]
+  let result = content.replace(/(?<!!)\[\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*\](?!\()/g, (_match, start, end) => {
+    const sec = parseTimeToSeconds(start);
+    const href = videoId ? `https://www.youtube.com/watch?v=${videoId}&t=${sec}s` : `${baseVideoUrl}#t=${sec}`;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="paperxify-timestamp-badge" title="Watch on YouTube at ${start} (${end})" data-timestamp="${sec}"><svg class="timestamp-play-icon inline-block w-3 h-3 mr-1 text-red-500 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>${start} - ${end}</span></a>`;
+  });
+
+  // 2. Replace single timestamps: [ 01:23:45 ] or [05:30]
+  result = result.replace(/(?<!!)\[\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*\](?!\()/g, (_match, time) => {
+    const sec = parseTimeToSeconds(time);
+    const href = videoId ? `https://www.youtube.com/watch?v=${videoId}&t=${sec}s` : `${baseVideoUrl}#t=${sec}`;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="paperxify-timestamp-badge" title="Watch on YouTube at ${time}" data-timestamp="${sec}"><svg class="timestamp-play-icon inline-block w-3 h-3 mr-1 text-red-500 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>${time}</span></a>`;
+  });
+
+  return result;
+}
+
+// --- 1. PDF & NOTE CANVAS PREVIEW COMPONENT ---
+const PDFPreviewWithThumbnail: React.FC<{
+  content: string;
   isGenerating?: boolean;
   onGeneratePDF?: () => void;
   themeId?: string;
-}> = ({ content, isGenerating = false, onGeneratePDF, themeId = 'atmosphere' }) => {
+  onThemeChange?: (theme: NoteTheme) => void;
+  onOpenThemeModal?: () => void;
+  videoUrl?: string;
+}> = ({ content, isGenerating = false, onGeneratePDF, themeId = "atmosphere", onThemeChange, onOpenThemeModal, videoUrl }) => {
   const [showFullPreview, setShowFullPreview] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(100);
   const containerRef = useRef<HTMLDivElement>(null);
   const modalContainerRef = useRef<HTMLDivElement>(null);
 
-  // Simple check for HTML: Check if the content starts with an HTML tag
-  const isHtml = /^\s*</.test(content);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+  // Lock body scroll and listen for Escape key when fullscreen modal is active
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowFullPreview(false);
+    };
+    if (showFullPreview) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+    };
+  }, [showFullPreview]);
 
-  // All themes now use light backgrounds — use theme colors directly
+  const processedContent = React.useMemo(() => {
+    return makeTimestampsClickable(content, videoUrl);
+  }, [content, videoUrl]);
+
+  const isHtml = /^\s*</.test(processedContent);
+  const theme = THEMES.find((t) => t.id === themeId) || THEMES[0];
+
   const displayBg = theme.bg;
   const displayText = theme.text;
   const displayBorder = theme.border;
@@ -425,122 +313,288 @@ const PDFPreviewWithThumbnail: React.FC<{
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [content, isGenerating, showFullPreview]);
+  }, [processedContent, isGenerating, showFullPreview, zoomLevel]);
+
+  const copyAllText = () => {
+    try {
+      const text = containerRef.current?.innerText || content;
+      navigator.clipboard.writeText(text);
+      toast.success("Note content copied to clipboard!");
+    } catch {
+      toast.error("Failed to copy text");
+    }
+  };
 
   const renderContent = (className: string) => {
-    if (isHtml) {
-      return (
-        <div 
-          dangerouslySetInnerHTML={{ __html: content }} 
-          className={className}
-        />
-      );
+    if (isHtml || processedContent.includes("paperxify-timestamp-badge")) {
+      return <div dangerouslySetInnerHTML={{ __html: processedContent }} className={className} />;
     }
     return (
       <div className={className}>
-        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{content}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+          {processedContent}
+        </ReactMarkdown>
       </div>
     );
   };
 
   return (
-    <div 
-      className="w-full h-full border-t sm:border border-neutral-800 shadow-2xl overflow-hidden rounded-none sm:rounded-lg relative group animate-scale-in flex flex-col premium-note-render-container"
-      style={{ 
-        backgroundColor: "#050505", 
-        fontFamily: displayFont
-      }}
+    <div
+      className="w-full h-full flex flex-col relative overflow-hidden bg-[#070709] rounded-none sm:rounded-2xl border-0 sm:border border-white/[0.08]"
+      style={{ fontFamily: displayFont }}
     >
-      {/* Load theme's Google Font */}
-      {theme.googleFont && (
-        <link rel="stylesheet" href={theme.googleFont} />
-      )}
-      <style dangerouslySetInnerHTML={{ __html: `
-        /* Override root element inline padding to prevent double-padding in preview */
+      {/* Load theme Google Font */}
+      {theme.googleFont && <link rel="stylesheet" href={theme.googleFont} />}
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         .premium-note-render-container .premium-note-render .max-w-none > *[style*="padding" i] {
           padding: 0px !important;
-          padding-top: 0px !important;
-          padding-bottom: 0px !important;
-          padding-left: 0px !important;
-          padding-right: 0px !important;
         }
-        /* Apply theme font to all note content */
         .premium-note-render-container,
-        .premium-note-render-container .premium-note-render,
-        .premium-note-render-container .premium-note-render * {
+        .premium-note-render-container .premium-note-render {
           font-family: ${displayFont} !important;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
         .premium-note-render-container .premium-note-render h1,
         .premium-note-render-container .premium-note-render h2,
         .premium-note-render-container .premium-note-render h3,
-        .premium-note-render-container .premium-note-render h4 {
-          color: ${theme.primary} !important;
+        .premium-note-render-container .premium-note-render h4,
+        .premium-note-render-container .premium-note-render h5,
+        .premium-note-render-container .premium-note-render h6,
+        .premium-note-render-container .premium-note-render p,
+        .premium-note-render-container .premium-note-render li,
+        .premium-note-render-container .premium-note-render span:not(.katex *):not(code *),
+        .premium-note-render-container .premium-note-render div:not(.katex *):not(pre *),
+        .premium-note-render-container .premium-note-render blockquote,
+        .premium-note-render-container .premium-note-render table,
+        .premium-note-render-container .premium-note-render th,
+        .premium-note-render-container .premium-note-render td {
           font-family: ${displayFont} !important;
         }
+        .premium-note-render-container .premium-note-render h1 {
+          color: ${theme.primary} !important;
+          font-size: 26px;
+          font-weight: 800;
+          letter-spacing: -0.03em;
+          margin-bottom: 20px;
+          line-height: 1.3;
+        }
         .premium-note-render-container .premium-note-render h2 {
-          border-bottom: 2px solid ${displayBorder} !important;
+          color: ${theme.primary} !important;
+          font-size: 19px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          margin-top: 32px;
+          margin-bottom: 14px;
+          border-bottom: 1.5px solid ${displayBorder} !important;
+          padding-bottom: 8px;
+          line-height: 1.4;
+        }
+        .premium-note-render-container .premium-note-render h3 {
+          color: ${theme.primary} !important;
+          font-size: 16px;
+          font-weight: 600;
+          letter-spacing: -0.015em;
+          margin-top: 22px;
+          margin-bottom: 10px;
+          line-height: 1.4;
         }
         .premium-note-render-container .premium-note-render p,
         .premium-note-render-container .premium-note-render li {
           color: ${displayText} !important;
+          font-size: 15px;
+          line-height: 1.75;
+          letter-spacing: -0.005em;
+          font-weight: 400;
+        }
+        .premium-note-render-container .premium-note-render p {
+          margin-bottom: 16px;
+        }
+        .premium-note-render-container .premium-note-render strong {
+          color: ${displayText} !important;
+          font-weight: 700;
         }
         .premium-note-render-container .premium-note-render a {
           color: ${theme.link} !important;
+          text-decoration: underline;
+          text-underline-offset: 3px;
         }
         .premium-note-render-container .premium-note-render blockquote {
           background-color: ${displayCardBg} !important;
-          border-left: 4px solid ${theme.primary} !important;
+          border-left: 3.5px solid ${theme.primary} !important;
           color: ${displayText} !important;
+          padding: 14px 18px;
+          border-radius: 0 12px 12px 0;
+          margin: 20px 0;
+          font-size: 14.5px;
+          line-height: 1.7;
         }
         .premium-note-render-container .premium-note-render table {
           border: 1px solid ${displayBorder} !important;
           background-color: ${displayCardBg} !important;
+          width: 100%;
+          border-radius: 12px;
+          margin: 20px 0;
+          border-collapse: separate;
+          border-spacing: 0;
+          overflow: hidden;
+          font-size: 14px;
         }
         .premium-note-render-container .premium-note-render th {
           background-color: ${displayBorder} !important;
           color: ${theme.primary} !important;
-          border-bottom: 1px solid ${displayBorder} !important;
+          font-weight: 700;
+          padding: 10px 14px;
+          text-align: left;
+          font-size: 13px;
+          letter-spacing: 0.03em;
         }
         .premium-note-render-container .premium-note-render td {
           border-bottom: 1px solid ${displayBorder} !important;
           color: ${displayText} !important;
+          padding: 10px 14px;
+        }
+        .premium-note-render-container .premium-note-render tr:last-child td {
+          border-bottom: none !important;
         }
         .premium-note-render-container .premium-note-render code {
           background-color: ${displayCardBg} !important;
           color: ${theme.accent} !important;
           border: 1px solid ${displayBorder} !important;
+          padding: 2px 6px;
+          border-radius: 6px;
+          font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+          font-size: 13px;
+          font-weight: 500;
         }
         .premium-note-render-container .premium-note-render pre {
-          background-color: ${displayCardBg} !important;
-          border: 1px solid ${displayBorder} !important;
+          background-color: #0c0d12 !important;
+          color: #e2e8f0 !important;
+          border: 1px solid rgba(255,255,255,0.1) !important;
+          border-radius: 14px;
+          padding: 18px;
+          margin: 20px 0;
+          overflow-x: auto;
+          font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+          font-size: 13.5px;
+        }
+        .premium-note-render-container .premium-note-render pre code {
+          background: transparent !important;
+          border: none !important;
+          color: inherit !important;
+          padding: 0 !important;
+        }
+        .premium-note-render-container .premium-note-render .katex,
+        .premium-note-render-container .premium-note-render .katex * {
+          font-family: KaTeX_Main, 'Times New Roman', serif !important;
         }
         .premium-note-render-container .premium-note-render li::marker {
           color: ${theme.primary} !important;
+          font-weight: bold;
         }
-        @media print {
-          * { font-family: ${displayFont} !important; }
-          body { background: ${displayBg} !important; color: ${displayText} !important; }
+        .premium-note-render-container .premium-note-render img {
+          max-width: 100%;
+          border-radius: 14px;
+          margin: 22px auto;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+          border: 1px solid ${displayBorder};
+          display: block;
         }
-      `}} />
-      {/* Content */}
-      <div 
-        className="flex-1 overflow-auto p-3 sm:p-6 md:p-8 custom-scrollbar flex justify-center bg-[#070707] sm:bg-[#0c0c0c]"
-      >
+        .premium-note-render-container .premium-note-render .paperxify-timestamp-badge,
+        .paperxify-timestamp-badge {
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 4px !important;
+          background: rgba(239, 68, 68, 0.12) !important;
+          border: 1px solid rgba(239, 68, 68, 0.35) !important;
+          color: #ef4444 !important;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+          font-size: 0.82em !important;
+          font-weight: 700 !important;
+          padding: 2px 8px !important;
+          border-radius: 6px !important;
+          text-decoration: none !important;
+          vertical-align: middle !important;
+          margin: 0 3px !important;
+          cursor: pointer !important;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .premium-note-render-container .premium-note-render .paperxify-timestamp-badge:hover,
+        .paperxify-timestamp-badge:hover {
+          background: rgba(239, 68, 68, 0.25) !important;
+          border-color: rgba(239, 68, 68, 0.7) !important;
+          color: #ff6b6b !important;
+          transform: translateY(-1px) scale(1.03) !important;
+          box-shadow: 0 2px 10px rgba(239, 68, 68, 0.35) !important;
+        }
+      `
+        }}
+      />
+
+      {/* Floating Canvas Action Bar (Desktop Top Right) */}
+      <div className="hidden sm:flex absolute top-3 right-3 z-30 items-center gap-1.5 p-1 rounded-xl bg-black/75 backdrop-blur-xl border border-white/[0.12] shadow-xl">
+        <button
+          onClick={() => setZoomLevel((z) => Math.max(70, z - 10))}
+          className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.08] transition-colors"
+          title="Zoom Out"
+        >
+          <ZoomOut size={13} />
+        </button>
+        <span className="text-[10px] font-mono text-neutral-400 px-1 font-semibold">{zoomLevel}%</span>
+        <button
+          onClick={() => setZoomLevel((z) => Math.min(140, z + 10))}
+          className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.08] transition-colors"
+          title="Zoom In"
+        >
+          <ZoomIn size={13} />
+        </button>
+        <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
+        <button
+          onClick={copyAllText}
+          className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.08] transition-colors"
+          title="Copy Markdown"
+        >
+          <Copy size={13} />
+        </button>
+        {onOpenThemeModal && (
+          <button
+            onClick={onOpenThemeModal}
+            className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.08] transition-colors flex items-center gap-1"
+            title="Choose Theme"
+          >
+            <Palette size={13} style={{ color: theme.primary }} />
+          </button>
+        )}
+        <button
+          onClick={() => setShowFullPreview(true)}
+          className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/[0.08] transition-colors"
+          title="Fullscreen Reading Mode"
+        >
+          <Maximize2 size={13} />
+        </button>
+      </div>
+
+      {/* Main Canvas Scroll Area */}
+      <div className="flex-1 overflow-auto p-2 sm:p-6 md:p-8 pb-20 sm:pb-8 custom-scrollbar flex justify-center items-start premium-note-render-container">
         {isGenerating ? (
-          <div className="h-full flex flex-col items-center justify-center">
-            <Loader2 className="h-8 w-8 text-red-500 animate-spin mb-2" />
-            <p className="text-neutral-600 text-sm">Creating PDF...</p>
+          <div className="h-full flex flex-col items-center justify-center p-12">
+            <Loader2 className="h-8 w-8 text-red-500 animate-spin mb-3" />
+            <p className="text-neutral-400 text-sm font-medium">Assembling Document Canvas...</p>
           </div>
         ) : (
-          <div 
+          <div
             ref={containerRef}
-            className="w-full max-w-[800px] shadow-2xl border rounded-lg p-5 sm:p-10 md:p-14 flex flex-col premium-note-render"
-            style={{ 
-              backgroundColor: displayBg, 
+            className="w-full max-w-[820px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] border rounded-2xl p-4 sm:p-10 md:p-14 flex flex-col premium-note-render transition-transform duration-200 origin-top"
+            style={{
+              backgroundColor: displayBg,
               color: displayText,
               borderColor: displayBorder,
-              minHeight: "297mm",
-              height: "fit-content"
+              minHeight: "min(297mm, 100%)",
+              height: "fit-content",
+              transform: `scale(${zoomLevel / 100})`
             }}
           >
             {renderContent("max-w-none")}
@@ -548,266 +602,160 @@ const PDFPreviewWithThumbnail: React.FC<{
         )}
       </div>
 
-      <button className="absolute bottom-4 right-4 bg-black/70 hover:bg-black/90 text-white rounded-full h-10 w-10 z-10 flex items-center justify-center" onClick={() => setShowFullPreview(true)}>
-        <Eye className="h-5 w-5" />
-      </button>
+      {/* Fullscreen Reading Modal (Mounted directly to document.body) */}
+      {showFullPreview &&
+        mounted &&
+        createPortal(
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 backdrop-blur-2xl p-2 sm:p-6 overflow-hidden">
+            {/* Backdrop overlay */}
+            <div className="absolute inset-0" onClick={() => setShowFullPreview(false)} />
 
-      {/* Fullscreen Modal */}
-      {showFullPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div 
-            className="rounded-lg w-full max-w-4xl h-[90vh] flex flex-col relative animate-scale-in"
-            style={{ 
-              backgroundColor: "#050505", 
-              fontFamily: displayFont
-            }}
-          >
-            <button className="absolute top-4 right-4 bg-black/50 hover:bg-black/80 rounded-full p-2 text-white z-20" onClick={() => setShowFullPreview(false)}>
-              <X className="h-5 w-5" />
-            </button>
-            <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 custom-scrollbar flex justify-center">
-              <div 
-                ref={modalContainerRef}
-                className="w-full max-w-[800px] shadow-2xl border rounded-lg p-5 sm:p-10 md:p-14 flex flex-col premium-note-render"
-                style={{ 
-                  backgroundColor: displayBg, 
-                  color: displayText,
-                  borderColor: displayBorder,
-                  minHeight: "297mm",
-                  height: "fit-content"
-                }}
-              >
-                {renderContent("max-w-none")}
+            {/* Modal Window */}
+            <div
+              className="relative z-10 w-full max-w-5xl h-[94vh] max-h-[94vh] flex flex-col rounded-2xl sm:rounded-3xl border border-white/[0.12] bg-[#07070a] shadow-[0_25px_80px_-15px_rgba(0,0,0,0.95)] overflow-hidden"
+              style={{ fontFamily: displayFont }}
+            >
+              {/* Modal Header */}
+              <div className="h-14 bg-[#0a0a0e]/95 backdrop-blur-md border-b border-white/[0.08] px-4 sm:px-6 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center justify-center text-red-400 shrink-0">
+                    <FileText size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-white leading-none truncate">
+                      Fullscreen Reading Canvas
+                    </h3>
+                    <p className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1.5">
+                      <span
+                        className="w-2 h-2 rounded-full inline-block shrink-0"
+                        style={{ backgroundColor: theme.primary }}
+                      />
+                      <span className="font-semibold text-neutral-300">{theme.name} Theme</span>
+                      <span className="text-neutral-600 hidden sm:inline">•</span>
+                      <span className="text-neutral-500 hidden sm:inline">Press ESC to exit</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {onOpenThemeModal && (
+                    <button
+                      onClick={onOpenThemeModal}
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-xs font-bold text-neutral-200 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Palette size={13} style={{ color: theme.primary }} />
+                      <span>Theme</span>
+                    </button>
+                  )}
+                  {onGeneratePDF && (
+                    <button
+                      onClick={onGeneratePDF}
+                      disabled={isGenerating}
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-xs font-bold text-neutral-200 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Download size={13} />
+                      <span>Download PDF</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={copyAllText}
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-xs font-bold text-neutral-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Copy size={13} />
+                    <span>Copy Text</span>
+                  </button>
+                  <button
+                    className="w-8 h-8 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] flex items-center justify-center text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                    onClick={() => setShowFullPreview(false)}
+                    title="Close Fullscreen (Esc)"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Canvas Scroll Area */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-8 md:p-12 custom-scrollbar flex justify-center items-start premium-note-render-container">
+                <div
+                  ref={modalContainerRef}
+                  className="w-full max-w-[840px] shadow-2xl border rounded-2xl p-6 sm:p-12 md:p-16 flex flex-col premium-note-render my-auto"
+                  style={{
+                    backgroundColor: displayBg,
+                    color: displayText,
+                    borderColor: displayBorder,
+                    minHeight: "min(297mm, 100%)",
+                    height: "fit-content"
+                  }}
+                >
+                  {renderContent("max-w-none")}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
 
-// 2. Mobile Bottom Navigation
-const MobileBottomNav: React.FC<{
-  activeTab: 'preview' | 'editor' | 'chat';
-  setActiveTab: (tab: 'preview' | 'editor' | 'chat') => void;
-  onHome: () => void;
-}> = ({ activeTab, setActiveTab, onHome }) => {
-  return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-neutral-950/95 backdrop-blur-md border-t border-neutral-800 z-50 flex items-center justify-around pb-[env(safe-area-inset-bottom)]">
-      <button onClick={onHome} className="flex flex-col items-center justify-center w-16 h-full text-neutral-400 hover:text-white transition-colors">
-        <Home className="h-5 w-5 mb-1" />
-        <span className="text-[10px] font-medium">Home</span>
-      </button>
-      
-      <button 
-        onClick={() => setActiveTab('preview')} 
-        className={`flex flex-col items-center justify-center w-16 h-full transition-colors ${activeTab === 'preview' ? 'text-red-500' : 'text-neutral-400'}`}
-      >
-        <Eye className="h-5 w-5 mb-1" />
-        <span className="text-[10px] font-medium">Read</span>
-      </button>
-
-      <button 
-        onClick={() => setActiveTab('editor')} 
-        className={`flex flex-col items-center justify-center w-16 h-full transition-colors ${activeTab === 'editor' ? 'text-red-500' : 'text-neutral-400'}`}
-      >
-        <Edit className="h-5 w-5 mb-1" />
-        <span className="text-[10px] font-medium">Edit</span>
-      </button>
-
-      <button 
-        onClick={() => setActiveTab('chat')} 
-        className={`flex flex-col items-center justify-center w-16 h-full transition-colors relative ${activeTab === 'chat' ? 'text-red-500' : 'text-neutral-400'}`}
-      >
-        <div className={`absolute top-3 right-3 w-2 h-2 rounded-full ${activeTab === 'chat' ? 'bg-red-500' : 'bg-transparent'}`} />
-        <MessageSquare className="h-5 w-5 mb-1" />
-        <span className="text-[10px] font-medium">PaperChat</span>
-      </button>
-    </div>
-  );
-};
-
-// 3. Header Component
-const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
-  <div className="h-14 bg-neutral-950/80 backdrop-blur-md border-b border-neutral-800 flex items-center px-4 sticky top-0 z-40">
-    <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 text-neutral-400 hover:text-white">
-      <ArrowLeft className="h-5 w-5" />
-    </Button>
-    <h1 className="text-white font-semibold truncate text-sm sm:text-base">{title}</h1>
-  </div>
-);
-
-// 4. Google Re-login Modal
-const GoogleReLoginModal = ({ isOpen, onClose, onLogin }: any) => {
-  if (!isOpen) return null;
-  
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 max-w-md w-full shadow-2xl"
-      >
-        <div className="flex items-center gap-3 text-red-500 mb-4">
-          <AlertCircle size={24} />
-          <h3 className="text-lg font-bold text-white">Google Session Expired</h3>
-        </div>
-        
-        <p className="text-neutral-400 mb-6">
-          Your Google session has expired. To continue using features like PDF generation with images, please login again.
-        </p>
-        
-        <div className="flex gap-3">
-          <Button 
-            variant="ghost" 
-            onClick={onClose}
-            className="flex-1 hover:bg-neutral-800 text-neutral-400"
-          >
-            Later
-          </Button>
-          <Button 
-            onClick={onLogin}
-            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-          >
-            <RefreshCw size={16} className="mr-2" />
-            Login Again
-          </Button>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-
-// 5. Token Expired Banner
-const TokenExpiredBanner = ({ onLogin }: any) => {
-  return (
-    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <AlertCircle size={16} className="text-red-500" />
-        <p className="text-xs text-red-500">Google access expired. PDF generation requires login.</p>
-      </div>
-      <Button 
-        size="sm" 
-        onClick={onLogin}
-        className="h-7 bg-red-600 hover:bg-red-700 text-white text-xs"
-      >
-        Login
-      </Button>
-    </div>
-  );
-};
-
-// --- MODE-AWARE MESSAGE RENDERER ---
-const ModeMessageRenderer: React.FC<{ content: string; mode?: string }> = ({ content, mode }) => {
-  if (!content) return null;
-
-  if (mode === 'quiz') {
-    // Quiz: render with reveal-answer interactive UI
-    return <QuizRenderer content={content} />;
-  }
-
-  if (mode === 'summarize') {
-    return (
-      <div style={{ fontFamily: 'inherit' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '6px 10px', background: 'linear-gradient(90deg,#7c3aed22,#dc262622)', borderRadius: 8, border: '1px solid #7c3aed33' }}>
-          <BookOpen size={13} style={{ color: '#a78bfa' }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Summary Mode</span>
-        </div>
-        <div className="prose prose-invert prose-sm max-w-none chat-prose">
-          <ReactMarkdown>{content}</ReactMarkdown>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === 'explain') {
-    return (
-      <div style={{ fontFamily: 'inherit' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '6px 10px', background: 'linear-gradient(90deg,#d9770622,#dc262622)', borderRadius: 8, border: '1px solid #d9770633' }}>
-          <Lightbulb size={13} style={{ color: '#fbbf24' }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Explain Mode</span>
-        </div>
-        <div className="prose prose-invert prose-sm max-w-none chat-prose">
-          <ReactMarkdown>{content}</ReactMarkdown>
-        </div>
-      </div>
-    );
-  }
-
-  // Default (ask mode)
-  return (
-    <div className="prose prose-invert prose-sm max-w-none chat-prose">
-      <ReactMarkdown>{content}</ReactMarkdown>
-    </div>
-  );
-};
-
-// --- QUIZ RENDERER ---
+// --- 2. QUIZ MODE INTERACTIVE RENDERER ---
 const QuizRenderer: React.FC<{ content: string }> = ({ content }) => {
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
 
+  const questions = content.split(/(?=\n(?:Q\d+|Question \d+|\d+\.)[:\s])/i).filter(Boolean);
+
   const toggleReveal = (idx: number) => {
-    setRevealed(prev => {
+    setRevealed((prev) => {
       const next = new Set(prev);
-      next.has(idx) ? next.delete(idx) : next.add(idx);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
       return next;
     });
   };
 
-  // Parse quiz questions from markdown (Q1. ... ✅ Answer:)
-  const sections = content.split(/\n(?=\*\*Q\d+\.)/).filter(Boolean);
-  const hasStructure = sections.length > 1;
-
-  if (!hasStructure) {
-    // Fallback: just render markdown
+  if (questions.length <= 1) {
     return (
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '6px 10px', background: 'linear-gradient(90deg,#05966922,#dc262622)', borderRadius: 8, border: '1px solid #05966933' }}>
-          <Brain size={13} style={{ color: '#34d399' }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Quiz Mode</span>
-        </div>
-        <div className="prose prose-invert prose-sm max-w-none chat-prose">
-          <ReactMarkdown>{content}</ReactMarkdown>
-        </div>
+      <div className="prose prose-invert prose-sm max-w-none chat-prose">
+        <ReactMarkdown>{content}</ReactMarkdown>
       </div>
     );
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: '6px 10px', background: 'linear-gradient(90deg,#05966922,#0891b222)', borderRadius: 8, border: '1px solid #05966933' }}>
-        <Brain size={13} style={{ color: '#34d399' }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Quiz Mode — {sections.length} Questions</span>
+    <div className="space-y-3 font-sans">
+      <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
+        <Brain size={14} className="text-emerald-400" />
+        <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">Active Recall Quiz</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {sections.map((section, idx) => {
+
+      <div className="space-y-2.5">
+        {questions.map((q, idx) => {
           const isRevealed = revealed.has(idx);
-          const answerMatch = section.match(/\u2705\s*\*\*Answer:\*\*([\s\S]*?)(?=\n---|$)/);
-          const answerText = answerMatch ? answerMatch[1].trim() : null;
-          const questionBody = answerText
-            ? section.replace(/\u2705\s*\*\*Answer:\*\*[\s\S]*?(?=\n---|$)/, '').trim()
-            : section.trim();
+          const parts = q.split(/(?=\n(?:Answer|Correct Answer|Ans)[:\s])/i);
+          const questionText = parts[0];
+          const answerText = parts.slice(1).join("\n").replace(/^(?:Answer|Correct Answer|Ans)[:\s]*/i, "");
 
           return (
-            <div key={idx} style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ padding: '10px 12px' }}>
-                <div className="prose prose-invert prose-sm max-w-none chat-prose" style={{ marginBottom: answerText ? 8 : 0 }}>
-                  <ReactMarkdown>{questionBody.replace(/^---\n/, '')}</ReactMarkdown>
+            <div
+              key={idx}
+              className="bg-[#0f0f13] border border-white/[0.08] rounded-xl overflow-hidden transition-all duration-200"
+            >
+              <div className="p-3">
+                <div className="prose prose-invert prose-xs max-w-none chat-prose">
+                  <ReactMarkdown>{questionText}</ReactMarkdown>
                 </div>
                 {answerText && (
                   <button
+                    type="button"
                     onClick={() => toggleReveal(idx)}
-                    style={{
-                      marginTop: 6, padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
-                      background: isRevealed ? '#059669' : '#1a1a1a',
-                      color: isRevealed ? '#fff' : '#888',
-                      transition: 'all 0.2s',
-                      display: 'flex', alignItems: 'center', gap: 5
-                    }}
+                    className={cn(
+                      "mt-2.5 px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      isRevealed
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        : "bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 border border-white/[0.08]"
+                    )}
                   >
-                    {isRevealed ? '✅ Answer revealed' : '👁 Reveal Answer'}
+                    {isRevealed ? "✅ Answer Revealed" : "👁 Reveal Answer"}
                   </button>
                 )}
               </div>
@@ -815,12 +763,12 @@ const QuizRenderer: React.FC<{ content: string }> = ({ content }) => {
                 {isRevealed && answerText && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
+                    animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    style={{ background: '#0a1a12', borderTop: '1px solid #059669/30', padding: '8px 12px', overflow: 'hidden' }}
+                    className="bg-[#061810] border-t border-emerald-500/30 p-3"
                   >
-                    <div className="prose prose-invert prose-sm max-w-none chat-prose">
+                    <div className="prose prose-invert prose-xs max-w-none chat-prose text-emerald-200">
                       <ReactMarkdown>{`✅ **Answer:** ${answerText}`}</ReactMarkdown>
                     </div>
                   </motion.div>
@@ -830,305 +778,198 @@ const QuizRenderer: React.FC<{ content: string }> = ({ content }) => {
           );
         })}
       </div>
-      <p style={{ fontSize: 10, color: '#555', marginTop: 10, textAlign: 'center' }}>🎯 Click "Reveal Answer" after attempting each question</p>
+      <p className="text-[10px] text-neutral-500 text-center mt-2">🎯 Test your active recall by answering each question before revealing.</p>
     </div>
   );
 };
 
-// --- CHAT AI MODELS ---
-// tier: 'free'  → unlimited for everyone
-// tier: 'pro'   → unlimited for pro + power, 2 free messages for free users
-// tier: 'power' → unlimited for power only, 2 free messages for free/pro users
-const CHAT_AI_MODELS = [
-  {
-    id: 'paperchat',
-    name: 'PaperChat',
-    desc: "Paperxify's own model",
-    logoUrl: '/paperxify.jpeg',
-    logoFallback: '\uD83D\uDCC4',
-    tier: 'free' as const,
-    accentColor: '#dc2626',
-    freeLimit: Infinity,
-    persona: "You are PaperChat, Paperxify's own advanced AI study assistant. You are expert at helping students understand notes, generate quizzes, and explain complex topics clearly."
-  },
-  {
-    id: 'gpt4o',
-    name: 'ChatGPT 4o',
-    desc: 'OpenAI \u00b7 Frontier model',
-    logoUrl: '/chatgpt.png',
-    logoFallback: '\uD83E\uDD16',
-    tier: 'pro' as const,
-    accentColor: '#10b981',
-    freeLimit: 2,
-    persona: "You are ChatGPT 4o, OpenAI's most advanced model. You provide detailed, accurate, and well-reasoned responses with exceptional clarity."
-  },
-  {
-    id: 'deepseek',
-    name: 'DeepSeek V4 Flash',
-    desc: 'DeepSeek \u00b7 Speed & Precision',
-    logoUrl: '/deepseek.png',
-    logoFallback: '\uD83D\uDC33',
-    tier: 'pro' as const,
-    accentColor: '#1d4ed8',
-    freeLimit: 2,
-    persona: 'You are DeepSeek V4 Flash, an advanced language model trained by DeepSeek. You are highly accurate, extremely fast, and provide deep reasoning and clear assistance.'
-  },
-  {
-    id: 'claude',
-    name: 'Claude 3.5',
-    desc: 'Anthropic \u00b7 Thoughtful AI',
-    logoUrl: '/claude-color.png',
-    logoFallback: '\uD83C\uDF1F',
-    tier: 'power' as const,
-    accentColor: '#f97316',
-    freeLimit: 2,
-    persona: 'You are Claude 3.5 by Anthropic. You are thoughtful, nuanced, and highly accurate. You excel at deep reasoning and safe, helpful responses.'
-  },
-  {
-    id: 'gemini',
-    name: 'Gemini 2.0',
-    desc: 'Google DeepMind \u00b7 Multimodal',
-    logoUrl: '/gemini.png',
-    logoFallback: '\u264A',
-    tier: 'power' as const,
-    accentColor: '#4285f4',
-    freeLimit: 2,
-    persona: 'You are Gemini 2.0 by Google DeepMind. You are a multimodal AI that provides precise, structured, and helpful academic assistance.'
-  },
-];
+// --- 3. MODE AWARE MESSAGE RENDERER ---
+const ModeMessageRenderer: React.FC<{ 
+  content: string; 
+  mode?: string;
+  onActionClick?: (actionPrompt: string) => void;
+}> = ({ content, mode, onActionClick }) => {
+  if (!content) return null;
 
-type UserPlan = 'free' | 'pro' | 'power';
+  if (mode === "quiz") {
+    return <QuizRenderer content={content} />;
+  }
 
-// Which models are UNLIMITED for each plan
-const PLAN_UNLIMITED: Record<UserPlan, string[]> = {
-  free:  ['paperchat'],
-  pro:   ['paperchat', 'gpt4o', 'deepseek'],
-  power: ['paperchat', 'gpt4o', 'deepseek', 'claude', 'gemini'],
-};
-
-// Plan display metadata
-const PLAN_META: Record<UserPlan, { label: string; color: string }> = {
-  free:  { label: 'Free',  color: '#6b7280' },
-  pro:   { label: 'Pro',   color: '#8b5cf6' },
-  power: { label: 'Power', color: '#f59e0b' },
-};
-
-// Required plan to use each model tier
-const TIER_REQUIRED_PLAN: Record<string, UserPlan> = {
-  free:  'free',
-  pro:   'pro',
-  power: 'power',
-};
-
-interface PaperChatInputProps {
-  input: string;
-  setInput: (v: string) => void;
-  isThinking: boolean;
-  isSubscribed: boolean;
-  canSendOverride: boolean;
-  onSubmit: (e: React.FormEvent) => void;
-  selectedMode: typeof CHAT_MODES[0];
-  setSelectedMode: (m: typeof CHAT_MODES[0]) => void;
-}
-
-const CHAT_MODES = [
-  { id: 'ask', label: 'Ask', description: 'Ask questions about the note', icon: HelpCircle },
-  { id: 'summarize', label: 'Summarize', description: 'Summarize sections of the note', icon: BookOpen },
-  { id: 'quiz', label: 'Quiz Me', description: 'Test your knowledge from the note', icon: Brain },
-  { id: 'explain', label: 'Explain', description: 'Get a simpler explanation', icon: Lightbulb },
-];
-
-const QUICK_ACTIONS = [
-  { label: 'Summarize this note', icon: BookOpen, color: '#7c3aed' },
-  { label: 'What are the key concepts?', icon: Zap, color: '#0891b2' },
-  { label: 'Quiz me on this topic', icon: Brain, color: '#059669' },
-  { label: 'Explain in simple terms', icon: Lightbulb, color: '#d97706' },
-  { label: 'List all important points', icon: FileText, color: '#dc2626' },
-];
-
-const PaperChatInput: React.FC<PaperChatInputProps> = ({
-  input, setInput, isThinking, isSubscribed, canSendOverride, onSubmit, selectedMode, setSelectedMode
-}) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [showActionMenu, setShowActionMenu] = useState(false);
-  const [showModeMenu, setShowModeMenu] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
-  }, [input]);
-
-  // Close menus on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setShowActionMenu(false);
-        setShowModeMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (input.trim() && !isThinking && canSendOverride) {
-        onSubmit(e as any);
-      }
+  // Extract trailing action tags ```actions [⚡ Explain Simply] [💡 Give Example] ... ```
+  let mainContent = content;
+  let actionChips: string[] = [];
+  const actionMatch = content.match(/```actions\s*([\s\S]*?)\s*```/i);
+  if (actionMatch) {
+    mainContent = content.replace(actionMatch[0], "").trim();
+    const rawChips = actionMatch[1].match(/\[(.*?)\]/g);
+    if (rawChips) {
+      actionChips = rawChips.map((c) => c.replace(/^\[|\]$/g, "").trim()).filter(Boolean);
     }
+  }
+
+  // Clean redundant 00:00 timestamps from text
+  mainContent = mainContent
+    .replace(/\(\s*\[(?:⏱️\s*)?0{1,2}:00(?::00)?\]\([^)]*\)\s*\)/g, "")
+    .replace(/\[(?:⏱️\s*)?0{1,2}:00(?::00)?\]\([^)]*\)/g, "")
+    .replace(/\(\s*(?:⏱️\s*)?0{1,2}:00(?::00)?\s*\)/g, "")
+    .trim();
+
+  const modeBadgeMap: Record<string, { label: string; icon: any; color: string; bg: string }> = {
+    tutor: { label: "Socratic AI Tutor", icon: Brain, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/25" },
+    study: { label: "Active Study Session", icon: GraduationCap, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/25" },
+    exam_prep: { label: "High-Yield Exam Prep", icon: Target, color: "text-red-400", bg: "bg-red-500/10 border-red-500/25" },
+    deep_dive: { label: "Academic Deep Dive", icon: Search, color: "text-cyan-400", bg: "bg-cyan-500/10 border-cyan-500/25" },
+    explain_simply: { label: "Explain Simply (ELI5)", icon: Lightbulb, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/25" },
+    coding_tutor: { label: "Coding Tutor", icon: Code, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/25" },
+    problem_solver: { label: "Math & Problem Solver", icon: Calculator, color: "text-pink-400", bg: "bg-pink-500/10 border-pink-500/25" },
+    quick: { label: "Quick Answer", icon: Zap, color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/25" },
+    revision: { label: "Rapid Revision", icon: RefreshCw, color: "text-indigo-400", bg: "bg-indigo-500/10 border-indigo-500/25" }
   };
 
-  const applyQuickAction = (label: string) => {
-    setInput(label);
-    setShowActionMenu(false);
-    textareaRef.current?.focus();
-  };
-
-  const canSend = input.trim().length > 0 && !isThinking && canSendOverride;
+  const badge = mode ? modeBadgeMap[mode] : null;
 
   return (
-    <div
-      className="p-3 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur shrink-0 mb-16 lg:mb-0 relative z-10"
-      ref={wrapperRef}
-    >
-      {/* Input Box */}
-      <div className="paperchat-input-box px-4 pt-3 pb-2">
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          className="paperchat-textarea"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={canSendOverride ? `${selectedMode.description}... (Enter to send, Shift+Enter for newline)` : 'Limit reached — switch to PaperChat (Free)'}
-          disabled={!canSendOverride}
-          rows={1}
-        />
-
-        {/* Bottom Toolbar */}
-        <div className="flex items-center justify-between mt-2 gap-2">
-          {/* Left controls */}
-          <div className="flex items-center gap-2">
-            {/* + Actions button */}
-            <div className="relative">
-              <button
-                className="plus-btn"
-                onClick={() => { setShowActionMenu(p => !p); setShowModeMenu(false); }}
-                disabled={!canSendOverride}
-                title="Quick actions"
-              >
-                <Plus size={15} />
-              </button>
-
-              {/* Actions dropdown */}
-              <AnimatePresence>
-                {showActionMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
-                    className="action-menu"
-                  >
-                    <p style={{ fontSize: 11, color: '#666', padding: '4px 12px 6px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                      Quick Prompts
-                    </p>
-                    {QUICK_ACTIONS.map(action => (
-                      <div
-                        key={action.label}
-                        className="action-menu-item"
-                        onClick={() => applyQuickAction(action.label)}
-                      >
-                        <span className="icon-wrap" style={{ background: action.color + '22' }}>
-                          <action.icon size={13} style={{ color: action.color }} />
-                        </span>
-                        {action.label}
-                      </div>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Mode Selector */}
-            <div className="relative">
-              <button
-                className={`mode-chip ${selectedMode.id !== 'ask' ? 'active' : ''}`}
-                onClick={() => { setShowModeMenu(p => !p); setShowActionMenu(false); }}
-                disabled={!isSubscribed}
-              >
-                <selectedMode.icon size={11} />
-                {selectedMode.label}
-                <ChevronDown size={10} style={{ opacity: 0.6 }} />
-              </button>
-
-              {/* Mode dropdown */}
-              <AnimatePresence>
-                {showModeMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
-                    className="mode-menu"
-                  >
-                    <p style={{ fontSize: 11, color: '#666', padding: '4px 12px 6px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                      Chat Mode
-                    </p>
-                    {CHAT_MODES.map(mode => (
-                      <div
-                        key={mode.id}
-                        className={`mode-menu-item ${selectedMode.id === mode.id ? 'selected' : ''}`}
-                        onClick={() => { setSelectedMode(mode); setShowModeMenu(false); }}
-                      >
-                        <mode.icon size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, marginBottom: 1 }}>{mode.label}</div>
-                          <div style={{ fontSize: 11, opacity: 0.5 }}>{mode.description}</div>
-                        </div>
-                        <svg className="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M20 6L9 17l-5-5"/></svg>
-                      </div>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Right controls */}
-          <div className="flex items-center gap-2">
-
-            {/* Send button */}
-            <button
-              className="send-btn"
-              disabled={!canSend}
-              onClick={e => { if (canSend) onSubmit(e as any); }}
-              title="Send (Enter)"
-            >
-              {isThinking
-                ? <Loader2 size={14} className="animate-spin" />
-                : <Send size={14} style={{ transform: 'translateX(1px)' }} />
-              }
-            </button>
-          </div>
+    <div className="font-sans space-y-2.5">
+      {badge && (
+        <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border shadow-sm", badge.bg)}>
+          <badge.icon size={11} className={badge.color} />
+          <span className={badge.color}>{badge.label}</span>
         </div>
+      )}
+
+      <div className="prose prose-invert prose-sm max-w-none chat-prose">
+        <ReactMarkdown
+          remarkPlugins={[remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          components={{
+            h3: ({ children, ...props }) => {
+              const text = String(children || "");
+              if (text.includes("💡") || text.toLowerCase().includes("analogy") || text.toLowerCase().includes("intuition")) {
+                return (
+                  <div className="mt-3.5 mb-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 font-bold text-xs flex items-center gap-2">
+                    <Lightbulb size={13} className="text-amber-400 shrink-0" />
+                    <span>{children}</span>
+                  </div>
+                );
+              }
+              if (text.includes("🔴") || text.toLowerCase().includes("exam") || text.toLowerCase().includes("takeaway")) {
+                return (
+                  <div className="mt-3.5 mb-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/25 text-red-300 font-bold text-xs flex items-center gap-2">
+                    <Target size={13} className="text-red-400 shrink-0" />
+                    <span>{children}</span>
+                  </div>
+                );
+              }
+              if (text.includes("⚠️") || text.toLowerCase().includes("pitfall") || text.toLowerCase().includes("trap")) {
+                return (
+                  <div className="mt-3.5 mb-2 p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/35 text-amber-200 font-bold text-xs flex items-center gap-2">
+                    <AlertCircle size={13} className="text-amber-400 shrink-0" />
+                    <span>{children}</span>
+                  </div>
+                );
+              }
+              if (text.includes("🎯") || text.toLowerCase().includes("check") || text.toLowerCase().includes("question")) {
+                return (
+                  <div className="mt-3.5 mb-2 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/25 text-purple-300 font-bold text-xs flex items-center gap-2">
+                    <Brain size={13} className="text-purple-400 shrink-0" />
+                    <span>{children}</span>
+                  </div>
+                );
+              }
+              if (text.includes("💻") || text.toLowerCase().includes("code")) {
+                return (
+                  <div className="mt-3.5 mb-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 font-bold text-xs flex items-center gap-2">
+                    <Code size={13} className="text-emerald-400 shrink-0" />
+                    <span>{children}</span>
+                  </div>
+                );
+              }
+              if (text.includes("🧮") || text.toLowerCase().includes("formula") || text.toLowerCase().includes("derivation")) {
+                return (
+                  <div className="mt-3.5 mb-2 p-2.5 rounded-xl bg-pink-500/10 border border-pink-500/25 text-pink-300 font-bold text-xs flex items-center gap-2">
+                    <Calculator size={13} className="text-pink-400 shrink-0" />
+                    <span>{children}</span>
+                  </div>
+                );
+              }
+              return <h3 className="text-xs font-bold text-neutral-200 mt-3 mb-1.5" {...props}>{children}</h3>;
+            },
+            pre: ({ children, ...props }) => (
+              <div className="relative group my-2.5">
+                <pre className="bg-[#0b0c10] border border-white/10 rounded-xl p-3.5 overflow-x-auto text-[11.5px] font-mono text-neutral-200" {...props}>
+                  {children}
+                </pre>
+              </div>
+            ),
+            code: ({ className, children, ...props }) => {
+              const isInline = !className;
+              if (isInline) {
+                return (
+                  <code className="bg-white/[0.08] text-red-300 px-1.5 py-0.5 rounded text-[11px] font-mono border border-white/[0.06]" {...props}>
+                    {children}
+                  </code>
+                );
+              }
+              return <code className={className} {...props}>{children}</code>;
+            },
+            blockquote: ({ children, ...props }) => (
+              <blockquote className="border-l-2 border-red-500/60 bg-white/[0.03] pl-3 py-1.5 my-2 rounded-r-lg text-neutral-300 text-xs italic" {...props}>
+                {children}
+              </blockquote>
+            ),
+            a: ({ href, children, ...props }) => {
+              const isTimestamp = href?.includes("youtube.com") && href?.includes("&t=");
+              if (isTimestamp) {
+                const isZero = href?.includes("&t=0s") || href?.includes("&t=0") || String(children).includes("00:00") || String(children).includes("0:00");
+                if (isZero) return null;
+
+                return (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="paperxify-timestamp-badge"
+                    {...props}
+                  >
+                    <svg className="timestamp-play-icon inline-block w-2.5 h-2.5 mr-1 text-red-500 fill-current" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    <span>{children}</span>
+                  </a>
+                );
+              }
+              return (
+                <a href={href} target="_blank" rel="noopener noreferrer" className="text-red-400 underline hover:text-red-300 font-medium" {...props}>
+                  {children}
+                </a>
+              );
+            }
+          }}
+        >
+          {mainContent}
+        </ReactMarkdown>
       </div>
 
-      {/* Hint text */}
-      {isSubscribed && (
-        <p style={{ textAlign: 'center', fontSize: 10, color: '#444', marginTop: 6 }}>
-          Enter ↵ to send · Shift+Enter for new line · Context-aware AI
-        </p>
+      {actionChips.length > 0 && onActionClick && (
+        <div className="pt-2 border-t border-white/[0.06] flex items-center gap-1.5 flex-wrap">
+          <span className="text-[9px] font-black uppercase tracking-wider text-neutral-500 mr-0.5">Quick Actions:</span>
+          {actionChips.map((chip, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onActionClick(chip)}
+              className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-red-500/15 border border-white/[0.08] hover:border-red-500/30 text-neutral-300 hover:text-red-300 text-[10.5px] font-semibold transition-all cursor-pointer flex items-center gap-1 active:scale-[0.97]"
+            >
+              <span>{chip}</span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
 };
 
+// --- 4. EXPORT DIALOG COMPONENT ---
 interface ExportDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -1142,47 +983,51 @@ interface ExportDialogProps {
 }
 
 const ExportDialog: React.FC<ExportDialogProps> = ({
-  isOpen, onClose, isSubscribed, onExportPDF, onExportMarkdown, isGeneratingPDF, router, noteTitle, noteContent
+  isOpen,
+  onClose,
+  isSubscribed,
+  onExportPDF,
+  onExportMarkdown,
+  isGeneratingPDF,
+  router,
+  noteTitle,
+  noteContent
 }) => {
-  const [notionStep, setNotionStep] = useState<'options' | 'upgrade' | 'connect' | 'syncing'>('options');
-  
+  const [notionStep, setNotionStep] = useState<"options" | "upgrade" | "connect" | "syncing">("options");
+
   useEffect(() => {
-    if (!isOpen) {
-      setNotionStep('options');
-    }
+    if (!isOpen) setNotionStep("options");
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleNotionClick = () => {
     if (!isSubscribed) {
-      setNotionStep('upgrade');
+      setNotionStep("upgrade");
     } else {
       const savedToken = localStorage.getItem("notion_token");
       if (savedToken) {
         triggerNotionSync();
       } else {
-        setNotionStep('connect');
+        setNotionStep("connect");
       }
     }
   };
 
   const triggerNotionSync = async () => {
-    setNotionStep('syncing');
+    setNotionStep("syncing");
     const notionToken = localStorage.getItem("notion_token");
     try {
-      const isHtml = noteContent.includes('<h1') || noteContent.includes('<p>') || noteContent.includes('<div') || /<[a-z][\s\S]*>/i.test(noteContent);
+      const isHtml = /<[a-z][\s\S]*>/i.test(noteContent);
       let markdown = noteContent;
       if (isHtml) {
         const turndownService = new TurndownService();
         markdown = turndownService.turndown(noteContent);
       }
 
-      const response = await fetch('/api/notion/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch("/api/notion/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           noteTitle,
           noteContent: markdown,
@@ -1193,163 +1038,158 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
       if (resData.success) {
         toast.success("Note synced to Notion successfully!");
         onClose();
-        if (resData.pageUrl) {
-          window.open(resData.pageUrl, '_blank');
-        }
+        if (resData.pageUrl) window.open(resData.pageUrl, "_blank");
       } else {
         toast.error(resData.message || "Failed to sync to Notion");
-        setNotionStep('options');
+        setNotionStep("options");
       }
     } catch (err) {
       console.error(err);
       toast.error("Notion sync failed due to network error.");
-      setNotionStep('options');
+      setNotionStep("options");
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0" onClick={onClose} />
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0"
-        onClick={onClose}
-      />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="relative w-full max-w-md bg-neutral-900 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto scrollbar-hide"
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ duration: 0.2 }}
+        className="relative w-full max-w-md bg-[#09090d]/98 border border-white/[0.12] rounded-[2rem] p-6 sm:p-8 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.95)] overflow-hidden z-10"
       >
-        {/* Background Ambient Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-[radial-gradient(circle_at_center,_rgba(220,38,38,0.06)_0%,_transparent_75%)] pointer-events-none transform-gpu" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff01_1px,transparent_1px),linear-gradient(to_bottom,#ffffff01_1px,transparent_1px)] bg-[size:16px_16px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)] pointer-events-none" />
-
-        {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-neutral-400 hover:text-white bg-white/5 border border-white/10 rounded-full p-1.5 transition-all z-20"
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] flex items-center justify-center text-neutral-400 hover:text-white transition-colors cursor-pointer"
         >
-          <X size={14} />
+          <X size={15} />
         </button>
 
-        {notionStep === 'options' && (
-          <div className="space-y-5 relative z-10">
+        {notionStep === "options" && (
+          <div className="space-y-5">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-neutral-300 text-[10px] font-medium uppercase tracking-widest mb-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-widest mb-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                Export Engine
+                Paperxify Export Engine
               </div>
-              <h3 className="text-xl md:text-2xl font-black text-white tracking-tight">EXPORT <span className="text-red-500">NOTE</span></h3>
-              <p className="text-xs md:text-sm text-neutral-400 mt-1 max-w-sm">Convert and transfer your study notes into your preferred external formats.</p>
+              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">Export Your Study Notes</h3>
+              <p className="text-xs text-neutral-400 mt-1">Convert and export notes in your favorite productivity formats.</p>
             </div>
 
             <div className="space-y-3">
-              {/* PDF Card */}
+              {/* PDF Export */}
               <button
-                onClick={() => { onExportPDF(); onClose(); }}
-                className="flex items-center gap-4 w-full p-4 rounded-2xl bg-neutral-950/40 border border-white/5 hover:border-red-500/30 hover:bg-neutral-800/40 text-left transition-all duration-300 group"
+                onClick={() => {
+                  onExportPDF();
+                  onClose();
+                }}
+                disabled={isGeneratingPDF}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-[#121216] border border-white/[0.08] hover:border-red-500/40 hover:bg-[#18181f] text-left transition-all duration-200 group cursor-pointer"
               >
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 group-hover:scale-105 transition-transform shrink-0">
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 group-hover:scale-105 transition-transform shrink-0">
                   <FileText size={20} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-bold text-white group-hover:text-red-400 transition-colors">Export as PDF</div>
-                  <div className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors line-clamp-1">Clean, print-ready document without watermarks</div>
+                  <div className="text-sm font-bold text-white group-hover:text-red-400 transition-colors">Export as PDF Document</div>
+                  <div className="text-xs text-neutral-400 truncate">Print-ready document styled with active theme colors</div>
                 </div>
               </button>
 
-              {/* Markdown Card */}
+              {/* Markdown Export */}
               <button
-                onClick={() => { onExportMarkdown(); onClose(); }}
-                className="flex items-center gap-4 w-full p-4 rounded-2xl bg-neutral-950/40 border border-white/5 hover:border-blue-500/30 hover:bg-neutral-800/40 text-left transition-all duration-300 group"
+                onClick={() => {
+                  onExportMarkdown();
+                  onClose();
+                }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-[#121216] border border-white/[0.08] hover:border-blue-500/40 hover:bg-[#18181f] text-left transition-all duration-200 group cursor-pointer"
               >
-                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 group-hover:scale-105 transition-transform shrink-0">
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-400 group-hover:scale-105 transition-transform shrink-0">
                   <Download size={20} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">Export as Markdown</div>
-                  <div className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors line-clamp-1">Perfect for Obsidian, Notion, or local Markdown editors</div>
+                  <div className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">Export as Markdown (.md)</div>
+                  <div className="text-xs text-neutral-400 truncate">Perfect for Obsidian, Logseq, and Notion imports</div>
                 </div>
               </button>
 
-              {/* Notion Card */}
+              {/* Notion Sync */}
               <button
                 onClick={handleNotionClick}
-                className="flex items-center gap-4 w-full p-4 rounded-2xl bg-neutral-950/40 border border-white/5 hover:border-amber-500/30 hover:bg-neutral-800/40 text-left transition-all duration-300 group relative overflow-hidden shrink-0"
+                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-[#121216] border border-white/[0.08] hover:border-amber-500/40 hover:bg-[#18181f] text-left transition-all duration-200 group cursor-pointer"
               >
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform shrink-0">
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M4.459 4.208c.15-.226.338-.376.812-.489l11.458-1.579c.902-.131 1.09.113 1.09.808v16.143c0 .545-.169.752-.77.827L5.85 20.916c-.507.075-.77-.132-.77-.733V4.866c0-.282.169-.47.282-.658h.097zM2.017 3.325c-.244.188-.413.489-.413.921v16.293c0 .921.619 1.485 1.54 1.353l17.788-2.312c.732-.094.957-.451.957-1.127V2.518c0-.752-.451-1.071-1.127-.978L3.107 3.006c-.544.075-.92.15-1.09.319zm13.111 4.549c.282-.038.508.15.508.47v7.501c0 .282-.207.451-.508.489l-2.067.169v-.094c.169-.131.282-.376.282-.676v-5.263l-4.116 5.864c-.169.244-.413.395-.732.413l-1.955.15c-.282.019-.488-.169-.488-.47v-7.389c0-.282.207-.47.507-.507l1.936-.15v.094c-.15.113-.263.357-.263.639v5.094l3.966-5.714c.188-.263.413-.395.77-.413l2.171-.17v.019z"/>
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 group-hover:scale-105 transition-transform shrink-0">
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M4.459 4.208c.15-.226.338-.376.812-.489l11.458-1.579c.902-.131 1.09.113 1.09.808v16.143c0 .545-.169.752-.77.827L5.85 20.916c-.507.075-.77-.132-.77-.733V4.866c0-.282.169-.47.282-.658h.097zM2.017 3.325c-.244.188-.413.489-.413.921v16.293c0 .921.619 1.485 1.54 1.353l17.788-2.312c.732-.094.957-.451.957-1.127V2.518c0-.752-.451-1.071-1.127-.978L3.107 3.006c-.544.075-.92.15-1.09.319zm13.111 4.549c.282-.038.508.15.508.47v7.501c0 .282-.207.451-.508.489l-2.067.169v-.094c.169-.131.282-.376.282-.676v-5.263l-4.116 5.864c-.169.244-.413.395-.732.413l-1.955.15c-.282.019-.488-.169-.488-.47v-7.389c0-.282.207-.47.507-.507l1.936-.15v.094c-.15.113-.263.357-.263.639v5.094l3.966-5.714c.188-.263.413-.395.77-.413l2.171-.17v.019z" />
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors flex items-center gap-2">
-                    Sync to Notion
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Pro</span>
+                    <span>Sync to Notion Workspace</span>
+                    <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Pro</span>
                   </div>
-                  <div className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors line-clamp-1">Push notes directly into your Notion workspace pages</div>
+                  <div className="text-xs text-neutral-400 truncate">Push formatted notes straight into your Notion pages</div>
                 </div>
               </button>
             </div>
           </div>
         )}
 
-        {notionStep === 'upgrade' && (
-          <div className="text-center py-6 relative z-10 flex flex-col items-center">
-            <div className="p-4 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-4 animate-bounce shrink-0">
-              <Lock size={36} />
+        {notionStep === "upgrade" && (
+          <div className="text-center py-4 flex flex-col items-center">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center mb-4">
+              <Lock size={28} />
             </div>
-            <h3 className="text-xl font-black text-white tracking-tight">PREMIUM LOCKED</h3>
-            <p className="text-xs md:text-sm text-neutral-400 mt-2 max-w-xs leading-relaxed">
-              Notion Sync is a Pro features integration. Upgrade now to unlock automated workspace syncing and premium PDF exports.
+            <h3 className="text-xl font-black text-white tracking-tight">Notion Sync is a Pro Feature</h3>
+            <p className="text-xs text-neutral-400 mt-2 max-w-xs leading-relaxed">
+              Upgrade to Paperxify Pro to unlock direct Notion syncing, publication PDF exports, and deep AI models.
             </p>
             <div className="flex gap-3 w-full mt-6">
               <button
                 type="button"
-                onClick={() => setNotionStep('options')}
-                className="flex-1 py-3 border border-white/10 hover:bg-white/5 text-white font-bold rounded-xl transition text-xs"
+                onClick={() => setNotionStep("options")}
+                className="flex-1 py-3 border border-white/10 hover:bg-white/5 text-white font-bold rounded-xl transition text-xs cursor-pointer"
               >
                 Back
               </button>
               <button
                 type="button"
-                onClick={() => router.push('/pricing')}
-                className="flex-1 py-3 bg-white text-black hover:bg-neutral-200 font-bold rounded-xl transition text-xs shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                onClick={() => router.push("/pricing")}
+                className="flex-1 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold rounded-xl transition text-xs shadow-lg cursor-pointer"
               >
-                Upgrade to Pro
+                Upgrade to Pro →
               </button>
             </div>
           </div>
         )}
 
-        {notionStep === 'connect' && (
-          <div className="text-center py-6 relative z-10 flex flex-col items-center">
-            <div className="p-4 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-4 animate-pulse shrink-0">
-              <Sparkles size={36} />
+        {notionStep === "connect" && (
+          <div className="text-center py-4 flex flex-col items-center">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center mb-4">
+              <Sparkles size={28} />
             </div>
-            <h3 className="text-xl font-black text-white tracking-tight">CONNECT NOTION</h3>
-            <p className="text-xs md:text-sm text-neutral-400 mt-2 max-w-xs leading-relaxed">
-              Securely grant Paperxify access to create study pages in your Notion workspace.
+            <h3 className="text-xl font-black text-white tracking-tight">Connect Notion Account</h3>
+            <p className="text-xs text-neutral-400 mt-2 max-w-xs leading-relaxed">
+              Grant Paperxify access to create and sync notes in your Notion workspace.
             </p>
             <div className="flex gap-3 w-full mt-6">
               <button
                 type="button"
-                onClick={() => setNotionStep('options')}
-                className="flex-1 py-3 border border-white/10 hover:bg-white/5 text-white font-bold rounded-xl transition text-xs"
+                onClick={() => setNotionStep("options")}
+                className="flex-1 py-3 border border-white/10 hover:bg-white/5 text-white font-bold rounded-xl transition text-xs cursor-pointer"
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  localStorage.setItem('notion_redirect_back', window.location.pathname);
+                  localStorage.setItem("notion_redirect_back", window.location.pathname);
                   window.location.href =
-                    'https://api.notion.com/v1/oauth/authorize?client_id=36ad872b-594c-8107-a869-00370d5b7599&response_type=code&owner=user&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fnotion%2Fcallback';
+                    "https://api.notion.com/v1/oauth/authorize?client_id=36ad872b-594c-8107-a869-00370d5b7599&response_type=code&owner=user&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fnotion%2Fcallback";
                 }}
-                className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-xl transition text-xs"
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition text-xs cursor-pointer"
               >
                 Authorize Notion
               </button>
@@ -1357,11 +1197,11 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
           </div>
         )}
 
-        {notionStep === 'syncing' && (
-          <div className="text-center py-12 relative z-10 flex flex-col items-center">
-            <Loader2 className="animate-spin text-red-500 mb-4 shrink-0" size={40} />
-            <h3 className="text-lg font-bold text-white">SYNCING WORKSPACE</h3>
-            <p className="text-xs text-neutral-400 mt-2 animate-pulse">Constructing blocks and publishing to Notion...</p>
+        {notionStep === "syncing" && (
+          <div className="text-center py-8 flex flex-col items-center">
+            <Loader2 className="animate-spin text-red-500 mb-4" size={36} />
+            <h3 className="text-lg font-bold text-white">Syncing to Notion...</h3>
+            <p className="text-xs text-neutral-400 mt-1">Publishing formatted blocks to your Notion workspace.</p>
           </div>
         )}
       </motion.div>
@@ -1369,25 +1209,280 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
   );
 };
 
-// --- MAIN PAGE COMPONENT ---
+// --- THEME STUDIO MODAL COMPONENT ---
+interface ThemeStudioModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedTheme: NoteTheme;
+  onSelectTheme: (t: NoteTheme) => void;
+  userPlan?: UserPlan;
+}
+
+const THEME_CATEGORIES = [
+  { id: "all", label: "All Themes", icon: "✨" },
+  { id: "light", label: "Light", icon: "☀️" },
+  { id: "professional", label: "Professional", icon: "🏛️" },
+  { id: "colorful", label: "Colorful", icon: "🎨" },
+  { id: "dark", label: "Dark Mode", icon: "🌙" },
+];
+
+const ThemeStudioModal: React.FC<ThemeStudioModalProps> = ({
+  isOpen,
+  onClose,
+  selectedTheme,
+  onSelectTheme,
+  userPlan = "free",
+}) => {
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !mounted) return null;
+
+  const filteredThemes = THEMES.filter((t) => {
+    const matchesCategory = activeCategory === "all" || t.category === activeCategory;
+    const matchesSearch =
+      searchQuery.trim() === "" ||
+      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.font.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.desc && t.desc.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
+
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
+      <div className="absolute inset-0" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: "spring", damping: 25, stiffness: 350 }}
+        className="relative w-full max-w-3xl bg-[#09090d]/95 backdrop-blur-2xl border border-white/[0.12] rounded-[2rem] shadow-[0_25px_60px_rgba(0,0,0,0.95)] z-10 max-h-[88vh] flex flex-col overflow-hidden"
+      >
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-white/[0.08] bg-[#0d0d12]/80 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shadow-inner">
+                <Palette size={16} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white tracking-tight">Document Theme Studio</h3>
+                <p className="text-[11px] text-neutral-400">Choose from 26 tailored typography & color systems</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.1] text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            >
+              <X size={15} />
+            </button>
+          </div>
+
+          {/* Search & Category Tabs */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by theme name, font, or mood..."
+                className="w-full h-8 pl-3 pr-8 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white placeholder:text-neutral-500 focus:border-red-500/50 outline-none transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Category Segmented Filter */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar p-0.5 bg-black/40 border border-white/[0.06] rounded-xl">
+              {THEME_CATEGORIES.map((cat) => {
+                const count =
+                  cat.id === "all" ? THEMES.length : THEMES.filter((t) => t.category === cat.id).length;
+                const isActive = activeCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1",
+                      isActive
+                        ? "bg-white/[0.12] text-white shadow-sm font-bold"
+                        : "text-neutral-400 hover:text-neutral-200"
+                    )}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{cat.label}</span>
+                    <span className="text-[9px] opacity-60 ml-0.5">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Theme Grid */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 custom-scrollbar">
+          {filteredThemes.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm font-medium text-neutral-400">No themes found matching "{searchQuery}"</p>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setActiveCategory("all");
+                }}
+                className="mt-3 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs text-white font-semibold transition"
+              >
+                Reset Filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filteredThemes.map((t) => {
+                const isSelected = selectedTheme.id === t.id;
+                const plan = getThemePlan(t.id);
+
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      onSelectTheme(t);
+                      onClose();
+                      toast.success(`Applied ${t.name} Theme`);
+                    }}
+                    className={cn(
+                      "group relative p-3.5 rounded-2xl border transition-all text-left cursor-pointer flex flex-col justify-between gap-3 overflow-hidden",
+                      isSelected
+                        ? "bg-gradient-to-br from-red-950/40 to-[#0e0e14] border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.2)] ring-1 ring-red-500/30"
+                        : "bg-[#0f0f14]/80 hover:bg-[#14141c] border-white/[0.08] hover:border-white/20 shadow-md"
+                    )}
+                  >
+                    {/* Top Row: Mini Paper Canvas + Header info */}
+                    <div className="flex items-start gap-3">
+                      {/* Mini Paper Swatch Preview */}
+                      <div
+                        className="w-14 h-16 rounded-xl border shadow-inner shrink-0 p-1.5 flex flex-col justify-between transition-transform group-hover:scale-105"
+                        style={{ backgroundColor: t.bg, borderColor: t.border }}
+                      >
+                        <div
+                          className="text-[8px] font-black uppercase tracking-tight truncate leading-none"
+                          style={{ color: t.primary }}
+                        >
+                          Heading
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="h-1 rounded-full opacity-60" style={{ backgroundColor: t.text }} />
+                          <div className="h-1 w-3/4 rounded-full opacity-40" style={{ backgroundColor: t.text }} />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: t.primary }} />
+                          <span className="w-1.5 h-1.5 rounded-full opacity-70" style={{ backgroundColor: t.accent }} />
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <h4 className="text-sm font-bold text-white group-hover:text-red-400 transition-colors truncate">
+                            {t.name}
+                          </h4>
+                          {plan === "free" ? (
+                            <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                              Free
+                            </span>
+                          ) : plan === "power" ? (
+                            <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/20">
+                              Power
+                            </span>
+                          ) : (
+                            <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                              Pro
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-[11px] text-neutral-400 line-clamp-2 mt-1 leading-relaxed">
+                          {t.desc || "Crisp clean textbook styling"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom Row: Font tag + Selection CTA */}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-[10px]">
+                      <span className="font-mono text-neutral-500 truncate max-w-[170px]">
+                        {t.font.replace(/'/g, "").split(",")[0]}
+                      </span>
+
+                      {isSelected ? (
+                        <span className="flex items-center gap-1 font-bold text-red-400">
+                          <Check size={12} strokeWidth={3} />
+                          <span>Active</span>
+                        </span>
+                      ) : (
+                        <span className="text-neutral-400 group-hover:text-white font-medium transition-colors">
+                          Apply Theme →
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>,
+    document.body
+  );
+};
+
+// --- MAIN NOTE PAGE COMPONENT ---
 export default function NotePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const router = useRouter();
-  
+
   // Data State
   const [data, setData] = useState<NoteData | null>(null);
   const [messages, setMessages] = useState<ApiMessage[]>([]);
-  
+
   // UI State
   const [loading, setLoading] = useState(true);
-  const [mobileView, setMobileView] = useState<'preview' | 'editor' | 'chat'>('preview');
+  const [activeTab, setActiveTab] = useState<"preview" | "editor" | "chat">("preview");
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
   const [hasPermission, setHasPermission] = useState(true);
-  
+
+  // Active theme state
+  const [selectedTheme, setSelectedTheme] = useState<NoteTheme>(THEMES[0]);
+
   // Subscription State
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [userPlan, setUserPlan] = useState<UserPlan>('free');
+  const [userPlan, setUserPlan] = useState<UserPlan>("free");
 
   // Editor State
   const [markdownContent, setMarkdownContent] = useState<string>("");
@@ -1397,43 +1492,46 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   // Chat State
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  const [thinkingMessage, setThinkingMessage] = useState("Thinking...");
   const [selectedMode, setSelectedMode] = useState(CHAT_MODES[0]);
 
-  // --- Persist model selection in localStorage ---
+  // Persisted AI model selection
   const [selectedChatModel, setSelectedChatModelRaw] = useState(() => {
-    if (typeof window === 'undefined') return CHAT_AI_MODELS[0];
-    const saved = localStorage.getItem('paperchat_selected_model');
+    if (typeof window === "undefined") return CHAT_AI_MODELS[0];
+    const saved = localStorage.getItem("paperchat_selected_model");
     if (saved) {
-      const found = CHAT_AI_MODELS.find(m => m.id === saved);
+      const found = CHAT_AI_MODELS.find((m) => m.id === saved);
       if (found) return found;
     }
     return CHAT_AI_MODELS[0];
   });
 
-  const setSelectedChatModel = (m: typeof CHAT_AI_MODELS[0]) => {
+  const setSelectedChatModel = (m: (typeof CHAT_AI_MODELS)[0]) => {
     setSelectedChatModelRaw(m);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('paperchat_selected_model', m.id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("paperchat_selected_model", m.id);
     }
   };
 
   const [showModelPicker, setShowModelPicker] = useState(false);
-  const modelPickerRef = React.useRef<HTMLDivElement>(null);
+  const modelPickerRef = useRef<HTMLDivElement>(null);
 
-  // --- Persist free message counts ---
+  // Persisted free message counts
   const [freeModelCounts, setFreeModelCountsRaw] = useState<Record<string, number>>(() => {
-    if (typeof window === 'undefined') return {};
+    if (typeof window === "undefined") return {};
     try {
-      const saved = localStorage.getItem('paperchat_free_counts');
+      const saved = localStorage.getItem("paperchat_free_counts");
       return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
+    } catch {
+      return {};
+    }
   });
 
   const setFreeModelCounts = (updater: (prev: Record<string, number>) => Record<string, number>) => {
-    setFreeModelCountsRaw(prev => {
+    setFreeModelCountsRaw((prev) => {
       const next = updater(prev);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('paperchat_free_counts', JSON.stringify(next));
+      if (typeof window !== "undefined") {
+        localStorage.setItem("paperchat_free_counts", JSON.stringify(next));
       }
       return next;
     });
@@ -1442,54 +1540,46 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  // PDF State
+  // PDF Generation State
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-  // Initialize Styles + close picker on outside click
+  // Close model picker on outside click
   useEffect(() => {
-    const styleElement = document.createElement('style');
-    styleElement.textContent = iphoneStyles;
-    document.head.appendChild(styleElement);
-
     const handleOutsideClick = (e: MouseEvent) => {
       if (modelPickerRef.current && !modelPickerRef.current.contains(e.target as Node)) {
         setShowModelPicker(false);
       }
     };
-    document.addEventListener('mousedown', handleOutsideClick);
-
-    return () => {
-      document.head.removeChild(styleElement);
-      document.removeEventListener('mousedown', handleOutsideClick);
-    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  // Fetch Data and Check Subscription
+  // Fetch Note Data
   const loadNoteData = useCallback(async () => {
     try {
       setLoading(true);
       const authToken = getAuthToken();
 
-      // Check Subscription Status from LocalStorage
+      // Check User Subscription
       const userStr = localStorage.getItem("user");
       if (userStr) {
         try {
           const userObj = JSON.parse(userStr);
           const active = !!userObj.membership?.isActive;
           setIsSubscribed(active);
-          // Detect plan: look for 'power' or 'pro' in plan name
           if (active) {
-            const planName = (userObj.membership?.plan || '').toLowerCase();
-            if (planName.includes('power')) setUserPlan('power');
-            else setUserPlan('pro');
+            const planName = (userObj.membership?.plan || "").toLowerCase();
+            if (planName.includes("power")) setUserPlan("power");
+            else setUserPlan("pro");
           } else {
-            setUserPlan('free');
+            setUserPlan("free");
           }
         } catch (e) {
           console.error("Error parsing user data", e);
         }
       }
 
+      // Check Mock Notes First
       if (MOCK_NOTES[slug]) {
         const mockNote = MOCK_NOTES[slug];
         setData({
@@ -1500,40 +1590,73 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           thumbnail: mockNote.thumbnail,
           generationDetails: mockNote.generationDetails
         });
+
+        // Set theme
+        const tId = mockNote.generationDetails?.theme || "atmosphere";
+        const foundT = THEMES.find((t) => t.id === tId) || THEMES[0];
+        setSelectedTheme(foundT);
+
         const rawContent = mockNote.content || "";
         const isRawHtml = /^\s*</.test(rawContent);
         let htmlContent = rawContent;
         if (!isRawHtml && rawContent.trim()) {
           htmlContent = marked.parse(rawContent) as string;
         }
+        htmlContent = makeTimestampsClickable(htmlContent, mockNote.videoUrl);
         setMarkdownContent(htmlContent);
         setMessages(mockNote.messages);
         setLoading(false);
         return;
       }
 
-      const res = await api.get(`/notes/slug/${slug}`, { headers: { 'Auth': authToken } });
+      // Fetch Real Note from API
+      const res = await api.get(`/notes/slug/${slug}`, { headers: { Auth: authToken } });
       setData(res.data);
-      
+
+      const tId = res.data.generationDetails?.theme || "atmosphere";
+      const foundT = THEMES.find((t) => t.id === tId) || THEMES[0];
+      setSelectedTheme(foundT);
+
       const rawContent = res.data.content || "";
       const isRawHtml = /^\s*</.test(rawContent);
-      const isFlashcardNote = res.data.generationDetails?.format === 'flashcards' || 
-                              (rawContent.trim().startsWith('[') && rawContent.includes('"front"'));
-      
+      const isFlashcardNote =
+        res.data.generationDetails?.format === "flashcards" ||
+        (rawContent.trim().startsWith("[") && rawContent.includes('"front"'));
+
       let htmlContent = rawContent;
       if (!isRawHtml && !isFlashcardNote && rawContent.trim()) {
         htmlContent = marked.parse(rawContent) as string;
       }
+      htmlContent = makeTimestampsClickable(htmlContent, res.data.videoUrl);
       setMarkdownContent(htmlContent);
-      
+
       // Load Messages
       try {
-        const msgRes = await api.get<ApiMessagesResponse>(`/chat/getMessages/${res.data._id}`, { headers: { 'Auth': authToken } });
-        setMessages(msgRes.data.messages);
+        const msgRes = await api.get<ApiMessagesResponse>(`/chat/getMessages/${res.data._id}`, { headers: { Auth: authToken } });
+        if (msgRes.data && Array.isArray(msgRes.data.messages) && msgRes.data.messages.length > 0) {
+          setMessages(msgRes.data.messages);
+        } else {
+          setMessages([
+            {
+              _id: "welcome-" + Date.now(),
+              role: "assistant",
+              content: `Hello! I am PaperChat, your personal AI Tutor for **${res.data.title}**. Let's explore the key concepts, formulas, exam tips, or run an active recall quiz!`,
+              timestamp: new Date().toISOString(),
+              mode: "tutor"
+            }
+          ]);
+        }
       } catch (e) {
-        setMessages([{ _id: "welcome", role: "assistant", content: "Hello! I am PaperChat. How can I help you with this note?", timestamp: new Date().toISOString() }]);
+        setMessages([
+          {
+            _id: "welcome-" + Date.now(),
+            role: "assistant",
+            content: `Hello! I am PaperChat, your personal AI Tutor for **${res.data.title}**. How can I help you explore this note?`,
+            timestamp: new Date().toISOString(),
+            mode: "tutor"
+          }
+        ]);
       }
-
     } catch (error: any) {
       if (error.response?.status === 403 || error.response?.status === 401) {
         setHasPermission(false);
@@ -1544,198 +1667,121 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     }
   }, [slug]);
 
-  useEffect(() => { loadNoteData(); }, [loadNoteData]);
-  
-  const [thinkingMessage, setThinkingMessage] = useState("Thinking...");
-
-  // Auto-scroll effect
   useEffect(() => {
-    if (mobileView === 'chat' || window.innerWidth >= 1024) {
+    loadNoteData();
+  }, [loadNoteData]);
+
+  // Auto-scroll chat
+  useEffect(() => {
+    if (activeTab === "chat" || (typeof window !== "undefined" && window.innerWidth >= 1024)) {
       const timer = setTimeout(() => {
         if (chatScrollRef.current) {
           chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
         }
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
       }, 100);
-      
       return () => clearTimeout(timer);
     }
-  }, [messages, isThinking, mobileView]);
+  }, [messages, isThinking, activeTab]);
 
   // Thinking Message Cycler
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isThinking) {
-      const messages = ["Analyzing...", "Thinking...", "Reasoning...", "Synthesizing...", "Crafting Response..."];
+      const msgs = ["Analyzing note content...", "Reasoning...", "Synthesizing answer...", "Formulating response..."];
       let i = 0;
       interval = setInterval(() => {
-        setThinkingMessage(messages[i % messages.length]);
+        setThinkingMessage(msgs[i % msgs.length]);
         i++;
-      }, 1500);
+      }, 1400);
     }
     return () => clearInterval(interval);
   }, [isThinking]);
 
-  // Notion Connection Check
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('notion_connected') === 'true') {
-        const workspace = localStorage.getItem("notion_workspace") || "Notion Workspace";
-        toast.success(`Successfully connected to workspace: ${workspace}`);
-        
-        // Clean URL parameter
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
-        router.replace(newUrl);
-        
-        // Open export dialog so user can sync right away
-        setShowExportDialog(true);
-      }
-    }
-  }, [router]);
-
-  // Actions
+  // Save Note Changes
   const handleSave = async () => {
     if (!data?._id) return;
     if (data._id.startsWith("mock-note")) {
       setIsDirty(false);
-      toast.success("Note saved successfully (Mock)");
+      toast.success("Note saved successfully (Demo Mode)");
       return;
     }
     try {
-      await api.put(`/notes/update/${data._id}`, { content: markdownContent }, { headers: { 'Auth': getAuthToken() } });
+      await api.put(`/notes/update/${data._id}`, { content: markdownContent }, { headers: { Auth: getAuthToken() } });
       setIsDirty(false);
-      toast.success("Note saved successfully");
-    } catch (e) { 
-      toast.error("Save failed");
+      toast.success("Note changes saved to cloud!");
+    } catch {
+      toast.error("Failed to save changes");
     }
   };
 
+  // Feedback handler
   const handleFeedback = async (messageId: string, feedback: "good" | "bad") => {
     if (!data?._id) return;
+    setMessages((prev) => prev.map((msg) => (msg._id === messageId ? { ...msg, feedback } : msg)));
+
+    if (data._id.startsWith("mock-note")) {
+      toast.success(feedback === "good" ? "Glad this was helpful!" : "Thanks for the feedback.");
+      return;
+    }
     try {
-      // Optimistic update
-      setMessages(prev => prev.map(msg => 
-        msg._id === messageId ? { ...msg, feedback } : msg
-      ));
-
-      if (data._id.startsWith("mock-note")) {
-        toast.success(feedback === 'good' ? 'Great! Glad you liked it.' : 'Thanks for the feedback. We will improve.');
-        return;
-      }
-
-      await api.post('/chat/feedback', {
-        noteId: data._id,
-        messageId,
-        feedback
-      });
-      
-      toast.success(feedback === 'good' ? 'Great! Glad you liked it.' : 'Thanks for the feedback. We will improve.');
+      await api.post("/chat/feedback", { noteId: data._id, messageId, feedback });
+      toast.success(feedback === "good" ? "Glad this was helpful!" : "Thanks for the feedback.");
     } catch (err) {
       console.error("Feedback error:", err);
-      toast.error("Failed to save feedback");
     }
   };
 
-  // Derived: can the current user send on the selected model?
+  // Check model permission
   const currentModelFreeCount = freeModelCounts[selectedChatModel.id] || 0;
   const isModelUnlimited = PLAN_UNLIMITED[userPlan].includes(selectedChatModel.id);
   const canUseModel = isModelUnlimited || currentModelFreeCount < selectedChatModel.freeLimit;
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isThinking) return;
-    if (!canUseModel) return;
-    
-    const currentMode = selectedMode.id;
-    const userMsg: ApiMessage = { 
-      _id: Date.now().toString(), 
-      role: "user", 
-      content: input, 
+  // Send Chat Message with custom text & mode support
+  const sendCustomMessage = async (customText?: string, customMode?: string) => {
+    const textToSend = (customText || input).trim();
+    if (!textToSend || isThinking || !canUseModel) return;
+
+    const currentMode = customMode || selectedMode.id;
+    const userMsg: ApiMessage = {
+      _id: Date.now().toString(),
+      role: "user",
+      content: textToSend,
       timestamp: new Date().toISOString(),
       mode: currentMode
     };
-    
-    setMessages(prev => [...prev, userMsg]);
-    setInput("");
+
+    setMessages((prev) => [...prev, userMsg]);
+    if (!customText) setInput("");
     setIsThinking(true);
 
     try {
-      if (data?._id && data._id.startsWith("mock-note")) {
-        // Wait 1.2 seconds to simulate thinking
-        setTimeout(() => {
-          setIsThinking(false);
-          const responses: Record<string, string[]> = {
-            "mock-note-hackers": [
-              "Interesting question! Under cybersecurity frameworks, detecting AI-powered attacks requires behavior-based anomaly detection. Traditional security filters can't catch perfect language, but they can catch unusual access patterns.",
-              "Exactly. The primary takeaway from this lecture is that organizations need to shift from passive email filters to dynamic authentication and continuous user verification.",
-              "Yes! That is a key vulnerability. Implementing multi-factor authentication (MFA) and strong encryption protocols significantly reduces the blast radius of voice cloning or phishing attempts."
-            ],
-            "mock-note-nextjs": [
-              "Great point! Next.js 15 App Router renders components server-side first, generating HTML that is immediately streamable. Client-side hydration happens seamlessly without blocking the page display.",
-              "Under the hood, Server Actions route requests through post handlers. Next.js manages these routes internally, bypassing standard REST configurations to optimize developer velocity.",
-              "Absolutely. By disabling default caching for GET requests in Next.js 15, the framework aligns with standard web API expectations, reducing cache invalidation bugs."
-            ],
-            "mock-note-deepseek": [
-              "DeepSeek R1's reasoning capability relies heavily on reinforcement learning to discover chains of thought. Traditional LLMs are only fine-tuned via human preference, making R1 more robust for logic.",
-              "Indeed. Open-source weights allow research teams to run models locally, reducing data privacy issues and bringing high-quality reasoning to smaller consumer-grade machines.",
-              "That is correct. While GPT-4o offers rich multimodality and speed, R1's reinforcement learning loops enable deep self-correction that prevents typical LLM logic failures."
-            ],
-            "mock-note-tailwind": [
-              "Using Tailwind CSS Grid is perfect for major layouts. Keep in mind that responsive columns can be nested: you can have a Flex layout inside a Grid card to handle micro-alignments.",
-              "For responsive layouts, remember Tailwind is mobile-first: `grid-cols-1 md:grid-cols-3` means 1 column by default, and 3 columns starting from the medium screen width breakpoint.",
-              "Yes, spacing is key. Using utility classes like `gap-4` or `space-y-2` helps keep margins unified across elements without writing custom CSS properties."
-            ],
-            "mock-note-solid": [
-              "Applying SOLID principles makes React components highly reusable. By separating API calls from presentational tags, you can mock and test your components without invoking a real server.",
-              "The Open/Closed Principle in React is typically implemented using composition. By nesting components with `{children}`, you allow extensions without refactoring parent files.",
-              "Interface segregation is about not forcing components to depend on props they don't use. In React, pass only the specific data a component needs rather than passing the entire big data object."
-            ]
-          };
-          
-          const list = responses[data._id] || [
-            "That's a very good observation. Studies show that active recall and summarizing notes leads to a 50% increase in long-term retention compared to re-reading.",
-            "I'm here to help! Could you clarify if you want me to expand on this point, or generate a quick practice quiz about it?",
-            "Let's break this down further. If we analyze the core concepts in this section, we can see the relationship between input variables and the final generated output."
-          ];
-          
-          // Pick a random response
-          const content = list[Math.floor(Math.random() * list.length)];
-          
-          setMessages(prev => [...prev, {
-            _id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content,
-            timestamp: new Date().toISOString(),
-            mode: currentMode
-          }]);
-        }, 1200);
-        return;
-      }
-
       const authToken = getAuthToken();
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/message`, {
-        method: 'POST',
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiUrl}/api/chat/message`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Auth': authToken || '',
+          "Content-Type": "application/json",
+          Auth: authToken || ""
         },
-        body: JSON.stringify({ 
-          noteId: data?._id, 
+        body: JSON.stringify({
+          noteId: data?._id || "mock-note-general",
           message: userMsg.content,
           mode: currentMode,
           chatModelPersona: selectedChatModel.persona,
-          chatModelId: selectedChatModel.id
-        }),
+          chatModelId: selectedChatModel.id,
+          userPlan: userPlan,
+          noteTitle: data?.title || "Study Lecture Notes",
+          noteContent: markdownContent || "",
+          videoUrl: data?.videoUrl || "https://www.youtube.com"
+        })
       });
 
-      if (!response.ok) throw new Error('Failed to connect to chat service');
+      if (!response.ok) throw new Error("Failed to connect to chat service");
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      
-      // Initial empty AI message
+
       const aiMsgId = (Date.now() + 1).toString();
       const initialAiMsg: ApiMessage = {
         _id: aiMsgId,
@@ -1745,9 +1791,9 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         videoLink: data?.videoUrl,
         mode: currentMode
       };
-      
-      setMessages(prev => [...prev, initialAiMsg]);
-      setIsThinking(false); // Stop thinking once stream starts
+
+      setMessages((prev) => [...prev, initialAiMsg]);
+      setIsThinking(false);
 
       let accumulatedContent = "";
 
@@ -1757,21 +1803,20 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           if (done) break;
 
           const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+          const lines = chunk.split("\n");
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
+            if (line.startsWith("data: ")) {
               const dataStr = line.slice(6);
-              if (dataStr === '[DONE]') continue;
-              
+              if (dataStr === "[DONE]") continue;
+
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.content) {
                   accumulatedContent += parsed.content;
-                  // Update the specific AI message with accumulated content
-                  setMessages(prev => prev.map(msg => 
-                    msg._id === aiMsgId ? { ...msg, content: accumulatedContent } : msg
-                  ));
+                  setMessages((prev) =>
+                    prev.map((msg) => (msg._id === aiMsgId ? { ...msg, content: accumulatedContent } : msg))
+                  );
                 }
               } catch (e) {
                 console.warn("Error parsing chunk", e);
@@ -1782,17 +1827,20 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       }
     } catch (e) {
       console.error("Chat Error:", e);
-      setMessages(prev => [...prev, { 
-        _id: "err-" + Date.now(), 
-        role: "assistant", 
-        content: "Sorry, I encountered an error. Please try again.", 
-        timestamp: new Date().toISOString() 
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          _id: "err-" + Date.now(),
+          role: "assistant",
+          content: "Sorry, I encountered an error while connecting to the AI Tutor. Please try asking again.",
+          timestamp: new Date().toISOString(),
+          mode: currentMode
+        }
+      ]);
     } finally {
       setIsThinking(false);
-      // Increment free message counter if this model is NOT unlimited for this plan
       if (!isModelUnlimited) {
-        setFreeModelCounts(prev => ({
+        setFreeModelCounts((prev) => ({
           ...prev,
           [selectedChatModel.id]: (prev[selectedChatModel.id] || 0) + 1
         }));
@@ -1800,78 +1848,50 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
-  // Generate PDF entirely in the browser — pixel-perfect match with the on-screen preview
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendCustomMessage();
+  };
+
+  // Generate Themed PDF
   const generatePDF = async () => {
     if (!data || !markdownContent) return;
 
     setIsGeneratingPDF(true);
-    const toastId = toast.loading('⏳ Generating PDF…');
+    const toastId = toast.loading("⏳ Generating PDF Document...");
 
     try {
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import('jspdf'),
-        import('html2canvas'),
+        import("jspdf"),
+        import("html2canvas")
       ]);
 
-      // ── Resolve theme (same logic as PDFPreviewWithThumbnail) ────────────
-      const themeId = data.generationDetails?.theme || 'atmosphere';
-      const theme   = THEMES.find(t => t.id === themeId) || THEMES[0];
-
-      // ── Strategy 1: capture the LIVE preview element ─────────────────────
-      // .premium-note-render already has all theme CSS applied — PDF = exact match
-      let targetEl = document.querySelector('.premium-note-render') as HTMLElement | null;
+      const theme = selectedTheme;
+      let targetEl = document.querySelector(".premium-note-render") as HTMLElement | null;
       let tempContainer: HTMLElement | null = null;
 
       if (!targetEl) {
-        // ── Strategy 2: build an off-screen themed clone ──────────────────
-        // (user is on Editor tab — preview element isn't in DOM)
-        tempContainer = document.createElement('div');
+        tempContainer = document.createElement("div");
         tempContainer.style.cssText = [
-          'width:800px', 'padding:56px 64px',
-          `background:${theme.bg}`, `color:${theme.text}`,
-          `font-family:${theme.font}`, 'font-size:14px', 'line-height:1.75',
-          'position:fixed', 'left:-9999px', 'top:0', 'z-index:-1',
-        ].join(';');
+          "width:800px",
+          "padding:56px 64px",
+          `background:${theme.bg}`,
+          `color:${theme.text}`,
+          `font-family:${theme.font}`,
+          "font-size:14px",
+          "line-height:1.75",
+          "position:fixed",
+          "left:-9999px",
+          "top:0",
+          "z-index:-1"
+        ].join(";");
 
-        // Title header
-        const titleEl = document.createElement('h1');
+        const titleEl = document.createElement("h1");
         titleEl.style.cssText = `font-size:22px;font-weight:800;color:${theme.primary};margin:0 0 8px;border-bottom:2px solid ${theme.border};padding-bottom:12px;font-family:${theme.font};`;
-        titleEl.textContent = data.title || 'Note';
+        titleEl.textContent = data.title || "Note";
         tempContainer.appendChild(titleEl);
 
-        // Meta line
-        const metaEl = document.createElement('p');
-        metaEl.style.cssText = `font-size:11px;color:${theme.accent};margin:0 0 28px;font-family:monospace;`;
-        metaEl.textContent = `Generated by Paperxify AI • ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
-        tempContainer.appendChild(metaEl);
-
-        // Theme-scoped styles — mirrors PDFPreviewWithThumbnail CSS exactly
-        const styleEl = document.createElement('style');
-        styleEl.textContent = `
-          .px-b{font-family:${theme.font}!important}
-          .px-b h1,.px-b h2,.px-b h3,.px-b h4{color:${theme.primary}!important;font-family:${theme.font}!important}
-          .px-b h1{font-size:20px;font-weight:800;margin:22px 0 10px}
-          .px-b h2{font-size:16px;font-weight:700;margin:18px 0 9px;border-bottom:2px solid ${theme.border};padding-bottom:4px}
-          .px-b h3{font-size:14px;font-weight:700;margin:14px 0 7px}
-          .px-b p,.px-b li{color:${theme.text}!important}
-          .px-b p{margin:0 0 10px}
-          .px-b li::marker{color:${theme.primary}!important}
-          .px-b ul,.px-b ol{padding-left:22px;margin:0 0 12px}
-          .px-b a{color:${theme.link}!important;text-decoration:none}
-          .px-b blockquote{background:${theme.cardBg}!important;border-left:4px solid ${theme.primary}!important;color:${theme.text}!important;padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0}
-          .px-b code{background:${theme.cardBg}!important;color:${theme.accent}!important;border:1px solid ${theme.border}!important;padding:1px 5px;border-radius:3px;font-size:12px;font-family:monospace}
-          .px-b pre{background:${theme.cardBg}!important;border:1px solid ${theme.border}!important;border-radius:6px;padding:12px;margin:12px 0;overflow:hidden}
-          .px-b pre code{background:none!important;border:none!important;padding:0}
-          .px-b table{width:100%;border-collapse:collapse;border:1px solid ${theme.border}!important;background:${theme.cardBg}!important;margin:12px 0;font-size:12px}
-          .px-b th{background:${theme.border}!important;color:${theme.primary}!important;font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid ${theme.border}!important}
-          .px-b td{padding:7px 10px;border-bottom:1px solid ${theme.border}!important;color:${theme.text}!important}
-          .px-b img{max-width:100%;height:auto;border-radius:6px;margin:8px 0;display:block}
-          .px-b strong{font-weight:700}.px-b em{font-style:italic}
-        `;
-        tempContainer.appendChild(styleEl);
-
-        const bodyEl = document.createElement('div');
-        bodyEl.className = 'px-b';
+        const bodyEl = document.createElement("div");
         bodyEl.innerHTML = markdownContent;
         tempContainer.appendChild(bodyEl);
 
@@ -1879,7 +1899,6 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         targetEl = tempContainer;
       }
 
-      // ── Capture ──────────────────────────────────────────────────────────
       const captureW = targetEl.scrollWidth || 800;
       const canvas = await html2canvas(targetEl, {
         scale: 2,
@@ -1888,18 +1907,17 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         logging: false,
         backgroundColor: theme.bg,
         width: captureW,
-        windowWidth: captureW,
+        windowWidth: captureW
       });
 
       if (tempContainer) document.body.removeChild(tempContainer);
 
-      // ── Assemble A4 PDF ──────────────────────────────────────────────────
-      const pdf    = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-      const pageW  = pdf.internal.pageSize.getWidth();
-      const pageH  = pdf.internal.pageSize.getHeight();
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
       const margin = 32;
       const printW = pageW - margin * 2;
-      const ratio  = printW / canvas.width;
+      const ratio = printW / canvas.width;
       const sliceH = Math.floor((pageH - margin * 2) / ratio);
 
       let yOff = 0;
@@ -1908,305 +1926,480 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       while (yOff < canvas.height) {
         if (page > 0) pdf.addPage();
         const thisSlice = Math.min(sliceH, canvas.height - yOff);
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width  = canvas.width;
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
         sliceCanvas.height = thisSlice;
-        const ctx = sliceCanvas.getContext('2d')!;
+        const ctx = sliceCanvas.getContext("2d")!;
         ctx.drawImage(canvas, 0, yOff, canvas.width, thisSlice, 0, 0, canvas.width, thisSlice);
         pdf.addImage(
-          sliceCanvas.toDataURL('image/jpeg', 0.93),
-          'JPEG', margin, margin, printW, thisSlice * ratio, undefined, 'FAST',
+          sliceCanvas.toDataURL("image/jpeg", 0.93),
+          "JPEG",
+          margin,
+          margin,
+          printW,
+          thisSlice * ratio,
+          undefined,
+          "FAST"
         );
         yOff += thisSlice;
         page++;
       }
 
-      const fileName = `${(data.title || 'Paperxify').replace(/[^\w\s.-]/gi, '_').substring(0, 80)}.pdf`;
+      const fileName = `${(data.title || "Paperxify").replace(/[^\w\s.-]/gi, "_").substring(0, 80)}.pdf`;
       pdf.save(fileName);
-      toast.success(`✅ PDF downloaded! (${page} page${page !== 1 ? 's' : ''})`, { id: toastId });
+      toast.success(`✅ PDF downloaded successfully! (${page} page${page !== 1 ? "s" : ""})`, { id: toastId });
     } catch (err: any) {
-      console.error('Client-side PDF error:', err);
-      toast.error(err.message || 'PDF generation failed — please try again.', { id: toastId });
+      console.error("Client-side PDF error:", err);
+      toast.error(err.message || "PDF generation failed. Please try again.", { id: toastId });
     } finally {
       setIsGeneratingPDF(false);
     }
   };
 
-
-  // Export markdown content as .md file
+  // Export Markdown
   const exportMarkdown = () => {
     if (!markdownContent || !data) return;
     try {
-      const isHtml = markdownContent.includes('<h1') || markdownContent.includes('<p>') || markdownContent.includes('<div') || /<[a-z][\s\S]*>/i.test(markdownContent);
-      let markdown = markdownContent;
+      const isHtml = /<[a-z][\s\S]*>/i.test(markdownContent);
+      let md = markdownContent;
       if (isHtml) {
         const turndownService = new TurndownService();
-        markdown = turndownService.turndown(markdownContent);
+        md = turndownService.turndown(markdownContent);
       }
-      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+      const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
+      const a = document.createElement("a");
+      a.style.display = "none";
       a.href = url;
-      const fileName = `${data.title.replace(/[^\w\s.-]/gi, '_').substring(0, 80)}.md`;
-      a.download = fileName;
+      a.download = `${data.title.replace(/[^\w\s.-]/gi, "_").substring(0, 80)}.md`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success("Markdown file exported successfully");
-    } catch (err) {
-      console.error("Markdown Export Failed:", err);
+      toast.success("Markdown file downloaded!");
+    } catch {
       toast.error("Failed to export Markdown");
     }
   };
-  
-  const isFlashcard = data?.generationDetails?.format === 'flashcards' || 
-                     (data?.content && data.content.trim().startsWith('[') && data.content.includes('"front"'));
+
+  const copyShareLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Share link copied to clipboard!");
+    }
+  };
+
+  const isFlashcard =
+    data?.generationDetails?.format === "flashcards" ||
+    (data?.content && data.content.trim().startsWith("[") && data.content.includes('"front"'));
 
   if (loading) return <LoaderX />;
-  if (!hasPermission) return (
-    <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-4">
-      <Lock className="h-12 w-12 text-red-500 mb-4"/>
-      <h2 className="text-xl font-bold">Access Restricted</h2>
-      <Button onClick={() => setShowLoginDialog(true)} className="mt-4 bg-red-600">Login</Button>
-      <LoginDialog isOpen={showLoginDialog} onClose={() => router.push('/youtube-to-notes')} onSuccess={() => {setShowLoginDialog(false); loadNoteData();}} />
-    </div>
-  );
+
+  if (!hasPermission)
+    return (
+      <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+        <Lock className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-bold">Access Restricted</h2>
+        <Button onClick={() => setShowLoginDialog(true)} className="mt-4 bg-red-600">
+          Sign In to Access Notes
+        </Button>
+        <LoginDialog
+          isOpen={showLoginDialog}
+          onClose={() => router.push("/youtube-to-notes")}
+          onSuccess={() => {
+            setShowLoginDialog(false);
+            loadNoteData();
+          }}
+        />
+      </div>
+    );
 
   return (
-    <div className="h-dvh-screen w-screen bg-black flex flex-col overflow-hidden text-neutral-200">
-      
+    <div className="h-screen h-[100dvh] w-screen bg-black flex flex-col overflow-hidden text-neutral-200 font-sans">
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
-         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-red-900/10 rounded-full blur-[120px]" />
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20viewBox=%220%200%20200%20200%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter%20id=%22noise%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.8%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23noise)%22/%3E%3C/svg%3E')] opacity-[0.02] mix-blend-overlay" />
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-red-900/10 rounded-full blur-[120px]" />
       </div>
 
-      {/* Main Container */}
-      <div className="relative z-10 flex flex-col h-full lg:flex-row">
-        
-        {/* Header (Mobile Only) */}
-        <div className="lg:hidden shrink-0">
-          <Header title={data?.title || "Note"} onBack={() => router.push('/youtube-to-notes')} />
+      {/* ─── 1. TOP STUDIO WORKSPACE NAVIGATION BAR ─── */}
+      <header className="h-14 bg-[#08080a]/95 backdrop-blur-2xl border-b border-white/[0.08] flex items-center justify-between px-3 sm:px-5 shrink-0 z-40 relative">
+        {/* Left: Back Action + Note Title + Status */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button
+            onClick={() => router.push("/youtube-to-notes")}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-bold text-neutral-300 hover:text-white transition-all shrink-0 cursor-pointer"
+          >
+            <ArrowLeft size={14} />
+            <span className="hidden sm:inline">Workspace</span>
+          </button>
+
+          <div className="w-[1px] h-4 bg-white/10 hidden sm:block shrink-0" />
+
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-xs sm:text-sm font-extrabold text-white truncate max-w-[150px] sm:max-w-[280px] md:max-w-[380px]">
+              {data?.title || "Study Note"}
+            </h1>
+
+            <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-[10px] font-bold text-red-400 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              {isFlashcard ? "Flashcards" : "Smart Notes"}
+            </span>
+
+            {isDirty ? (
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono text-amber-400 shrink-0">
+                ● Unsaved
+              </span>
+            ) : (
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 shrink-0">
+                <Check size={11} strokeWidth={3} /> Saved
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* LEFT PANEL: Editor & Preview */}
-        <div className={`flex-1 flex flex-col min-h-0 lg:border-r border-neutral-800 ${mobileView === 'chat' ? 'hidden lg:flex' : 'flex'}`}>
-          
-          {/* Desktop Tabs */}
-          <div className="hidden lg:flex p-2 border-b border-neutral-800 gap-2 items-center justify-between bg-neutral-900/50">
-             <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => router.push('/youtube-to-notes')}><ArrowLeft className="h-4 w-4 mr-1"/> Home</Button>
-                <h2 className="font-semibold text-white self-center ml-2">{data?.title}</h2>
-             </div>
-             <div className="flex bg-black/50 p-1 rounded-lg">
-                <Button size="sm" variant={mobileView === 'preview' ? 'secondary' : 'ghost'} onClick={() => setMobileView('preview')} className="text-xs h-7"><Eye className="h-3 w-3 mr-1"/> Preview</Button>
-                <Button size="sm" variant={mobileView === 'editor' ? 'secondary' : 'ghost'} onClick={() => setMobileView('editor')} className="text-xs h-7"><Edit className="h-3 w-3 mr-1"/> Edit</Button>
-             </div>
-          </div>
+        {/* Center: Desktop Segmented View Control */}
+        <div className="hidden lg:flex items-center p-1 rounded-xl bg-[#121216] border border-white/[0.08]">
+          <button
+            onClick={() => setActiveTab("preview")}
+            className={cn(
+              "flex items-center gap-1.5 px-3.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+              activeTab === "preview"
+                ? "bg-white text-black shadow-md"
+                : "text-neutral-400 hover:text-white"
+            )}
+          >
+            <Eye size={13} />
+            <span>Document Preview</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("editor")}
+            className={cn(
+              "flex items-center gap-1.5 px-3.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+              activeTab === "editor"
+                ? "bg-white text-black shadow-md"
+                : "text-neutral-400 hover:text-white"
+            )}
+          >
+            <Edit size={13} />
+            <span>Live Editor</span>
+          </button>
+        </div>
 
-          {/* Content Area */}
-          <div className="flex-1 overflow-hidden relative mobile-safe-bottom">
+        {/* Right: Theme Picker & Export & Share */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Theme Selector Button */}
+          {!isFlashcard && (
+            <button
+              onClick={() => setShowThemeModal(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-bold text-neutral-300 hover:text-white transition-all cursor-pointer"
+              title="Change Document Theme"
+            >
+              <div
+                className="w-3 h-3 rounded-full border border-white/20 shrink-0"
+                style={{ backgroundColor: selectedTheme.primary }}
+              />
+              <span className="hidden sm:inline">{selectedTheme.name}</span>
+            </button>
+          )}
+
+          {/* Export Note Button */}
+          {!isFlashcard && (
+            <button
+              onClick={() => setShowExportDialog(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-xs font-bold text-white shadow-md transition-all cursor-pointer active:scale-[0.98]"
+            >
+              <Download size={13} />
+              <span className="hidden sm:inline">Export Note</span>
+            </button>
+          )}
+
+          {/* Share Button */}
+          <button
+            onClick={copyShareLink}
+            className="w-8 h-8 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center text-neutral-400 hover:text-white transition-all cursor-pointer"
+            title="Copy Share Link"
+          >
+            <Share2 size={13} />
+          </button>
+        </div>
+      </header>
+
+      {/* ─── 2. MAIN WORKSPACE BODY ─── */}
+      <div className="relative z-10 flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+        
+        {/* LEFT / CENTER PANEL: Document Preview & Live Editor */}
+        <div className={`flex-1 flex flex-col min-h-0 lg:border-r border-white/[0.08] ${activeTab === "chat" ? "hidden lg:flex" : "flex"}`}>
+          
+          <div className="flex-1 overflow-hidden relative">
             
-            {/* VIEW: PREVIEW */}
-            <div className={`absolute inset-0 p-0 sm:p-3 lg:p-6 transition-opacity duration-300 ${mobileView === 'preview' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}`}>
-               <div className="h-full w-full max-w-4xl mx-auto flex flex-col">
-                 <div className="flex justify-between items-center mb-4 px-4 sm:px-0 mt-3 sm:mt-0">
-                    <h3 className="text-lg font-bold text-white">{isFlashcard ? 'Flashcards Preview' : 'Document Preview'}</h3>
-                    {!isFlashcard && (
-                      <Button size="sm" variant="outline" onClick={() => setShowExportDialog(true)} className="h-8 border-neutral-700 hover:bg-neutral-800 hover:text-white text-neutral-300">
-                        <Download className="h-4 w-4 mr-2"/>
-                        Export Note
-                      </Button>
-                    )}
-                 </div>
-                 <div className="flex-1 min-h-0">
-                    {isFlashcard ? (
-                       <div className="w-full h-full border border-neutral-800 shadow-2xl overflow-hidden rounded-lg bg-neutral-950 relative group flex flex-col">
-                         <FlashcardViewer content={markdownContent} />
-                       </div>
-                    ) : (
-                       <PDFPreviewWithThumbnail 
-                         content={markdownContent} 
-                         isGenerating={isGeneratingPDF}
-                         onGeneratePDF={generatePDF}
-                         themeId={data?.generationDetails?.theme || 'blueberry'}
-                       />
-                    )}
-                 </div>
-               </div>
+            {/* VIEW: DOCUMENT PREVIEW */}
+            <div className={`absolute inset-0 p-0 sm:p-3 lg:p-4 transition-opacity duration-200 ${activeTab === "preview" ? "opacity-100 z-10 pointer-events-auto" : "opacity-0 z-0 pointer-events-none"}`}>
+              {isFlashcard ? (
+                <div className="w-full h-full border border-white/[0.08] shadow-2xl overflow-hidden rounded-2xl bg-[#0c0c0e] relative flex flex-col">
+                  <FlashcardViewer content={markdownContent} />
+                </div>
+              ) : (
+                <PDFPreviewWithThumbnail
+                  content={markdownContent}
+                  isGenerating={isGeneratingPDF}
+                  onGeneratePDF={generatePDF}
+                  themeId={selectedTheme.id}
+                  onThemeChange={setSelectedTheme}
+                  onOpenThemeModal={() => setShowThemeModal(true)}
+                  videoUrl={data?.videoUrl}
+                />
+              )}
             </div>
 
-            {/* VIEW: EDITOR */}
-            <div className={`absolute inset-0 flex flex-col transition-opacity duration-300 ${mobileView === 'editor' ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'}`}>
-              <div className="p-3 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between shrink-0">
-                 <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-xs font-black uppercase tracking-wider text-neutral-300">Live Note Editor</span>
-                 </div>
-                 {isDirty && (
-                   <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs font-semibold px-3 rounded-lg shadow-lg">
-                     <Save className="h-3.5 w-3.5 mr-1.5"/> Save Changes
-                   </Button>
-                 )}
+            {/* VIEW: LIVE NOTE EDITOR */}
+            <div className={`absolute inset-0 flex flex-col transition-opacity duration-200 ${activeTab === "editor" ? "opacity-100 z-10 pointer-events-auto" : "opacity-0 z-0 pointer-events-none"}`}>
+              {/* Editor Top Control Bar */}
+              <div className="px-3.5 py-2.5 bg-[#0a0a0d] border-b border-white/[0.08] flex items-center justify-between shrink-0 gap-2 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-neutral-200">Live Editor</span>
+                  </div>
+
+                  {/* Theme Switcher Pill in Editor */}
+                  <button
+                    onClick={() => setShowThemeModal(true)}
+                    className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs transition-colors group cursor-pointer"
+                    title="Change Theme for Editor & Notes"
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full border border-white/20 shadow-sm shrink-0"
+                      style={{ backgroundColor: selectedTheme.primary }}
+                    />
+                    <span className="text-neutral-300 font-semibold group-hover:text-white truncate max-w-[120px]">
+                      {selectedTheme.name}
+                    </span>
+                    <Palette size={11} className="text-neutral-500 group-hover:text-neutral-300 ml-0.5" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setActiveTab("preview")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-neutral-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <Eye size={13} />
+                    <span>View Preview</span>
+                  </button>
+
+                  {isDirty && (
+                    <button
+                      onClick={handleSave}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-bounce-short"
+                    >
+                      <Save size={13} />
+                      <span>Save Changes</span>
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex-1 bg-white">
+
+              {/* TinyMCE Container Styled with Theme */}
+              <div
+                className="flex-1 overflow-hidden"
+                style={{ backgroundColor: selectedTheme.bg }}
+              >
                 <Editor
+                  key={`tinymce-editor-${selectedTheme.id}`}
                   apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY}
                   onInit={(_, editor) => (tinyMceRef.current = editor)}
                   value={markdownContent}
                   init={{
-                    height: '100%',
+                    height: "100%",
                     menubar: true,
+                    skin: selectedTheme.bg === "#000000" || selectedTheme.bg.startsWith("#0") || selectedTheme.bg.startsWith("#1") ? "oxide-dark" : "oxide",
+                    content_css: selectedTheme.bg === "#000000" || selectedTheme.bg.startsWith("#0") || selectedTheme.bg.startsWith("#1") ? "dark" : "default",
                     plugins: [
-                      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                      'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                      "advlist", "autolink", "lists", "link", "image", "charmap", "preview",
+                      "anchor", "searchreplace", "visualblocks", "code", "fullscreen",
+                      "insertdatetime", "media", "table", "help", "wordcount"
                     ],
-                    toolbar: 'undo redo | blocks fontfamily fontsize | ' +
-                             'bold italic underline strikethrough | forecolor backcolor | ' +
-                             'alignleft aligncenter alignright alignjustify | ' +
-                             'bullist numlist outdent indent | table link image code | removeformat',
+                    toolbar:
+                      "undo redo | blocks fontfamily fontsize | " +
+                      "bold italic underline strikethrough | forecolor backcolor | " +
+                      "alignleft aligncenter alignright alignjustify | " +
+                      "bullist numlist outdent indent | table link image code | removeformat",
                     content_style: `
+                      @import url('${selectedTheme.googleFont || "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"}');
                       body { 
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-                        font-size: 16px; 
-                        padding: 24px; 
-                        color: #1e293b;
-                        line-height: 1.6;
-                        max-width: 800px;
-                        margin: 0 auto;
+                        font-family: ${selectedTheme.font || "'Inter', sans-serif"} !important; 
+                        background-color: ${selectedTheme.bg} !important;
+                        color: ${selectedTheme.text} !important;
+                        font-size: 15px !important; 
+                        padding: 36px 28px !important; 
+                        line-height: 1.75 !important;
+                        max-width: 820px !important;
+                        margin: 0 auto !important;
+                        -webkit-font-smoothing: antialiased;
                       }
-                      /* Override root element inline padding to prevent double-padding in editor */
                       body > *[style*="padding" i] {
                         padding: 0px !important;
-                        padding-top: 0px !important;
-                        padding-bottom: 0px !important;
-                        padding-left: 0px !important;
-                        padding-right: 0px !important;
                       }
                       h1, h2, h3, h4, h5, h6 {
-                        color: #0f172a;
+                        color: ${selectedTheme.primary} !important;
+                        font-family: ${selectedTheme.font || "'Inter', sans-serif"} !important;
                         font-weight: 700;
                         margin-top: 24px;
                         margin-bottom: 12px;
-                        font-family: inherit;
+                        line-height: 1.35;
                       }
-                      h1 { font-size: 28px; }
-                      h2 { font-size: 22px; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px; color: #1d4ed8; }
-                      h3 { font-size: 18px; }
-                      p { margin-bottom: 16px; }
+                      h1 { font-size: 26px; font-weight: 800; margin-bottom: 20px; }
+                      h2 { font-size: 19px; border-bottom: 1.5px solid ${selectedTheme.border} !important; padding-bottom: 8px; margin-top: 32px; margin-bottom: 14px; }
+                      h3 { font-size: 16px; font-weight: 600; margin-top: 22px; margin-bottom: 10px; }
+                      p, li { 
+                        color: ${selectedTheme.text} !important; 
+                        font-size: 15px !important;
+                        line-height: 1.75 !important;
+                        margin-bottom: 16px; 
+                      }
                       ul, ol { margin-bottom: 16px; padding-left: 24px; }
                       li { margin-bottom: 6px; }
                       blockquote {
-                        border-left: 4px solid #3b82f6;
-                        padding-left: 16px;
-                        color: #475569;
-                        font-style: italic;
-                        margin: 16px 0;
-                        background-color: #f8fafc;
-                        padding: 12px 16px;
-                        border-radius: 0 8px 8px 0;
+                        background-color: ${selectedTheme.cardBg} !important;
+                        border-left: 3.5px solid ${selectedTheme.primary} !important;
+                        color: ${selectedTheme.text} !important;
+                        padding: 14px 18px;
+                        border-radius: 0 12px 12px 0;
+                        margin: 20px 0;
+                        font-size: 14.5px;
+                        line-height: 1.7;
                       }
                       table {
+                        border: 1px solid ${selectedTheme.border} !important;
+                        background-color: ${selectedTheme.cardBg} !important;
                         width: 100%;
+                        border-radius: 12px;
+                        margin: 20px 0;
                         border-collapse: separate;
                         border-spacing: 0;
-                        margin: 16px 0;
-                        border: 1px solid #e2e8f0;
-                        border-radius: 8px;
                         overflow: hidden;
                       }
-                      th, td {
-                        border-bottom: 1px solid #e2e8f0;
-                        padding: 10px 12px;
-                        text-align: left;
-                      }
                       th {
-                        background-color: #f8fafc;
-                        font-weight: 600;
-                        color: #0f172a;
+                        background-color: ${selectedTheme.border} !important;
+                        color: ${selectedTheme.primary} !important;
+                        font-weight: 700;
+                        padding: 10px 14px;
+                        text-align: left;
+                        font-size: 13px;
+                      }
+                      td {
+                        border-bottom: 1px solid ${selectedTheme.border} !important;
+                        color: ${selectedTheme.text} !important;
+                        padding: 10px 14px;
                       }
                       tr:last-child td {
-                        border-bottom: none;
+                        border-bottom: none !important;
+                      }
+                      code {
+                        background-color: ${selectedTheme.cardBg} !important;
+                        color: ${selectedTheme.accent} !important;
+                        border: 1px solid ${selectedTheme.border} !important;
+                        padding: 2px 6px;
+                        border-radius: 6px;
+                        font-family: 'JetBrains Mono', monospace !important;
+                        font-size: 13px;
+                      }
+                      pre {
+                        background-color: #0c0d12 !important;
+                        color: #e2e8f0 !important;
+                        border: 1px solid rgba(255,255,255,0.1) !important;
+                        border-radius: 14px;
+                        padding: 18px;
+                        margin: 20px 0;
+                        overflow-x: auto;
+                        font-family: 'JetBrains Mono', monospace !important;
+                      }
+                      a {
+                        color: ${selectedTheme.link} !important;
+                        text-decoration: underline;
+                        text-underline-offset: 3px;
+                      }
+                      .paperxify-timestamp-badge {
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        background: rgba(239, 68, 68, 0.12) !important;
+                        border: 1px solid rgba(239, 68, 68, 0.35) !important;
+                        color: #ef4444 !important;
+                        padding: 2px 8px !important;
+                        border-radius: 6px !important;
+                        font-weight: 700 !important;
+                        font-size: 0.82em !important;
+                        text-decoration: none !important;
+                        margin: 0 3px !important;
                       }
                       img {
                         max-width: 100%;
-                        height: auto;
-                        border-radius: 8px;
-                        margin: 16px auto;
+                        border-radius: 14px;
+                        margin: 22px auto;
+                        border: 1px solid ${selectedTheme.border};
+                        box-shadow: 0 8px 30px rgba(0,0,0,0.08);
                         display: block;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
                       }
-                      code {
-                        background-color: #f1f5f9;
-                        color: #0f172a;
-                        padding: 2px 4px;
-                        border-radius: 4px;
-                        font-family: monospace;
-                        font-size: 14px;
-                      }
-                    `,
-                    statusbar: true,
+                    `
                   }}
-                  onEditorChange={(c) => { setMarkdownContent(c); setIsDirty(true); }}
+                  onEditorChange={(c) => {
+                    setMarkdownContent(c);
+                    setIsDirty(true);
+                  }}
                 />
               </div>
             </div>
+
           </div>
         </div>
 
-        {/* RIGHT PANEL: Chat */}
-        <div className={`flex-1 lg:flex-[0_0_400px] xl:flex-[0_0_450px] bg-neutral-900/50 flex flex-col min-h-0 ${mobileView === 'chat' ? 'flex' : 'hidden lg:flex'}`}>
-          {/* Chat Panel Header with Model Selector */}
-          <div className="p-3 border-b border-neutral-800 bg-neutral-950/60 backdrop-blur shrink-0 relative z-30">
+        {/* RIGHT PANEL: PaperChat AI Study Studio */}
+        <div className={`flex-1 lg:flex-[0_0_420px] xl:flex-[0_0_460px] bg-[#08080a] flex flex-col min-h-0 ${activeTab === "chat" ? "flex" : "hidden lg:flex"}`}>
+          
+          {/* Chat Studio Header */}
+          <div className="p-3 border-b border-white/[0.08] bg-[#0c0c0f] shrink-0 relative z-30">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {/* Selected model logo */}
-                <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-neutral-700 bg-neutral-900 flex items-center justify-center shrink-0">
+              
+              {/* Active Model Display */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl overflow-hidden border border-white/10 bg-neutral-900 flex items-center justify-center shrink-0">
                   <img
                     src={selectedChatModel.logoUrl}
                     alt={selectedChatModel.name}
-                    className="w-6 h-6 object-contain"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }}
+                    className="w-5 h-5 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
                   />
-                  <span className="absolute text-xs" style={{ display: 'none' }}>{selectedChatModel.logoFallback}</span>
+                  <span className="text-xs" style={{ display: "none" }}>{selectedChatModel.logoFallback}</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-white leading-none">{selectedChatModel.name}</h3>
-                  <p className="text-[10px] text-green-400 flex items-center gap-1 mt-0.5">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"/>
+                  <h3 className="text-xs sm:text-sm font-bold text-white leading-none">{selectedChatModel.name}</h3>
+                  <p className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1 font-medium">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                     Online
-                    {/* Show free-messages-left only for models NOT unlimited on this plan */}
                     {!isModelUnlimited && selectedChatModel.freeLimit !== Infinity && (
-                      <span className="text-neutral-600 ml-1">
-                        &middot; {Math.max(0, selectedChatModel.freeLimit - currentModelFreeCount)} free left
+                      <span className="text-neutral-500 ml-1">
+                        · {Math.max(0, selectedChatModel.freeLimit - currentModelFreeCount)} free msgs
                       </span>
                     )}
-                    {isModelUnlimited && (
-                      <span className="text-neutral-600 ml-1">&middot; Unlimited</span>
-                    )}
+                    {isModelUnlimited && <span className="text-emerald-400 font-medium ml-1">· Active</span>}
                   </p>
                 </div>
               </div>
 
-              {/* Model Picker Button */}
+              {/* Model Switcher Button */}
               <div className="relative" ref={modelPickerRef}>
                 <button
-                  onClick={() => setShowModelPicker(p => !p)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-bold transition-all ${
-                    showModelPicker
-                      ? 'bg-white/[0.1] border-white/20 text-white'
-                      : 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] hover:border-white/15 text-neutral-400 hover:text-white'
-                  }`}
+                  onClick={() => setShowModelPicker((p) => !p)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-[11px] font-bold text-neutral-300 hover:text-white transition-all cursor-pointer"
                 >
-                  <Sparkles size={11} className={showModelPicker ? 'text-white' : 'text-neutral-500'} />
-                  Switch Model
-                  <ChevronDown size={10} className={`transition-transform ${showModelPicker ? 'rotate-180 text-white' : 'text-neutral-600'}`} />
+                  <Sparkles size={11} className="text-red-400" />
+                  <span>Models</span>
+                  <ChevronDown size={11} className={cn("transition-transform", showModelPicker && "rotate-180")} />
                 </button>
 
-                {/* Model Picker Dropdown */}
+                {/* Model Selector Dropdown */}
                 <AnimatePresence>
                   {showModelPicker && (
                     <motion.div
@@ -2214,107 +2407,64 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 6, scale: 0.96 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute top-full right-0 mt-2 w-64 sm:w-72 bg-[#09090b] border border-white/[0.08] rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-50"
-                      style={{ background: '#09090b' }}
+                      className="absolute top-full right-0 mt-2 w-64 sm:w-72 bg-[#0d0d11] border border-white/[0.12] rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-50"
                     >
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-600 px-3 py-2">Select AI Model</p>
-                      {CHAT_AI_MODELS.map(m => {
-                        const count = freeModelCounts[m.id] || 0;
-                        const isUnlimitedForUser = PLAN_UNLIMITED[userPlan].includes(m.id);
-                        const remaining = isUnlimitedForUser ? Infinity : Math.max(0, m.freeLimit - count);
-                        const requiredPlan = TIER_REQUIRED_PLAN[m.tier];
-                        // "Locked" = needs an upgrade to get unlimited, AND free uses are exhausted
-                        const isHardLocked = !isUnlimitedForUser && remaining === 0;
-                        const isActive = selectedChatModel.id === m.id;
-                        return (
-                          <button
-                            key={m.id}
-                            onClick={() => {
-                              setSelectedChatModel(m);
-                              setShowModelPicker(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-left group/row"
-                            style={{
-                              background: isActive ? 'rgba(255,255,255,0.07)' : undefined,
-                              border: isActive ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
-                              opacity: isHardLocked ? 0.55 : 1,
-                            }}
-                          >
-                            {/* Logo */}
-                            <div className="w-8 h-8 flex items-center justify-center shrink-0 overflow-hidden rounded-xl"
-                              style={{
-                                background: isActive ? `${m.accentColor}18` : 'rgba(255,255,255,0.04)',
-                                border: isActive ? `1px solid ${m.accentColor}35` : '1px solid rgba(255,255,255,0.07)',
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 px-3 py-2">Select Study AI Model</p>
+                      <div className="space-y-1">
+                        {CHAT_AI_MODELS.map((m) => {
+                          const count = freeModelCounts[m.id] || 0;
+                          const isUnlimited = PLAN_UNLIMITED[userPlan].includes(m.id);
+                          const remaining = isUnlimited ? Infinity : Math.max(0, m.freeLimit - count);
+                          const isLocked = !isUnlimited && remaining === 0;
+                          const isActive = selectedChatModel.id === m.id;
+
+                          return (
+                            <button
+                              key={m.id}
+                              onClick={() => {
+                                setSelectedChatModel(m);
+                                setShowModelPicker(false);
                               }}
+                              className={cn(
+                                "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all text-left cursor-pointer",
+                                isActive ? "bg-white/[0.08] border border-white/10" : "hover:bg-white/[0.04]",
+                                isLocked && "opacity-60"
+                              )}
                             >
-                              <img
-                                src={m.logoUrl}
-                                alt={m.name}
-                                className="w-5 h-5 object-contain"
-                                onError={(e) => {
-                                  const el = e.target as HTMLImageElement;
-                                  el.style.display = 'none';
-                                  const fallback = el.nextSibling as HTMLElement;
-                                  if (fallback) fallback.style.display = 'block';
-                                }}
-                              />
-                              <span className="text-sm hidden">{m.logoFallback}</span>
-                            </div>
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className={`text-xs font-black truncate ${isActive ? 'text-white' : 'text-neutral-300 group-hover/row:text-white'}`}>{m.name}</span>
-                                {/* Access badge */}
-                                {isUnlimitedForUser ? (
-                                  <span
-                                    className="text-[8px] font-black px-1.5 py-0.5 rounded border"
-                                    style={{ color: PLAN_META[userPlan].color, borderColor: `${PLAN_META[userPlan].color}40`, background: `${PLAN_META[userPlan].color}15` }}
-                                  >
-                                    {userPlan === 'free' ? 'FREE ∞' : `${PLAN_META[userPlan].label} ∞`}
-                                  </span>
-                                ) : remaining > 0 ? (
-                                  <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/25 text-amber-400">
-                                    {remaining} free
-                                  </span>
-                                ) : (
-                                  <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/25 text-red-400 flex items-center gap-0.5">
-                                    <Lock size={7} />USED
-                                  </span>
-                                )}
-                                {/* Required plan tag (when not already at that plan) */}
-                                {requiredPlan !== 'free' && !isUnlimitedForUser && (
-                                  <span
-                                    className="text-[8px] font-black px-1.5 py-0.5 rounded border"
-                                    style={{ color: PLAN_META[requiredPlan].color, borderColor: `${PLAN_META[requiredPlan].color}35`, background: `${PLAN_META[requiredPlan].color}10` }}
-                                  >
-                                    {PLAN_META[requiredPlan].label}+
-                                  </span>
-                                )}
+                              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40">
+                                <img src={m.logoUrl} alt={m.name} className="w-4 h-4 object-contain" />
                               </div>
-                              <p className={`text-[10px] truncate mt-0.5 ${isActive ? 'text-neutral-400' : 'text-neutral-600 group-hover/row:text-neutral-500'}`}>{m.desc}</p>
-                            </div>
-                            {/* State icon */}
-                            {isActive && (
-                              <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center shrink-0">
-                                <Check size={9} className="text-black" strokeWidth={3} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-white truncate">{m.name}</span>
+                                  {isUnlimited ? (
+                                    <span className="text-[8px] font-black uppercase px-1 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                                      UNLOCKED
+                                    </span>
+                                  ) : remaining > 0 ? (
+                                    <span className="text-[8px] font-bold px-1 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                                      {remaining} free
+                                    </span>
+                                  ) : (
+                                    <span className="text-[8px] font-bold px-1 rounded bg-red-500/15 text-red-400 border border-red-500/20 flex items-center gap-0.5">
+                                      <Lock size={7} /> Lock
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[9.5px] text-neutral-400 truncate">{m.desc}</p>
                               </div>
-                            )}
-                            {!isActive && isHardLocked && (
-                              <Lock size={11} className="text-neutral-600 shrink-0" />
-                            )}
-                          </button>
-                        );
-                      })}
-                      {userPlan !== 'power' && (
-                        <div className="mt-2 pt-2 border-t border-white/[0.05] px-3 pb-1">
-                          <p className="text-[9px] text-neutral-600 leading-relaxed">
-                            <span className="text-white font-bold">Upgrade</span> your plan to unlock more models with unlimited messages.
-                          </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {userPlan !== "power" && (
+                        <div className="mt-2 pt-2 border-t border-white/[0.06] p-1">
                           <button
-                            onClick={() => router.push('/pricing')}
-                            className="mt-2 w-full py-2 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-neutral-200 transition-all"
+                            onClick={() => router.push("/pricing")}
+                            className="w-full py-2 rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white text-[10px] font-black uppercase tracking-wider hover:opacity-95 transition-all cursor-pointer"
                           >
-                            View Plans →
+                            Upgrade to Unlock All Models →
                           </button>
                         </div>
                       )}
@@ -2322,139 +2472,194 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                   )}
                 </AnimatePresence>
               </div>
+
+            </div>
+
+            {/* Quick Modes Ribbon */}
+            <div
+              className="flex items-center gap-1.5 mt-2.5 overflow-x-auto no-scrollbar scrollbar-none pb-0.5 scroll-smooth select-none"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {CHAT_MODES.map((mode) => {
+                const isActive = selectedMode.id === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    onClick={() => setSelectedMode(mode)}
+                    className={cn(
+                      "flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold shrink-0 transition-all cursor-pointer border",
+                      isActive
+                        ? "bg-red-500/15 border-red-500/40 text-red-400 shadow-sm"
+                        : "bg-white/[0.03] border-white/[0.06] text-neutral-400 hover:text-white hover:border-white/15"
+                    )}
+                  >
+                    <mode.icon size={11} />
+                    <span>{mode.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
+          {/* Chat Messages Stream */}
           <div className="relative flex-1 flex flex-col min-h-0">
-            
-            {/* Model-limit lock overlay — shown when free messages exhausted */}
-            {!isModelUnlimited && !canUseModel && (
-              <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 border overflow-hidden"
-                  style={{ background: `${selectedChatModel.accentColor}15`, borderColor: `${selectedChatModel.accentColor}35` }}
-                >
-                  <img src={selectedChatModel.logoUrl} alt={selectedChatModel.name} className="w-9 h-9 object-contain" />
-                </div>
-                <h3 className="text-xl font-black text-white mb-1">{selectedChatModel.name} Limit Reached</h3>
-                <p className="text-sm text-neutral-400 mb-1 max-w-xs">
-                  You've used your {selectedChatModel.freeLimit} free messages on {selectedChatModel.name}.
-                </p>
-                <p className="text-xs text-neutral-600 mb-5 max-w-xs">
-                  Upgrade to <span style={{ color: PLAN_META[TIER_REQUIRED_PLAN[selectedChatModel.tier]].color }} className="font-bold">
-                    {PLAN_META[TIER_REQUIRED_PLAN[selectedChatModel.tier]].label}
-                  </span> for unlimited {selectedChatModel.name} access.
-                </p>
-                <div className="flex flex-col gap-2 w-full max-w-xs">
-                  <Button onClick={() => router.push('/pricing')} className="bg-white text-black hover:bg-neutral-200 font-bold uppercase tracking-widest text-xs h-11 rounded-xl">
-                    Upgrade Plan <Sparkles className="ml-2 h-3 w-3" />
-                  </Button>
-                  <button
-                    onClick={() => setSelectedChatModel(CHAT_AI_MODELS[0])}
-                    className="text-xs text-neutral-400 hover:text-white transition-colors py-2"
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 lg:pb-4 custom-scrollbar">
+              <div className="space-y-3.5">
+                {messages.map((msg, idx) => (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    key={idx}
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    Switch back to PaperChat (Free · Unlimited)
+                    {msg.role === "user" ? (
+                      <div className="max-w-[85%] flex flex-col items-end gap-1">
+                        <div className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-xs leading-relaxed break-words shadow-md">
+                          {msg.content}
+                        </div>
+                        {msg.mode && msg.mode !== "ask" && (
+                          <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-wide pr-1">
+                            {msg.mode} mode
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="max-w-[92%] bg-[#121216] border border-white/[0.08] rounded-2xl rounded-tl-sm p-3.5 text-xs leading-relaxed break-words shadow-sm">
+                        <ModeMessageRenderer 
+                          content={msg.content} 
+                          mode={msg.mode} 
+                          onActionClick={(prompt) => sendCustomMessage(prompt)}
+                        />
+
+                        {msg.videoLink && (
+                          <a
+                            href={msg.videoLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2.5 p-2 rounded-xl bg-black/40 border border-white/5 flex items-center gap-2 hover:bg-black/60 transition-colors text-red-400 text-xs font-semibold"
+                          >
+                            <ExternalLink size={12} />
+                            <span>Jump to Video Chapter</span>
+                          </a>
+                        )}
+
+                        {/* Bottom Feedback Bar */}
+                        <div className="mt-2.5 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[10px] text-neutral-500">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleFeedback(msg._id, "good")}
+                              className={cn(
+                                "p-1 rounded hover:text-white transition-colors cursor-pointer",
+                                msg.feedback === "good" && "text-emerald-400"
+                              )}
+                              title="Helpful"
+                            >
+                              <ThumbsUp size={11} />
+                            </button>
+                            <button
+                              onClick={() => handleFeedback(msg._id, "bad")}
+                              className={cn(
+                                "p-1 rounded hover:text-white transition-colors cursor-pointer",
+                                msg.feedback === "bad" && "text-red-400"
+                              )}
+                              title="Not helpful"
+                            >
+                              <ThumbsDown size={11} />
+                            </button>
+                          </div>
+                          <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+
+                {isThinking && (
+                  <div className="flex justify-start">
+                    <div className="bg-[#121216] border border-white/[0.08] rounded-2xl rounded-tl-sm p-3 text-xs flex items-center gap-2.5">
+                      <div className="flex gap-1">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" />
+                      </div>
+                      <span className="text-neutral-400 font-medium">{thinkingMessage}</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+
+            {/* PaperChat Input Bar */}
+            <div className="p-3 border-t border-white/[0.08] bg-[#0c0c0f] shrink-0 mb-16 lg:mb-0 relative z-20">
+              <div className="bg-[#141418] border border-white/[0.10] rounded-2xl p-2.5 focus-within:border-red-500/50 transition-colors shadow-lg">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage(e);
+                    }
+                  }}
+                  placeholder={canUseModel ? `Ask PaperChat (${selectedMode.label} mode)... (Enter to send)` : `Message limit reached on ${selectedChatModel.name}`}
+                  disabled={!canUseModel}
+                  rows={2}
+                  className="w-full bg-transparent border-0 outline-none text-xs text-white placeholder:text-neutral-500 resize-none custom-scrollbar leading-relaxed"
+                />
+
+                <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                  {/* Quick Prompts Dropdown */}
+                  <div
+                    className="flex items-center gap-1.5 overflow-x-auto max-w-[80%] no-scrollbar scrollbar-none"
+                    style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                  >
+                    {QUICK_ACTIONS.slice(0, 3).map((qa, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => sendCustomMessage(qa.label)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-[10px] text-neutral-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                      >
+                        <qa.icon size={10} style={{ color: qa.color }} />
+                        <span className="truncate max-w-[130px]">{qa.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Send Action */}
+                  <button
+                    type="button"
+                    onClick={handleSendMessage}
+                    disabled={!input.trim() || isThinking || !canUseModel}
+                    className="w-7 h-7 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 disabled:hover:from-red-600 text-white flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-[0.95]"
+                  >
+                    {isThinking ? <Loader2 size={13} className="animate-spin" /> : <Send size={12} />}
                   </button>
                 </div>
               </div>
-            )}
-
-            {/* Chat Messages */}
-            <div 
-              ref={chatScrollRef}
-              className="flex-1 overflow-y-auto p-4 pb-20 lg:pb-4 custom-scrollbar"
-            >
-               <div className="space-y-4">
-                 {messages.map((msg, idx) => (
-                   <motion.div 
-                     initial={{ opacity: 0, y: 10 }} 
-                     animate={{ opacity: 1, y: 0 }} 
-                     key={idx} 
-                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                   >
-                      {msg.role === 'user' ? (
-                        <div style={{ maxWidth: '85%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          <div style={{
-                            background: '#dc2626', color: '#fff', borderRadius: '16px 16px 2px 16px',
-                            padding: '10px 14px', fontSize: 13, lineHeight: 1.5,
-                            wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap'
-                          }}>
-                            {msg.content}
-                          </div>
-                          {msg.mode && msg.mode !== 'ask' && (
-                            <span style={{ fontSize: 9, color: '#666', display: 'flex', alignItems: 'center', gap: 3, paddingRight: 2 }}>
-                              {msg.mode === 'summarize' && <><BookOpen size={9}/> Summarize</>}
-                              {msg.mode === 'quiz' && <><Brain size={9}/> Quiz Me</>}
-                              {msg.mode === 'explain' && <><Lightbulb size={9}/> Explain</>}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div style={{
-                          maxWidth: '92%', background: '#1a1a1a', border: '1px solid #2a2a2a',
-                          borderRadius: '2px 16px 16px 16px', padding: '12px 14px', fontSize: 13,
-                          wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0, flex: '0 1 auto'
-                        }}>
-                          <ModeMessageRenderer content={msg.content} mode={msg.mode} />
-                          {msg.videoLink && (
-                            <a href={msg.videoLink} target="_blank" className="mt-2 block p-2 bg-black/20 rounded flex items-center gap-2 hover:bg-black/40 transition">
-                               <ExternalLink className="h-3 w-3 text-red-400"/>
-                               <span className="text-xs text-red-300">Watch Related Video</span>
-                            </a>
-                          )}
-                          <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #ffffff08', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', gap: 4 }}>
-                              <button
-                                onClick={() => handleFeedback(msg._id, 'good')}
-                                style={{ padding: 4, borderRadius: 4, background: 'none', border: 'none', cursor: 'pointer', color: msg.feedback === 'good' ? '#4ade80' : '#555' }}
-                              ><ThumbsUp size={11} /></button>
-                              <button
-                                onClick={() => handleFeedback(msg._id, 'bad')}
-                                style={{ padding: 4, borderRadius: 4, background: 'none', border: 'none', cursor: 'pointer', color: msg.feedback === 'bad' ? '#f87171' : '#555' }}
-                              ><ThumbsDown size={11} /></button>
-                            </div>
-                            <span style={{ fontSize: 9, color: '#444' }}>
-                              {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                   </motion.div>
-                 ))}
-                  {isThinking && (
-                    <div className="flex justify-start">
-                      <div className="bg-neutral-800 rounded-2xl p-3 shadow-sm border border-neutral-700 rounded-bl-none">
-                        <div className="flex items-center gap-3">
-                          <div className="flex gap-1">
-                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce"></span>
-                          </div>
-                          <span className="text-xs font-medium text-neutral-400 animate-pulse">{thinkingMessage}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                 <div ref={messagesEndRef} />
-               </div>
             </div>
 
-            {/* Input Area */}
-            <PaperChatInput
-              input={input}
-              setInput={setInput}
-              isThinking={isThinking}
-              isSubscribed={isSubscribed}
-              canSendOverride={canUseModel}
-              onSubmit={handleSendMessage}
-              selectedMode={selectedMode}
-              setSelectedMode={setSelectedMode}
-            />
           </div>
+
         </div>
+
       </div>
 
-      {/* Export Dialog */}
+      {/* ─── 3. THEME SELECTOR MODAL ─── */}
+      <AnimatePresence>
+        {showThemeModal && (
+          <ThemeStudioModal
+            isOpen={showThemeModal}
+            onClose={() => setShowThemeModal(false)}
+            selectedTheme={selectedTheme}
+            onSelectTheme={setSelectedTheme}
+            userPlan={userPlan}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ─── 4. EXPORT MODAL ─── */}
       <AnimatePresence>
         {showExportDialog && (
           <ExportDialog
@@ -2465,18 +2670,102 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
             onExportMarkdown={exportMarkdown}
             isGeneratingPDF={isGeneratingPDF}
             router={router}
-            noteTitle={data?.title || "Note"}
+            noteTitle={data?.title || "Study Note"}
             noteContent={markdownContent}
           />
         )}
       </AnimatePresence>
 
-      {/* Mobile Bottom Nav */}
-      <MobileBottomNav 
-        activeTab={mobileView} 
-        setActiveTab={setMobileView} 
-        onHome={() => router.push('/')}
-      />
+      {/* ─── 5. MOBILE FLOATING GLASS CAPSULE DOCK ─── */}
+      <div className="lg:hidden fixed bottom-3 inset-x-0 z-[70] flex justify-center px-4 pointer-events-none">
+        <nav className="pointer-events-auto w-full max-w-[370px] h-[52px] rounded-full bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/[0.14] shadow-[0_16px_45px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] p-1.5 flex items-center justify-between gap-1">
+          {/* Workspace Home Back Button */}
+          <button
+            type="button"
+            onClick={() => router.push("/youtube-to-notes")}
+            className="w-9 h-9 rounded-full bg-white/[0.05] hover:bg-white/[0.10] active:scale-90 text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
+            title="Back to Workspace"
+          >
+            <Home size={16} />
+          </button>
+
+          <div className="w-[1px] h-4 bg-white/10 shrink-0 mx-0.5" />
+
+          {/* Segmented Workspace Tabs Container */}
+          <div className="flex-1 flex items-center justify-between gap-1 h-full">
+            {/* Read Tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("preview")}
+              className={cn(
+                "relative flex-1 h-full rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer select-none active:scale-95",
+                activeTab === "preview" ? "text-white" : "text-neutral-400 hover:text-neutral-200"
+              )}
+            >
+              {activeTab === "preview" && (
+                <motion.span
+                  layoutId="active-mobile-dock-pill"
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-red-600 to-red-700 shadow-[0_2px_12px_rgba(239,68,68,0.55)]"
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <Eye size={14} />
+                <span className="leading-none text-[11px] font-bold">Read</span>
+              </span>
+            </button>
+
+            {/* Edit Tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("editor")}
+              className={cn(
+                "relative flex-1 h-full rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer select-none active:scale-95",
+                activeTab === "editor" ? "text-white" : "text-neutral-400 hover:text-neutral-200"
+              )}
+            >
+              {activeTab === "editor" && (
+                <motion.span
+                  layoutId="active-mobile-dock-pill"
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-red-600 to-red-700 shadow-[0_2px_12px_rgba(239,68,68,0.55)]"
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <Edit size={14} />
+                <span className="leading-none text-[11px] font-bold">Edit</span>
+              </span>
+            </button>
+
+            {/* PaperChat Tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("chat")}
+              className={cn(
+                "relative flex-1 h-full rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer select-none active:scale-95",
+                activeTab === "chat" ? "text-white" : "text-neutral-400 hover:text-neutral-200"
+              )}
+            >
+              {activeTab === "chat" && (
+                <motion.span
+                  layoutId="active-mobile-dock-pill"
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-red-600 to-red-700 shadow-[0_2px_12px_rgba(239,68,68,0.55)]"
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <div className="relative flex items-center">
+                  <MessageSquare size={14} />
+                  {activeTab !== "chat" && (
+                    <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_6px_#ef4444] animate-pulse" />
+                  )}
+                </div>
+                <span className="leading-none text-[11px] font-bold">AI Chat</span>
+              </span>
+            </button>
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }

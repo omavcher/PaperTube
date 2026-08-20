@@ -567,6 +567,69 @@ Do not include any extra text, comments, markdown tags (like \`\`\`json) or warn
 };
 
 /**
+ * AI Slide Co-Pilot Enhancement
+ * POST /api/presentation/enhance-slide
+ */
+exports.enhanceSlide = async (req, res) => {
+  try {
+    const { slide, action = "concise", instruction = "", presentationTitle = "" } = req.body;
+    if (!slide) {
+      return res.status(400).json({ success: false, message: "Slide object is required" });
+    }
+
+    const actionDirectives = {
+      concise: "Rewrite the slide content to be more concise, punchy, and executive-ready. Cut fluff, sharpen bullet points, and ensure high clarity.",
+      expand: "Enrich and expand the slide content with concrete real-world examples, practical implications, and deeper insights.",
+      metrics: "Suggest relevant quantitative metrics, percentage benchmarks, and KPI numbers (e.g. 85%, 3.5x, 99.9%) and populate the 'metrics' or 'metric' field.",
+      notes: "Generate an engaging, natural, conversational presenter transcript for the 'speakerNotes' field that a speaker can read during a live talk.",
+      professional: "Elevate the professional tone, use industry standard vocabulary, and polish phrasing for a C-suite presentation.",
+      storytelling: "Rewrite the slide with a compelling storytelling narrative arc (Hook, Challenge, Solution, Outcome)."
+    };
+
+    const directive = actionDirectives[action] || instruction || "Polish and improve the slide content.";
+
+    const enhancePrompt = `You are a world-class presentation designer and executive speechwriter (similar to Gamma.app AI).
+Presentation Topic: "${presentationTitle}"
+Goal: ${directive}
+${instruction ? `Additional User Instruction: "${instruction}"` : ""}
+
+Current Slide JSON:
+${JSON.stringify(slide, null, 2)}
+
+Return the improved slide as a STRICT RAW JSON object preserving the layout and required fields.
+Keep the existing "id" and "layout" unless the user's instruction explicitly requested a layout change.
+Do not include any extra text, markdown codeblocks (like \`\`\`json), or conversational preamble. Return ONLY the JSON object.`;
+
+    const messages = [
+      { role: "system", content: "You are an expert presentation editor. Output strict raw JSON only." },
+      { role: "user", content: enhancePrompt }
+    ];
+
+    const responseText = await callOpenRouterOrGemini(messages, { temperature: 0.6, max_tokens: 2000 });
+    const enhancedSlide = extractJSON(responseText);
+
+    if (!enhancedSlide || typeof enhancedSlide !== "object") {
+      throw new Error("Failed to parse enhanced slide JSON.");
+    }
+
+    // Preserve id
+    enhancedSlide.id = slide.id;
+
+    return res.status(200).json({
+      success: true,
+      slide: enhancedSlide
+    });
+  } catch (error) {
+    console.error("❌ Enhance Slide Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to enhance slide with AI",
+      error: error.message
+    });
+  }
+};
+
+/**
  * Get User Presentations
  * GET /api/presentation/get-all
  */

@@ -96,6 +96,36 @@ const noteSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User"
     }],
+
+    // --- Knowledge IR & Provenance Details ---
+    knowledgeIR: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
+    },
+    chapters: [
+      {
+        id: { type: String },
+        title: { type: String },
+        start: { type: Number },
+        end: { type: Number },
+        summary: { type: String },
+        importance: { type: Number }
+      }
+    ],
+    provenance: [
+      {
+        blockId: { type: String },
+        title: { type: String },
+        startSeconds: { type: Number },
+        endSeconds: { type: Number },
+        timestampFormatted: { type: String }
+      }
+    ],
+    jobId: {
+      type: String,
+      default: null,
+      index: true
+    },
     
     // --- Status Tracking ---
     status: {

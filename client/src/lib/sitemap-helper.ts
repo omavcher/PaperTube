@@ -6,6 +6,8 @@ export async function generateRegionalSitemapXml(region: string): Promise<string
     '',
     '/youtube-to-notes',
     '/presentation-generator',
+    '/youtube-to-flashcards',
+    '/youtube-to-quiz',
     '/ai-diagram',
     '/ai-diagram/flowchart',
     '/ai-diagram/sequence',

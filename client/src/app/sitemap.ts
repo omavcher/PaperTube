@@ -88,36 +88,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const studyTools = [
-    'homework-helper', 'math-solver', 'exam-planner', 'language-tutor'
+    '', 'homework-helper', 'math-solver', 'exam-planner', 'language-tutor'
   ].map((tool) => ({
-    url: `${baseUrl}/ai-study/${tool}`,
+    url: `${baseUrl}/ai-study${tool ? `/${tool}` : ''}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
-    priority: 0.8,
+    priority: tool ? 0.8 : 0.9,
   }));
 
   const writerTools = [
-    'ai-detector', 'ai-humanizer', 'essay-writer', 'plagiarism'
+    '', 'ai-detector', 'ai-humanizer', 'essay-writer', 'plagiarism'
   ].map((tool) => ({
-    url: `${baseUrl}/ai-writer/${tool}`,
+    url: `${baseUrl}/ai-writer${tool ? `/${tool}` : ''}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
-    priority: 0.8,
+    priority: tool ? 0.8 : 0.9,
   }));
 
   const diagramFormats = [
-    'flowchart', 'sequence', 'class', 'state', 'er', 'journey', 'pie', 'quadrant', 'timeline', 'sankey', 'xy', 'block'
+    '', 'flowchart', 'sequence', 'class', 'state', 'er', 'journey', 'pie', 'quadrant', 'timeline', 'sankey', 'xy', 'block'
   ].map((format) => ({
-    url: `${baseUrl}/ai-diagram/${format}`,
+    url: `${baseUrl}/ai-diagram${format ? `/${format}` : ''}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
-    priority: 0.8,
+    priority: format ? 0.8 : 0.9,
   }));
 
   const extraAppRoutes = [
-    '/youtube-to-quiz',
     '/youtube-to-notes',
-    '/presentation-generator'
+    '/presentation-generator',
+    '/youtube-to-flashcards',
+    '/youtube-to-quiz'
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),

@@ -1,7 +1,8 @@
 export interface NoteTheme {
   id: string;
   name: string;
-  category: 'light' | 'professional' | 'colorful';
+  category: 'light' | 'professional' | 'colorful' | 'dark' | 'minimal' | string;
+  plan?: 'free' | 'pro' | 'power';
   bg: string;
   text: string;
   primary: string;
@@ -63,8 +64,8 @@ export const THEMES: NoteTheme[] = [
     border: '#e9dfc6',
     link: '#ea580c',
     btnText: '#ffffff',
-    font: "'Lora', serif",
-    googleFont: 'https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap',
+    font: "'Plus Jakarta Sans', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
     desc: 'Soft ivory background with warm butterscotch details'
   },
   {
@@ -143,8 +144,8 @@ export const THEMES: NoteTheme[] = [
     border: '#fecdd3',
     link: '#db2777',
     btnText: '#ffffff',
-    font: "'Zen Maru Gothic', sans-serif",
-    googleFont: 'https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap',
+    font: "'Outfit', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap',
     desc: 'Japanese cherry blossom pink theme with crimson lettering'
   },
   {
@@ -193,9 +194,9 @@ export const THEMES: NoteTheme[] = [
     border: '#d7cdb2',
     link: '#a0522d',
     btnText: '#ffffff',
-    font: "'Crimson Pro', Georgia, serif",
-    googleFont: 'https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600;700&display=swap',
-    desc: 'Vintage organic paper style with elegant brown serif typography'
+    font: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
+    desc: 'Vintage organic warm paper with modern sleek typography'
   },
   {
     id: 'academic',
@@ -209,9 +210,9 @@ export const THEMES: NoteTheme[] = [
     border: '#e2e8f0',
     link: '#3b82f6',
     btnText: '#ffffff',
-    font: "'Source Serif 4', Georgia, serif",
-    googleFont: 'https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;500;600;700&display=swap',
-    desc: 'Clean, neutral-light layouts standard for research and thesis'
+    font: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+    desc: 'Clean, neutral-light layout standard for research and thesis'
   },
   {
     id: 'sepia',
@@ -225,9 +226,9 @@ export const THEMES: NoteTheme[] = [
     border: '#d3c2a0',
     link: '#8b4513',
     btnText: '#ffffff',
-    font: "'EB Garamond', Georgia, serif",
-    googleFont: 'https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&display=swap',
-    desc: 'Warm reading-friendly antique paper tone with dark brown text'
+    font: "'Outfit', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap',
+    desc: 'Warm reading-friendly antique paper tone with modern brown text'
   },
   {
     id: 'oxford',
@@ -241,9 +242,9 @@ export const THEMES: NoteTheme[] = [
     border: '#cbd5e1',
     link: '#1e3a8a',
     btnText: '#ffffff',
-    font: "'Playfair Display', Georgia, serif",
-    googleFont: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&display=swap',
-    desc: 'Classic British library aesthetic with navy and heavy borders'
+    font: "'DM Sans', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap',
+    desc: 'Classic British library aesthetic with navy accents and clean type'
   },
   {
     id: 'executive',
@@ -305,9 +306,9 @@ export const THEMES: NoteTheme[] = [
     border: '#e0d5c8',
     link: '#8b5e3c',
     btnText: '#ffffff',
-    font: "'Merriweather', Georgia, serif",
-    googleFont: 'https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap',
-    desc: 'Natural off-white linen texture with earthy warm tones'
+    font: "'Outfit', -apple-system, sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap',
+    desc: 'Natural off-white linen texture with earthy warm modern tones'
   },
 
   // --- COLORFUL THEMES ---
@@ -375,4 +376,89 @@ export const THEMES: NoteTheme[] = [
     googleFont: 'https://fonts.googleapis.com/css2?family=Karla:wght@400;500;600;700;800&display=swap',
     desc: 'Fresh coastal breeze with cerulean blue and cyan highlights'
   },
+
+  // --- DARK THEMES ---
+  {
+    id: 'nightfall',
+    name: 'Nightfall',
+    category: 'dark',
+    bg: '#09090b',
+    text: '#f4f4f5',
+    primary: '#a855f7',
+    accent: '#c084fc',
+    cardBg: '#18181b',
+    border: '#27272a',
+    link: '#c084fc',
+    btnText: '#ffffff',
+    font: "'Inter', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+    desc: 'Deep obsidian dark mode with electric purple and violet highlights'
+  },
+  {
+    id: 'midnight',
+    name: 'Midnight',
+    category: 'dark',
+    bg: '#030712',
+    text: '#f3f4f6',
+    primary: '#38bdf8',
+    accent: '#0284c7',
+    cardBg: '#111827',
+    border: '#1f2937',
+    link: '#38bdf8',
+    btnText: '#ffffff',
+    font: "'Plus Jakarta Sans', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
+    desc: 'Deep galactic space dark theme with vibrant cyan highlights'
+  },
+  {
+    id: 'obsidian',
+    name: 'Obsidian',
+    category: 'dark',
+    bg: '#0a0a0a',
+    text: '#fafafa',
+    primary: '#ef4444',
+    accent: '#f87171',
+    cardBg: '#171717',
+    border: '#262626',
+    link: '#f87171',
+    btnText: '#ffffff',
+    font: "'Space Grotesk', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap',
+    desc: 'High-contrast carbon dark theme with signature crimson accents'
+  },
+  {
+    id: 'forest-dark',
+    name: 'Forest Dark',
+    category: 'dark',
+    bg: '#061c14',
+    text: '#ecfdf5',
+    primary: '#10b981',
+    accent: '#34d399',
+    cardBg: '#064e3b',
+    border: '#065f46',
+    link: '#6ee7b7',
+    btnText: '#ffffff',
+    font: "'Outfit', sans-serif",
+    googleFont: 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap',
+    desc: 'Deep emerald pine dark theme with crisp mint typography'
+  }
 ];
+
+export const FREE_THEME_IDS = new Set([
+  'atmosphere', 'snow', 'cream', 'cotton', 'kraft', 'academic', 'minimalist', 'nightfall', 'midnight'
+]);
+
+export const POWER_THEME_IDS = new Set([
+  'coral', 'violet-mist', 'sunrise', 'breeze', 'obsidian'
+]);
+
+export function getThemePlan(themeId: string): 'free' | 'pro' | 'power' {
+  if (POWER_THEME_IDS.has(themeId)) return 'power';
+  if (FREE_THEME_IDS.has(themeId)) return 'free';
+  return 'pro';
+}
+
+export function isThemePremium(themeId: string): boolean {
+  return !FREE_THEME_IDS.has(themeId);
+}
+

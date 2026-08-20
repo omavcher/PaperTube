@@ -11,6 +11,7 @@ import UserTracker from "@/components/UserTracker";
 import { cn } from "@/lib/utils";
 import { LoginDialog } from "@/components/LoginDialog";
 import { trackSignup } from "@/utils/analytics";
+import { DesktopSidebar } from "@/components/DesktopSidebar";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -18,6 +19,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [tokenInfo, setTokenInfo] = useState<any>(null);
   const pathname = usePathname();
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -31,7 +34,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     "/notes/", 
     "/note/",
     "/flashcards/",
-    "/presentation-generator/"
+    "/presentation-generator/",
+    "/yt-practice-test"
   ].some(path => pathname?.startsWith(path));
 
   // Hide Mobile Bottom Dock on tools that require full-screen height
@@ -40,7 +44,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     "/sentinel",
     "/notes/",
     "/note/",
-    "/flashcards/"
+    "/flashcards/",
+    "/presentation-generator/",
+    "/yt-practice-test"
   ].some(path => pathname?.startsWith(path));
 
 
@@ -65,6 +71,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     syncAuthState();
     window.addEventListener("auth-change", syncAuthState);
     
+    // Load persisted sidebar state
+    const savedSidebar = localStorage.getItem("paperxify_sidebar_expanded");
+    if (savedSidebar !== null) {
+      setSidebarExpanded(savedSidebar === "true");
+    }
+
     const handleOpenLogin = () => setIsLoginOpen(true);
     window.addEventListener("open-login", handleOpenLogin);
 
@@ -73,6 +85,34 @@ export function Providers({ children }: { children: React.ReactNode }) {
       window.removeEventListener("open-login", handleOpenLogin);
     };
   }, []);
+
+  const toggleSidebar = () => {
+    setSidebarExpanded(prev => {
+      const next = !prev;
+      localStorage.setItem("paperxify_sidebar_expanded", String(next));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      const fetchTokens = async () => {
+        try {
+          const token = localStorage.getItem("authToken");
+          if (!token) return;
+          const res = await api.get("/users/tokens", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.data.success) {
+            setTokenInfo(res.data);
+          }
+        } catch {
+          // Token fetch error handled gracefully
+        }
+      };
+      fetchTokens();
+    }
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const updateStreakAndProfile = async () => {
@@ -112,7 +152,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     updateStreakAndProfile();
   }, []);
 
-  
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/";
+  };
 
   const handleLoginSuccess = async (googleAccessToken: string, userInfo: any, backendResponse?: any) => {
     try {
@@ -145,6 +188,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
       <LoginDialog isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onSuccess={handleLoginSuccess} />
 
+      {/* Desktop Sidebar (Collapsible like ChatGPT) */}
+      {!hideDesktopNav && (
+        <DesktopSidebar
+          isExpanded={sidebarExpanded}
+          onToggle={toggleSidebar}
+          isLoggedIn={isLoggedIn}
+          user={user}
+          tokenInfo={tokenInfo}
+          onLogout={handleLogout}
+          onOpenLogin={() => setIsLoginOpen(true)}
+        />
+      )}
+
+      {/* Top Navbar */}
       <Navbar
         isLoggedIn={isLoggedIn}
         user={user}
@@ -152,11 +209,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         authLoading={authLoading}
         hideDesktop={hideDesktopNav}
         hideMobile={hideMobileNav}
+        sidebarExpanded={sidebarExpanded}
+        onToggleSidebar={toggleSidebar}
       />
 
-      {/* Main Content Wrapper with Adaptive Padding */}
+      {/* Main Content Wrapper with Adaptive Margin & Padding */}
       <main className={cn(
-        "flex-1 transition-all duration-500",
+        "flex-1 transition-all duration-300",
+        !hideDesktopNav ? (sidebarExpanded ? "lg:pl-[248px]" : "lg:pl-[64px]") : "pl-0",
         !hideDesktopNav ? "lg:mt-20" : "mt-0",
         !hideMobileNav ? "pb-20 lg:pb-0" : "pb-0"
       )}>

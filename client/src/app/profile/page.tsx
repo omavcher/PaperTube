@@ -7,7 +7,7 @@ import {
   ChevronRight, Calendar, Smartphone, 
   Mail, Award, Coins, FileText, Layers,
   Download, Loader2, AlertCircle, ShieldCheck,
-  MessageCircle, Clock, RefreshCw, TrendingUp
+  MessageCircle, Clock, RefreshCw, TrendingUp, Crown
 } from "lucide-react";
 import { LoaderX } from "@/components/LoaderX";
 import { motion, AnimatePresence } from "framer-motion";
@@ -310,10 +310,10 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                          <StatCard label="Streak" value={`${user.streak?.count || 0}`} unit="Days" icon={<Flame className="text-orange-500" fill="currentColor" size={18} />} />
                          <StatCard 
-                            label="Tokens" 
-                            value={user.membership?.isActive ? "Unlimited" : (user.tokens !== undefined ? String(user.tokens) : '0')} 
-                            unit={user.membership?.isActive ? "Premium Access" : "Today's Credits"} 
-                            icon={<Coins className="text-yellow-400" fill="currentColor" size={18} />} 
+                            label="Plan Status" 
+                            value={user.membership?.isActive ? (user.membership.planName || "Pro Scholar") : "Free Tier"} 
+                            unit={user.membership?.isActive ? "High Speed Access" : "Standard Daily Quota"} 
+                            icon={<Crown className="text-yellow-400" fill="currentColor" size={18} />} 
                          />
                          <StatCard label="XP" value={user.xp?.toLocaleString() || '0'} unit="Points" icon={<Zap className="text-blue-500" fill="currentColor" size={18} />} />
                          <StatCard label="Rank" value={user.rank || "Novice"} unit="Your Level" icon={<Award className="text-purple-500" fill="currentColor" size={18} />} />
@@ -557,7 +557,7 @@ function DailyStackWidget({ user }: { user: any }) {
                   {isPremium && (
                      <div className="flex items-center gap-2 mt-1">
                         <ShieldCheck size={12} className="text-emerald-400" />
-                        <span className="text-[10px] text-emerald-400 font-bold">Premium — unlimited daily access</span>
+                        <span className="text-[10px] text-emerald-400 font-bold">Pro Scholar Active — full suite enabled</span>
                      </div>
                   )}
 

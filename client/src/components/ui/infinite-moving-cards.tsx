@@ -99,56 +99,55 @@ export const InfiniteMovingCards = ({
       >
         {items.map((item, idx) => (
           <li
-            className="relative w-[350px] max-w-full shrink-0 rounded-2xl border border-b-0 border-zinc-700 bg-[linear-gradient(180deg,#27272a,#18181b)] px-8 py-6 md:w-[450px]"
+            className="relative w-[320px] sm:w-[380px] md:w-[420px] max-w-full shrink-0 rounded-2xl bg-[#09090c] border border-white/[0.08] hover:border-white/[0.14] p-5 sm:p-6 transition-all duration-200 shadow-sm"
             key={item.name + idx}
           >
-            <blockquote>
-              <div
-                aria-hidden="true"
-                className="user-select-none pointer-events-none absolute -top-0.5 -left-0.5 -z-1 h-[calc(100%_+_4px)] w-[calc(100%_+_4px)]"
-              ></div>
-              {item.ratingValue && (
-                <div className="flex items-center gap-0.5 mb-3 relative z-20">
-                  {[...Array(5)].map((_, i) => {
-                    const rating = Number(item.ratingValue);
-                    const isFilled = i < rating;
-                    return (
-                      <Star
-                        key={i}
-                        size={14}
-                        className={isFilled ? "fill-amber-400 text-amber-400" : "text-zinc-600 fill-zinc-800"}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-              <span className="relative z-20 text-sm leading-[1.6] font-normal text-gray-100">
-                {item.quote}
-              </span>
-              <div className="relative z-20 mt-6 flex flex-row items-center">
-                <div className="flex-shrink-0 mr-3">
+            <blockquote className="flex flex-col justify-between h-full">
+              <div>
+                {item.ratingValue && (
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => {
+                      const rating = Number(item.ratingValue);
+                      const isFilled = i < rating;
+                      return (
+                        <Star
+                          key={i}
+                          size={13}
+                          className={isFilled ? "fill-amber-400 text-amber-400" : "text-neutral-700"}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="text-xs sm:text-[13px] leading-relaxed font-normal text-neutral-300">
+                  "{item.quote}"
+                </p>
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-white/[0.04] flex items-center gap-3">
+                <div className="shrink-0">
                   {item.profilePicture ? (
                     <img 
                       src={item.profilePicture} 
                       alt={item.name}
-                      className="w-8 h-8 rounded-full object-cover"
+                      className="w-8 h-8 rounded-full object-cover border border-white/10"
                     />
                   ) : (
-                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-neutral-300 text-xs font-semibold">
                       {getProfileInitial(item.profileName, item.name)}
                     </div>
                   )}
                 </div>
-                <span className="flex flex-col gap-1">
-                  <span className="text-sm leading-[1.6] font-normal text-gray-100">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-white truncate">
                     {item.name}
                   </span>
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 truncate">
                     <span>{item.location}</span>
                     {item.location && item.time && <span>•</span>}
                     <span>{item.time}</span>
                   </div>
-                </span>
+                </div>
               </div>
             </blockquote>
           </li>

@@ -10,9 +10,12 @@ const aiChatSchema = new mongoose.Schema(
         timestamp: { type: Date, default: Date.now },
         feedback: { type: String, enum: ["good", "bad", null], default: null },
         videoLink: { type: String, default: null },
+        mode: { type: String, default: "tutor" },
+        modelUsed: { type: String, default: null },
+        selectedText: { type: String, default: null }
       },
     ],
-},
+  },
   { timestamps: true } // automatically adds createdAt and updatedAt
 );
 

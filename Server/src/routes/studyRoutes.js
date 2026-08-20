@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 const studyController = require("../controllers/studyController");
 const authMiddleware = require("../middleware/authMiddleware");
+const { enforceQuota } = require("../middleware/quotaMiddleware");
 
 // 🔹 POST /api/study/homework
-router.post("/homework", authMiddleware, studyController.generateHomework);
+router.post("/homework", authMiddleware, enforceQuota("study"), studyController.generateHomework);
 
 // 🔹 GET /api/study/homework/history
 router.get("/homework/history", authMiddleware, studyController.getUserHomeworkHistory);
@@ -13,7 +14,7 @@ router.get("/homework/history", authMiddleware, studyController.getUserHomeworkH
 router.get("/homework/:slug", authMiddleware, studyController.getHomeworkBySlug);
 
 // 🔹 POST /api/study/math
-router.post("/math", authMiddleware, studyController.generateMathSolution);
+router.post("/math", authMiddleware, enforceQuota("study"), studyController.generateMathSolution);
 
 // 🔹 GET /api/study/math/history
 router.get("/math/history", authMiddleware, studyController.getUserMathHistory);
@@ -22,7 +23,7 @@ router.get("/math/history", authMiddleware, studyController.getUserMathHistory);
 router.get("/math/:slug", authMiddleware, studyController.getMathSolutionBySlug);
 
 // 🔹 POST /api/study/planner
-router.post("/planner", authMiddleware, studyController.generateExamPlan);
+router.post("/planner", authMiddleware, enforceQuota("study"), studyController.generateExamPlan);
 
 // 🔹 GET /api/study/planner/history
 router.get("/planner/history", authMiddleware, studyController.getUserExamPlanHistory);
@@ -31,7 +32,7 @@ router.get("/planner/history", authMiddleware, studyController.getUserExamPlanHi
 router.get("/planner/:slug", authMiddleware, studyController.getExamPlanBySlug);
 
 // 🔹 POST /api/study/tutor
-router.post("/tutor", authMiddleware, studyController.generateLanguageLesson);
+router.post("/tutor", authMiddleware, enforceQuota("study"), studyController.generateLanguageLesson);
 
 // 🔹 GET /api/study/tutor/history
 router.get("/tutor/history", authMiddleware, studyController.getUserLanguageLessonsHistory);

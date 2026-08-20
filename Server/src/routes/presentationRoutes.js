@@ -2,13 +2,15 @@ const express = require("express");
 const router = express.Router();
 const presentationController = require("../controllers/presentationController");
 const authMiddleware = require("../middleware/authMiddleware");
+const { enforceQuota } = require("../middleware/quotaMiddleware");
 
 // All presentation routes require authentication
 router.use(authMiddleware);
 
-// Generation endpoints
+// Generation & AI Co-pilot endpoints
 router.post("/generate-outline", presentationController.generateOutline);
-router.post("/generate-final", presentationController.generateFinal);
+router.post("/generate-final", enforceQuota("presentations"), presentationController.generateFinal);
+router.post("/enhance-slide", presentationController.enhanceSlide);
 
 // Library & workspace management endpoints
 router.get("/get-all", presentationController.getUserPresentations);

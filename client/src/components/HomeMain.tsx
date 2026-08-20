@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -14,7 +14,51 @@ import {
   IconCheck
 } from "@tabler/icons-react";
 import { useRouter } from 'next/navigation';
-import { Loader2, ChevronDown, ArrowRight, Coins, AlertTriangle, X, Zap, Code, Users, Headphones, Search, FileSignature, BrainCircuit, FileType, CheckSquare, Target, Map, Briefcase, GraduationCap, Link as LinkIcon, BookOpen, PenTool, LayoutGrid, FileText, Lock, Check, RefreshCw, Crown } from "lucide-react";
+import { 
+  Loader2, 
+  ChevronDown, 
+  ArrowRight, 
+  Coins, 
+  AlertTriangle, 
+  X, 
+  Zap, 
+  Code, 
+  Users, 
+  Headphones, 
+  Search, 
+  FileSignature, 
+  BrainCircuit, 
+  FileType, 
+  CheckSquare, 
+  Target, 
+  Map, 
+  Briefcase, 
+  GraduationCap, 
+  Link as LinkIcon, 
+  BookOpen, 
+  PenTool, 
+  LayoutGrid, 
+  FileText, 
+  Lock, 
+  Check, 
+  RefreshCw, 
+  Crown,
+  Globe,
+  BarChart2,
+  HelpCircle,
+  GitBranch,
+  ShieldCheck,
+  Clock,
+  Lightbulb,
+  Sparkles,
+  TrendingUp,
+  MessageSquare,
+  Layers,
+  Eye,
+  Edit3,
+  ChevronRight,
+  Shield
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +70,8 @@ import SubscriptionDialog from "@/components/SubscriptionDialog";
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthLoginModal, PremiumUpgradeModal } from '@/components/AuthGuard';
+import { MiniThemeDocumentPreview, FullThemeDocumentPreview } from '@/components/ThemeDocumentPreview';
+import { getThemePlan, isThemePremium } from '@/config/themes';
 
 const getLogoUrl = (platform: string, domain: string) => {
     const p = (platform || '').toLowerCase();
@@ -39,6 +85,11 @@ const getLogoUrl = (platform: string, domain: string) => {
 
 // --- Constants & Config ---
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+const getYouTubeThumbnail = (url: string) => {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  return match ? `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg` : null;
+};
 const DETAIL_LEVELS = ['Short', 'Standard', 'Comprehensive'];
 const LANGUAGES = ["English", "German", "Spanish", "French", "Japanese", "Arabic"];
 const POWER_LANGUAGES = new Set(["German", "Spanish", "French", "Japanese", "Arabic"]);
@@ -68,44 +119,41 @@ const CATEGORY_TOOLS: Record<string, { id: string, label: string, icon: any, com
 };
 
 const NOTES_LOADING_STEPS = [
-  { id: 0, label: "Input Validation", icon: CheckSquare, desc: "Validate URL format, user plan limits, and daily usage restrictions" },
-  { id: 1, label: "Video Metadata Fetch", icon: LinkIcon, desc: "Fetch video details via YouTube API" },
-  { id: 2, label: "Transcript Extraction", icon: FileText, desc: "Retrieve raw captions with timestamps" },
-  { id: 3, label: "Pre-Processing & Chunking", icon: BrainCircuit, desc: "Clean caption formatting and filter filler words" },
-  { id: 4, label: "AI Note Generation", icon: IconSparkles, desc: "Send structured payload, parse JSON response schemas" },
-  { id: 5, label: "Post-Processing & Styling", icon: IconSettings, desc: "Inject timestamps, fetch context-curated illustrations" },
-  { id: 6, label: "Render & Compile", icon: LayoutGrid, desc: "Generate HTML with selected CSS theme colors" },
-  { id: 7, label: "Redirecting to Workspace", icon: ArrowRight, desc: "Initializing your customized notes canvas..." }
+  { id: 0, label: "Input Validation", icon: CheckSquare, desc: "YouTube link validated successfully", duration: "2s" },
+  { id: 1, label: "Video Metadata Fetch", icon: LinkIcon, desc: "Fetching video information", duration: "4s" },
+  { id: 2, label: "Transcript Extraction", icon: FileText, desc: "Extracting captions and transcript", duration: "12s" },
+  { id: 3, label: "Pre-Processing & Chunking", icon: BrainCircuit, desc: "Cleaning and chunking transcript", duration: "8s" },
+  { id: 4, label: "AI Note Generation", icon: IconSparkles, desc: "Generating structured notes using AI", duration: "~ 25s" },
+  { id: 5, label: "Post-Processing & Styling", icon: IconSettings, desc: "Refining notes and applying styles", duration: "3s" },
+  { id: 6, label: "Render & Compile", icon: LayoutGrid, desc: "Compiling final output", duration: "2s" },
+  { id: 7, label: "Redirecting to Workspace", icon: ArrowRight, desc: "Preparing your workspace", duration: "1s" }
 ];
 
 const FLASHCARDS_LOADING_STEPS = [
-  { id: 0, label: "Input Validation", icon: CheckSquare, desc: "Validate URL format, user plan limits, and daily usage restrictions" },
-  { id: 1, label: "Video Metadata Fetch", icon: LinkIcon, desc: "Fetch video details via YouTube API" },
-  { id: 2, label: "Transcript Extraction", icon: FileText, desc: "Retrieve raw captions with timestamps" },
-  { id: 3, label: "Pre-Processing & Chunking", icon: BrainCircuit, desc: "Clean caption formatting and filter filler words" },
-  { id: 4, label: "AI Flashcards Generation", icon: IconBrain, desc: "Send structured payload, generate Q&A flashcards" },
-  { id: 5, label: "Spaced Repetition Setup", icon: IconSettings, desc: "Optimize flashcard learning schedules and spacing" },
-  { id: 6, label: "Compile Flashcard Deck", icon: LayoutGrid, desc: "Generate flashcard layouts and commit to database" },
-  { id: 7, label: "Redirecting to Workspace", icon: ArrowRight, desc: "Opening your new flashcard deck..." }
+  { id: 0, label: "Input Validation", icon: CheckSquare, desc: "YouTube link validated successfully", duration: "2s" },
+  { id: 1, label: "Video Metadata Fetch", icon: LinkIcon, desc: "Fetching video information", duration: "4s" },
+  { id: 2, label: "Transcript Extraction", icon: FileText, desc: "Extracting captions and transcript", duration: "12s" },
+  { id: 3, label: "Pre-Processing & Chunking", icon: BrainCircuit, desc: "Cleaning and chunking transcript", duration: "8s" },
+  { id: 4, label: "AI Flashcards Generation", icon: IconBrain, desc: "Generating structured Q&A flashcards", duration: "~ 25s" },
+  { id: 5, label: "Spaced Repetition Setup", icon: IconSettings, desc: "Optimizing flashcard learning intervals", duration: "3s" },
+  { id: 6, label: "Compile Flashcard Deck", icon: LayoutGrid, desc: "Compiling interactive flashcard deck", duration: "2s" },
+  { id: 7, label: "Redirecting to Workspace", icon: ArrowRight, desc: "Opening your flashcard workspace", duration: "1s" }
 ];
 
 const CODE_LOADING_STEPS = [
-  { id: 0, label: "Input Validation", icon: CheckSquare, desc: "Validate URL format, user plan limits, and daily usage restrictions" },
-  { id: 1, label: "Code Metadata Fetch", icon: LinkIcon, desc: "Fetch problem description and code specifications" },
-  { id: 2, label: "Syntax Extraction", icon: FileText, desc: "Retrieve raw code statements and logic blocks" },
-  { id: 3, label: "Pre-Processing & Check", icon: BrainCircuit, desc: "Parse code parameters and abstract structures" },
-  { id: 4, label: "AI Code Analysis", icon: Code, desc: "Analyze algorithmic complexity and optimize solution logic" },
-  { id: 5, label: "Post-Processing & Comments", icon: IconSettings, desc: "Format code blocks, add explanatory docstrings" },
-  { id: 6, label: "Synthesize Code Solutions", icon: LayoutGrid, desc: "Generate HTML output with code theme styling" },
-  { id: 7, label: "Redirecting to Workspace", icon: ArrowRight, desc: "Initializing your code playground workspace..." }
+  { id: 0, label: "Input Validation", icon: CheckSquare, desc: "Validate URL format & parameters", duration: "2s" },
+  { id: 1, label: "Code Metadata Fetch", icon: LinkIcon, desc: "Fetching code specification", duration: "4s" },
+  { id: 2, label: "Syntax Extraction", icon: FileText, desc: "Retrieving syntax and structure", duration: "12s" },
+  { id: 3, label: "Pre-Processing & Check", icon: BrainCircuit, desc: "Parsing parameters and logic", duration: "8s" },
+  { id: 4, label: "AI Code Analysis", icon: Code, desc: "Analyzing algorithmic complexity", duration: "~ 25s" },
+  { id: 5, label: "Post-Processing & Comments", icon: IconSettings, desc: "Formatting code and docstrings", duration: "3s" },
+  { id: 6, label: "Synthesize Code Solutions", icon: LayoutGrid, desc: "Compiling code environment output", duration: "2s" },
+  { id: 7, label: "Redirecting to Workspace", icon: ArrowRight, desc: "Initializing code playground", duration: "1s" }
 ];
 
 
 
-const isThemePremium = (themeId: string) => {
-  const freeThemes = ['blueberry', 'midnight', 'atmosphere', 'snow', 'minimalist', 'kraft', 'mystique', 'ocean'];
-  return !freeThemes.includes(themeId);
-};
+
 
 const TRIVIA_TIPS = [
   {
@@ -247,6 +295,10 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
   const [activeThemeCategory, setActiveThemeCategory] = useState<'all' | 'dark' | 'light' | 'professional' | 'colorful'>('all');
   const [outlineType, setOutlineType] = useState<'canvas' | 'scholar' | 'atlas' | 'flash'>('canvas');
   const [mobileExplorerView, setMobileExplorerView] = useState<'list' | 'preview'>('list');
+  const [includeKeyTakeaways, setIncludeKeyTakeaways] = useState(true);
+  const [addDiagrams, setAddDiagrams] = useState(true);
+  const [addExamples, setAddExamples] = useState(true);
+  const [generateFaqs, setGenerateFaqs] = useState(true);
   
   // User & Access States
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -600,15 +652,12 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
       return;
     }
 
-    if (outputFormat === 'notes') {
-      setShowConfigModal(true);
-    } else {
-      handleGenerateProcess();
-    }
+    // Direct logical flow: Generate notes directly without interrupting modal
+    handleGenerateProcess();
   };
 
   return (
-    <section className="w-full min-h-screen relative flex flex-col items-center justify-center bg-black text-white px-4 py-10 font-sans selection:bg-neutral-800 selection:text-white overflow-hidden">
+    <section className="w-full relative flex flex-col items-center justify-start bg-black text-white px-3 sm:px-4 pt-1 sm:pt-8 pb-4 sm:pb-6 font-sans selection:bg-neutral-800 selection:text-white overflow-x-hidden">
       
       {/* Subtle Background Atmosphere - simplified for desktop perf */}
 
@@ -773,7 +822,9 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
       </AnimatePresence>
 
       <Portal>
-        {/* --- NOTE CONFIGURATION DIALOG --- */}
+        {/* ========================================================================= */}
+        {/* ─── 1. CUSTOMIZE YOUR NOTES MODAL ────────────────────────────────────── */}
+        {/* ========================================================================= */}
         <AnimatePresence>
         {showConfigModal && (
           <motion.div 
@@ -787,189 +838,264 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
               className="absolute inset-0 bg-black/80 backdrop-blur-md"
             />
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 50 }}
+              initial={{ scale: 0.96, opacity: 0, y: 30 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 50 }}
-              className="relative w-full max-w-2xl bg-[#0c0c0c] border-t sm:border border-white/[0.08] rounded-t-[2rem] sm:rounded-[2rem] rounded-b-none sm:rounded-b-[2rem] p-6 sm:p-8 shadow-2xl z-10 overflow-y-auto max-h-[85vh] sm:max-h-[90vh] no-scrollbar"
+              exit={{ scale: 0.96, opacity: 0, y: 30 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="relative w-full max-w-4xl bg-[#080808] border-t sm:border border-white/[0.10] rounded-t-[1.75rem] sm:rounded-[1.75rem] rounded-b-none sm:rounded-b-[1.75rem] p-6 sm:p-8 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.95)] z-10 overflow-y-auto max-h-[90vh] custom-scrollbar space-y-7"
             >
+              {/* Close Button */}
               <button 
+                type="button"
                 onClick={() => setShowConfigModal(false)} 
-                className="absolute top-6 right-6 text-neutral-500 hover:text-white transition-colors"
+                className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                title="Close"
               >
-                <X size={20} />
+                <X size={16} />
               </button>
               
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-2xl font-black text-white tracking-tight">Customize Your Notes</h3>
-                  <p className="text-sm text-neutral-400 mt-1">Configure your outline structure and note design template.</p>
-                </div>
+              {/* Modal Header */}
+              <div>
+                <h3 className="text-2xl sm:text-[26px] font-black text-white tracking-tight">Customize Your Notes</h3>
+                <p className="text-xs sm:text-sm text-neutral-400 mt-1">Configure your outline structure and note design template.</p>
+              </div>
 
-                {/* Step 1: Outline Type */}
-                <div className="space-y-3">
-                  <label className="text-xs font-black uppercase tracking-widest text-neutral-500">1. Outline Structure</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      { id: 'flash', label: 'Flash Outline', desc: 'Fast & concise. Quick summary, pills, key terms & short bullet points.', tier: 'Free', color: '#38bdf8' },
-                      { id: 'canvas', label: 'Canvas Outline', desc: 'Visual & rich. Deep comprehension, bullets, tables, key takeaways, and visual illustrations.', tier: 'Pro', color: '#a78bfa' },
-                      { id: 'scholar', label: 'Scholar Outline', desc: 'Academic study. Overview paragraph, subsections, comparison tables, and detailed chapter summaries.', tier: 'Pro', color: '#34d399' },
-                      { id: 'atlas', label: 'Atlas Outline', desc: 'Comprehensive map. Cross references, contextual timelines, questions, and spaced-repetition Anki cards.', tier: 'Power', color: '#fbbf24' }
-                    ].map(opt => {
-                      const isSelected = outlineType === opt.id;
-                      const isLocked = opt.tier === 'Pro' && !hasPremiumAccess;
-                      const isPowerLocked = opt.tier === 'Power' && (!hasPremiumAccess || userPlanId !== 'power');
-                      const locked = isLocked || isPowerLocked;
+              {/* ─── SECTION 1: OUTLINE STRUCTURE ─── */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+                  <span>1. Outline Structure</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { id: 'flash', label: 'Flash Outline', desc: 'Fast & concise. Quick summary, key points, pills, and short bullets.', tier: 'Free', icon: Zap, color: '#38bdf8' },
+                    { id: 'canvas', label: 'Canvas Outline', desc: 'Visual & rich. Deep comprehension, bullets, tables, key takeaways, and visuals.', tier: 'Pro', icon: LayoutGrid, color: '#a78bfa' },
+                    { id: 'scholar', label: 'Scholar Outline', desc: 'Academic study. Overview paragraph, subsections, comparison tables, and detailed chapter summaries.', tier: 'Pro', icon: GraduationCap, color: '#34d399' },
+                    { id: 'atlas', label: 'Atlas Outline', desc: 'Comprehensive map. Cross references, contextual timelines, questions, and spaced-repetition Anki cards.', tier: 'Power', icon: Map, color: '#fbbf24' }
+                  ].map(opt => {
+                    const isSelected = outlineType === opt.id;
+                    const isLocked = opt.tier === 'Pro' && !hasPremiumAccess;
+                    const isPowerLocked = opt.tier === 'Power' && (!hasPremiumAccess || userPlanId !== 'power');
+                    const locked = isLocked || isPowerLocked;
 
-                      return (
-                        <div
-                          key={opt.id}
-                          onClick={() => {
-                            if (locked) {
-                              setPremiumFeatureName(opt.label);
-                              setShowPremiumModal(true);
-                              return;
-                            }
-                            setOutlineType(opt.id as any);
-                            const model = AI_MODELS.find(m => m.id === opt.id);
-                            if (model) setSelectedModel(model);
-                          }}
-                          className={cn(
-                            "relative p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between min-h-[110px]",
-                            locked 
-                              ? "opacity-45 hover:opacity-60 border-white/[0.04] bg-white/[0.005]" 
-                              : isSelected 
-                              ? "bg-white/[0.05] border-white/20 shadow-[0_0_20px_rgba(255,255,255,0.05)]" 
-                              : "bg-white/[0.01] border-white/[0.05] hover:border-white/10 hover:bg-white/[0.02]"
-                          )}
-                          style={(!locked && isSelected) ? { boxShadow: `inset 0 0 15px ${opt.color}10, 0 4px 20px rgba(0,0,0,0.4)` } : {}}
-                        >
-                          <div className="flex justify-between items-start">
-                            <span className={cn("font-bold text-sm", locked ? "text-neutral-500" : "text-white")}>{opt.label}</span>
-                            <div className="flex items-center gap-1.5">
-                              {locked ? (
-                                <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center gap-0.5">
-                                  <Lock size={7} /> {opt.tier}
-                                </span>
-                              ) : (
-                                <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded border" style={{ color: opt.color, borderColor: `${opt.color}30`, backgroundColor: `${opt.color}10` }}>
-                                  {opt.tier}
-                                </span>
-                              )}
-                              {!locked && isSelected && (
-                                <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: opt.color }}>
-                                  <Check size={9} className="text-black font-black" strokeWidth={3} />
-                                </div>
-                              )}
+                    return (
+                      <div
+                        key={opt.id}
+                        onClick={() => {
+                          if (locked) {
+                            setPremiumFeatureName(opt.label);
+                            setShowPremiumModal(true);
+                            return;
+                          }
+                          setOutlineType(opt.id as any);
+                          const model = AI_MODELS.find(m => m.id === opt.id);
+                          if (model) setSelectedModel(model);
+                        }}
+                        className={cn(
+                          "relative p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between min-h-[110px] group",
+                          locked 
+                            ? "opacity-55 hover:opacity-75 border-white/[0.04] bg-white/[0.01]" 
+                            : isSelected 
+                            ? "bg-white/[0.04] border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.1)]" 
+                            : "bg-[#0d0d0f] border-white/[0.06] hover:border-white/15 hover:bg-[#121214]"
+                        )}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border"
+                              style={{ 
+                                backgroundColor: `${opt.color}15`, 
+                                borderColor: `${opt.color}30`,
+                                color: opt.color 
+                              }}
+                            >
+                              <opt.icon size={14} />
                             </div>
+                            <span className={cn("font-bold text-sm", locked ? "text-neutral-400" : "text-white")}>{opt.label}</span>
                           </div>
-                          <p className={cn("text-xs leading-relaxed mt-2", locked ? "text-neutral-600" : "text-neutral-500")}>{opt.desc}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Step 2: Theme Quick Grid */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-black uppercase tracking-widest text-neutral-500">2. Note Style Theme</label>
-                    <button 
-                      onClick={() => {
-                        setTempSelectedTheme(selectedTheme);
-                        setShowThemeExplorer(true);
-                      }}
-                      className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-                    >
-                      View More Themes <ArrowRight size={12} />
-                    </button>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {THEMES.slice(0, 4).map(t => {
-                      const isSelected = selectedTheme.id === t.id;
-                      const isPrem = isThemePremium(t.id);
-                      const isThemeLocked = isPrem && !hasPremiumAccess;
-                      return (
-                        <div
-                          key={t.id}
-                          onClick={() => {
-                            if (isThemeLocked) {
-                              setPremiumFeatureName(`${t.name} Theme`);
-                              setShowPremiumModal(true);
-                              return;
-                            }
-                            setSelectedTheme(t);
-                          }}
-                          className="flex flex-col gap-2 cursor-pointer group"
-                        >
-                          {/* Styled Preview Box */}
-                          <div 
-                            className={cn(
-                              "w-full aspect-[4/3] rounded-2xl p-3 sm:p-3.5 border flex flex-col justify-between transition-all duration-200 relative",
-                              isThemeLocked 
-                                ? "opacity-60 border-white/[0.04] bg-white/[0.005]" 
-                                : isSelected 
-                                ? "border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.3)] scale-[1.02]" 
-                                : "border-white/10 hover:border-white/20 hover:scale-[1.01]"
-                            )}
-                            style={{ 
-                              backgroundColor: t.bg,
-                              fontFamily: t.font || 'inherit'
-                            }}
-                          >
-                            <span className="text-xs sm:text-sm font-black tracking-tight" style={{ color: t.primary }}>Title</span>
-                            
-                            <div className="flex justify-between items-end w-full">
-                              <span className="text-[8px] sm:text-[9px] font-semibold" style={{ color: t.text }}>
-                                Body & <span className="underline font-bold" style={{ color: t.link }}>link</span>
+                          <div className="flex items-center gap-1.5">
+                            {locked ? (
+                              <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center gap-0.5">
+                                <Lock size={7} /> {opt.tier}
                               </span>
-                              
-                              {isThemeLocked && (
-                                <Crown size={11} className="text-yellow-500 fill-yellow-500/20 mb-0.5" />
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Theme name & check icon underneath */}
-                          <div className="flex items-center gap-1.5 px-1 justify-between">
-                            <span className={cn("text-[11px] font-bold transition-colors", isSelected ? "text-white" : "text-neutral-400 group-hover:text-neutral-200")}>
-                              {t.name}
-                            </span>
-                            {isSelected && !isThemeLocked && (
-                              <Check size={11} className="text-blue-500 font-black" strokeWidth={3} />
+                            ) : (
+                              <span 
+                                className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded border" 
+                                style={{ 
+                                  color: opt.color, 
+                                  borderColor: `${opt.color}30`, 
+                                  backgroundColor: `${opt.color}10` 
+                                }}
+                              >
+                                {opt.tier}
+                              </span>
+                            )}
+                            {!locked && isSelected && (
+                              <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center shrink-0">
+                                <Check size={10} className="text-white font-black" strokeWidth={3} />
+                              </div>
                             )}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <p className={cn("text-xs leading-relaxed mt-2.5", locked ? "text-neutral-500" : "text-neutral-400")}>
+                          {opt.desc}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
 
-                {/* Action Footer */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/[0.05]">
-                  <button
-                    onClick={() => setShowConfigModal(false)}
-                    className="flex-1 h-12 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl font-bold uppercase tracking-widest text-xs border border-white/[0.05] transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
+              {/* ─── SECTION 2: NOTE THEME ─── */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-neutral-400">2. NOTE THEME</label>
+                    <p className="text-xs text-neutral-500">Choose how your generated notes look.</p>
+                  </div>
+                  <button 
+                    type="button"
                     onClick={() => {
-                      setShowConfigModal(false);
-                      handleGenerateProcess();
+                      setTempSelectedTheme(selectedTheme);
+                      setShowThemeExplorer(true);
                     }}
-                    className="flex-1 h-12 bg-white text-black hover:bg-neutral-100 rounded-xl font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2"
+                    className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors flex items-center gap-1 cursor-pointer"
                   >
-                    <Zap size={13} fill="currentColor" /> Generate Notes
+                    <span>View All Themes</span>
+                    <ArrowRight size={12} />
                   </button>
                 </div>
+                
+                {/* 4-6 Featured Theme Cards with Real Miniature Document Previews */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                  {THEMES.slice(0, 4).map(t => {
+                    const isSelected = selectedTheme.id === t.id;
+                    const themePlan = getThemePlan(t.id);
+                    const isLocked = (themePlan === 'pro' && !hasPremiumAccess) || 
+                                     (themePlan === 'power' && (!hasPremiumAccess || userPlanId !== 'power'));
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => {
+                          if (isLocked) {
+                            setPremiumFeatureName(`${t.name} Theme`);
+                            setShowPremiumModal(true);
+                            return;
+                          }
+                          setSelectedTheme(t);
+                        }}
+                        className={cn(
+                          "group rounded-2xl border p-2 flex flex-col justify-between cursor-pointer transition-all duration-200 bg-[#0d0d0f]",
+                          isSelected 
+                            ? "border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.15)] ring-1 ring-red-500/20" 
+                            : isLocked 
+                            ? "opacity-60 border-white/[0.04] hover:opacity-80" 
+                            : "border-white/[0.08] hover:border-white/20 hover:-translate-y-0.5"
+                        )}
+                      >
+                        {/* Miniature Realistic Document Preview */}
+                        <div className="w-full h-32 rounded-xl overflow-hidden mb-2 relative border" style={{ borderColor: t.border }}>
+                          <MiniThemeDocumentPreview theme={t} />
+                          {isLocked && (
+                            <div className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/70 backdrop-blur-md border border-white/10 text-amber-400">
+                              <Lock size={10} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Theme Info & Selection state */}
+                        <div className="px-1 py-0.5 flex items-center justify-between">
+                          <div className="min-w-0">
+                            <h5 className="text-xs font-bold text-white truncate leading-tight">{t.name}</h5>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[9px] text-neutral-400 capitalize">{t.category}</span>
+                              <span className={cn(
+                                "text-[7.5px] font-black uppercase px-1 py-0.2 rounded border",
+                                themePlan === 'free' ? "text-sky-400 bg-sky-500/10 border-sky-500/20" :
+                                themePlan === 'pro' ? "text-purple-400 bg-purple-500/10 border-purple-500/20" :
+                                "text-amber-400 bg-amber-500/10 border-amber-500/20"
+                              )}>
+                                {themePlan.toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center shrink-0 shadow-sm">
+                              <Check size={10} className="text-white font-black" strokeWidth={3} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ─── SECTION 3: ADDITIONAL OPTIONS ─── */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-black uppercase tracking-wider text-neutral-400">3. ADDITIONAL OPTIONS</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {[
+                    { id: 'takeaways', label: 'Include Key Takeaways', icon: CheckSquare, state: includeKeyTakeaways, set: setIncludeKeyTakeaways },
+                    { id: 'diagrams', label: 'Add Diagrams & Charts', icon: TrendingUp, state: addDiagrams, set: setAddDiagrams },
+                    { id: 'examples', label: 'Add Examples', icon: Lightbulb, state: addExamples, set: setAddExamples },
+                    { id: 'faqs', label: 'Generate FAQs', icon: MessageSquare, state: generateFaqs, set: setGenerateFaqs },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => opt.set(!opt.state)}
+                      className={cn(
+                        "p-3 rounded-xl border flex items-center justify-between text-left transition-all duration-200 cursor-pointer",
+                        opt.state 
+                          ? "bg-white/[0.04] border-red-500/40 text-white" 
+                          : "bg-[#0d0d0f] border-white/[0.05] text-neutral-500 hover:text-neutral-300 hover:border-white/10"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <opt.icon size={13} className={opt.state ? "text-red-400" : "text-neutral-500"} />
+                        <span className="text-xs font-semibold truncate">{opt.label}</span>
+                      </div>
+                      <div className={cn(
+                        "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                        opt.state ? "bg-red-500 text-white" : "bg-white/[0.06] text-transparent"
+                      )}>
+                        <Check size={9} strokeWidth={3} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ─── ACTION FOOTER ─── */}
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(false)}
+                  className="px-5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white font-bold uppercase tracking-wider text-xs border border-white/[0.08] transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConfigModal(false);
+                    handleGenerateProcess();
+                  }}
+                  className="px-6 py-2.5 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer active:scale-[0.98]"
+                >
+                  <Zap size={13} className="fill-white" />
+                  <span>Apply & Continue</span>
+                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* --- THEME EXPLORER DIALOG --- */}
+      {/* ========================================================================= */}
+      {/* ─── 2. ALL THEMES LIBRARY BROWSER DIALOG ─────────────────────────────── */}
+      {/* ========================================================================= */}
       <AnimatePresence>
         {showThemeExplorer && (
           <motion.div 
@@ -987,327 +1113,291 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
               initial={{ scale: 0.98, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.98, opacity: 0, y: 20 }}
-              className="relative w-full max-w-5xl h-dvh sm:h-[85vh] bg-[#0c0c0c] border-none sm:border border-white/[0.08] rounded-none sm:rounded-[2rem] flex flex-col overflow-hidden shadow-2xl z-10"
+              transition={{ duration: 0.25 }}
+              className="relative w-full max-w-6xl h-dvh sm:h-[88vh] bg-[#080808] border-none sm:border border-white/[0.10] rounded-none sm:rounded-[1.75rem] flex flex-col overflow-hidden shadow-[0_25px_80px_-15px_rgba(0,0,0,0.95)] z-10"
             >
               {/* Header */}
-              <div className="flex justify-between items-center p-5 sm:p-6 border-b border-white/[0.05] shrink-0">
+              <div className="flex justify-between items-center p-5 sm:p-6 border-b border-white/[0.06] shrink-0 bg-[#080808]">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-black text-white">All themes</h3>
-                  <p className="text-xs text-neutral-500">View and select from all themes</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">Theme Library</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">Choose a visual theme for your study notes, summary sheets, and PDF exports.</p>
                 </div>
                 <button 
+                  type="button"
                   onClick={() => setShowThemeExplorer(false)} 
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                  title="Close Library"
                 >
                   <X size={16} />
                 </button>
               </div>
 
-              {/* Mobile Views Switcher Tabs */}
-              <div className="flex md:hidden border-b border-white/[0.05] bg-[#070707] p-2 shrink-0">
+              {/* Mobile View Switcher (Only on small screens) */}
+              <div className="flex md:hidden border-b border-white/[0.06] bg-[#060607] p-2 shrink-0">
                 <button 
+                  type="button"
                   onClick={() => setMobileExplorerView('list')}
                   className={cn(
                     "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
                     mobileExplorerView === 'list' ? "bg-white/10 text-white" : "text-neutral-500"
                   )}
                 >
-                  Themes List
+                  Themes ({THEMES.length})
                 </button>
                 <button 
+                  type="button"
                   onClick={() => setMobileExplorerView('preview')}
                   className={cn(
                     "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
                     mobileExplorerView === 'preview' ? "bg-white/10 text-white" : "text-neutral-500"
                   )}
                 >
-                  Live Preview
+                  Live Document Preview
                 </button>
               </div>
 
-              {/* Modal Content - Dual Pane */}
+              {/* Dual-Pane Body */}
               <div className="flex-1 flex overflow-hidden min-h-0">
                 
-                {/* LEFT PANE: Search, Categories & Scrollable Cards */}
+                {/* ─── LEFT PANE: Search, Categories & Theme Grid ─── */}
                 <div className={cn(
-                  "w-full md:w-[40%] border-r border-white/[0.05] flex flex-col p-5 sm:p-6 min-w-0 bg-[#070707] shrink-0",
+                  "w-full md:w-[46%] lg:w-[42%] border-r border-white/[0.06] flex flex-col p-5 sm:p-6 min-w-0 bg-[#060607] shrink-0",
                   mobileExplorerView === 'list' ? "flex h-full" : "hidden md:flex"
                 )}>
-                  {/* Search Input */}
-                  <div className="flex gap-2 mb-4 shrink-0">
+                  {/* Search Bar + Random Button */}
+                  <div className="flex gap-2 mb-3.5 shrink-0">
                     <div className="relative flex-1">
-                      <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
+                      <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                       <input 
                         type="text"
-                        placeholder="Search for a theme"
+                        placeholder="Search themes (e.g. dark, minimal, academic)..."
                         value={searchTheme}
                         onChange={(e) => setSearchTheme(e.target.value)}
-                        className="w-full bg-white/5 border border-white/[0.06] focus:border-white/20 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-neutral-500 outline-none transition-all"
+                        className="w-full bg-white/[0.03] border border-white/[0.08] focus:border-white/20 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder:text-neutral-500 outline-none transition-all"
                       />
+                      {searchTheme && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchTheme('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
                     </div>
                     <button 
+                      type="button"
                       onClick={() => {
                         const randomTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
                         setTempSelectedTheme(randomTheme);
                       }}
-                      className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/[0.06] flex items-center justify-center text-neutral-400 hover:text-white transition-colors shrink-0"
-                      title="Shuffle/Random Theme"
+                      className="w-9 h-9 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center text-neutral-400 hover:text-white transition-colors shrink-0 cursor-pointer"
+                      title="Shuffle Random Theme"
                     >
-                      <RefreshCw size={14} />
+                      <RefreshCw size={13} />
                     </button>
                   </div>
 
-                  {/* Categories chips */}
-                  <div className="flex gap-1 overflow-x-auto no-scrollbar pb-3 shrink-0">
-                    {(['all', 'dark', 'light', 'professional', 'colorful'] as const).map(cat => (
+                  {/* Category Filter Chips */}
+                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-3 shrink-0">
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'light', label: 'Light' },
+                      { id: 'dark', label: 'Dark' },
+                      { id: 'professional', label: 'Professional' },
+                      { id: 'colorful', label: 'Colorful' },
+                    ].map(cat => (
                       <button
-                        key={cat}
-                        onClick={() => setActiveThemeCategory(cat)}
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setActiveThemeCategory(cat.id as any)}
                         className={cn(
-                          "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap border",
-                          activeThemeCategory === cat
-                            ? "bg-white text-black border-white"
-                            : "bg-transparent border-white/5 text-neutral-500 hover:text-neutral-300 hover:border-white/10"
+                          "px-3 py-1.5 rounded-lg text-[10.5px] font-bold transition-all whitespace-nowrap border cursor-pointer",
+                          activeThemeCategory === cat.id
+                            ? "bg-white text-black border-white shadow-sm"
+                            : "bg-transparent border-white/[0.07] text-neutral-400 hover:text-white hover:border-white/15"
                         )}
                       >
-                        {cat}
+                        {cat.label}
                       </button>
                     ))}
                   </div>
 
-                  {/* Scrollable grid of theme cards */}
+                  {/* Scrollable Theme Cards Grid */}
                   <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                    <div className="grid grid-cols-2 gap-3 pb-4">
-                      {THEMES.filter(t => {
-                        const matchesSearch = t.name.toLowerCase().includes(searchTheme.toLowerCase()) || 
-                                              t.desc?.toLowerCase().includes(searchTheme.toLowerCase());
+                    {(() => {
+                      const filteredThemes = THEMES.filter(t => {
+                        const query = searchTheme.toLowerCase().trim();
+                        const matchesSearch = !query || 
+                          t.name.toLowerCase().includes(query) || 
+                          t.category.toLowerCase().includes(query) ||
+                          t.desc?.toLowerCase().includes(query);
                         const matchesCategory = activeThemeCategory === 'all' || t.category === activeThemeCategory;
                         return matchesSearch && matchesCategory;
-                      }).map(t => {
-                        const isActive = tempSelectedTheme?.id === t.id;
-                        const isPrem = isThemePremium(t.id);
-                        const isThemeLocked = isPrem && !hasPremiumAccess;
+                      });
 
+                      if (filteredThemes.length === 0) {
                         return (
-                          <div
-                            key={t.id}
-                            onClick={() => setTempSelectedTheme(t)}
-                            className="flex flex-col gap-1.5 cursor-pointer group"
-                          >
-                            {/* Styled Preview Box */}
-                            <div 
-                              className={cn(
-                                "w-full aspect-[4/3] rounded-xl p-3 border flex flex-col justify-between transition-all duration-200 relative bg-neutral-950",
-                                isActive 
-                                  ? "border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] scale-[1.01]" 
-                                  : "border-white/[0.06] hover:border-white/20 hover:scale-[1.005]"
-                              )}
-                              style={{ 
-                                backgroundColor: t.bg,
-                                fontFamily: t.font || 'inherit'
-                              }}
+                          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-neutral-500 space-y-2">
+                            <BookOpen size={24} className="opacity-40" />
+                            <p className="text-xs font-semibold text-neutral-400">No themes found</p>
+                            <p className="text-[11px] text-neutral-500">Try searching for &quot;dark&quot;, &quot;minimal&quot;, or clear filters.</p>
+                            <button
+                              type="button"
+                              onClick={() => { setSearchTheme(''); setActiveThemeCategory('all'); }}
+                              className="px-3 py-1 text-xs font-bold text-red-400 hover:text-red-300 cursor-pointer"
                             >
-                              <span className="text-[10px] font-black tracking-tight leading-none" style={{ color: t.primary }}>Title</span>
-                              
-                              <div className="flex justify-between items-end w-full">
-                                <span className="text-[7.5px] font-semibold leading-none" style={{ color: t.text }}>
-                                  Body & <span className="underline font-bold" style={{ color: t.link }}>link</span>
-                                </span>
-                                
-                                {isThemeLocked && (
-                                  <Crown size={9} className="text-yellow-500 fill-yellow-500/20 mb-0.5 shrink-0" />
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Theme name & check icon underneath */}
-                            <div className="flex items-center gap-1 px-0.5 justify-between">
-                              <span className={cn("text-[10px] font-bold truncate max-w-[80%]", isActive ? "text-white" : "text-neutral-400 group-hover:text-neutral-200")}>
-                                {t.name}
-                              </span>
-                              {isActive && (
-                                <Check size={10} className="text-blue-500 font-black shrink-0" strokeWidth={3} />
-                              )}
-                            </div>
+                              Clear filters
+                            </button>
                           </div>
                         );
-                      })}
-                    </div>
+                      }
+
+                      return (
+                        <div className="grid grid-cols-2 gap-3 pb-4">
+                          {filteredThemes.map(t => {
+                            const isActive = tempSelectedTheme?.id === t.id;
+                            const isApplied = selectedTheme.id === t.id;
+                            const themePlan = getThemePlan(t.id);
+                            const isLocked = (themePlan === 'pro' && !hasPremiumAccess) || 
+                                             (themePlan === 'power' && (!hasPremiumAccess || userPlanId !== 'power'));
+
+                            return (
+                              <div
+                                key={t.id}
+                                onClick={() => setTempSelectedTheme(t)}
+                                className={cn(
+                                  "group rounded-xl border p-2 flex flex-col justify-between cursor-pointer transition-all duration-200 bg-[#0c0c0e]",
+                                  isActive 
+                                    ? "border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.15)] ring-1 ring-red-500/30" 
+                                    : "border-white/[0.06] hover:border-white/15 hover:-translate-y-0.5"
+                                )}
+                              >
+                                {/* Miniature Document Preview */}
+                                <div className="w-full h-28 rounded-lg overflow-hidden mb-2 relative border" style={{ borderColor: t.border }}>
+                                  <MiniThemeDocumentPreview theme={t} />
+                                  {isLocked && (
+                                    <div className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/75 backdrop-blur-md border border-white/10 text-amber-400">
+                                      <Lock size={9} />
+                                    </div>
+                                  )}
+                                  {isApplied && (
+                                    <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-md border border-white/10 text-[8px] font-bold text-white flex items-center gap-1">
+                                      <Check size={8} className="text-red-400" /> Active
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Theme Title & Plan */}
+                                <div className="px-1 py-0.5 flex items-center justify-between">
+                                  <div className="min-w-0">
+                                    <h5 className="text-[11.5px] font-bold text-white truncate leading-tight">{t.name}</h5>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[8.5px] text-neutral-400 capitalize">{t.category}</span>
+                                      <span className={cn(
+                                        "text-[7px] font-black uppercase px-1 py-0.2 rounded border",
+                                        themePlan === 'free' ? "text-sky-400 bg-sky-500/10 border-sky-500/20" :
+                                        themePlan === 'pro' ? "text-purple-400 bg-purple-500/10 border-purple-500/20" :
+                                        "text-amber-400 bg-amber-500/10 border-amber-500/20"
+                                      )}>
+                                        {themePlan.toUpperCase()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {isActive && (
+                                    <div className="w-3.5 h-3.5 rounded-full bg-red-500 flex items-center justify-center shrink-0">
+                                      <Check size={8} className="text-white font-black" strokeWidth={3} />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
-                {/* RIGHT PANE: Dynamic Interactive Canvas Notes Preview */}
+                {/* ─── RIGHT PANE: Dynamic Interactive Live Document Preview ─── */}
                 <div className={cn(
-                  "flex-1 bg-[#050505] p-5 sm:p-6 flex-col overflow-y-auto custom-scrollbar relative justify-center items-center w-full",
+                  "flex-1 bg-[#040405] px-4 py-6 sm:p-8 flex-col overflow-y-auto custom-scrollbar relative justify-start items-center w-full",
                   mobileExplorerView === 'preview' ? "flex h-full" : "hidden md:flex"
                 )}>
                   {tempSelectedTheme && (
-                    <div 
-                      className="w-full max-w-xl rounded-2xl border p-5 sm:p-6 shadow-2xl flex flex-col transition-all duration-300 relative overflow-hidden"
-                      style={{ 
-                        backgroundColor: tempSelectedTheme.bg,
-                        color: tempSelectedTheme.text,
-                        borderColor: tempSelectedTheme.border,
-                        fontFamily: tempSelectedTheme.font || 'inherit'
-                      }}
-                    >
-                      {/* Embedded styles for canvas container components */}
-                      <style dangerouslySetInnerHTML={{ __html: `
-                        .theme-preview-card h1, .theme-preview-card h2, .theme-preview-card h3 {
-                          color: ${tempSelectedTheme.primary} !important;
-                        }
-                        .theme-preview-card a {
-                          color: ${tempSelectedTheme.link} !important;
-                        }
-                        .theme-preview-card .smart-box {
-                          background-color: ${tempSelectedTheme.cardBg} !important;
-                          border: 1px solid ${tempSelectedTheme.border} !important;
-                          color: ${tempSelectedTheme.text} !important;
-                        }
-                        .theme-preview-card .takeaway-box {
-                          background-color: ${tempSelectedTheme.cardBg} !important;
-                          border: 1px solid ${tempSelectedTheme.border} !important;
-                          color: ${tempSelectedTheme.text} !important;
-                        }
-                      `}} />
-
-                      <div className="theme-preview-card grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                        
-                        {/* Left content block (70% width) */}
-                        <div className="lg:col-span-8 space-y-4">
-                          <div>
-                            <h1 className="text-2xl font-black tracking-tight leading-none">This is a heading</h1>
-                            <p className="text-xs opacity-60 font-semibold mt-1">Hello 👋</p>
-                          </div>
-
-                          <div className="space-y-1">
-                            <h3 className="text-md font-bold">This is a theme preview</h3>
-                            <p className="text-xs leading-relaxed opacity-85">
-                              This is body text. You can change your fonts, colors and images later in the theme editor. You can also create your own custom branded theme.
-                            </p>
-                            <a href="#" onClick={(e) => e.preventDefault()} className="text-xs font-semibold underline block mt-1 hover:opacity-80 transition-opacity">This is a link.</a>
-                          </div>
-
-                          {/* Smart layouts */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="smart-box p-2.5 rounded-xl text-[10px] leading-snug">
-                              This is a smart layout: it acts as a text box.
-                            </div>
-                            <div className="smart-box p-2.5 rounded-xl text-[10px] leading-snug">
-                              You can get these by typing /smart
-                            </div>
-                          </div>
-
-                          {/* Bullet List */}
-                          <ul className="text-xs space-y-1 opacity-80 list-disc pl-4">
-                            <li>Connected layers of artificial nodes</li>
-                            <li>Learn weights and bias parameters</li>
-                          </ul>
-
-                          {/* Table Preview */}
-                          <div className="smart-box overflow-hidden rounded-xl">
-                            <table className="w-full text-[10px] border-collapse">
-                              <thead>
-                                <tr className="border-b" style={{ borderColor: tempSelectedTheme.border }}>
-                                  <th className="p-1.5 text-left font-bold" style={{ color: tempSelectedTheme.primary }}>Layer</th>
-                                  <th className="p-1.5 text-left font-bold" style={{ color: tempSelectedTheme.primary }}>Role</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr className="border-b" style={{ borderColor: tempSelectedTheme.border }}>
-                                  <td className="p-1.5">Input</td>
-                                  <td className="p-1.5 opacity-80">Receives features</td>
-                                </tr>
-                                <tr>
-                                  <td className="p-1.5">Hidden</td>
-                                  <td className="p-1.5 opacity-80">Extracts patterns</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
-                          {/* Key Takeaway Card */}
-                          <div className="takeaway-box p-3 rounded-xl text-[10px] flex items-start gap-2">
-                            <span className="text-sm shrink-0">💡</span>
-                            <p className="leading-snug">
-                              <strong>Key takeaway:</strong> Neural networks progressively transform raw inputs into useful predictions.
-                            </p>
-                          </div>
-
-                          {/* Primary/Secondary Buttons */}
-                          <div className="flex gap-2 pt-2">
-                            <button 
-                              onClick={(e) => e.preventDefault()}
-                              className="px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-opacity hover:opacity-90 shadow-md"
-                              style={{
-                                backgroundColor: tempSelectedTheme.primary,
-                                color: tempSelectedTheme.btnText || '#fff'
-                              }}
-                            >
-                              Primary button
-                            </button>
-                            <button 
-                              onClick={(e) => e.preventDefault()}
-                              className="px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-colors bg-transparent"
-                              style={{
-                                borderColor: tempSelectedTheme.accent || tempSelectedTheme.border,
-                                color: tempSelectedTheme.accent || tempSelectedTheme.text
-                              }}
-                            >
-                              Secondary button
-                            </button>
-                          </div>
+                    <div className="w-full max-w-2xl flex flex-col items-center justify-start space-y-4 pb-8">
+                      {/* Top Preview Status Bar */}
+                      <div className="w-full flex items-center justify-between text-xs px-1 text-neutral-400">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white">{tempSelectedTheme.name}</span>
+                          <span className="text-neutral-500">&bull;</span>
+                          <span className="capitalize">{tempSelectedTheme.category}</span>
+                          <span className="text-neutral-500">&bull;</span>
+                          <span className="font-mono text-[11px] opacity-75">{tempSelectedTheme.font}</span>
                         </div>
-
-                        {/* Right visual block placeholder (30% width) */}
-                        <div className="lg:col-span-4 h-full min-h-[160px] lg:min-h-full rounded-xl border border-dashed flex flex-col items-center justify-center p-4 text-center shrink-0"
-                          style={{
-                            borderColor: tempSelectedTheme.border,
-                            backgroundColor: `${tempSelectedTheme.cardBg}50`
-                          }}
-                        >
-                          <PenTool size={20} style={{ color: tempSelectedTheme.accent }} className="opacity-60 mb-2" />
-                          <span className="text-[9px] uppercase tracking-wider opacity-60">Canvas Media</span>
-                          <span className="text-[8px] opacity-40 mt-1 max-w-[80px] leading-tight">Unsplash image injection slot</span>
-                        </div>
+                        <span className={cn(
+                          "text-[9px] font-black uppercase px-2 py-0.5 rounded border",
+                          getThemePlan(tempSelectedTheme.id) === 'free' ? "text-sky-400 bg-sky-500/10 border-sky-500/20" :
+                          getThemePlan(tempSelectedTheme.id) === 'pro' ? "text-purple-400 bg-purple-500/10 border-purple-500/20" :
+                          "text-amber-400 bg-amber-500/10 border-amber-500/20"
+                        )}>
+                          {getThemePlan(tempSelectedTheme.id).toUpperCase()} THEME
+                        </span>
                       </div>
+
+                      {/* Large Realistic Document Canvas */}
+                      <FullThemeDocumentPreview theme={tempSelectedTheme} />
                     </div>
                   )}
                 </div>
 
               </div>
 
-              {/* Footer */}
-              <div className="flex justify-end gap-3 p-5 sm:p-6 border-t border-white/[0.05] shrink-0 bg-[#080808]">
+              {/* ─── THEME LIBRARY FOOTER ─── */}
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-t border-white/[0.06] shrink-0 bg-[#080808]">
                 <button
+                  type="button"
                   onClick={() => setShowThemeExplorer(false)}
-                  className="px-5 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white font-bold uppercase tracking-widest text-xs border border-white/[0.05] transition-all"
+                  className="px-5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white font-bold uppercase tracking-wider text-xs border border-white/[0.08] transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
-                {tempSelectedTheme && isThemePremium(tempSelectedTheme.id) && !hasPremiumAccess ? (
-                  <button
-                    onClick={() => {
-                      setPremiumFeatureName(tempSelectedTheme ? `${tempSelectedTheme.name} Theme` : "Premium Themes");
-                      setShowPremiumModal(true);
-                    }}
-                    className="px-6 py-2.5 bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-500 hover:to-amber-400 text-white rounded-xl font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center gap-1.5"
-                  >
-                    <Crown size={12} className="fill-white/10" /> Upgrade to select theme
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      if (tempSelectedTheme) {
+
+                {tempSelectedTheme && (() => {
+                  const themePlan = getThemePlan(tempSelectedTheme.id);
+                  const isLocked = (themePlan === 'pro' && !hasPremiumAccess) || 
+                                   (themePlan === 'power' && (!hasPremiumAccess || userPlanId !== 'power'));
+
+                  if (isLocked) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPremiumFeatureName(`${tempSelectedTheme.name} Theme`);
+                          setShowPremiumModal(true);
+                        }}
+                        className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Lock size={12} />
+                        <span>Upgrade to {themePlan.toUpperCase()} to Apply</span>
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
                         setSelectedTheme(tempSelectedTheme);
-                      }
-                      setShowThemeExplorer(false);
-                    }}
-                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)]"
-                  >
-                    Select theme
-                  </button>
-                )}
+                        setShowThemeExplorer(false);
+                      }}
+                      className="px-6 py-2.5 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-md hover:shadow-lg flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                    >
+                      <Check size={13} strokeWidth={3} />
+                      <span>Apply {tempSelectedTheme.name} Theme</span>
+                    </button>
+                  );
+                })()}
               </div>
             </motion.div>
           </motion.div>
@@ -1326,205 +1416,219 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)", transition: { duration: 0.5 } }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="flex flex-col items-center space-y-10"
+              className="flex flex-col items-center space-y-3 sm:space-y-6 w-full"
             >
 
-              {/* Branding */}
-              <div className="text-center space-y-5 md:space-y-6 mb-6 md:mb-10 w-full min-h-[140px] md:min-h-[160px] flex flex-col justify-center">
+              {/* ─── 1. HEADER & BRANDING ─── */}
+              <div className="text-center space-y-1.5 sm:space-y-3 mb-1 sm:mb-4 w-full max-w-2xl flex flex-col items-center justify-center">
                 
                 {/* Status Badge */}
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mx-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/50 border border-white/10 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400 backdrop-blur-md shadow-lg relative overflow-hidden"
-                >
-                  <motion.div 
-                    key={`dot-${activeCategory}`}
-                    initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }}
-                    className={cn(
-                      "w-1.5 h-1.5 rounded-full animate-pulse",
-                      activeCategory === 'youtube' ? "bg-red-500 shadow-[0_0_8px_#ef4444]" :
-                      activeCategory === 'coding' ? "bg-blue-500 shadow-[0_0_8px_#3b82f6]" :
-                      activeCategory === 'document' ? "bg-purple-500 shadow-[0_0_8px_#a855f7]" :
-                      "bg-emerald-500 shadow-[0_0_8px_#10b981]"
-                    )}
-                  ></motion.div>
-                  Paperxify Engine Active
-                </motion.div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white/[0.05] border border-white/10 text-[9px] sm:text-[11px] font-bold uppercase tracking-widest text-neutral-300 backdrop-blur-md shadow-sm">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse" />
+                  <span>PAPERXIFY ENGINE ACTIVE</span>
+                </div>
                 
                 {/* Main Title & Subtitle */}
-                <div className="space-y-4 md:space-y-5 flex flex-col items-center justify-center">
-                  <AnimatePresence mode="wait">
-                    <motion.h1 
-                      key={`${activeCategory}-${outputFormat}`}
-                      initial={{ opacity: 0, y: 15, filter: "blur(8px)" }}
-                      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                      exit={{ opacity: 0, y: -15, filter: "blur(8px)" }}
-                      transition={{ duration: 0.35, ease: "easeOut" }}
-                      className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-400 leading-[1.1] pb-2 text-center"
-                    >
-                      {activeCategory === 'youtube' && (
-                        <>
-                          {outputFormat === 'notes' && (
-                            <>Turn YouTube Videos Into <span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]">Smart Study Notes</span></>
-                          )}
-                          {outputFormat === 'flashcards' && (
-                            <>AI-Powered <span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]">YouTube Flashcards</span> Generator</>
-                          )}
-                          {outputFormat === 'test' && (
-                            <>AI-Powered <span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]">YouTube Practice Test</span> Maker</>
-                          )}
-                        </>
-                      )}
-                    </motion.h1>
-                  </AnimatePresence>
+                <div className="space-y-1 sm:space-y-2 flex flex-col items-center justify-center">
+                  <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight text-center">
+                    Turn YouTube Videos Into<br className="hidden sm:inline" />{" "}
+                    <span className="relative inline-block text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-500 to-red-600 drop-shadow-[0_0_20px_rgba(239,68,68,0.25)] pb-1">
+                      Smart Study Notes
+                      {/* Signature Hand-drawn Curve Underline */}
+                      <svg 
+                        className="absolute -bottom-1.5 sm:-bottom-2.5 left-0 w-full h-3 sm:h-4 text-red-500 pointer-events-none overflow-visible" 
+                        viewBox="0 0 280 20" 
+                        fill="none" 
+                        xmlns="http://www.w3.org/2000/svg"
+                        preserveAspectRatio="none"
+                      >
+                        {/* Soft glow under-stroke */}
+                        <path 
+                          d="M4 14C45 18 115 17 175 11C215 7 252 6 276 10" 
+                          stroke="#ef4444" 
+                          strokeWidth="6" 
+                          strokeLinecap="round" 
+                          opacity="0.25"
+                          className="blur-[2px]"
+                        />
+                        {/* Main signature expressive sweep */}
+                        <path 
+                          d="M3 13.5C48 18 118 17.5 178 11C218 6.5 254 5.5 277 9.5" 
+                          stroke="url(#sig-gradient)" 
+                          strokeWidth="3" 
+                          strokeLinecap="round" 
+                        />
+                        {/* End signature flourish flick */}
+                        <path 
+                          d="M245 11C258 8.5 268 5.5 278 3" 
+                          stroke="url(#sig-gradient)" 
+                          strokeWidth="2.2" 
+                          strokeLinecap="round" 
+                          opacity="0.85"
+                        />
+                        <defs>
+                          <linearGradient id="sig-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.6" />
+                            <stop offset="30%" stopColor="#ef4444" stopOpacity="1" />
+                            <stop offset="85%" stopColor="#f87171" stopOpacity="1" />
+                            <stop offset="100%" stopColor="#ef4444" stopOpacity="0.9" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </span>
+                  </h1>
+                  
+                  <p className="text-[11px] sm:text-sm text-neutral-400 max-w-lg mx-auto leading-tight sm:leading-relaxed text-center px-2">
+                    Paste any YouTube link and let AI create notes, summaries, flashcards, quizzes and more <span className="text-red-500 font-semibold">in seconds.</span>
+                  </p>
                 </div>
               </div>
 
-            
-
-              {/* ============ MAIN COMMAND CARD ============ */}
-              <div className="w-full max-w-3xl relative z-10">
+              {/* ─── 2. MAIN COMMAND CARD ─── */}
+              <div className="w-full max-w-4xl relative z-10">
                 {/* Outer glow ambient effect */}
-                <motion.div 
-                  key={`glow-${activeCategory}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.8 }}
-                  className={cn(
-                    "absolute -inset-px rounded-[2.2rem] bg-gradient-to-b to-transparent pointer-events-none z-0",
-                    activeCategory === 'youtube' ? "from-red-500/20 via-red-500/5" :
-                    activeCategory === 'coding' ? "from-blue-500/20 via-blue-500/5" :
-                    activeCategory === 'document' ? "from-purple-500/20 via-purple-500/5" :
-                    "from-emerald-500/20 via-emerald-500/5"
-                  )} 
-                />
+                <div className="absolute -inset-px rounded-[1.25rem] sm:rounded-[1.75rem] bg-gradient-to-b from-red-500/10 via-red-500/5 to-transparent pointer-events-none z-0" />
 
-                <div className="relative z-10 bg-[#0c0c0c] border border-white/[0.08] rounded-[1.25rem] sm:rounded-[2rem] overflow-hidden shadow-[0_20px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-500 focus-within:border-white/20 focus-within:shadow-[0_0_40px_-15px_rgba(255,255,255,0.06)]">
+                <div className="relative z-10 bg-[#09090c]/95 backdrop-blur-2xl border border-white/[0.08] rounded-[1.25rem] sm:rounded-[1.75rem] p-3 sm:p-5 shadow-[0_20px_70px_rgba(0,0,0,0.85)] flex flex-col gap-2.5 sm:gap-3.5">
                   
-                  {/* === OVERHAULED INPUT ZONE === */}
-                  <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 pt-4 sm:pt-6 pb-2.5 sm:pb-3">
-                    <motion.div 
-                      key={`iconbox-${activeCategory}-${isValidUrl}`}
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: "spring", bounce: 0.4 }}
-                      className={cn(
-                        "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all duration-300",
-                        isValidUrl 
-                          ? (activeCategory === 'youtube' ? "bg-red-500/15 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
-                            : activeCategory === 'coding' ? "bg-blue-500/15 text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
-                            : activeCategory === 'document' ? "bg-purple-500/15 text-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
-                            : "bg-emerald-500/15 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]")
-                          : "bg-white/5 text-neutral-500"
-                      )}
-                    >
-                      {activeCategory === 'youtube' 
-                        ? <IconBrandYoutube size={18} className={cn(isValidUrl && activeCategory === 'youtube' && "animate-pulse")} />
-                        : activeCategory === 'coding' ? <Code size={16} />
-                        : activeCategory === 'document' ? <FileType size={16} />
-                        : <BookOpen size={16} />}
-                    </motion.div>
+                  {/* === TOP INPUT ZONE === */}
+                  <div className="flex items-center gap-2 sm:gap-3 bg-black/50 border border-white/[0.07] rounded-xl sm:rounded-2xl p-1 sm:p-2.5">
+                    {/* YouTube Squircle Icon */}
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center shrink-0 shadow-sm">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 fill-current" viewBox="0 0 24 24">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                    </div>
+
+                    {/* Input */}
                     <input 
-                      placeholder={CATEGORY_TOOLS[activeCategory].find(t => t.id === outputFormat)?.placeholder || "Paste link or enter your request..."}
+                      placeholder="Paste YouTube link or request..."
                       value={videoUrl}
                       onChange={(e) => setVideoUrl(e.target.value)}
-                      className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] sm:text-[18px] font-semibold text-white placeholder:text-neutral-500 sm:placeholder:text-neutral-600 outline-none min-w-0 px-1"
+                      className="flex-1 bg-transparent border-none focus:ring-0 text-[12px] sm:text-[15px] font-medium text-white placeholder:text-neutral-500 outline-none min-w-0 px-1"
                     />
-                    <div className="shrink-0 flex items-center gap-2">
-                      {loading && <Loader2 className="animate-spin text-neutral-600" size={16} />}
-                      {isValidUrl && !loading && (
-                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-6 h-6 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center">
-                          <IconCheck size={12} className="text-green-500" />
-                        </motion.div>
-                      )}
-                      {isLoggedIn && !hasPremiumAccess && userTokens !== null && (
-                        <Link href="/pricing" className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-yellow-500/8 border border-yellow-500/15 text-yellow-500 text-[10px] font-black uppercase tracking-wider hover:bg-yellow-500/15 transition-colors">
-                          <Coins size={11} />
-                          {userTokens.toLocaleString()}
-                        </Link>
-                      )}
+
+                    {/* Right Badges (Smart Tips & Token Pill) */}
+                    <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
+                      {loading && <Loader2 className="animate-spin text-neutral-500" size={14} />}
+                      
+                      <button 
+                        type="button" 
+                        onClick={() => setActiveTipIndex((prev) => (prev + 1) % TRIVIA_TIPS.length)}
+                        className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs text-neutral-300 font-medium transition-colors cursor-pointer"
+                      >
+                        <Lightbulb size={12} className="text-amber-400" />
+                        <span>Smart Tips</span>
+                      </button>
+
+                      <Link 
+                        href="/pricing" 
+                        className="flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] sm:text-xs font-bold text-amber-400 hover:bg-amber-500/15 transition-colors"
+                      >
+                        <Coins size={11} />
+                        <span>{userTokens !== null ? userTokens : 10}</span>
+                      </Link>
                     </div>
                   </div>
 
-                  {/* === Video Preview === */}
+                  {/* === LOADED VIDEO PREVIEW CARD (when URL is valid and info is loaded) === */}
                   <AnimatePresence>
-                    {videoInfo && !loading && activeCategory === 'youtube' && !videoInfo.isCode && (
-                      <motion.div key="vinfo" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
-                        <div className="mx-4 mt-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06] flex items-center gap-3">
-                          <img src={videoInfo.thumbnail} className="w-16 h-10 rounded-lg object-cover shrink-0 bg-neutral-800" alt="thumb" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-white truncate">{videoInfo.title}</p>
-                            <p className="text-[10px] text-neutral-600 font-mono mt-0.5">{videoInfo.formattedDuration} &middot; {videoInfo.channel}</p>
+                    {videoInfo && !loading && (
+                      <motion.div 
+                        key="video-card"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="p-2 sm:p-2.5 bg-black/40 border border-white/[0.08] rounded-xl sm:rounded-2xl flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                            {/* Thumbnail with duration badge */}
+                            <div className="relative w-14 sm:w-20 h-9 sm:h-12 rounded-lg overflow-hidden shrink-0 bg-neutral-900 border border-white/10">
+                              <img src={videoInfo.thumbnail} alt={videoInfo.title} className="w-full h-full object-cover" />
+                              <span className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-black/85 text-[8px] sm:text-[8.5px] font-mono text-white font-bold">
+                                {videoInfo.formattedDuration || '2:35'}
+                              </span>
+                            </div>
+                            {/* Metadata */}
+                            <div className="min-w-0">
+                              <p className="text-xs sm:text-sm font-bold text-white truncate leading-snug">
+                                {videoInfo.title}
+                              </p>
+                              <p className="text-[9.5px] sm:text-xs text-neutral-400 truncate mt-0.5">
+                                {videoInfo.channel} &bull; 3.2M views &bull; 2 years ago
+                              </p>
+                            </div>
                           </div>
+
+                          {/* Close button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setVideoUrl('');
+                              setVideoInfo(null);
+                            }}
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.10] border border-white/10 flex items-center justify-center text-neutral-400 hover:text-white transition-colors shrink-0 cursor-pointer"
+                            title="Remove video"
+                          >
+                            <X size={13} />
+                          </button>
                         </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  {/* === MAIN TEXTAREA === */}
-                  <div className="px-4 sm:px-6 pb-2 sm:pb-4">
-                    <textarea 
-                      placeholder={activeCategory === 'youtube' 
-                        ? "Add specific focus areas, topics to emphasize... (optional)"
-                        : "Describe what you need — be specific for best results..."}
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      rows={2}
-                      className="w-full bg-transparent border-none focus:ring-0 text-[14px] sm:text-[15px] text-neutral-300 placeholder:text-neutral-600 sm:placeholder:text-neutral-700 resize-none outline-none leading-relaxed px-1"
-                    />
+                  {/* === SUB-TOOL TABS ROW === */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scroll-fade-x pb-0.5">
+                    {[
+                      { id: 'notes', label: 'YT to Notes', icon: FileText, href: '/youtube-to-notes' },
+                      { id: 'flashcards', label: 'YT to Flashcards', icon: Layers, href: '/youtube-to-flashcards' },
+                      { id: 'test', label: 'Practice Test', icon: CheckSquare, href: '/youtube-to-quiz' },
+                      { id: 'quiz', label: 'YT to Quiz', icon: HelpCircle, href: '/youtube-to-quiz' },
+                      { id: 'diagram', label: 'YT to Mind Map', icon: GitBranch, href: '/ai-diagram' },
+                    ].map(tab => {
+                      const isSelected = outputFormat === tab.id;
+                      return (
+                        <Link
+                          key={tab.id}
+                          href={tab.href}
+                          className={cn(
+                            "shrink-0 flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all border whitespace-nowrap cursor-pointer",
+                            isSelected 
+                              ? "bg-white text-black border-white shadow-sm" 
+                              : "bg-transparent border-white/[0.08] text-neutral-400 hover:text-white hover:border-white/20"
+                          )}
+                        >
+                          <tab.icon size={12} />
+                          <span>{tab.label}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
 
-                  {/* === Sub-tool Chips === */}
-                  <div className="px-4 sm:px-5 pb-3 sm:pb-4">
-                    <div onWheel={handleHorizontalScroll} className="flex gap-1.5 overflow-x-auto no-scrollbar scroll-fade-x pb-1 sm:pb-0.5 min-h-[32px]">
-                      <AnimatePresence mode="popLayout" initial={false}>
-                        {CATEGORY_TOOLS[activeCategory].map(tool => {
-                          const isSelected = outputFormat === tool.id;
-                          const href = tool.id === 'notes' ? '/youtube-to-notes'
-                                     : tool.id === 'flashcards' ? '/youtube-to-flashcards'
-                                     : '/youtube-to-quiz';
-                          return (
-                            <Link 
-                              key={tool.id}
-                              href={href}
-                              className={cn(
-                                "relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border whitespace-nowrap",
-                                isSelected 
-                                  ? "bg-white text-black border-white shadow-[0_0_12px_rgba(255,255,255,0.15)]" 
-                                  : "bg-transparent border-white/[0.08] text-neutral-500 hover:text-neutral-300 hover:border-white/20"
-                              )}
-                            >
-                              <tool.icon size={12} />
-                              {tool.label}
-                              {tool.comingSoon && <span className="ml-0.5 text-[8px] bg-red-500/80 text-white px-1 py-0.5 rounded font-black uppercase tracking-wider">Soon</span>}
-                            </Link>
-                          );
-                        })}
-                      </AnimatePresence>
-
-                    </div>
-                  </div>
-
-                  {/* === BOTTOM ACTION BAR === */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 px-3 sm:px-4 py-3 border-t border-white/[0.05] bg-white/[0.01]">
-                    <div onWheel={handleHorizontalScroll} className="flex items-center gap-2 overflow-x-auto no-scrollbar px-1 sm:px-0">
-                      
-                      {/* Model Selector */}
+                  {/* === 4 DROPDOWN BOXES + GENERATE BUTTON === */}
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 pt-1.5 sm:pt-2 border-t border-white/[0.06]">
+                    
+                    {/* Box 1: AI Model */}
+                    <div className="flex flex-col gap-0.5 sm:gap-1">
+                      <span className="text-[9px] sm:text-[11px] font-bold text-neutral-400 tracking-tight px-0.5">AI Model</span>
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.06] hover:border-white/15 text-[11px] font-bold text-neutral-300 hover:text-white transition-all duration-200 outline-none shrink-0 group">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: selectedModel.hex, boxShadow: `0 0 6px ${selectedModel.hex}99` }} />
-                          <span>{selectedModel.name}</span>
-                          <ChevronDown size={11} className="text-neutral-500 group-hover:text-neutral-300 transition-colors" />
+                        <DropdownMenuTrigger className="w-full bg-[#121215] hover:bg-[#18181c] border border-white/[0.08] hover:border-white/15 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2.5 flex items-center justify-between text-[11px] sm:text-xs font-bold text-white transition-all cursor-pointer outline-none group h-[34px] sm:h-[38px]">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Zap size={12} className="text-red-400 fill-red-400 shrink-0" />
+                            <span className="truncate">{selectedModel.name}</span>
+                            <span className="text-[7.5px] sm:text-[8px] font-black uppercase px-1 py-0.2 rounded bg-sky-500/15 text-sky-400 border border-sky-500/25">
+                              {selectedModel.accessTier}
+                            </span>
+                          </div>
+                          <ChevronDown size={11} className="text-neutral-500 group-hover:text-neutral-300 shrink-0 transition-colors" />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-[#0a0a0a] backdrop-blur-2xl border border-white/[0.08] text-white min-w-[280px] p-2.5 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] z-50" style={{ background: 'radial-gradient(ellipse at top left, #ffffff06 0%, #0a0a0a 60%)' }}>
-                          {/* Header */}
+                        <DropdownMenuContent className="bg-[#0a0a0a] backdrop-blur-2xl border border-white/[0.08] text-white min-w-[270px] p-2.5 rounded-2xl shadow-2xl z-50">
                           <div className="px-3 py-2 mb-1 border-b border-white/[0.05]">
                             <p className="text-[9px] font-black uppercase tracking-[0.25em] text-neutral-500 flex items-center gap-1.5">
                               <IconBrain size={11} className="text-white/30" /> Intelligence Engine
                             </p>
                           </div>
-                          {/* Model Cards */}
                           <div className="space-y-1 mt-1">
                             {AI_MODELS.map(m => {
                               const isLocked = m.accessTier === 'Pro' && !hasPremiumAccess;
@@ -1555,24 +1659,16 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
                                         ? "border-white/10 bg-white/[0.06]"
                                         : "border-transparent hover:border-white/[0.06] hover:bg-white/[0.03]"
                                     )}
-                                    style={isActive ? { boxShadow: `inset 0 0 20px ${m.hex}10` } : {}}
                                   >
-                                    {/* Color dot */}
                                     <div
                                       className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border"
-                                      style={{
-                                        backgroundColor: `${m.hex}12`,
-                                        borderColor: `${m.hex}25`,
-                                        boxShadow: isActive ? `0 0 12px ${m.hex}30` : 'none',
-                                      }}
+                                      style={{ backgroundColor: `${m.hex}12`, borderColor: `${m.hex}25` }}
                                     >
                                       <IconRobot size={16} style={{ color: m.hex }} />
                                     </div>
-                                    {/* Info */}
                                     <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                                       <div className="flex items-center gap-1.5">
                                         <span className={cn("font-black text-[12px] tracking-tight", isActive ? "text-white" : "text-neutral-300")}>{m.name}</span>
-                                        {/* Tier badge */}
                                         <span
                                           className="text-[8px] font-black uppercase tracking-[0.15em] px-1.5 py-0.5 rounded-md border"
                                           style={{ color: tierColor, backgroundColor: `${tierColor}12`, borderColor: `${tierColor}25` }}
@@ -1582,254 +1678,361 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
                                       </div>
                                       <span className="text-[10px] text-neutral-600 leading-tight truncate">{m.desc}</span>
                                     </div>
-                                    {/* State icon */}
-                                    {locked && (
-                                      <div className="shrink-0 w-5 h-5 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
-                                        <Zap size={10} className="text-neutral-500" />
-                                      </div>
-                                    )}
-                                    {!locked && isActive && (
-                                      <div className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: `${m.hex}20`, boxShadow: `0 0 8px ${m.hex}40` }}>
-                                        <IconCheck size={11} style={{ color: m.hex }} />
-                                      </div>
-                                    )}
+                                    {locked ? (
+                                      <Lock size={10} className="text-neutral-500 shrink-0" />
+                                    ) : isActive ? (
+                                      <Check size={11} style={{ color: m.hex }} className="shrink-0" />
+                                    ) : null}
                                   </div>
                                 </DropdownMenuItem>
                               );
                             })}
                           </div>
-                          {/* Footer */}
-                          <div className="mt-2 pt-2 border-t border-white/[0.05]">
-                            <Link href="/models" className="block outline-none">
-                              <DropdownMenuItem className="cursor-pointer rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-neutral-500 hover:text-white hover:bg-white/[0.04] font-bold text-[10px] uppercase tracking-wider outline-none focus:bg-white/[0.04] focus:text-white group transition-all">
-                                <span>Browse all models</span>
-                                <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
-                              </DropdownMenuItem>
-                            </Link>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Box 2: Language */}
+                    <div className="flex flex-col gap-0.5 sm:gap-1">
+                      <span className="text-[9px] sm:text-[11px] font-bold text-neutral-400 tracking-tight px-0.5">Language</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="w-full bg-[#121215] hover:bg-[#18181c] border border-white/[0.08] hover:border-white/15 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2.5 flex items-center justify-between text-[11px] sm:text-xs font-bold text-white transition-all cursor-pointer outline-none group h-[34px] sm:h-[38px]">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Globe size={12} className="text-neutral-400 shrink-0" />
+                            <span className="truncate">{outputLanguage}</span>
+                          </div>
+                          <ChevronDown size={11} className="text-neutral-500 group-hover:text-neutral-300 shrink-0 transition-colors" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-[#0a0a0a] backdrop-blur-2xl border border-white/[0.08] text-white min-w-[240px] p-3 rounded-2xl shadow-2xl z-50">
+                          <div className="px-1 py-1 mb-2 border-b border-white/[0.05]">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 flex items-center gap-1.5">
+                              <Globe size={11} className="text-neutral-400" /> Output Language
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {LANGUAGES.map(l => {
+                              const isPowerLang = POWER_LANGUAGES.has(l);
+                              const hasPowerAccess = hasPremiumAccess && userPlanId === 'power';
+                              const isSelected = outputLanguage === l;
+                              return (
+                                <button
+                                  key={l}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isPowerLang && !hasPowerAccess) {
+                                      const tok = localStorage.getItem('authToken');
+                                      if (!tok) { setShowLoginModal(true); return; }
+                                      setPremiumFeatureName(`${l} Language`);
+                                      setShowPremiumModal(true);
+                                      return;
+                                    }
+                                    setOutputLanguage(l);
+                                  }}
+                                  className={cn(
+                                    "px-3 py-2 rounded-xl text-left text-xs font-bold transition-all border flex items-center justify-between cursor-pointer",
+                                    isSelected
+                                      ? "bg-white text-black border-white"
+                                      : "bg-white/[0.02] border-white/[0.06] text-neutral-400 hover:text-white hover:border-white/20"
+                                  )}
+                                >
+                                  <span>{l}</span>
+                                  {isPowerLang && (
+                                    <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                                      Power
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                    </div>
 
-                      {/* Options Dropdown */}
+                    {/* Box 3: Note Style */}
+                    <div className="flex flex-col gap-0.5 sm:gap-1">
+                      <span className="text-[9px] sm:text-[11px] font-bold text-neutral-400 tracking-tight px-0.5">Note Style</span>
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 sm:py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/15 text-[11px] font-bold text-neutral-400 hover:text-white transition-all duration-200 outline-none shrink-0 group">
-                          <IconSettings size={14} className="text-neutral-600 group-hover:text-neutral-300 transition-colors" />
-                          <span className="hidden sm:inline">{outputLanguage} &middot; {detailLevel}{outputFormat === 'flashcards' && ` · ${flashcardCount} cards`}{outputFormat === 'test' && ` · ${testType}`}{outputFormat === 'code_solution' && ` · ${codeLanguage}`}</span>
-                          <span className="sm:hidden">Options</span>
-                          <ChevronDown size={11} className="text-neutral-600" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-black/95 backdrop-blur-2xl border-white/10 text-white w-[270px] p-4 rounded-[1.25rem] shadow-[0_10px_50px_-10px_rgba(0,0,0,1)] z-50">
-                          <div className="mb-4">
-                            <div className="flex items-center gap-1.5 mb-2.5"><IconRobot size={12} className="text-purple-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Language</span></div>
-                            <div className="grid grid-cols-3 gap-1.5">
-                              {LANGUAGES.map(l => {
-                                const isPowerLang = POWER_LANGUAGES.has(l);
-                                const hasPowerAccess = hasPremiumAccess && userPlanId === 'power';
-                                const isSelected = outputLanguage === l;
-                                return (
-                                  <div
-                                    key={l}
-                                    onClick={() => {
-                                      if (isPowerLang && !hasPowerAccess) {
-                                        const tok = localStorage.getItem('authToken');
-                                        if (!tok) { setShowLoginModal(true); return; }
-                                        setPremiumFeatureName(`${l} Language`);
-                                        setShowPremiumModal(true);
-                                        return;
-                                      }
-                                      setOutputLanguage(l);
-                                    }}
-                                    className={cn(
-                                      "relative text-[10px] text-center py-2 rounded-lg cursor-pointer font-bold transition-all border flex items-center justify-center gap-0.5",
-                                      isSelected
-                                        ? "bg-white text-black border-white"
-                                        : isPowerLang
-                                        ? "bg-purple-950/40 border-purple-500/20 hover:border-purple-500/40 text-purple-300 hover:text-white"
-                                        : "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white"
-                                    )}
-                                  >
-                                    {l}
-                                    {isPowerLang && (
-                                      <Zap size={8} className={cn("shrink-0", isSelected ? "text-black fill-black" : "text-purple-400 fill-purple-400")} />
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
+                        <DropdownMenuTrigger className="w-full bg-[#121215] hover:bg-[#18181c] border border-white/[0.08] hover:border-white/15 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2.5 flex items-center justify-between text-[11px] sm:text-xs font-bold text-white transition-all cursor-pointer outline-none group h-[34px] sm:h-[38px]">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Edit3 size={12} className="text-neutral-400 shrink-0" />
+                            <span className="truncate">{selectedTheme.name}</span>
                           </div>
-                          <div className={(outputFormat === 'flashcards' || outputFormat === 'test') ? "mb-4" : ""}>
-                            <div className="flex items-center gap-1.5 mb-2.5"><IconSparkles size={12} className="text-yellow-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Detail Depth</span></div>
-                            <div className="flex gap-1.5">
-                              {DETAIL_LEVELS.map(l => (
-                                <div key={l} onClick={() => setDetailLevel(l)} className={cn("flex-1 text-[10px] text-center py-2 rounded-lg cursor-pointer font-bold transition-all border", detailLevel === l ? "bg-white text-black border-white" : "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white")}>{l}</div>
-                              ))}
-                            </div>
+                          <ChevronDown size={11} className="text-neutral-500 group-hover:text-neutral-300 shrink-0 transition-colors" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-[#0a0a0a] backdrop-blur-2xl border border-white/[0.08] text-white min-w-[280px] p-3 rounded-2xl shadow-2xl z-50">
+                          <div className="px-1 py-1 mb-2 border-b border-white/[0.05] flex items-center justify-between">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 flex items-center gap-1.5">
+                              <Sparkles size={11} className="text-neutral-400" /> Note Theme
+                            </p>
+                            <span className="text-[9px] text-neutral-400 capitalize">{selectedTheme.category}</span>
+                          </div>
+
+                          {/* Quick top themes */}
+                          <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+                            {THEMES.slice(0, 6).map(t => {
+                              const isSelected = selectedTheme.id === t.id;
+                              const themePlan = getThemePlan(t.id);
+                              const isLocked = (themePlan === 'pro' && !hasPremiumAccess) || 
+                                               (themePlan === 'power' && (!hasPremiumAccess || userPlanId !== 'power'));
+                              return (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isLocked) {
+                                      setPremiumFeatureName(`${t.name} Theme`);
+                                      setShowPremiumModal(true);
+                                      return;
+                                    }
+                                    setSelectedTheme(t);
+                                  }}
+                                  className={cn(
+                                    "p-2 rounded-xl text-left border flex items-center justify-between cursor-pointer transition-all",
+                                    isSelected 
+                                      ? "bg-white/[0.06] border-red-500/50 shadow-sm" 
+                                      : isLocked 
+                                      ? "bg-white/[0.01] border-white/[0.04] opacity-60" 
+                                      : "bg-white/[0.02] border-white/[0.06] hover:border-white/15"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div 
+                                      className="w-3.5 h-3.5 rounded-md border flex items-center justify-center shrink-0"
+                                      style={{ backgroundColor: t.bg, borderColor: t.border }}
+                                    >
+                                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: t.primary }} />
+                                    </div>
+                                    <span className="text-xs font-bold truncate text-white">{t.name}</span>
+                                  </div>
+                                  {isLocked ? (
+                                    <Lock size={10} className="text-amber-400" />
+                                  ) : isSelected ? (
+                                    <Check size={11} className="text-red-400 font-black" />
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="pt-2 border-t border-white/[0.06] space-y-1">
+                            <button
+                              type="button"
+                              onClick={() => setShowConfigModal(true)}
+                              className="w-full py-2 px-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-bold text-white flex items-center justify-between transition-colors cursor-pointer"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <Sparkles size={12} className="text-red-400" />
+                                <span>Customize Notes & Outline...</span>
+                              </span>
+                              <ArrowRight size={12} className="text-neutral-400" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTempSelectedTheme(selectedTheme);
+                                setShowThemeExplorer(true);
+                              }}
+                              className="w-full py-2 px-3 rounded-xl hover:bg-white/[0.04] text-xs font-bold text-neutral-400 hover:text-white flex items-center justify-between transition-colors cursor-pointer"
+                            >
+                              <span>Browse all {THEMES.length} themes</span>
+                              <ArrowRight size={12} className="text-neutral-500" />
+                            </button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Box 4: Detail Level */}
+                    <div className="flex flex-col gap-0.5 sm:gap-1">
+                      <span className="text-[9px] sm:text-[11px] font-bold text-neutral-400 tracking-tight px-0.5">Detail Level</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="w-full bg-[#121215] hover:bg-[#18181c] border border-white/[0.08] hover:border-white/15 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2.5 flex items-center justify-between text-[11px] sm:text-xs font-bold text-white transition-all cursor-pointer outline-none group h-[34px] sm:h-[38px]">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <BarChart2 size={12} className="text-neutral-400 shrink-0" />
+                            <span className="truncate">{detailLevel === 'Standard' ? 'Balanced' : detailLevel}</span>
+                          </div>
+                          <ChevronDown size={11} className="text-neutral-500 group-hover:text-neutral-300 shrink-0 transition-colors" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-[#0a0a0a] backdrop-blur-2xl border border-white/[0.08] text-white min-w-[240px] p-3 rounded-2xl shadow-2xl z-50">
+                          <div className="px-1 py-1 mb-2 border-b border-white/[0.05]">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 flex items-center gap-1.5">
+                              <BarChart2 size={11} className="text-neutral-400" /> Detail Depth
+                            </p>
+                          </div>
+                          <div className="space-y-1 mb-3">
+                            {DETAIL_LEVELS.map(d => (
+                              <button
+                                key={d}
+                                type="button"
+                                onClick={() => setDetailLevel(d)}
+                                className={cn(
+                                  "w-full px-3 py-2 rounded-xl text-left text-xs font-bold transition-all border flex items-center justify-between cursor-pointer",
+                                  detailLevel === d
+                                    ? "bg-white text-black border-white"
+                                    : "bg-white/[0.02] border-white/[0.06] text-neutral-400 hover:text-white hover:border-white/20"
+                                )}
+                              >
+                                <span>{d === 'Standard' ? 'Balanced' : d}</span>
+                                {detailLevel === d && <Check size={12} strokeWidth={3} />}
+                              </button>
+                            ))}
                           </div>
 
                           {outputFormat === 'flashcards' && (
-                            <div>
-                              <div className="flex items-center gap-1.5 mb-2.5"><IconBrain size={12} className="text-purple-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Card Count</span></div>
-                              <div className="flex items-center gap-1.5">
-                                <input type="number" min="1" max={hasPremiumAccess ? 30 : 5} value={flashcardCount}
-                                  onChange={(e) => { let val = parseInt(e.target.value); if(isNaN(val)) val = 1; if (!hasPremiumAccess && val>5) val=5; if (hasPremiumAccess && val>30) val=30; setFlashcardCount(val); }}
-                                  className="w-16 bg-neutral-900/80 border border-white/5 focus:border-purple-500/50 rounded-lg text-center text-white py-1.5 text-[11px] font-bold outline-none transition-all shrink-0"
-                                />
-                                <div className="flex flex-1 gap-1.5">
-                                  {hasPremiumAccess ? (
-                                    <>
-                                      {[10, 20, 30].map(n => (
-                                        <div key={n} onClick={() => setFlashcardCount(n)} className={cn("flex-1 text-[10px] text-center py-1.5 rounded-lg cursor-pointer font-bold transition-all border", flashcardCount === n ? "bg-purple-500 border-purple-400 text-white" : "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white")}>{n}</div>
-                                      ))}
-                                    </>
-                                  ) : (
-                                    <div className="flex-1 text-[10px] flex items-center justify-center py-1.5 rounded-lg font-bold border bg-neutral-900/40 border-white/5 text-neutral-600">Max 5 (Free)</div>
-                                  )}
-                                </div>
+                            <div className="pt-2 border-t border-white/[0.06]">
+                              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 mb-2">Card Count</p>
+                              <div className="flex gap-1.5">
+                                {[5, 10, 20, 30].map(c => {
+                                  const isLocked = c > 5 && !hasPremiumAccess;
+                                  return (
+                                    <button
+                                      key={c}
+                                      type="button"
+                                      onClick={() => {
+                                        if (isLocked) {
+                                          setPremiumFeatureName(`${c} Flashcards`);
+                                          setShowPremiumModal(true);
+                                          return;
+                                        }
+                                        setFlashcardCount(c);
+                                      }}
+                                      className={cn(
+                                        "flex-1 py-1.5 rounded-lg text-xs font-bold border text-center transition-all cursor-pointer",
+                                        flashcardCount === c
+                                          ? "bg-purple-500 text-white border-purple-400"
+                                          : "bg-white/[0.02] border-white/[0.06] text-neutral-400 hover:text-white"
+                                      )}
+                                    >
+                                      {c}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
 
                           {outputFormat === 'test' && (
-                            <div>
-                              <div className="flex items-center gap-1.5 mb-2.5"><CheckSquare size={12} className="text-blue-500" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Test Format</span></div>
-                              <div className="grid grid-cols-2 gap-1.5">
+                            <div className="pt-2 border-t border-white/[0.06]">
+                              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 mb-2">Test Format</p>
+                              <div className="space-y-1">
                                 {TEST_TYPES.map(t => {
                                   const isLocked = t.isPremium && !hasPremiumAccess;
                                   return (
-                                    <div 
-                                      key={t.id} 
-                                      onClick={() => {
-                                        if (isLocked) { 
-                                          const token = localStorage.getItem('authToken'); 
-                                          if (!token) { setShowLoginModal(true); return; } 
-                                          setPremiumFeatureName(t.label);
-                                          setShowPremiumModal(true); 
-                                          return; 
-                                        }
-                                        setTestType(t.id);
-                                      }} 
-                                      className={cn("relative flex items-center justify-center text-[10px] text-center py-2 px-1 rounded-lg cursor-pointer font-bold transition-all border", testType === t.id ? "bg-white text-black border-white" : "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white", isLocked && "opacity-75")}
-                                    >
-                                      {t.label}
-                                      {isLocked && <span className="absolute top-1 right-1 text-[7px] text-yellow-500 font-bold bg-yellow-500/10 px-1 rounded uppercase tracking-wider">Pro</span>}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                          {outputFormat === 'code_solution' && (
-                            <div className="mt-1 pt-4 border-t border-white/5">
-                              <div className="flex items-center gap-1.5 mb-2.5"><Code size={12} className="text-blue-400" /><span className="text-[9px] uppercase text-neutral-500 font-black tracking-[0.2em]">Code Language</span></div>
-                              <div className="grid grid-cols-3 gap-1.5">
-                                {['C++', 'Python', 'Java', 'JavaScript', 'Go', 'Rust'].map(l => {
-                                  const isLocked = !hasPremiumAccess && l !== 'C++';
-                                  return (
-                                    <div
-                                      key={l}
+                                    <button
+                                      key={t.id}
+                                      type="button"
                                       onClick={() => {
                                         if (isLocked) {
-                                          setPremiumFeatureName(`${l} Code Support`);
+                                          setPremiumFeatureName(t.label);
                                           setShowPremiumModal(true);
                                           return;
                                         }
-                                        setCodeLanguage(l);
+                                        setTestType(t.id);
                                       }}
                                       className={cn(
-                                        "relative text-[10px] text-center py-2 rounded-lg cursor-pointer font-bold transition-all border font-mono",
-                                        codeLanguage === l && !isLocked ? "bg-blue-500 text-white border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.3)]" :
-                                        isLocked ? "bg-neutral-900/50 border-white/5 text-neutral-700 cursor-not-allowed" :
-                                        "bg-neutral-900/80 border-white/5 hover:border-white/20 text-neutral-500 hover:text-white"
+                                        "w-full px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center justify-between transition-all cursor-pointer",
+                                        testType === t.id
+                                          ? "bg-white text-black border-white"
+                                          : "bg-white/[0.02] border-white/[0.06] text-neutral-400 hover:text-white"
                                       )}
                                     >
-                                      {l}
-                                      {isLocked && <span className="absolute -top-1 -right-1 text-[7px] text-yellow-500 font-black bg-yellow-500/10 border border-yellow-500/20 px-1 rounded uppercase tracking-wider">Pro</span>}
-                                    </div>
+                                      <span>{t.label}</span>
+                                      {isLocked && <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">Pro</span>}
+                                    </button>
                                   );
                                 })}
                               </div>
                             </div>
                           )}
-
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
 
-                    {/* Generate Button */}
-                    <button 
-                      onClick={handleGenerateClick}
-                      disabled={!isValidUrl || loading || isGenerating}
-                      className={cn(
-                        "w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 h-11 sm:h-10 px-5 rounded-xl font-bold text-[13px] sm:text-xs uppercase tracking-widest transition-all duration-300",
-                        isValidUrl 
-                          ? "bg-white text-black hover:bg-neutral-100 shadow-[0_0_25px_rgba(255,255,255,0.15)] active:scale-95 active:shadow-none" 
-                          : "bg-white/5 text-neutral-600 cursor-not-allowed border border-white/5"
-                      )}
-                    >
-                      {isGenerating ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} fill="currentColor" />}
-                      <span>Generate</span>
-                    </button>
+                    {/* Box 5: Generate Button (Full width on mobile across 2 cols, 5th col on desktop) */}
+                    <div className="col-span-2 lg:col-span-1 flex flex-col justify-end mt-1 sm:mt-0">
+                      <button 
+                        type="button"
+                        onClick={handleGenerateClick}
+                        disabled={!isValidUrl || loading || isGenerating}
+                        className={cn(
+                          "w-full h-[36px] sm:h-[38px] rounded-lg sm:rounded-xl font-black text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-[0.98]",
+                          isValidUrl 
+                            ? "bg-gradient-to-r from-red-600 via-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-[0_0_25px_rgba(239,68,68,0.35)]" 
+                            : "bg-[#e50914] text-white hover:bg-[#dc2626]"
+                        )}
+                      >
+                        {isGenerating ? <Loader2 className="animate-spin" size={13} /> : <Zap size={13} className="fill-white" />}
+                        <span>GENERATE NOTES &rarr;</span>
+                      </button>
+                    </div>
+
                   </div>
 
                 </div>
               </div>
 
-              {/* === SAMPLE NOTES SECTION === */}
+              {/* ─── 4. SAMPLE NOTES SECTION ─── */}
               {activeCategory === 'youtube' && outputFormat === 'notes' && (
-                <div className="w-full max-w-3xl mt-4">
-                  <div className="flex items-center gap-2 mb-3 px-0.5">
-                    <span className="relative flex h-1.5 w-1.5 shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-                    </span>
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-neutral-400">Sample Notes</span>
-                    <span className="text-neutral-700 text-[10px] select-none">·</span>
-                    <span className="text-[9px] text-neutral-600 truncate">click to explore, no sign-in</span>
-                    <span className="ml-auto text-[8px] text-neutral-700 hidden sm:block shrink-0">swipe →</span>
+                <div className="w-full max-w-4xl mt-4">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                      <span className="text-xs font-black uppercase tracking-wider text-neutral-300">SAMPLE NOTES</span>
+                      <span className="text-xs text-neutral-500 hidden sm:inline">&bull; Click any to explore, no sign-in required</span>
+                    </div>
+                    <Link href="/notes" className="text-xs font-bold text-red-400 hover:text-red-300 flex items-center gap-1">
+                      <span>View all</span>
+                      <ArrowRight size={12} />
+                    </Link>
                   </div>
-                  <div
-                    className="flex gap-2 overflow-x-auto snap-x snap-mandatory"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '2px' }}
+
+                  {/* 5 Sample Note Cards */}
+                  <div 
+                    className="flex sm:grid sm:grid-cols-5 gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar pb-2"
+                    style={{ scrollbarWidth: 'none' }}
                   >
                     {[
-                      { slug: 'notes-supply-and-demand-g9adizjpds', videoId: 'g9aDizJpd_s', title: 'Supply & Demand', sub: 'CrashCourse', category: '📈 Econ', border: 'hover:border-amber-500/30', glow: 'hover:shadow-[0_0_16px_rgba(251,191,36,0.08)]', pill: 'bg-amber-500/10 text-amber-400 border-amber-500/25', cta: 'text-amber-400' },
-                      { slug: 'notes-stanford-cs229-ml-jgwo_ugts7i', videoId: 'jGwO_UgTS7I', title: 'Neural Networks', sub: 'Stanford CS229', category: '🤖 AI/ML', border: 'hover:border-violet-500/30', glow: 'hover:shadow-[0_0_16px_rgba(167,139,250,0.08)]', pill: 'bg-violet-500/10 text-violet-400 border-violet-500/25', cta: 'text-violet-400' },
-                      { slug: 'notes-biology-cell-structure-urujd5nexc8', videoId: 'URUJD5NEXC8', title: 'Cell Structure', sub: 'Biology', category: '🔬 Bio', border: 'hover:border-emerald-500/30', glow: 'hover:shadow-[0_0_16px_rgba(52,211,153,0.08)]', pill: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25', cta: 'text-emerald-400' },
-                      { slug: 'notes-something-finally-broke-between-us-and-europe-wydd0rf66de', videoId: 'WYDD0RF66DE', title: 'US-Europe Rift', sub: 'CSIS Analysis', category: '🌍 Geo', border: 'hover:border-sky-500/30', glow: 'hover:shadow-[0_0_16px_rgba(56,189,248,0.08)]', pill: 'bg-sky-500/10 text-sky-400 border-sky-500/25', cta: 'text-sky-400' },
-                      { slug: 'notes-mit-804-quantum-physics-lz3bpuko5zc', videoId: 'lZ3bPUKo5zc', title: 'Quantum Physics', sub: 'MIT 8.04', category: '⚛️ Physics', border: 'hover:border-pink-500/30', glow: 'hover:shadow-[0_0_16px_rgba(236,72,153,0.08)]', pill: 'bg-pink-500/10 text-pink-400 border-pink-500/25', cta: 'text-pink-400' },
+                      { slug: 'notes-supply-and-demand-g9adizjpds', videoId: 'g9aDizJpd_s', title: 'Supply & Demand', sub: 'CrashCourse', time: '5 min', badge: '📈 Economics', badgeColor: 'bg-amber-500/15 text-amber-400 border-amber-500/25', ctaColor: 'text-amber-400' },
+                      { slug: 'notes-stanford-cs229-ml-jgwo_ugts7i', videoId: 'jGwO_UgTS7I', title: 'Neural Networks', sub: 'Stanford CS229', time: '8 min', badge: '🤖 AI / ML', badgeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/25', ctaColor: 'text-purple-400' },
+                      { slug: 'notes-biology-cell-structure-urujd5nexc8', videoId: 'URUJD5NEXC8', title: 'Cell Structure', sub: 'Biology', time: '6 min', badge: '🔬 Biology', badgeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', ctaColor: 'text-emerald-400' },
+                      { slug: 'notes-something-finally-broke-between-us-and-europe-wydd0rf66de', videoId: 'WYDD0RF66DE', title: 'US-Europe Rift', sub: 'CSIS Analysis', time: '7 min', badge: '🌍 Geography', badgeColor: 'bg-sky-500/15 text-sky-400 border-sky-500/25', ctaColor: 'text-sky-400' },
+                      { slug: 'notes-mit-804-quantum-physics-lz3bpuko5zc', videoId: 'lZ3bPUKo5zc', title: 'Quantum Physics', sub: 'MIT 8.04', time: '9 min', badge: '⚛️ Physics', badgeColor: 'bg-pink-500/15 text-pink-400 border-pink-500/25', ctaColor: 'text-pink-400' },
                     ].map((item) => (
                       <div
                         key={item.slug}
                         onClick={() => router.push(`/notes/${item.slug}`)}
-                        className={cn(
-                          "group relative flex-shrink-0 snap-start overflow-hidden rounded-xl border border-white/[0.07] bg-neutral-900/50 cursor-pointer transition-all duration-300",
-                          item.border, item.glow
-                        )}
-                        style={{ width: '148px' }}
+                        className="group shrink-0 w-[150px] sm:w-auto overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0c0c0e] hover:border-white/20 cursor-pointer transition-all duration-300 flex flex-col justify-between"
                       >
-                        <div className="relative overflow-hidden" style={{ height: '78px' }}>
+                        {/* Thumbnail Container */}
+                        <div className="relative h-20 sm:h-24 w-full overflow-hidden bg-neutral-900">
                           <img
                             src={`https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`}
                             alt={item.title}
-                            className="w-full h-full object-cover opacity-50 group-hover:opacity-70 group-hover:scale-105 transition-all duration-500"
+                            className="w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-500"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-neutral-900/85" />
-                          <span className={cn("absolute bottom-1.5 left-1.5 text-[7px] font-black px-1.5 py-[2px] rounded border backdrop-blur-sm tracking-wide", item.pill)}>
-                            {item.category}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                          <span className={cn("absolute bottom-1.5 left-1.5 text-[8px] font-black px-1.5 py-0.5 rounded border backdrop-blur-sm tracking-wide", item.badgeColor)}>
+                            {item.badge}
                           </span>
-                          <span className="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded p-[3px]">
-                            <IconBrandYoutube size={7} className="text-red-400" />
+                          <span className="absolute top-1.5 right-1.5 bg-black/70 backdrop-blur-sm rounded-md p-1">
+                            <IconBrandYoutube size={10} className="text-red-400" />
                           </span>
                         </div>
-                        <div className="px-2.5 py-2 flex flex-col gap-0.5">
-                          <p className="text-[11px] font-bold text-neutral-100 leading-snug group-hover:text-white transition-colors truncate">
+
+                        {/* Card Info */}
+                        <div className="p-2.5 flex flex-col gap-1">
+                          <h5 className="text-xs font-bold text-white group-hover:text-red-400 transition-colors truncate">
                             {item.title}
+                          </h5>
+                          <p className="text-[10px] text-neutral-400 truncate leading-none">
+                            {item.sub}
                           </p>
-                          <p className="text-[8px] text-neutral-600 truncate">{item.sub}</p>
-                          <div className="flex items-center justify-between mt-1.5">
-                            <span className="text-[7px] text-neutral-700">5 min</span>
-                            <span className={cn("text-[7px] font-extrabold flex items-center gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity", item.cta)}>
-                              Open <ArrowRight size={7} className="group-hover:translate-x-0.5 transition-transform" />
+                          <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-white/[0.04]">
+                            <span className="text-[9px] text-neutral-500">{item.time}</span>
+                            <span className={cn("text-[9px] font-extrabold flex items-center gap-0.5", item.ctaColor)}>
+                              Open &rarr;
                             </span>
                           </div>
                         </div>
@@ -1840,254 +2043,204 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
               )}
             </motion.div>
           ) : (
-            /* ================= LOADING STATE ================= */
+            /* ================= 2. REDESIGNED AI GENERATION PROCESSING SCREEN ================= */
             <motion.div 
               key="loader"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="w-full max-w-4xl mx-auto flex flex-col justify-center min-h-[70vh] py-6 z-10"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="w-full max-w-5xl mx-auto bg-[#080808] border border-white/[0.08] rounded-[24px] sm:rounded-[28px] p-5 sm:p-8 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.95)] z-10 flex flex-col gap-5 sm:gap-6 my-2"
             >
-              {/* Sleek Top Progress & Header */}
-              <div className="w-full max-w-3xl mx-auto mb-8 text-center space-y-3">
-                <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400 px-1">
-                  <span className="flex items-center gap-1.5 tracking-widest font-black">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
-                    SYNTHESIZING KNOWLEDGE ENGINE
-                  </span>
-                  <span className="font-bold text-white tracking-widest">{Math.floor(progressPercent)}% COMPLETE</span>
-                </div>
-                
-                {/* Glowing Progress bar */}
-                <div className="h-2.5 w-full bg-white/[0.03] border border-white/[0.07] rounded-full overflow-hidden p-[2px] backdrop-blur-sm shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]">
-                  <motion.div 
-                    className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)]"
-                    animate={{ width: `${progressPercent}%` }}
-                    transition={{ ease: "easeOut", duration: 0.1 }}
-                  />
-                </div>
-                
-                {/* Sub-status action ticker */}
-                <div className="min-h-[16px] flex items-center justify-center text-[10px] font-mono text-neutral-500 tracking-wider">
-                  <AnimatePresence mode="wait">
-                    <motion.div 
-                      key={Math.floor(progressPercent / 5)} 
-                      initial={{ opacity: 0, y: 3 }} 
-                      animate={{ opacity: 1, y: 0 }} 
-                      exit={{ opacity: 0, y: -3 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex items-center gap-2"
+              {/* ─── A. TOP HEADER & OVERALL PROGRESS ─── */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  {/* Left: Brand Engine Title */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/5 border border-red-500/30 flex items-center justify-center text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.25)] shrink-0">
+                      <Sparkles size={18} className="fill-red-500/20" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm sm:text-base md:text-lg font-extrabold text-white tracking-tight leading-tight">
+                        Synthesizing Knowledge Engine
+                      </h2>
+                      <p className="text-[11px] sm:text-xs text-neutral-400 font-medium hidden sm:block">
+                        AI is analyzing and generating your notes
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: Percentage Pill & Cancel Action */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs font-mono font-bold text-neutral-200">
+                      <Clock size={12} className="text-red-400" />
+                      <span>{Math.floor(progressPercent)}% Complete</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsGenerating(false)}
+                      className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] flex items-center justify-center text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                      title="Cancel Generation"
                     >
-                      <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
-                      <span>{getSubStatus(currentStep, progressPercent)}</span>
-                    </motion.div>
-                  </AnimatePresence>
+                      <X size={14} />
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Main Panel Content: Left Thumbnail & Right Stepper */}
-              <div className="w-full flex flex-col md:flex-row items-center md:items-stretch justify-center gap-8 md:gap-12">
-                
-                {/* Left: Card — Paperxify logo for code, thumbnail for videos */}
-                <div className="relative w-full md:w-[480px] aspect-video">
-                  <div className="absolute -inset-4 bg-blue-500/10 blur-2xl rounded-full opacity-50 transform-gpu"></div>
-                  
+                {/* Thin Red Progress Bar */}
+                <div className="h-1.5 sm:h-2 w-full bg-white/[0.06] rounded-full overflow-hidden relative">
                   <motion.div 
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="relative w-full h-full rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl z-10 bg-neutral-950 flex flex-col items-center justify-center"
+                    className="h-full bg-gradient-to-r from-red-600 via-red-500 to-red-400 rounded-full relative"
+                    animate={{ width: `${Math.max(4, Math.min(100, progressPercent))}%` }}
+                    transition={{ ease: "easeOut", duration: 0.15 }}
                   >
-                    {/* Grid line background overlay for high-tech aesthetic */}
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none z-10 opacity-70" />
-
-                    {/* Holographic scanner effect */}
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-                      <motion.div 
-                        className="w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] opacity-80"
-                        animate={{ top: ["0%", "100%", "0%"] }}
-                        transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-                        style={{ position: 'absolute' }}
-                      />
-                    </div>
-
-                    {/* Active audio visualizer animation */}
-                    <div className="absolute top-4 right-4 flex items-end gap-0.5 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10 z-20">
-                      <span className="text-[8px] font-mono text-neutral-400 mr-1.5 tracking-widest">PARSING SIGNAL</span>
-                      {[1, 2, 3, 4, 5].map((bar) => (
-                        <motion.div 
-                          key={bar} 
-                          className="w-[2px] bg-blue-400 rounded-full"
-                          animate={{ height: [4, 14, 4] }}
-                          transition={{ duration: 0.5 + bar * 0.12, repeat: Infinity, ease: "easeInOut" }}
-                        />
-                      ))}
-                    </div>
-
-                    {outputFormat === 'code_solution' ? (
-                      /* ── Animated Paperxify Code Logo Panel ── */
-                      <>
-                        {/* Ambient glow layers */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-indigo-500/5 to-purple-600/10" />
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-                        
-                        {/* Logo + name */}
-                        <div className="relative z-10 flex flex-col items-center gap-5">
-                          <motion.div
-                            animate={{ scale: [1, 1.05, 1], opacity:[0.85,1,0.85] }}
-                            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                            className="relative"
-                          >
-                            {/* Outer ring */}
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                              className="absolute -inset-4 rounded-full border border-dashed border-blue-500/30"
-                            />
-                            {/* Inner ring */}
-                            <motion.div
-                              animate={{ rotate: -360 }}
-                              transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-                              className="absolute -inset-2 rounded-full border border-blue-400/20"
-                            />
-                            <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(59,130,246,0.25)] border border-white/10">
-                              <img src="/paperxify.jpeg" alt="Paperxify" className="w-full h-full object-cover" />
-                            </div>
-                          </motion.div>
-
-                          <div className="text-center">
-                            <p className="text-white font-black text-lg tracking-tight">Paperxify</p>
-                            <p className="text-neutral-500 text-[11px] font-mono uppercase tracking-widest mt-0.5">Neural Code Engine</p>
-                          </div>
-                        </div>
-
-                        {/* Bottom info */}
-                        <div className="absolute bottom-0 left-0 right-0 p-7 z-20">
-                          <h2 className="text-white font-bold text-base leading-snug line-clamp-2">
-                            {videoInfo?.title || "Generating Code Solution…"}
-                          </h2>
-                        </div>
-                      </>
-                    ) : (
-                      /* ── YouTube Thumbnail ── */
-                      <>
-                        <img 
-                          src={videoInfo?.thumbnail || "https://img.youtube.com/vi/placeholder/maxresdefault.jpg"} 
-                          className="w-full h-full object-cover opacity-40 scale-105 absolute inset-0"
-                          alt="Processing Video"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent" />
-                        <div className="absolute bottom-0 left-0 right-0 p-8 z-20">
-                          <h2 className="text-lg font-bold text-white line-clamp-2 leading-snug tracking-tight">
-                            {videoInfo?.title || "Parsing Video Data..."}
-                          </h2>
-                        </div>
-                      </>
-                    )}
+                    {/* Glowing Leading Edge Dot */}
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff]" />
                   </motion.div>
                 </div>
 
+                {/* Sub-status Activity Ticker */}
+                <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-red-500/20 border-t-red-500 animate-spin shrink-0" />
+                  <span className="truncate">{getSubStatus(currentStep, progressPercent)}</span>
+                </div>
+              </div>
 
-                {/* Right: Minimal Vertical Stepper */}
-                <div className="w-full md:w-80 flex flex-col justify-center space-y-4 md:space-y-5 z-10 px-2 sm:px-0">
-                   {(outputFormat === 'flashcards' ? FLASHCARDS_LOADING_STEPS : outputFormat === 'code_solution' ? CODE_LOADING_STEPS : NOTES_LOADING_STEPS).map((step, idx, arr) => {
+              {/* ─── B. MAIN CONTENT GRID (DESKTOP: 2 COLS / MOBILE: STACKED) ─── */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* 1. LEFT COLUMN: VIDEO PREVIEW CARD */}
+                <div className="lg:col-span-6 xl:col-span-6 w-full bg-[#0c0c0f] border border-white/[0.08] rounded-[20px] overflow-hidden flex flex-col justify-between shadow-xl">
+                  {/* Video Thumbnail Box */}
+                  <div className="relative aspect-video w-full overflow-hidden bg-neutral-950">
+                    <img 
+                      src={videoInfo?.thumbnail || getYouTubeThumbnail(videoUrl) || "https://img.youtube.com/vi/placeholder/maxresdefault.jpg"} 
+                      className="w-full h-full object-cover"
+                      alt={videoInfo?.title || "Processing Video"}
+                    />
+                    {/* Dark gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0f] via-black/20 to-transparent" />
+
+                    {/* Top Badges */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white shadow-sm">
+                      <IconBrandYoutube size={13} className="text-red-500" />
+                      <span>YouTube</span>
+                    </div>
+
+                    <div className="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md border border-white/10 text-[10px] font-mono font-bold text-neutral-300 shadow-sm">
+                      {videoInfo?.duration || "2:35"}
+                    </div>
+                  </div>
+
+                  {/* Video Metadata Box */}
+                  <div className="p-4 sm:p-5 pt-3 flex flex-col gap-2">
+                    <h3 className="text-sm sm:text-base font-extrabold text-white leading-snug line-clamp-2">
+                      {videoInfo?.title || "Phonics Song 2 with TWO Words in 3D - A For Airplane - ABC Alphabet Songs with Sounds for Children"}
+                    </h3>
+
+                    <div className="flex items-center gap-2 text-[11px] text-neutral-400 font-medium pt-1 border-t border-white/[0.04]">
+                      <span className="truncate max-w-[140px] text-neutral-300 font-semibold">
+                        {videoInfo?.author || videoInfo?.channelTitle || "Little Baby Bum"}
+                      </span>
+                      <span>&bull;</span>
+                      <span>{videoInfo?.views ? `${videoInfo.views} views` : "3.2M views"}</span>
+                      <span>&bull;</span>
+                      <span>{videoInfo?.uploadDate || "2 years ago"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. RIGHT COLUMN: PROCESSING TIMELINE */}
+                <div className="lg:col-span-6 xl:col-span-6 w-full flex flex-col justify-between gap-3">
+                  <div className="flex flex-col space-y-1">
+                    {(outputFormat === 'flashcards' 
+                      ? FLASHCARDS_LOADING_STEPS 
+                      : outputFormat === 'code_solution' 
+                      ? CODE_LOADING_STEPS 
+                      : NOTES_LOADING_STEPS
+                    ).map((step, idx, arr) => {
                       const isCompleted = currentStep > idx;
                       const isActive = currentStep === idx;
+                      const isPending = currentStep < idx;
 
                       return (
-                        <div key={step.id} className="relative flex items-start gap-4 group">
+                        <div key={step.id} className="relative flex items-start gap-3.5 group">
                           
-                          {/* Connecting Line */}
+                          {/* Vertical Connector Line */}
                           {idx !== arr.length - 1 && (
                             <div className={cn(
-                              "absolute left-[15px] top-8 w-[2px] h-7 sm:h-8 transition-colors duration-500",
-                              isCompleted ? "bg-gradient-to-b from-white to-white/20" : "bg-white/5"
-                            )}></div>
+                              "absolute left-[13px] top-[26px] w-[2px] h-[calc(100%-8px)] transition-colors duration-300",
+                              isCompleted ? "bg-red-500/50" : "bg-white/[0.08]"
+                            )} />
                           )}
 
-                          {/* Icon/Status Bubble */}
-                          <div className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-500 shrink-0",
-                            isCompleted ? "bg-white text-black border-white" : 
-                            isActive ? "bg-black text-white border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)]" : 
-                            "bg-black text-neutral-700 border-neutral-800"
-                          )}>
-                             {isCompleted ? <IconCheck size={14} strokeWidth={3} /> : <step.icon size={13} />}
+                          {/* Status Icon */}
+                          <div className="relative z-10 pt-0.5">
+                            {isCompleted ? (
+                              <div className="w-[26px] h-[26px] rounded-full bg-red-500/10 border border-red-500/30 text-red-500 flex items-center justify-center shrink-0">
+                                <Check size={12} strokeWidth={3} />
+                              </div>
+                            ) : isActive ? (
+                              <div className="w-[28px] h-[28px] rounded-full bg-red-500/20 border border-red-500/50 text-red-400 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse">
+                                <Sparkles size={13} className="fill-red-400/30" />
+                              </div>
+                            ) : (
+                              <div className="w-[26px] h-[26px] rounded-full border border-white/10 bg-[#0c0c0e] flex items-center justify-center shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-neutral-600" />
+                              </div>
+                            )}
                           </div>
 
-                          {/* Text */}
-                          <div className="flex flex-col min-w-0 pt-0.5">
-                             <span className={cn(
-                               "text-xs font-bold transition-colors duration-500 truncate",
-                               isCompleted || isActive ? "text-white" : "text-neutral-600"
-                             )}>
-                               {step.label}
-                             </span>
-                             
-                             {/* Slide-open step details for psychological engagement */}
-                             <AnimatePresence initial={false}>
-                               {isActive && (
-                                 <motion.p
-                                   initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                                   animate={{ height: "auto", opacity: 0.6, marginTop: 2 }}
-                                   exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                                   transition={{ duration: 0.3 }}
-                                   className="text-[9px] text-neutral-400 leading-relaxed font-mono tracking-tight"
-                                 >
-                                   {step.desc}
-                                 </motion.p>
-                               )}
-                             </AnimatePresence>
+                          {/* Step Content Container */}
+                          <div className={cn(
+                            "flex-1 flex items-center justify-between p-2 rounded-xl transition-all duration-200 min-w-0",
+                            isActive && "bg-[#140606] border border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.15)]"
+                          )}>
+                            <div className="flex flex-col min-w-0 pr-2">
+                              <span className={cn(
+                                "text-xs font-bold transition-colors leading-tight truncate",
+                                isCompleted ? "text-white" : isActive ? "text-white font-extrabold" : "text-neutral-500"
+                              )}>
+                                {step.label}
+                              </span>
+                              <span className={cn(
+                                "text-[10px] leading-tight mt-0.5 truncate",
+                                isCompleted ? "text-neutral-400" : isActive ? "text-neutral-300 font-medium" : "text-neutral-600"
+                              )}>
+                                {step.desc}
+                              </span>
+                            </div>
+
+                            {/* Duration / Status Pill */}
+                            <div className="shrink-0 text-right">
+                              {isCompleted ? (
+                                <span className="text-[10.5px] font-mono font-bold text-emerald-400">
+                                  {step.duration || "2s"}
+                                </span>
+                              ) : isActive ? (
+                                <span className="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/25 text-[10px] font-mono font-bold text-red-400 animate-pulse">
+                                  {step.duration || "~ 25s"}
+                                </span>
+                              ) : (
+                                <span className="text-[10.5px] font-mono text-neutral-600">
+                                  --
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
-                   })}
-                </div>
-              </div>
-
-              {/* Bottom: Study science trivia / tips card */}
-              <div className="w-full max-w-3xl mx-auto mt-10 bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4 sm:p-5 backdrop-blur-md flex flex-col sm:flex-row items-center gap-4 relative overflow-hidden">
-                <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute -left-10 -top-10 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
-                
-                {/* Brain/Lightbulb Icon Column */}
-                <div className="shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 flex items-center justify-center shadow-inner relative overflow-hidden">
-                  <motion.div 
-                    animate={{ rotate: [0, 5, -5, 0] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <IconBrain className="w-6 h-6 text-indigo-400" />
-                  </motion.div>
-                </div>
-                
-                {/* Content Column with Slide/Fade Transition */}
-                <div className="flex-1 min-w-0 text-center sm:text-left z-10">
-                  <div className="text-[8px] sm:text-[9px] font-mono font-black uppercase tracking-[0.25em] text-indigo-400 mb-1">
-                    Study Science & Trivia
+                    })}
                   </div>
-                  <div className="min-h-[40px] flex items-center justify-center sm:justify-start">
-                    <AnimatePresence mode="wait">
-                      <motion.div 
-                        key={activeTipIndex}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.35 }}
-                        className="space-y-0.5"
-                      >
-                        <h4 className="text-xs font-bold text-white tracking-wide">
-                          {TRIVIA_TIPS[activeTipIndex].title}
-                        </h4>
-                        <p className="text-[10px] text-neutral-400 leading-normal font-sans">
-                          {TRIVIA_TIPS[activeTipIndex].text}
-                        </p>
-                      </motion.div>
-                    </AnimatePresence>
+
+                  {/* Leave-Page Message Card */}
+                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 sm:p-3.5 flex items-center gap-2.5 text-[11px] sm:text-xs text-neutral-400 mt-2">
+                    <Lightbulb size={14} className="text-neutral-500 shrink-0" />
+                    <span>You can leave this page. We&apos;ll notify you when it&apos;s ready.</span>
                   </div>
                 </div>
-              </div>
 
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

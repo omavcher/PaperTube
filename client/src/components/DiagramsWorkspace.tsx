@@ -82,36 +82,68 @@ function DiagramMiniPreview({ nodes, edges, theme, format }: { nodes: Node[], ed
   const getStrokeColor = () => {
     switch (theme) {
       case "cyber": return "#06b6d4";
-      case "amber": return "#f59e0b";
+      case "sunset": case "amber": return "#f97316";
       case "emerald": return "#10b981";
-      default: return "#525252";
+      case "midnight": return "#3b82f6";
+      case "amethyst": return "#a855f7";
+      case "obsidian": return "#e5e5e5";
+      default: return "#06b6d4";
     }
   };
 
   const getNodeColor = (type: string) => {
-    if (theme === "cyber") {
-      switch (type) {
-        case "start": return "#0891b2";
-        case "decision": return "#7c3aed";
-        case "success": return "#059669";
-        case "fail": return "#e11d48";
-        default: return "#2563eb";
-      }
-    } else if (theme === "amber") {
-      switch (type) {
-        case "start": return "#d97706";
-        default: return "#ea580c";
-      }
-    } else if (theme === "emerald") {
-      switch (type) {
-        case "start": return "#059669";
-        default: return "#0d9488";
-      }
-    } else {
-      switch (type) {
-        case "start": return "#737373";
-        default: return "#404040";
-      }
+    switch (theme) {
+      case "cyber":
+        switch (type) {
+          case "start": return "#0891b2";
+          case "decision": return "#7c3aed";
+          case "success": return "#059669";
+          case "fail": return "#e11d48";
+          default: return "#2563eb";
+        }
+      case "sunset":
+      case "amber":
+        switch (type) {
+          case "start": return "#ea580c";
+          case "decision": return "#ca8a04";
+          case "success": return "#059669";
+          case "fail": return "#dc2626";
+          default: return "#d97706";
+        }
+      case "emerald":
+        switch (type) {
+          case "start": return "#059669";
+          case "decision": return "#16a34a";
+          case "success": return "#0d9488";
+          case "fail": return "#e11d48";
+          default: return "#0d9488";
+        }
+      case "midnight":
+        switch (type) {
+          case "start": return "#2563eb";
+          case "decision": return "#4f46e5";
+          case "success": return "#059669";
+          case "fail": return "#e11d48";
+          default: return "#0284c7";
+        }
+      case "amethyst":
+        switch (type) {
+          case "start": return "#9333ea";
+          case "decision": return "#c026d3";
+          case "success": return "#059669";
+          case "fail": return "#e11d48";
+          default: return "#7c3aed";
+        }
+      case "obsidian":
+        switch (type) {
+          case "start": return "#e5e5e5";
+          case "decision": return "#a3a3a3";
+          case "success": return "#059669";
+          case "fail": return "#e11d48";
+          default: return "#525252";
+        }
+      default:
+        return "#0891b2";
     }
   };
 

@@ -478,3 +478,111 @@ exports.deleteFlashcardSet = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to delete flashcard set' });
   }
 };
+
+// ── PUT update flashcard set ─────────────────────────────────────────────────
+exports.updateFlashcardSet = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { flashcards, title, stats } = req.body;
+
+    const set = await FlashcardSet.findOne({ _id: id, owner: userId });
+    if (!set) return res.status(404).json({ success: false, message: 'Flashcard set not found' });
+
+    if (Array.isArray(flashcards)) {
+      set.flashcards = flashcards;
+    }
+    if (title && typeof title === 'string') {
+      set.title = title.trim();
+    }
+    if (stats && typeof stats === 'object') {
+      set.stats = { ...set.stats, ...stats };
+    }
+
+    set.updatedAt = Date.now();
+    await set.save();
+
+    return res.json({ success: true, message: 'Flashcard set updated', set });
+  } catch (error) {
+    console.error('Update flashcard set error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update flashcard set' });
+  }
+};
+
+// ── POST enhance card with AI Co-Pilot ───────────────────────────────────────
+exports.enhanceCard = async (req, res) => {
+  try {
+    const { card, action = 'simplify', instruction = '', setTitle = '' } = req.body;
+    if (!card || !card.front || !card.back) {
+      return res.status(400).json({ success: false, message: 'Valid card object with front and back is required' });
+    }
+
+    const actionDirectives = {
+      simplify: "Rewrite the answer on the back to be simpler, clearer, and easier to memorize (ELI5 style).",
+      mnemonic: "Add a clever mnemonic device or memory hook to help the student remember this answer easily.",
+      example: "Add a concrete, real-world application or STEM example to reinforce the concept.",
+      distractors: "Generate 3 plausible but incorrect multiple-choice distractor options for this question and return them in the 'options' array.",
+      latex: "Format any formulas or math expressions on both front and back into clean LaTeX notation (e.g. $$ E = mc^2 $$)."
+    };
+
+    const directive = actionDirectives[action] || instruction || "Improve and polish this study flashcard.";
+
+    const prompt = `You are a master educator and learning scientist specializing in active recall flashcards.
+Flashcard Set Context: "${setTitle}"
+Task: ${directive}
+${instruction ? `User Extra Instruction: "${instruction}"` : ""}
+
+Current Card:
+Question (Front): ${card.front}
+Answer (Back): ${card.back}
+Existing Mnemonic: ${card.mnemonic || "None"}
+Existing Explanation: ${card.explanation || "None"}
+
+Return a STRICT JSON object with:
+- "front": improved question text (supports LaTeX math if relevant)
+- "back": improved answer text (concise, high-yield, supports LaTeX math)
+- "mnemonic": helpful memory device (string or empty)
+- "explanation": brief deeper breakdown (1-2 sentences)
+- "options": array of 4 strings (1 correct answer and 3 tricky distractors) for quiz mode
+- "difficulty": "easy" | "medium" | "hard"
+
+Do not include extra markdown formatting, commentary or fences. Return raw JSON only.`;
+
+    const messages = [
+      { role: "system", content: "You are an expert flashcard editor. Output strict raw JSON only." },
+      { role: "user", content: prompt }
+    ];
+
+    let responseContent;
+    try {
+      const result = await callPremiumModel(messages, { temperature: 0.6, max_tokens: 1500 });
+      responseContent = result.content;
+    } catch (e) {
+      const freeResult = await callFreeModel(messages, { temperature: 0.6, max_tokens: 1500 });
+      responseContent = freeResult.content;
+    }
+
+    let cleaned = responseContent.trim().replace(/^```(?:json)?\s*/im, '').replace(/```\s*$/im, '').trim();
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('No JSON object in AI response');
+    const parsed = JSON.parse(cleaned.substring(start, end + 1));
+
+    return res.json({
+      success: true,
+      card: {
+        id: card.id,
+        front: parsed.front || card.front,
+        back: parsed.back || card.back,
+        mnemonic: parsed.mnemonic || card.mnemonic || '',
+        explanation: parsed.explanation || card.explanation || '',
+        options: Array.isArray(parsed.options) && parsed.options.length > 0 ? parsed.options : card.options || [],
+        difficulty: parsed.difficulty || card.difficulty || 'medium',
+        mastery: card.mastery || 'new'
+      }
+    });
+  } catch (error) {
+    console.error('Enhance flashcard error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to enhance flashcard', error: error.message });
+  }
+};

@@ -192,13 +192,19 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&family=Montserrat:wght@400;600;700;800&family=Fjalla+One&display=swap"
+          rel="stylesheet"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <SchemaMarkup schema={generateOrganizationSchema()} />
       </head>
-      <body className="antialiased bg-black text-white selection:bg-red-900/50">
+      <body className="font-sans antialiased bg-black text-white selection:bg-red-900/50">
         {/* Google Analytics / Tag Manager (G-VK6RMJ2KVV & AW-363591459) */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-VK6RMJ2KVV"

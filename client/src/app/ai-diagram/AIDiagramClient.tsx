@@ -98,6 +98,15 @@ const AI_MODELS = [
   { id: "atlas",   name: "Atlas",   accessTier: "Power", desc: "Max-context complex system architecture map",       color: "amber",  hex: "#fbbf24" },
 ];
 
+export const DIAGRAM_THEMES = [
+  { id: "cyber", name: "Cyber Neon", stroke: "#06b6d4", hex: "#06b6d4", accent: "#ec4899", desc: "Cyan & Purple glowing cyber aesthetics" },
+  { id: "sunset", name: "Sunset Solar", stroke: "#f97316", hex: "#f97316", accent: "#fbbf24", desc: "Warm orange & amber sun gradient" },
+  { id: "emerald", name: "Emerald Matrix", stroke: "#10b981", hex: "#10b981", accent: "#34d399", desc: "Vibrant emerald & mint greens" },
+  { id: "midnight", name: "Midnight Electric", stroke: "#3b82f6", hex: "#3b82f6", accent: "#8b5cf6", desc: "Electric blue & deep indigo" },
+  { id: "amethyst", name: "Royal Amethyst", stroke: "#a855f7", hex: "#a855f7", accent: "#f43f5e", desc: "Rich violet & magenta tones" },
+  { id: "obsidian", name: "Minimal Titanium", stroke: "#e5e5e5", hex: "#ffffff", accent: "#a3a3a3", desc: "Monochrome high-contrast slate" },
+];
+
 const LANGUAGES = ["English", "German", "Spanish", "French", "Japanese", "Arabic"];
 
 const TRIVIA_TIPS = [
@@ -666,7 +675,7 @@ export default function AIDiagramClient({ initialFormat }: { initialFormat?: str
       if (error.response?.data?.code === "INSUFFICIENT_TOKENS") {
         toast.error("Insufficient tokens! Please upgrade your plan or acquire tokens.");
       } else if (error.response?.data?.code === "DAILY_LIMIT_EXCEEDED") {
-        toast.error("Daily free tier limit exceeded. Upgrade to Pro for unlimited generation.");
+        toast.error("Daily free tier limit reached. Upgrade to Pro Scholar for extended capacity.");
       } else {
         toast.error(errMsg);
       }
@@ -810,36 +819,70 @@ export default function AIDiagramClient({ initialFormat }: { initialFormat?: str
   const getThemeStroke = () => {
     switch (selectedTheme) {
       case "cyber": return "#06b6d4";
-      case "amber": return "#f59e0b";
+      case "sunset": return "#f97316";
       case "emerald": return "#10b981";
-      default: return "#525252";
+      case "midnight": return "#3b82f6";
+      case "amethyst": return "#a855f7";
+      case "obsidian": return "#e5e5e5";
+      default: return "#06b6d4";
     }
   };
 
   const getNodeColor = (type: string) => {
-    if (selectedTheme === "cyber") {
-      switch (type) {
-        case "start": return "border-cyan-500 bg-cyan-950/40 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.2)]";
-        case "decision": return "border-purple-500 bg-purple-950/30 text-purple-200";
-        case "success": return "border-emerald-500 bg-emerald-950/30 text-emerald-200";
-        case "fail": return "border-rose-500 bg-rose-950/30 text-rose-200";
-        default: return "border-blue-500 bg-blue-950/30 text-blue-200";
-      }
-    } else if (selectedTheme === "amber") {
-      switch (type) {
-        case "start": return "border-amber-500 bg-amber-950/40 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]";
-        default: return "border-orange-500 bg-orange-950/30 text-orange-200";
-      }
-    } else if (selectedTheme === "emerald") {
-      switch (type) {
-        case "start": return "border-emerald-500 bg-emerald-950/40 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
-        default: return "border-teal-500 bg-teal-950/30 text-teal-200";
-      }
-    } else {
-      switch (type) {
-        case "start": return "border-neutral-400 bg-neutral-900 text-white shadow-xl";
-        default: return "border-neutral-600 bg-neutral-900/60 text-neutral-300";
-      }
+    switch (selectedTheme) {
+      case "cyber":
+        switch (type) {
+          case "start": return "border-cyan-500 bg-cyan-950/40 text-cyan-200 shadow-[0_0_20px_rgba(6,182,212,0.25)]";
+          case "decision": return "border-purple-500 bg-purple-950/35 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.2)]";
+          case "success": return "border-emerald-500 bg-emerald-950/35 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+          case "fail": return "border-rose-500 bg-rose-950/35 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.2)]";
+          default: return "border-blue-500 bg-blue-950/30 text-blue-200 shadow-[0_0_10px_rgba(59,130,246,0.15)]";
+        }
+      case "sunset":
+        switch (type) {
+          case "start": return "border-orange-500 bg-orange-950/40 text-orange-200 shadow-[0_0_20px_rgba(249,115,22,0.25)]";
+          case "decision": return "border-yellow-500 bg-yellow-950/35 text-yellow-200 shadow-[0_0_15px_rgba(234,179,8,0.2)]";
+          case "success": return "border-emerald-500 bg-emerald-950/35 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+          case "fail": return "border-red-500 bg-red-950/35 text-red-200 shadow-[0_0_15px_rgba(239,68,68,0.2)]";
+          default: return "border-amber-500 bg-amber-950/30 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.15)]";
+        }
+      case "emerald":
+        switch (type) {
+          case "start": return "border-emerald-500 bg-emerald-950/40 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.25)]";
+          case "decision": return "border-green-500 bg-green-950/35 text-green-200 shadow-[0_0_15px_rgba(34,197,94,0.2)]";
+          case "success": return "border-teal-400 bg-teal-950/35 text-teal-100 shadow-[0_0_15px_rgba(45,212,191,0.2)]";
+          case "fail": return "border-rose-500 bg-rose-950/35 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.2)]";
+          default: return "border-teal-500 bg-teal-950/30 text-teal-200 shadow-[0_0_10px_rgba(20,184,166,0.15)]";
+        }
+      case "midnight":
+        switch (type) {
+          case "start": return "border-blue-500 bg-blue-950/40 text-blue-200 shadow-[0_0_20px_rgba(59,130,246,0.25)]";
+          case "decision": return "border-indigo-500 bg-indigo-950/35 text-indigo-200 shadow-[0_0_15px_rgba(99,102,241,0.2)]";
+          case "success": return "border-emerald-500 bg-emerald-950/35 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+          case "fail": return "border-rose-500 bg-rose-950/35 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.2)]";
+          default: return "border-sky-500 bg-sky-950/30 text-sky-200 shadow-[0_0_10px_rgba(14,165,233,0.15)]";
+        }
+      case "amethyst":
+        switch (type) {
+          case "start": return "border-purple-500 bg-purple-950/40 text-purple-200 shadow-[0_0_20px_rgba(168,85,247,0.25)]";
+          case "decision": return "border-fuchsia-500 bg-fuchsia-950/35 text-fuchsia-200 shadow-[0_0_15px_rgba(217,70,239,0.2)]";
+          case "success": return "border-emerald-500 bg-emerald-950/35 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+          case "fail": return "border-rose-500 bg-rose-950/35 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.2)]";
+          default: return "border-violet-500 bg-violet-950/30 text-violet-200 shadow-[0_0_10px_rgba(139,92,246,0.15)]";
+        }
+      case "obsidian":
+        switch (type) {
+          case "start": return "border-white/60 bg-neutral-900 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]";
+          case "decision": return "border-neutral-400 bg-neutral-800 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]";
+          case "success": return "border-emerald-400 bg-neutral-900 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.15)]";
+          case "fail": return "border-rose-400 bg-neutral-900 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.15)]";
+          default: return "border-neutral-600 bg-neutral-900/60 text-neutral-300";
+        }
+      default:
+        switch (type) {
+          case "start": return "border-cyan-500 bg-cyan-950/40 text-cyan-200 shadow-[0_0_20px_rgba(6,182,212,0.25)]";
+          default: return "border-neutral-600 bg-neutral-900/60 text-neutral-300";
+        }
     }
   };
 
@@ -857,26 +900,71 @@ export default function AIDiagramClient({ initialFormat }: { initialFormat?: str
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Theme Live Picker */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="h-8 px-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center gap-1.5 text-neutral-300 hover:text-white hover:bg-white/10 transition-colors text-[10px] font-bold outline-none cursor-pointer">
+                <span 
+                  className="w-2 h-2 rounded-full shrink-0" 
+                  style={{ 
+                    backgroundColor: DIAGRAM_THEMES.find(t => t.id === selectedTheme)?.hex || "#06b6d4",
+                    boxShadow: `0 0 6px ${DIAGRAM_THEMES.find(t => t.id === selectedTheme)?.hex || "#06b6d4"}80`
+                  }} 
+                />
+                <span className="hidden sm:inline">{DIAGRAM_THEMES.find(t => t.id === selectedTheme)?.name || "Theme"}</span>
+                <ChevronDown size={10} className="text-neutral-500" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-[#0a0a0a] backdrop-blur-2xl border border-white/[0.08] text-white min-w-[190px] p-2 rounded-2xl shadow-2xl z-[300]">
+                <div className="px-2 py-1 mb-1 border-b border-white/[0.05]">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">Select Palette</p>
+                </div>
+                {DIAGRAM_THEMES.map((theme) => {
+                  const isActive = selectedTheme === theme.id;
+                  return (
+                    <DropdownMenuItem
+                      key={theme.id}
+                      onClick={() => setSelectedTheme(theme.id)}
+                      className={cn(
+                        "cursor-pointer rounded-xl p-2 mb-0.5 flex items-center justify-between text-xs transition-all",
+                        isActive ? "bg-white/[0.08] text-white font-bold" : "text-neutral-300 hover:text-white hover:bg-white/[0.04]"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="w-2.5 h-2.5 rounded-full shrink-0" 
+                          style={{ backgroundColor: theme.hex, boxShadow: `0 0 8px ${theme.hex}80` }} 
+                        />
+                        <span>{theme.name}</span>
+                      </div>
+                      {isActive && <Check size={12} style={{ color: theme.hex }} />}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <button 
               type="button"
               onClick={() => handleZoom("out")} 
-              className="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Zoom out"
             >
               <ZoomOut size={13} />
             </button>
-            <span className="text-[10px] font-mono text-neutral-500 font-bold px-1.5">{Math.round(zoom * 100)}%</span>
+            <span className="text-[10px] font-mono text-neutral-500 font-bold px-1">{Math.round(zoom * 100)}%</span>
             <button 
               type="button"
               onClick={() => handleZoom("in")} 
-              className="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Zoom in"
             >
               <ZoomIn size={13} />
             </button>
-            <div className="w-px h-5 bg-white/10 mx-1"></div>
+            <div className="w-px h-5 bg-white/10 mx-0.5"></div>
             <button 
               type="button"
               onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1.0); }} 
-              className="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Reset View"
             >
               <RefreshCw size={12} />
             </button>
@@ -1394,14 +1482,42 @@ export default function AIDiagramClient({ initialFormat }: { initialFormat?: str
                         {/* Style Theme Dropdown Selector */}
                         <DropdownMenu>
                           <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.06] hover:border-white/15 text-[11px] font-bold text-neutral-300 hover:text-white transition-all duration-200 outline-none shrink-0 group">
-                            <span>Theme: {selectedTheme.toUpperCase()}</span>
+                            <span 
+                              className="w-2 h-2 rounded-full shrink-0" 
+                              style={{ 
+                                backgroundColor: DIAGRAM_THEMES.find(t => t.id === selectedTheme)?.hex || "#06b6d4",
+                                boxShadow: `0 0 6px ${DIAGRAM_THEMES.find(t => t.id === selectedTheme)?.hex || "#06b6d4"}99`
+                              }} 
+                            />
+                            <span>{DIAGRAM_THEMES.find(t => t.id === selectedTheme)?.name || "Cyber Neon"}</span>
                             <ChevronDown size={11} className="text-neutral-500 group-hover:text-neutral-300 transition-colors" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-[#0a0a0a] backdrop-blur-2xl border border-white/[0.08] text-white min-w-[180px] p-2 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] z-[300]" style={{ background: 'radial-gradient(ellipse at top left, #ffffff06 0%, #0a0a0a 60%)' }}>
-                            <DropdownMenuItem onClick={() => setSelectedTheme("cyber")} className="cursor-pointer rounded-xl p-2.5 mb-0.5 text-xs text-neutral-300 hover:text-white focus:bg-white/[0.04] focus:text-white transition-all">CYBER GLOW</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSelectedTheme("amber")} className="cursor-pointer rounded-xl p-2.5 mb-0.5 text-xs text-neutral-300 hover:text-white focus:bg-white/[0.04] focus:text-white transition-all">WARM AMBER</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSelectedTheme("emerald")} className="cursor-pointer rounded-xl p-2.5 mb-0.5 text-xs text-neutral-300 hover:text-white focus:bg-white/[0.04] focus:text-white transition-all">EMERALD FOREST</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSelectedTheme("slate")} className="cursor-pointer rounded-xl p-2.5 mb-0.5 text-xs text-neutral-300 hover:text-white focus:bg-white/[0.04] focus:text-white transition-all">SLATE MINIMAL</DropdownMenuItem>
+                          <DropdownMenuContent className="bg-[#0a0a0a] backdrop-blur-2xl border border-white/[0.08] text-white min-w-[220px] p-2 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] z-[300]" style={{ background: 'radial-gradient(ellipse at top left, #ffffff06 0%, #0a0a0a 60%)' }}>
+                            <div className="px-2.5 py-1.5 mb-1 border-b border-white/[0.05]">
+                              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">Color Themes</p>
+                            </div>
+                            {DIAGRAM_THEMES.map((theme) => {
+                              const isActive = selectedTheme === theme.id;
+                              return (
+                                <DropdownMenuItem
+                                  key={theme.id}
+                                  onClick={() => setSelectedTheme(theme.id)}
+                                  className={cn(
+                                    "cursor-pointer rounded-xl p-2 mb-0.5 flex items-center justify-between text-xs transition-all",
+                                    isActive ? "bg-white/[0.08] text-white font-bold" : "text-neutral-300 hover:text-white hover:bg-white/[0.04]"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span 
+                                      className="w-2.5 h-2.5 rounded-full shrink-0" 
+                                      style={{ backgroundColor: theme.hex, boxShadow: `0 0 8px ${theme.hex}80` }} 
+                                    />
+                                    <span>{theme.name}</span>
+                                  </div>
+                                  {isActive && <Check size={12} style={{ color: theme.hex }} />}
+                                </DropdownMenuItem>
+                              );
+                            })}
                           </DropdownMenuContent>
                         </DropdownMenu>
 

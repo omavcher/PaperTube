@@ -128,7 +128,7 @@ const DUMMY_CODE = `// Upgrade to Pro to unlock the full solution.
 //   ✦ Complete optimised code in any language
 //   ✦ Step-by-step execution flow diagram
 //   ✦ Inline code comments
-//   ✦ Unlimited generations
+//   ✦ High-capacity AI generations (120/mo)
 
 class Solution {
 public:

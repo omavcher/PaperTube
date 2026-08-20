@@ -1,48 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, Headphones, Sparkles, Mail, MessageSquare, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRegionConfig } from "@/lib/localization";
+import Link from "next/link";
 
 interface FAQItem {
   question: string;
   answer: string;
 }
-
-const faqs: FAQItem[] = [
-  {
-    question: "How to convert a YouTube video to notes using AI?",
-    answer:
-      "To convert a YouTube video to notes, simply paste the video link into the search bar at the top of Paperxify. Our system extracts the transcript, structures it into detailed concepts, embeds relevant visual aids, and outputs study-ready notes.",
-  },
-  {
-    question: "What is the best AI notes from YouTube link tool?",
-    answer:
-      "Paperxify is the leading YouTube link-to-notes AI. Unlike standard summarizers, it allows you to choose visual theme layouts, chat with the notes using model selector layers (like DeepSeek V4 Flash), practice with quizzes, and download water-free PDFs.",
-  },
-  {
-    question: "Why is Paperxify better than alternatives like NoteGPT?",
-    answer:
-      "NoteGPT prints out simple, flat text-based transcripts. Paperxify gives you full visual layout formats, customizable font styling matching the theme, a dedicated code solution compiler, and direct Notion synchronization features.",
-  },
-  {
-    question: "Can I generate notes from YouTube links for free?",
-    answer:
-      "Yes, Paperxify is free to try with no initial sign-up required. Simply paste your YouTube URL to get started. The free Flash model quickly constructs structured outline notes and key points for all students.",
-  },
-  {
-    question: "Does it support multi-language lecture video files?",
-    answer:
-      "Yes. Paperxify understands speech in English, German (Deutsch), Spanish (Español), French (Français), Hindi, and other major languages, automatically generating structured summaries in the selected output language.",
-  },
-  {
-    question: "Can I synchronize note pages directly with Notion?",
-    answer:
-      "Yes! Pro and Power tier subscribers can synchronize their generated study notes directly to their Notion workspaces with a single click inside the export dialog, keeping their personal wikis organized automatically.",
-  },
-];
 
 interface FAQAccordionProps {
   faqs?: FAQItem[];
@@ -51,58 +19,47 @@ interface FAQAccordionProps {
 
 export function FAQAccordion({ faqs: customFaqs, region }: FAQAccordionProps) {
   const { config } = useRegionConfig(region);
-  const regionExams = config.exams.slice(0, 3).join(", ");
-  const regionUnis = config.universities.slice(0, 2).join(" or ");
-  const isDe = config.region === "de";
 
   const defaultFaqs: FAQItem[] = [
     {
-      question: isDe
-        ? `Wie konvertiert man ein YouTube-Video mit KI in Notizen für das Abitur oder Studium?`
-        : `How to convert a YouTube video to study notes for ${config.region === 'global' ? 'exams' : regionExams}?`,
-      answer: isDe
-        ? `Fügen Sie einfach den Link des YouTube-Videos in das Suchfeld oben ein. Unser System extrahiert das Transkript, strukturiert es in detaillierte Konzepte und mathematische/naturwissenschaftliche Abitur-Themen und gibt sofort lernfertige Notizen aus.`
-        : `To convert a YouTube video to notes, simply paste the video link into the search bar at the top of Paperxify. Our system extracts the transcript, structures it into detailed concepts matching ${config.region === 'global' ? 'academic' : regionExams} standards, embeds relevant visual aids, and outputs study-ready notes.`,
+      question: "How does Paperxify turn YouTube videos into notes?",
+      answer:
+        "Our AI analyzes the video transcript, extracts key concepts, mathematical formulas, and definitions, and structures them into organized study notes, lecture summaries, and flashcards in seconds.",
     },
     {
-      question: isDe
-        ? `Was ist das beste YouTube-Link-zu-Notizen KI-Tool für Studenten an der ${config.universities[0]} oder ${config.universities[1]}?`
-        : `What is the best AI notes from YouTube link tool for students at ${config.region === 'global' ? 'universities' : regionUnis}?`,
-      answer: isDe
-        ? `Paperxify ist die führende YouTube-Notizen-KI. Im Gegensatz zu einfachen Transkriptoren können Sie visuelle Layouts wählen, auf Deutsch lernen, mit Übungsfragen passend zum Numerus Clausus üben und wasserzeichenfreie PDFs exportieren.`
-        : `Paperxify is the leading YouTube link-to-notes AI. Unlike standard summarizers, it allows students at ${config.region === 'global' ? 'universities worldwide' : regionUnis} to choose visual theme layouts, practice with quizzes matching ${config.region === 'global' ? 'their syllabus' : regionExams}, and download watermark-free PDFs.`,
+      question: "What formats can I generate and export?",
+      answer:
+        "You can generate LaTeX-formatted study notes, interactive quizzes, PowerPoint presentations (PPT), digital flashcard decks (compatible with Anki), mind maps, and clean PDF documents.",
     },
     {
-      question: isDe
-        ? `Warum ist Paperxify besser als Alternativen wie NoteGPT?`
-        : `Why is Paperxify better than alternatives like NoteGPT?`,
-      answer: isDe
-        ? `NoteGPT gibt nur einfache, flache Texttranskripte aus. Paperxify bietet strukturierte Formeln, LaTeX-Unterstützung, Code-Kompilierung, interaktive Flowcharts und direkte Notion-Synchronisierung.`
-        : `NoteGPT prints out simple, flat text-based transcripts. Paperxify gives you full visual layout formats, customizable font styling matching the theme, a dedicated code solution compiler, and direct Notion synchronization features.`,
+      question: "Are mathematical formulas and LaTeX syntax supported?",
+      answer:
+        "Yes! Paperxify has native LaTeX rendering. Equations, theorems, code snippets, and chemical diagrams are parsed and formatted cleanly for STEM courses.",
     },
     {
-      question: isDe
-        ? `Kann ich Notizen aus YouTube-Links kostenlos generieren?`
-        : `Can I generate notes from YouTube links for free?`,
-      answer: isDe
-        ? `Ja, Paperxify ist kostenlos und ohne Registrierung nutzbar. Fügen Sie einfach Ihre YouTube-URL ein. Das kostenlose Flash-Modell erstellt schnell gegliederte Notizen und Zusammenfassungen.`
-        : `Yes, Paperxify is free to try with no initial sign-up required. Simply paste your YouTube URL to get started. The free Flash model quickly constructs structured outline notes and key points for all students.`,
+      question: "Can I generate notes in multiple languages?",
+      answer:
+        "Paperxify supports over 30+ languages, including English, Spanish, German, French, Hindi, Japanese, and more. You can input videos in any language and export in your preferred language.",
     },
     {
-      question: isDe
-        ? `Unterstützt es Vorlesungsvideos in mehreren Sprachen?`
-        : `Does it support multi-language lecture video files?`,
-      answer: isDe
-        ? `Ja. Paperxify versteht Sprache in Deutsch, Englisch, Spanisch, Französisch und anderen wichtigen Sprachen und generiert die Zusammenfassungen automatisch in Ihrer Zielsprache.`
-        : `Yes. Paperxify understands speech in English, German (Deutsch), Spanish (Español), French (Français), Hindi, and other major languages, automatically generating structured summaries in the selected output language.`,
+      question: "Can I export directly to Notion or Anki?",
+      answer:
+        "Yes, Pro and Power tier users can sync study decks to Anki, export Markdown directly into Notion workspaces, and download ready-to-present PPT slides.",
     },
     {
-      question: isDe
-        ? `Kann ich die Notizen direkt mit Notion synchronisieren?`
-        : `Can I synchronize note pages directly with Notion?`,
-      answer: isDe
-        ? `Ja! Abonnenten der Pro- und Power-Stufen können ihre generierten Studiennotizen mit nur einem Klick direkt in ihre Notion-Arbeitsbereiche importieren und so ihr persönliches Wiki aufbauen.`
-        : `Yes! Pro and Power tier subscribers can synchronize their generated study notes directly to their Notion workspaces with a single click inside the export dialog, keeping their personal wikis organized automatically.`,
+      question: "Is my study data and uploaded material private?",
+      answer:
+        "Your privacy is our priority. All processed notes and transcripts are encrypted in transit and at rest. We never sell user data or train public models on your private documents.",
+    },
+    {
+      question: "Can I cancel my subscription at any time?",
+      answer:
+        "Yes. You can cancel your subscription anytime with a single click from your Account Settings. You will retain access until the end of your current billing period.",
+    },
+    {
+      question: "What is your refund policy?",
+      answer:
+        "We offer a 7-day money-back guarantee on all paid plans. If you are not completely satisfied, contact our support team within 7 days for a prompt refund.",
     },
   ];
 
@@ -113,30 +70,66 @@ export function FAQAccordion({ faqs: customFaqs, region }: FAQAccordionProps) {
     setOpenIndex(openIndex === index ? null : index);
   };
 
+  const pad = (n: number) => String(n).padStart(2, "0");
+
   return (
-    <section className="w-full max-w-6xl mx-auto py-8 md:py-16">
-      <div className="flex flex-col lg:flex-row gap-12 lg:gap-24">
-        {/* Left Side - Large Title */}
-        <div className="lg:w-1/3">
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-none">
-            {isDe ? (
-              <>
-                Häufig
-                <br />
-                gestellte Fragen
-              </>
-            ) : (
-              <>
-                Frequently
-                <br />
-                asked questions
-              </>
-            )}
-          </h2>
+    <section className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 font-sans">
+      
+      {/* Main Grid Section (Laptop 2 Columns, Mobile 1 Column) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-start">
+        
+        {/* ─── LEFT COLUMN: Title & Still Have Questions Card ─── */}
+        <div className="lg:col-span-5 text-center lg:text-left flex flex-col justify-between h-full">
+          <div>
+            {/* Top Pill Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[9.5px] font-medium uppercase tracking-wider text-neutral-400 mb-3 sm:mb-4">
+              <span>Frequently Asked Questions</span>
+            </div>
+
+            {/* Main Heading */}
+            <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
+              Questions & <br className="hidden sm:inline" />
+              <span className="text-[#ef4444]">Answers.</span>
+            </h2>
+
+            {/* Subtitle */}
+            <p className="text-xs sm:text-sm text-neutral-400 font-normal leading-relaxed mt-2 sm:mt-4 max-w-md mx-auto lg:mx-0">
+              Everything you need to know about Paperxify, AI synthesis tools, exports, and academic workflows.
+            </p>
+          </div>
+
+          {/* Support Card (Desktop) */}
+          <div className="hidden lg:block mt-8">
+            <div className="rounded-2xl bg-[#09090c] border border-white/[0.08] p-5 shadow-sm">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-neutral-300 shrink-0">
+                  <Headphones size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Need personal help?</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5 leading-normal">
+                    Our team responds to all student inquiries within a few hours.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Link
+                  href="mailto:support@paperxify.com"
+                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white font-medium text-xs transition-all cursor-pointer"
+                >
+                  <span>Contact Support</span>
+                  <ArrowRight size={13} />
+                </Link>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        {/* Right Side - Accordion */}
-        <div className="lg:w-2/3 flex flex-col">
+
+        {/* ─── RIGHT COLUMN: Accordion Items (01 - 08) ─── */}
+        <div className="lg:col-span-7 space-y-2 sm:space-y-2.5">
           {displayFaqs.map((faq, index) => {
             const isOpen = openIndex === index;
 
@@ -144,46 +137,100 @@ export function FAQAccordion({ faqs: customFaqs, region }: FAQAccordionProps) {
               <div
                 key={index}
                 className={cn(
-                  "border-b border-white/10 py-5 first:pt-0 last:border-b-0",
+                  "rounded-2xl transition-all duration-200 overflow-hidden cursor-pointer",
+                  isOpen
+                    ? "bg-[#09090c] border border-white/[0.16] shadow-sm p-4 sm:p-5"
+                    : "bg-[#09090c] border border-white/[0.07] hover:border-white/[0.14] p-4 sm:p-5"
                 )}
+                onClick={() => toggleFAQ(index)}
               >
-                <button
-                  onClick={() => toggleFAQ(index)}
-                  className="w-full flex items-start text-left gap-4 group focus:outline-none"
-                >
-                  <div className="mt-1 flex-shrink-0 text-blue-500 transition-transform duration-300">
-                    {isOpen ? (
-                      <Minus size={20} strokeWidth={2.5} />
-                    ) : (
-                      <Plus size={20} strokeWidth={2.5} />
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-lg sm:text-xl font-medium text-white group-hover:text-neutral-200 transition-colors">
-                      {faq.question}
+                {/* Header Row */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-neutral-500 font-medium text-xs sm:text-sm font-mono shrink-0 w-6">
+                      {pad(index + 1)}
                     </span>
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.3, ease: "easeInOut" }}
-                          className="overflow-hidden"
-                        >
-                          <p className="text-neutral-400 text-sm sm:text-base leading-relaxed pt-1">
-                            {faq.answer}
-                          </p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight leading-snug">
+                      {faq.question}
+                    </h3>
                   </div>
-                </button>
+
+                  {/* Plus / Minus Toggle Button */}
+                  <div className={cn(
+                    "w-7 h-7 rounded-full border flex items-center justify-center shrink-0 transition-colors",
+                    isOpen
+                      ? "border-white/20 text-white bg-white/[0.08]"
+                      : "border-white/[0.08] text-neutral-400 hover:border-white/20 hover:text-white"
+                  )}>
+                    {isOpen ? <Minus size={12} /> : <Plus size={12} />}
+                  </div>
+                </div>
+
+                {/* Animated Answer Body */}
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-3 mt-3 border-t border-white/[0.06]">
+                        <p className="text-xs sm:text-[13px] text-neutral-400 font-normal leading-relaxed">
+                          {faq.answer}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
         </div>
+
       </div>
+
+
+      {/* ─── BOTTOM FULL-WIDTH BANNER: Still have questions? ─── */}
+      <div className="mt-8 sm:mt-12 rounded-2xl bg-[#09090c] border border-white/[0.08] p-4 sm:p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        {/* Left Side: Icon + Heading */}
+        <div className="flex items-center gap-3 w-full md:w-auto text-left">
+          <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-neutral-200 shrink-0">
+            <Sparkles size={18} />
+          </div>
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+              Can’t find what you are looking for?
+            </h3>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Reach out to our support team and we will get back to you within 24 hours.
+            </p>
+          </div>
+        </div>
+
+        {/* Right Side: Email Us & Live Chat Buttons */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto justify-stretch md:justify-end shrink-0">
+          <Link
+            href="mailto:support@paperxify.com"
+            className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white text-xs font-medium transition-all cursor-pointer"
+          >
+            <Mail size={13} />
+            <span>Email Support</span>
+          </Link>
+
+          <Link
+            href="mailto:support@paperxify.com"
+            className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs font-medium transition-all cursor-pointer active:scale-98"
+          >
+            <MessageSquare size={13} />
+            <span>Live Help</span>
+          </Link>
+        </div>
+
+      </div>
+
     </section>
   );
 }

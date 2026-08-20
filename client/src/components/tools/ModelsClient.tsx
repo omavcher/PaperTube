@@ -255,7 +255,7 @@ export default function ModelsClient() {
               <div>
                 <h3 className="text-lg md:text-xl font-bold text-white tracking-tight mb-1.5 md:mb-2">Neural Cache Protocols</h3>
                 <p className="text-xs md:text-sm text-neutral-400 leading-relaxed max-w-xl">
-                  Free models consume <span className="text-yellow-500 font-mono">5 tokens</span> per generation. New personnel receive an initial payload of 3 tokens. Premium operators are granted <strong>unlimited access</strong> to all models.
+                  Free models have standard quotas. Pro & Power scholars receive <strong>full high-capacity access</strong> to all premium reasoning models.
                 </p>
               </div>
             </div>

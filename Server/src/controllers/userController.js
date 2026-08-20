@@ -2,9 +2,15 @@
 // controllers/userController.js
 const User = require('../models/User');
 const Note = require('../models/Note');
-
 const FlashcardSet = require('../models/FlashcardSet');
-const Report = require("../models/Report"); // Import the model
+const Presentation = require('../models/Presentation');
+const Quiz = require('../models/Quiz');
+const Diagram = require('../models/Diagram');
+const Homework = require('../models/Homework');
+const MathSolution = require('../models/MathSolution');
+const ExamPlan = require('../models/ExamPlan');
+const LanguageLesson = require('../models/LanguageLesson');
+const Report = require("../models/Report");
 /**
  * Get user public profile
  * GET /api/users/:username/profile
@@ -1299,6 +1305,257 @@ exports.getAuthenticatedProfile = async (req, res) => {
       success: false,
       message: "Failed to fetch profile",
       error: error.message
+    });
+  }
+};
+
+/**
+ * Get recent unified creations across all tools for the sidebar history
+ * GET /api/users/creations/recent
+ */
+exports.getRecentCreations = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const filterType = req.query.type || 'all';
+    const search = (req.query.search || '').trim().toLowerCase();
+
+    const tasks = [];
+
+    if (filterType === 'all' || filterType === 'notes') {
+      tasks.push(
+        Note.find({ owner: userId })
+          .sort({ createdAt: -1 })
+          .limit(limit)
+          .select('_id title slug thumbnail videoId createdAt views')
+          .lean()
+          .then(items => items.map(i => ({
+            id: i._id,
+            type: 'notes',
+            typeLabel: 'Video Notes',
+            title: i.title || 'Untitled Note',
+            slug: i.slug,
+            url: `/notes/${i.slug}`,
+            thumbnail: i.thumbnail || (i.videoId ? `https://img.youtube.com/vi/${i.videoId}/hqdefault.jpg` : ''),
+            createdAt: i.createdAt
+          })))
+          .catch(() => [])
+      );
+    }
+
+    if (filterType === 'all' || filterType === 'ppt' || filterType === 'presentation') {
+      tasks.push(
+        Presentation.find({ owner: userId })
+          .sort({ createdAt: -1 })
+          .limit(limit)
+          .select('_id title slug theme slides createdAt')
+          .lean()
+          .then(items => items.map(i => ({
+            id: i._id,
+            type: 'presentation',
+            typeLabel: 'AI Presentation',
+            title: i.title || 'Untitled Presentation',
+            slug: i.slug,
+            url: `/presentation/${i.slug}`,
+            slidesCount: i.slides?.length || 0,
+            theme: i.theme,
+            createdAt: i.createdAt
+          })))
+          .catch(() => [])
+      );
+    }
+
+    if (filterType === 'all' || filterType === 'quiz') {
+      tasks.push(
+        Quiz.find({ userId: userId })
+          .sort({ createdAt: -1 })
+          .limit(limit)
+          .select('_id title slug thumbnail videoId questions createdAt')
+          .lean()
+          .then(items => items.map(i => ({
+            id: i._id,
+            type: 'quiz',
+            typeLabel: 'Quiz Set',
+            title: i.title || 'Untitled Quiz',
+            slug: i.slug,
+            url: `/quiz/${i.slug}`,
+            thumbnail: i.thumbnail || (i.videoId ? `https://img.youtube.com/vi/${i.videoId}/hqdefault.jpg` : ''),
+            questionsCount: i.questions?.length || 0,
+            createdAt: i.createdAt
+          })))
+          .catch(() => [])
+      );
+    }
+
+    if (filterType === 'all' || filterType === 'flashcard') {
+      tasks.push(
+        FlashcardSet.find({ owner: userId })
+          .sort({ createdAt: -1 })
+          .limit(limit)
+          .select('_id title slug thumbnail videoId flashcards createdAt')
+          .lean()
+          .then(items => items.map(i => ({
+            id: i._id,
+            type: 'flashcard',
+            typeLabel: 'Flashcards',
+            title: i.title || 'Untitled Flashcards',
+            slug: i.slug,
+            url: `/flashcards/${i.slug}`,
+            thumbnail: i.thumbnail || (i.videoId ? `https://img.youtube.com/vi/${i.videoId}/hqdefault.jpg` : ''),
+            cardsCount: i.flashcards?.length || 0,
+            createdAt: i.createdAt
+          })))
+          .catch(() => [])
+      );
+    }
+
+    if (filterType === 'all' || filterType === 'diagram') {
+      tasks.push(
+        Diagram.find({ userId: userId })
+          .sort({ createdAt: -1 })
+          .limit(limit)
+          .select('_id prompt format slug createdAt')
+          .lean()
+          .then(items => items.map(i => ({
+            id: i._id,
+            type: 'diagram',
+            typeLabel: `${(i.format || 'AI').toUpperCase()} Diagram`,
+            title: i.prompt || `${i.format} diagram`,
+            slug: i.slug,
+            url: `/ai-diagram/${i.format}?slug=${i.slug}`,
+            format: i.format,
+            createdAt: i.createdAt
+          })))
+          .catch(() => [])
+      );
+    }
+
+    if (filterType === 'all' || filterType === 'study') {
+      tasks.push(
+        Promise.all([
+          Homework.find({ owner: userId }).sort({ createdAt: -1 }).limit(5).select('_id title question slug createdAt').lean().catch(() => []),
+          MathSolution.find({ owner: userId }).sort({ createdAt: -1 }).limit(5).select('_id title problem slug createdAt').lean().catch(() => []),
+          ExamPlan.find({ owner: userId }).sort({ createdAt: -1 }).limit(5).select('_id title examName slug createdAt').lean().catch(() => []),
+          LanguageLesson.find({ owner: userId }).sort({ createdAt: -1 }).limit(5).select('_id title topic targetLanguage slug createdAt').lean().catch(() => [])
+        ]).then(([hw, math, exam, lang]) => [
+          ...hw.map(i => ({ id: i._id, type: 'study', typeLabel: 'Homework Solution', title: i.title || i.question || 'Homework Helper', url: `/ai-study/homework-helper?slug=${i.slug}`, createdAt: i.createdAt })),
+          ...math.map(i => ({ id: i._id, type: 'study', typeLabel: 'Math Solution', title: i.title || i.problem || 'Math Proof', url: `/ai-study/math-solver?slug=${i.slug}`, createdAt: i.createdAt })),
+          ...exam.map(i => ({ id: i._id, type: 'study', typeLabel: 'Exam Roadmap', title: i.title || i.examName || 'Exam Study Plan', url: `/ai-study/exam-planner?slug=${i.slug}`, createdAt: i.createdAt })),
+          ...lang.map(i => ({ id: i._id, type: 'study', typeLabel: 'Language Lesson', title: i.title || `${i.targetLanguage || 'Language'} Lesson`, url: `/ai-study/language-tutor?slug=${i.slug}`, createdAt: i.createdAt }))
+        ])
+      );
+    }
+
+    const results = await Promise.all(tasks);
+    let allCreations = results.flat();
+
+    // Search query filter if provided
+    if (search) {
+      allCreations = allCreations.filter(item => 
+        item.title?.toLowerCase().includes(search) || 
+        item.typeLabel?.toLowerCase().includes(search)
+      );
+    }
+
+    // Sort by createdAt descending
+    allCreations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Limit to requested count
+    const finalCreations = allCreations.slice(0, limit);
+
+    return res.status(200).json({
+      success: true,
+      data: finalCreations,
+      total: allCreations.length
+    });
+  } catch (error) {
+    console.error("❌ Get Recent Creations Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user creations history",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Delete a creation by type and ID
+ * DELETE /api/users/creations/:type/:id
+ */
+exports.deleteCreation = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { type, id } = req.params;
+
+    if (!type || !id) {
+      return res.status(400).json({ success: false, message: "Type and ID required" });
+    }
+
+    let deleted = false;
+    if (type === 'notes') {
+      const doc = await Note.findOneAndDelete({ _id: id, owner: userId });
+      deleted = Boolean(doc);
+    } else if (type === 'presentation') {
+      const doc = await Presentation.findOneAndDelete({ _id: id, owner: userId });
+      deleted = Boolean(doc);
+    } else if (type === 'quiz') {
+      const doc = await Quiz.findOneAndDelete({ _id: id, userId: userId });
+      deleted = Boolean(doc);
+    } else if (type === 'flashcard') {
+      const doc = await FlashcardSet.findOneAndDelete({ _id: id, owner: userId });
+      deleted = Boolean(doc);
+    } else if (type === 'diagram') {
+      const doc = await Diagram.findOneAndDelete({ _id: id, userId: userId });
+      deleted = Boolean(doc);
+    } else if (type === 'study') {
+      await Promise.all([
+        Homework.findOneAndDelete({ _id: id, owner: userId }),
+        MathSolution.findOneAndDelete({ _id: id, owner: userId }),
+        ExamPlan.findOneAndDelete({ _id: id, owner: userId }),
+        LanguageLesson.findOneAndDelete({ _id: id, owner: userId })
+      ]);
+      deleted = true;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Creation deleted from history",
+      deleted
+    });
+  } catch (error) {
+    console.error("❌ Delete Creation Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete creation",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get detailed quota status and usage counts for active user
+ * GET /api/users/quota-status
+ */
+exports.getQuotaStatus = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Authentication required" });
+    }
+
+    const { getUserQuotaStatus } = require("../middleware/quotaMiddleware");
+    const quotaData = await getUserQuotaStatus(userId);
+
+    return res.status(200).json({
+      success: true,
+      data: quotaData,
+    });
+  } catch (error) {
+    console.error("❌ Get Quota Status Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch quota status",
+      error: error.message,
     });
   }
 };

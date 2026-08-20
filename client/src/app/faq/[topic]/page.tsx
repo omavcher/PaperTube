@@ -15,7 +15,7 @@ interface FAQItem {
 const youtubeToNotesFaqs: FAQItem[] = [
   {
     question: "Is Paperxify free?",
-    answer: "Yes, Paperxify offers a free tier that lets you summarize YouTube videos up to a certain duration. We also offer premium upgrades for unlimited transcription, customized formatting templates, and advanced features."
+    answer: "Yes, Paperxify offers a generous free tier that lets you summarize YouTube videos, generate slide decks, and solve homework. We also offer Pro and Power upgrades for high-capacity transcription, customized formatting templates, and priority AI features."
   },
   {
     question: "How do I convert a YouTube video to notes?",
