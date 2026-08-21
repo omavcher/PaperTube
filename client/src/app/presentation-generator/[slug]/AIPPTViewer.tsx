@@ -1509,22 +1509,13 @@ function SlideEditableCanvas({
     case "image_left":
       return (
         <div className="grid grid-cols-2 gap-3 sm:gap-6 items-center h-full text-left">
-          {/* Left Visual Illustration */}
+          {/* Left Visual Illustration - Clean & Immersive */}
           <div className="relative w-full aspect-[4/3] rounded-xl sm:rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
             <img 
               src={slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800"} 
               alt={slide.title || "Illustration"}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2.5">
-              <input
-                type="text"
-                value={slide.image_url || ""}
-                onChange={(e) => onUpdate(() => ({ image_url: e.target.value }))}
-                placeholder="Paste Image URL..."
-                className="text-[8px] sm:text-[9.5px] text-white/90 bg-black/60 backdrop-blur-md border border-white/20 rounded-md px-1.5 py-0.5 w-full outline-none"
-              />
-            </div>
           </div>
 
           {/* Right Detailed Content */}
@@ -1595,22 +1586,13 @@ function SlideEditableCanvas({
             </div>
           </div>
 
-          {/* Right Visual Illustration */}
+          {/* Right Visual Illustration - Clean & Immersive */}
           <div className="relative w-full aspect-[4/3] rounded-xl sm:rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
             <img 
               src={slide.image_url || "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800"} 
               alt={slide.title || "Illustration"}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2.5">
-              <input
-                type="text"
-                value={slide.image_url || ""}
-                onChange={(e) => onUpdate(() => ({ image_url: e.target.value }))}
-                placeholder="Paste Image URL..."
-                className="text-[8px] sm:text-[9.5px] text-white/90 bg-black/60 backdrop-blur-md border border-white/20 rounded-md px-1.5 py-0.5 w-full outline-none"
-              />
-            </div>
           </div>
         </div>
       );
