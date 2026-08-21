@@ -466,33 +466,92 @@ Return only the raw JSON array. No markdown tags, no code blocks.`;
           img = fallbackVisuals[idx % fallbackVisuals.length];
         }
 
+        // Normalize bullets to string array
+        let bullets = [];
+        if (Array.isArray(slide.bullets)) {
+          bullets = slide.bullets.map(b => {
+            if (typeof b === "string") return b;
+            if (b && typeof b === "object") return b.title ? `${b.title}: ${b.description || b.text || ''}` : (b.text || b.description || JSON.stringify(b));
+            return String(b || "");
+          });
+        }
+
+        // Normalize steps
+        let steps = [];
+        if (Array.isArray(slide.steps)) {
+          steps = slide.steps.map((st, i) => {
+            if (typeof st === "string") return st;
+            if (st && typeof st === "object") return st.title ? `${st.title}: ${st.description || ''}` : (st.step || st.description || JSON.stringify(st));
+            return String(st || "");
+          });
+        }
+
+        // Normalize events
+        let events = [];
+        if (Array.isArray(slide.events)) {
+          events = slide.events.map((ev, i) => {
+            if (typeof ev === "string") return { year: `Stage ${i + 1}`, description: ev };
+            if (ev && typeof ev === "object") return { year: String(ev.year || ev.title || ev.phase || `Step ${i + 1}`), description: String(ev.description || ev.text || ev.details || "") };
+            return { year: `Stage ${i + 1}`, description: String(ev || "") };
+          });
+        } else if (Array.isArray(slide.steps) && (slide.layout === "timeline" || slide.layout === "steps")) {
+          events = slide.steps.map((st, i) => {
+            if (typeof st === "string") return { year: `Phase ${i + 1}`, description: st };
+            if (st && typeof st === "object") return { year: String(st.title || st.year || `Phase ${i + 1}`), description: String(st.description || st.text || "") };
+            return { year: `Phase ${i + 1}`, description: String(st || "") };
+          });
+        }
+
+        // Normalize metrics
+        let metrics = [];
+        if (Array.isArray(slide.metrics)) {
+          metrics = slide.metrics.map(m => {
+            if (m && typeof m === "object") return { value: String(m.value || m.val || "0"), label: String(m.label || m.title || "Metric") };
+            return { value: String(m || "0"), label: "Metric" };
+          });
+        }
+
+        // Normalize phases
+        let phases = [];
+        if (Array.isArray(slide.phases)) {
+          phases = slide.phases.map((p, i) => {
+            if (p && typeof p === "object") return { phase: String(p.phase || p.title || `Phase ${i + 1}`), goal: String(p.goal || p.description || "") };
+            return { phase: `Phase ${i + 1}`, goal: String(p || "") };
+          });
+        }
+
+        // Normalize pros and cons and quadrants
+        let pros = Array.isArray(slide.pros) ? slide.pros.map(p => typeof p === "string" ? p : (p?.text || p?.title || JSON.stringify(p))) : [];
+        let cons = Array.isArray(slide.cons) ? slide.cons.map(c => typeof c === "string" ? c : (c?.text || c?.title || JSON.stringify(c))) : [];
+        let quadrants = Array.isArray(slide.quadrants) ? slide.quadrants.map(q => typeof q === "string" ? q : (q?.text || q?.title || JSON.stringify(q))) : [];
+
         return {
           id: idx + 1,
-          title: slide.title || "Slide Title",
-          subtitle: slide.subtitle || "",
+          title: typeof slide.title === "string" ? slide.title : "Slide Title",
+          subtitle: typeof slide.subtitle === "string" ? slide.subtitle : "",
           layout: slide.layout || (idx === 0 ? "title" : idx % 3 === 1 ? "image_left" : "bullets"),
-          bullets: slide.bullets || [],
-          columns: slide.columns || { left: [], right: [] },
-          metric: slide.metric || { value: "", label: "", description: "" },
-          speakerNotes: slide.speakerNotes || "",
+          bullets: bullets,
+          columns: slide.columns && typeof slide.columns === "object" ? slide.columns : { left: [], right: [] },
+          metric: slide.metric && typeof slide.metric === "object" ? slide.metric : { value: "", label: "", description: "" },
+          speakerNotes: typeof slide.speakerNotes === "string" ? slide.speakerNotes : "",
           variantIndex: slide.variantIndex || 0,
           bgImageIndex: slide.bgImageIndex || 0,
-          author: slide.author || "",
-          content: slide.content || "",
-          quote_text: slide.quote_text || "",
-          role: slide.role || "",
-          left_text: slide.left_text || "",
-          right_text: slide.right_text || "",
-          pros: slide.pros || [],
-          cons: slide.cons || [],
-          metrics: slide.metrics || [],
-          quadrants: slide.quadrants || [],
-          events: slide.events || [],
-          steps: slide.steps || [],
-          phases: slide.phases || [],
+          author: typeof slide.author === "string" ? slide.author : "",
+          content: typeof slide.content === "string" ? slide.content : "",
+          quote_text: typeof slide.quote_text === "string" ? slide.quote_text : "",
+          role: typeof slide.role === "string" ? slide.role : "",
+          left_text: typeof slide.left_text === "string" ? slide.left_text : "",
+          right_text: typeof slide.right_text === "string" ? slide.right_text : "",
+          pros: pros,
+          cons: cons,
+          metrics: metrics,
+          quadrants: quadrants,
+          events: events,
+          steps: steps,
+          phases: phases,
           image_url: img || "",
           alt_text: slide.alt_text || slide.title || "Topic visualization",
-          images: slide.images || (img ? [img] : [])
+          images: Array.isArray(slide.images) ? slide.images : (img ? [img] : [])
         };
       }),
       generationDetails: {

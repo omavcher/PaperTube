@@ -26,16 +26,15 @@ const SlideSchema = new mongoose.Schema({
     required: true
   },
   bullets: [{
-    type: String
+    type: mongoose.Schema.Types.Mixed
   }],
   columns: {
-    left: [{ type: String }],
-    right: [{ type: String }]
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({ left: [], right: [] })
   },
   metric: {
-    value: { type: String, default: "" },
-    label: { type: String, default: "" },
-    description: { type: String, default: "" }
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({ value: "", label: "", description: "" })
   },
   speakerNotes: {
     type: String,
@@ -74,35 +73,32 @@ const SlideSchema = new mongoose.Schema({
     default: ""
   },
   pros: [{
-    type: String
+    type: mongoose.Schema.Types.Mixed
   }],
   cons: [{
-    type: String
+    type: mongoose.Schema.Types.Mixed
   }],
   metrics: [{
-    value: { type: String, default: "" },
-    label: { type: String, default: "" }
+    type: mongoose.Schema.Types.Mixed
   }],
   quadrants: [{
-    type: String
+    type: mongoose.Schema.Types.Mixed
   }],
   events: [{
-    year: { type: String, default: "" },
-    description: { type: String, default: "" }
+    type: mongoose.Schema.Types.Mixed
   }],
   steps: [{
-    type: String
+    type: mongoose.Schema.Types.Mixed
   }],
   phases: [{
-    phase: { type: String, default: "" },
-    goal: { type: String, default: "" }
+    type: mongoose.Schema.Types.Mixed
   }],
   image_url: { type: String, default: "" },
   alt_text: { type: String, default: "" },
   images: [{
     type: String
   }]
-});
+}, { strict: false });
 
 const PresentationSchema = new mongoose.Schema(
   {
