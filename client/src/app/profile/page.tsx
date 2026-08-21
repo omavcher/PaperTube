@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
-  User, CreditCard, History, Zap, 
-  Flame, Shield, Settings, LogOut, 
-  ChevronRight, Calendar, Smartphone, 
-  Mail, Award, Coins, FileText, Layers,
-  Download, Loader2, AlertCircle, ShieldCheck,
-  MessageCircle, Clock, RefreshCw, TrendingUp, Crown
+  User, CreditCard, History, Zap, Flame, ShieldCheck, Settings, LogOut, 
+  ChevronRight, Calendar, Smartphone, Mail, Award, Coins, FileText, Layers,
+  Download, Loader2, AlertCircle, MessageCircle, Clock, RefreshCw, TrendingUp, 
+  Crown, Sparkles, Video, Presentation, HelpCircle, Check, ArrowRight,
+  ExternalLink, CheckCircle2, Shield, Eye
 } from "lucide-react";
 import { LoaderX } from "@/components/LoaderX";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,49 +25,48 @@ import autoTable from "jspdf-autotable";
 // --- Helpers ---
 const formatDate = (dateString: string) => {
   if (!dateString) return "N/A";
-  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
 };
 
 // --- NUMBER TO WORDS (US Dollars) ---
 const numToWords = (n: number) => {
-    const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
-    const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const a = ["", "One ", "Two ", "Three ", "Four ", "Five ", "Six ", "Seven ", "Eight ", "Nine ", "Ten ", "Eleven ", "Twelve ", "Thirteen ", "Fourteen ", "Fifteen ", "Sixteen ", "Seventeen ", "Eighteen ", "Nineteen "];
+  const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
 
-    const numToWord = (num: number): string => {
-        if ((num = num.toString().length > 9 ? parseFloat(num.toString().slice(0, 9)) : num) === 0) return '';
-        if (num < 20) return a[num];
-        if (num < 100) return b[Math.floor(num / 10)] + ' ' + a[num % 10];
-        if (num < 1000) return a[Math.floor(num / 100)] + 'Hundred ' + numToWord(num % 100);
-        if (num < 1000000) return numToWord(Math.floor(num / 1000)) + 'Thousand ' + numToWord(num % 1000);
-        if (num < 1000000000) return numToWord(Math.floor(num / 1000000)) + 'Million ' + numToWord(num % 1000000);
-        return numToWord(Math.floor(num / 1000000000)) + 'Billion ' + numToWord(num % 1000000000);
-    };
+  const numToWord = (num: number): string => {
+    if ((num = num.toString().length > 9 ? parseFloat(num.toString().slice(0, 9)) : num) === 0) return "";
+    if (num < 20) return a[num];
+    if (num < 100) return b[Math.floor(num / 10)] + " " + a[num % 10];
+    if (num < 1000) return a[Math.floor(num / 100)] + "Hundred " + numToWord(num % 100);
+    if (num < 1000000) return numToWord(Math.floor(num / 1000)) + "Thousand " + numToWord(num % 1000);
+    if (num < 1000000000) return numToWord(Math.floor(num / 1000000)) + "Million " + numToWord(num % 1000000);
+    return numToWord(Math.floor(num / 1000000000)) + "Billion " + numToWord(num % 1000000000);
+  };
 
-    const [dollars, cents] = n.toFixed(2).split('.');
-    let str = 'US Dollars ' + (parseInt(dollars) === 0 ? 'Zero ' : numToWord(parseInt(dollars)));
-
-    if (parseInt(cents) > 0) {
-        str += 'and ' + numToWord(parseInt(cents)) + 'Cents ';
-    }
-
-    return str + 'Only';
+  const [dollars, cents] = n.toFixed(2).split(".");
+  let str = "US Dollars " + (parseInt(dollars) === 0 ? "Zero " : numToWord(parseInt(dollars)));
+  if (parseInt(cents) > 0) {
+    str += "and " + numToWord(parseInt(cents)) + "Cents ";
+  }
+  return str + "Only";
 };
 
+type TabType = "overview" | "quotas" | "history" | "billing" | "support";
+
 export default function ProfilePage() {
-  const [activeTab, setActiveTab] = useState<"overview" | "history" | "billing" | "support">("overview");
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [emailingId, setEmailingId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [quotaData, setQuotaData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // --- AUTH HELPER ---
-  const getAuthToken = useCallback(() => (typeof window !== 'undefined' ? localStorage.getItem("authToken") : null), []);
+  const getAuthToken = useCallback(() => (typeof window !== "undefined" ? localStorage.getItem("authToken") : null), []);
 
   // --- FETCH DATA ---
   useEffect(() => {
@@ -77,109 +75,121 @@ export default function ProfilePage() {
         setLoading(true);
         const token = getAuthToken();
         if (!token) {
-           // Handle no token
+          window.location.href = "/";
+          return;
         }
 
         const [res, qRes] = await Promise.all([
-          api.get('/auth/get-profile', { headers: { 'Auth': token } }),
-          api.get('/users/quota-status', { headers: { 'Auth': token } }).catch(() => null)
+          api.get("/auth/get-profile", { headers: { Auth: token } }),
+          api.get("/users/quota-status", { headers: { Auth: token } }).catch(() => null),
         ]);
 
         if (res.data.success) {
-            setProfileData(res.data.user);
+          setProfileData(res.data.user);
         } else {
-            setError(res.data.message || "Failed to load profile");
+          setError(res.data.message || "Failed to load profile");
         }
 
         if (qRes?.data?.success) {
-            setQuotaData(qRes.data.data);
+          setQuotaData(qRes.data.data);
         }
-      } catch (error) {
-        console.error('Error fetching profile:', error);
+      } catch (error: any) {
+        console.error("Error fetching profile:", error);
         setError("An error occurred while fetching your profile.");
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchProfile();
   }, [getAuthToken]);
-
 
   // --- PDF GENERATION LOGIC ---
   const generateInvoice = async (tx: any) => {
     if (!profileData) return;
     setDownloadingId(tx._id);
-    
-    await new Promise(resolve => setTimeout(resolve, 500));
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     const user = profileData;
 
     // --- Header ---
-    doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 20, 20);
     doc.text("Paperxify", 14, 22);
 
-    doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80, 80, 80);
     doc.text("Email: support@paperxify.com", 14, 29);
     doc.text("paperxify.com", 14, 34);
 
     // --- Invoice Meta ---
-    doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 20, 20);
     doc.text("INVOICE", pageWidth - 14, 22, { align: "right" });
 
-    doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80, 80, 80);
 
-    const invoiceNo = tx._id ? tx._id.toUpperCase() : 'DRAFT';
+    const invoiceNo = tx._id ? tx._id.toUpperCase() : "DRAFT";
 
     doc.text(`Invoice No: INV-${invoiceNo}`, pageWidth - 14, 30, { align: "right" });
     doc.text(`Date: ${formatDate(tx.timestamp)}`, pageWidth - 14, 35, { align: "right" });
 
-    doc.setDrawColor(220); doc.line(14, 48, pageWidth - 14, 48);
+    doc.setDrawColor(220);
+    doc.line(14, 48, pageWidth - 14, 48);
 
     // --- Bill To ---
-    doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 20, 20);
     doc.text("Bill To:", 14, 58);
-    doc.setFont("helvetica", "normal"); doc.setTextColor(60, 60, 60);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60, 60, 60);
     doc.text(user.name || "Customer", 14, 64);
     doc.text(user.email || "", 14, 69);
     if (user.mobile) doc.text(`Mobile: ${user.mobile}`, 14, 74);
 
-    // --- Calculation (USD, no GST) ---
-    const totalAmt = parseFloat(tx.amount);
+    const totalAmt = parseFloat(tx.amount || 0);
 
     autoTable(doc, {
-        startY: 85,
-        head: [['Description', 'Period', 'Amount']],
-        body: [[
-            `${tx.packageName || 'Subscription'} Plan`,
-            tx.billingPeriod || 'Monthly',
-            `$${totalAmt.toFixed(2)}`
-        ]],
-        theme: 'grid',
-        headStyles: { fillColor: [20, 20, 20], textColor: [255, 255, 255], fontStyle: 'bold' },
-        styles: { fontSize: 10, cellPadding: 5, textColor: [50, 50, 50] },
+      startY: 85,
+      head: [["Description", "Period", "Amount"]],
+      body: [[`${tx.packageName || "Subscription"} Plan`, tx.billingPeriod || "Monthly", `$${totalAmt.toFixed(2)}`]],
+      theme: "grid",
+      headStyles: { fillColor: [20, 20, 20], textColor: [255, 255, 255], fontStyle: "bold" },
+      styles: { fontSize: 10, cellPadding: 5, textColor: [50, 50, 50] },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY + 12;
 
-    // --- Amount Words ---
-    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(80, 80, 80);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
     doc.text("Total Amount in Words:", 14, finalY);
-    doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 20, 20);
     doc.text(numToWords(totalAmt), 14, finalY + 6);
 
-    // --- Grand Total ---
-    const rightColX = pageWidth - 60; const valueX = pageWidth - 14;
-    doc.setDrawColor(200); doc.line(rightColX, finalY + 10, pageWidth - 14, finalY + 10);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(20, 20, 20);
+    const rightColX = pageWidth - 60;
+    const valueX = pageWidth - 14;
+    doc.setDrawColor(200);
+    doc.line(rightColX, finalY + 10, pageWidth - 14, finalY + 10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(20, 20, 20);
     doc.text("Grand Total:", rightColX, finalY + 18);
     doc.text(`$${totalAmt.toFixed(2)}`, valueX, finalY + 18, { align: "right" });
 
-    // --- Footer ---
     const pageHeight = doc.internal.pageSize.height;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
     doc.text("This is a computer generated invoice and does not require a physical signature.", 14, pageHeight - 30);
     doc.setFont("helvetica", "bold");
     doc.text("Paperxify - Empowering Knowledge", 14, pageHeight - 24);
@@ -188,564 +198,521 @@ export default function ProfilePage() {
     setDownloadingId(null);
   };
 
-  // --- SEND INVOICE EMAIL ---
-  const sendInvoiceEmail = async (tx: any) => {
-    if (!profileData) return;
-    setEmailingId(tx._id);
-    try {
-      await api.post('/email/resend-invoice', { transactionId: tx._id }, {
-        headers: { 'Auth': getAuthToken() }
-      });
-      // silent success
-    } catch (e) {
-      // swallow — don't alert user on email failure
-      console.warn('Invoice email failed:', e);
-    } finally {
-      setEmailingId(null);
-    }
+  const handleSignOut = () => {
+    localStorage.removeItem("authToken");
+    window.location.href = "/";
   };
 
-  // --- RENDER STATES ---
   if (loading) {
-      return <LoaderX />;
+    return <LoaderX />;
   }
 
   if (error || !profileData) {
-      return (
-          <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white gap-4">
-              <AlertCircle className="w-10 h-10 text-red-500" />
-              <p className="text-neutral-400">{error || "Profile not found"}</p>
-              <Button variant="outline" onClick={() => window.location.reload()} className="border-white/10 text-white hover:bg-white/10">Retry</Button>
-          </div>
-      );
+    return (
+      <div className="min-h-screen bg-[#070709] flex flex-col items-center justify-center text-white gap-4 p-4 font-sans">
+        <AlertCircle className="w-12 h-12 text-red-500" />
+        <h2 className="text-xl font-bold">Failed to load profile</h2>
+        <p className="text-sm text-neutral-400 max-w-sm text-center">{error || "Profile not found"}</p>
+        <Button onClick={() => window.location.reload()} className="bg-white text-black font-bold rounded-xl hover:bg-neutral-200">
+          Try Again
+        </Button>
+      </div>
+    );
   }
 
   const user = profileData;
+  const isPremium = Boolean(user.membership?.isActive);
+  const planName = user.membership?.planName || (isPremium ? "Pro Scholar ⭐" : "Free Tier");
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-neutral-800 selection:text-white">
-      
-      {/* Background Atmosphere */}
-      <div className="fixed inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black opacity-80"></div>
+    <div className="min-h-screen bg-[#070709] text-white font-sans selection:bg-red-500/30 selection:text-white pb-28">
+      {/* Dynamic Ambient Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-gradient-to-b from-red-600/10 via-red-900/5 to-transparent blur-[140px]" />
+        <div className="absolute top-1/3 -right-40 w-[600px] h-[500px] bg-blue-600/5 blur-[160px]" />
+        <div className="absolute bottom-10 -left-40 w-[600px] h-[500px] bg-purple-600/5 blur-[160px]" />
+      </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-12 relative z-10 md:pt-16 pb-24">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 relative z-10 space-y-8">
         
-        {/* --- GRID LAYOUT --- */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        {/* ─── Hero Profile Header Banner ──────────────────────────────────── */}
+        <div className="relative rounded-3xl bg-[#0d0d12] border border-white/[0.08] p-6 sm:p-8 overflow-hidden shadow-2xl">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-red-500/10 blur-[100px] pointer-events-none" />
           
-          {/* LEFT COLUMN: Profile Identity */}
-          <div className="md:col-span-4 lg:col-span-3">
-             <div className="md:sticky md:top-24 space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+            {/* User Details */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
+              <div className="relative shrink-0">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl p-1 bg-gradient-to-b from-red-500/40 via-white/10 to-transparent border border-white/10 shadow-xl overflow-hidden">
+                  <Avatar className="w-full h-full rounded-[22px]">
+                    <AvatarImage src={user.picture} className="object-cover" />
+                    <AvatarFallback className="bg-neutral-900 text-white font-black text-2xl">
+                      {user.name?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="absolute -bottom-2 -right-2 p-1.5 rounded-xl bg-[#0d0d12] border border-white/10 shadow-md">
+                  {isPremium ? (
+                    <Crown size={18} className="text-yellow-400 fill-yellow-400" />
+                  ) : (
+                    <Sparkles size={18} className="text-red-400" />
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{user.name}</h1>
+                  <span className={cn(
+                    "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                    isPremium 
+                      ? "bg-red-500/15 text-red-400 border-red-500/30 shadow-[0_0_12px_rgba(239,68,68,0.25)]" 
+                      : "bg-white/[0.05] text-neutral-400 border-white/[0.08]"
+                  )}>
+                    {planName}
+                  </span>
+                </div>
                 
-                {/* Profile Card */}
-                <div className="bg-neutral-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 flex flex-col items-center text-center relative overflow-hidden group">
-                   
-                   <div className="relative mb-4">
-                      <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-b from-white/10 to-transparent border border-white/5">
-                         <Avatar className="w-full h-full">
-                            <AvatarImage src={user.picture} />
-                            <AvatarFallback className="bg-black text-white font-bold">{user.name?.charAt(0)}</AvatarFallback>
-                         </Avatar>
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 bg-black rounded-full p-1.5 border border-white/10">
-                         {user.rank === 'legendary' ? (
-                            <ShieldCheck className="text-yellow-500 fill-yellow-500/20" size={16} />
-                         ) : (
-                            <Shield className="text-neutral-500" size={16} />
-                         )}
-                      </div>
-                   </div>
-
-                   <h2 className="text-lg font-bold text-white mb-0.5">{user.name}</h2>
-                   <p className="text-xs text-neutral-500 mb-6 font-mono">@{user.username}</p>
-
-                   <div className="flex flex-col gap-2 w-full text-xs text-neutral-400">
-                      <ProfileInfoRow icon={Mail} label="Email" value={user.email} />
-                      <ProfileInfoRow icon={Smartphone} label="Mobile" value={user.mobile || "N/A"} />
-                      <ProfileInfoRow icon={Calendar} label="Joined" value={formatDate(user.createdAt)} />
-                   </div>
+                <p className="text-xs text-neutral-400 font-mono">@{user.username || "student"}</p>
+                
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 text-xs text-neutral-400 pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <Mail size={13} className="text-neutral-500" />
+                    <span>{user.email}</span>
+                  </div>
+                  {user.mobile && (
+                    <div className="flex items-center gap-1.5">
+                      <Smartphone size={13} className="text-neutral-500" />
+                      <span>{user.mobile}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    <Calendar size={13} className="text-neutral-500" />
+                    <span>Joined {formatDate(user.createdAt)}</span>
+                  </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Desktop Navigation */}
-                <nav className="hidden md:flex flex-col gap-1">
-                   <NavButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<User size={16} />} label="Overview" />
-                   <NavButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<History size={16} />} label="Activity History" />
-                   <NavButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={<CreditCard size={16} />} label="Billing & Plan" />
-                   <NavButton active={activeTab === 'support'} onClick={() => setActiveTab('support')} icon={<MessageCircle size={16} className="text-blue-500" />} label="Support Center" />
-                   
-                   <div className="pt-4 mt-4 border-t border-white/5">
-                      <button className="flex items-center gap-3 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-500/10 rounded-xl w-full transition-colors uppercase tracking-wide">
-                         <LogOut size={16} /> Sign Out
-                      </button>
-                   </div>
-                </nav>
-
-                {/* Mobile Tabs */}
-                <div className="md:hidden bg-neutral-900/50 p-1 rounded-xl border border-white/5 flex flex-wrap gap-1">
-                   {(['overview', 'history', 'billing', 'support'] as const).map((tab) => (
-                      <button
-                         key={tab}
-                         onClick={() => setActiveTab(tab)}
-                         className={cn(
-                            "flex-1 min-w-[30%] py-2 text-[10px] font-bold uppercase tracking-wide rounded-lg transition-all",
-                            activeTab === tab ? "bg-white text-black" : "text-neutral-500 hover:text-white"
-                         )}
-                      >
-                         {tab}
-                      </button>
-                   ))}
-                </div>
-
-             </div>
+            {/* Quick Action Buttons */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-end gap-3 shrink-0 pt-2 lg:pt-0">
+              <Link
+                href="/pricing"
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition-all shadow-lg shadow-red-600/20 active:scale-98 flex items-center gap-2"
+              >
+                <Zap size={14} />
+                <span>{isPremium ? "Extend / Manage Plan" : "Upgrade to Pro"}</span>
+              </Link>
+              <Link
+                href="/youtube-to-notes"
+                className="px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white font-semibold text-xs transition-all active:scale-98 flex items-center gap-1.5"
+              >
+                <Video size={14} />
+                <span>Create Notes</span>
+              </Link>
+              <button
+                onClick={handleSignOut}
+                className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] hover:bg-red-500/15 border border-white/[0.06] hover:border-red-500/30 text-neutral-400 hover:text-red-400 text-xs font-semibold transition-all"
+                title="Sign Out"
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
           </div>
 
-          {/* RIGHT COLUMN: Content Area */}
-          <div className="md:col-span-8 lg:col-span-9">
-             <AnimatePresence mode="wait">
-                
-                {/* --- TAB: OVERVIEW --- */}
-                {activeTab === "overview" && (
-                   <motion.div 
-                      key="overview"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-6"
-                   >
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                         <StatCard label="Streak" value={`${user.streak?.count || 0}`} unit="Days" icon={<Flame className="text-orange-500" fill="currentColor" size={18} />} />
-                         <StatCard 
-                            label="Plan Status" 
-                            value={user.membership?.isActive ? (user.membership.planName || "Pro Scholar") : "Free Tier"} 
-                            unit={user.membership?.isActive ? "High Speed Access" : "Standard Daily Quota"} 
-                            icon={<Crown className="text-yellow-400" fill="currentColor" size={18} />} 
-                         />
-                         <StatCard label="XP" value={user.xp?.toLocaleString() || '0'} unit="Points" icon={<Zap className="text-blue-500" fill="currentColor" size={18} />} />
-                         <StatCard label="Rank" value={user.rank || "Novice"} unit="Your Level" icon={<Award className="text-purple-500" fill="currentColor" size={18} />} />
-                      </div>
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/[0.06]">
+            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.05] flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 shrink-0">
+                <Flame size={18} fill="currentColor" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Streak</p>
+                <p className="text-lg font-black text-white leading-tight">{user.streak?.count || 0} <span className="text-xs font-normal text-neutral-400">Days</span></p>
+              </div>
+            </div>
 
-                      {/* Daily Stack widget */}
-                      <DailyStackWidget user={user} />
+            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.05] flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                <Zap size={18} fill="currentColor" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Study XP</p>
+                <p className="text-lg font-black text-white leading-tight">{(user.xp || 0).toLocaleString()} <span className="text-xs font-normal text-neutral-400">XP</span></p>
+              </div>
+            </div>
 
-                      {​/* Membership Banner */}
-                      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-neutral-900/30 p-8">
-                         <div className="absolute top-0 right-0 p-32 bg-white/5 blur-[80px] rounded-full pointer-events-none" />
-                         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                            <div>
-                               <div className="flex items-center gap-3 mb-3">
-                                  <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Current Plan</span>
-                                  {user.membership?.isActive && (
-                                     <Badge className="bg-green-500/10 text-green-500 border-green-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide">
-                                        Active
-                                     </Badge>
-                                  )}
-                               </div>
-                               <h3 className="text-3xl font-bold text-white mb-2 tracking-tight">{user.membership?.planName || "Free Plan"}</h3>
-                               <p className="text-neutral-400 text-sm font-medium">
-                                  {user.membership?.expiresAt ? `Renews on ${formatDate(user.membership.expiresAt)}` : "Upgrade to unlock premium features."}
-                               </p>
-                            </div>
-                            <Link
-                              href="/pricing"
-                              className="px-5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 whitespace-nowrap"
-                            >
-                              {user.membership?.isActive ? "Extend / Manage Plan" : "Upgrade to Pro"}
-                            </Link>
-                         </div>
-                      </div>
+            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.05] flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                <Award size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Rank</p>
+                <p className="text-lg font-black text-white leading-tight capitalize">{user.rank || "Scholar"}</p>
+              </div>
+            </div>
 
-                      {/* Plan Quotas & Credits Usage Widget */}
-                      <PlanQuotasCard quotaData={quotaData} />
-
-                      {/* Recent Activity */}
-                      <div className="space-y-4">
-                         <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-bold uppercase tracking-widest text-neutral-500">Recent Activity</h3>
-                            <Button variant="link" className="text-white text-xs h-auto p-0" onClick={() => setActiveTab('history')}>View All</Button>
-                         </div>
-                         <div className="space-y-3">
-                            {user.noteCreationHistory && user.noteCreationHistory.length > 0 ? (
-                               user.noteCreationHistory.slice(0, 3).map((note: any) => (
-                                  <ActivityItem key={note._id} item={note} type="note" />
-                               ))
-                            ) : (
-                               <div className="p-8 text-center border border-white/5 rounded-2xl bg-neutral-900/20 text-neutral-500 text-sm">
-                                  No recent activity found.
-                               </div>
-                            )}
-                         </div>
-                      </div>
-                   </motion.div>
-                )}
-
-                {/* --- TAB: HISTORY --- */}
-                {activeTab === "history" && (
-                   <motion.div 
-                      key="history"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-6"
-                   >
-                      <h2 className="text-2xl font-bold text-white tracking-tight">Activity Log</h2>
-                      <div className="space-y-3">
-                         {user.noteCreationHistory?.map((note: any) => <ActivityItem key={note._id} item={note} type="note" />)}
-                         {(!user.noteCreationHistory?.length) && (
-                            <div className="text-center py-12 text-neutral-500 bg-neutral-900/20 rounded-3xl border border-white/5">
-                               No activity history found.
-                            </div>
-                         )}
-                      </div>
-                   </motion.div>
-                )}
-
-                {/* --- TAB: BILLING --- */}
-                {activeTab === "billing" && (
-                   <motion.div 
-                      key="billing"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-6"
-                   >
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div>
-                              <h2 className="text-2xl font-black text-white uppercase italic tracking-tight">Billing & Quota Management</h2>
-                              <p className="text-sm text-neutral-500 font-medium mt-1">Review your active feature allowances and past authentic invoices.</p>
-                          </div>
-                          <Link
-                            href="/pricing"
-                            className="px-5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 whitespace-nowrap self-start md:self-auto"
-                          >
-                            View All Pricing Plans
-                          </Link>
-                      </div>
-
-                      {/* Quota & Feature Allowances Widget */}
-                      <PlanQuotasCard quotaData={quotaData} />
-
-                      {user.transactions && user.transactions.length > 0 ? (
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                              {user.transactions.map((tx: any) => (
-                                  <ReceiptCard 
-                                      key={tx._id} 
-                                      tx={tx} 
-                                      user={user} 
-                                      onDownload={() => generateInvoice(tx)} 
-                                      downloading={downloadingId === tx._id} 
-                                  />
-                              ))}
-                          </div>
-                      ) : (
-                          <div className="bg-neutral-900/40 border border-white/5 rounded-3xl p-12 text-center flex flex-col items-center justify-center">
-                              <History size={48} className="text-neutral-700 mb-4" />
-                              <h3 className="text-lg font-bold text-white mb-2">No Transactions Yet</h3>
-                              <p className="text-sm text-neutral-500">Your billing and authentic invoice history will appear here once you make a purchase.</p>
-                          </div>
-                      )}
-                   </motion.div>
-                )}
-
-                 {/* --- TAB: SUPPORT --- */}
-                 {activeTab === "support" && (
-                   <motion.div 
-                      key="support"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-6"
-                   >
-                     <SupportTab user={user} />
-                   </motion.div>
-                 )}
-
-              </AnimatePresence>
-           </div>
+            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.05] flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <ShieldCheck size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Status</p>
+                <p className="text-lg font-black text-white leading-tight">{isPremium ? "Pro Active" : "Free Plan"}</p>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* ─── Navigation Tabs ─────────────────────────────────────────────── */}
+        <div className="flex p-1.5 rounded-2xl bg-[#0d0d12] border border-white/[0.08] overflow-x-auto scrollbar-none gap-1">
+          {[
+            { id: "overview", label: "Overview & Dashboard", icon: User },
+            { id: "quotas", label: "Quotas & Feature Allowances", icon: Zap },
+            { id: "history", label: "Creation History", icon: History },
+            { id: "billing", label: "Billing & Invoices", icon: CreditCard },
+            { id: "support", label: "Support & Help Desk", icon: MessageCircle },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as TabType)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer",
+                  isActive
+                    ? "bg-white text-black shadow-md font-extrabold"
+                    : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
+                )}
+              >
+                <Icon size={14} className={isActive ? "text-black" : "text-neutral-400"} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ─── Tab Content Views ────────────────────────────────────────────── */}
+        <AnimatePresence mode="wait">
+          {/* TAB 1: OVERVIEW */}
+          {activeTab === "overview" && (
+            <motion.div
+              key="overview"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-6"
+            >
+              {/* Plan Quotas & Allowances Component */}
+              <PlanQuotasCard quotaData={quotaData} isPremium={isPremium} />
+
+              {/* Daily Streak & Stack tracker */}
+              <DailyStackWidget user={user} />
+
+              {/* Recent Notes & Creations */}
+              <div className="rounded-3xl bg-[#0d0d12] border border-white/[0.08] p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Recent Activity</h3>
+                    <p className="text-xs text-neutral-400">Your recent AI study notes and learning documents</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("history")}
+                    className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>View All</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {user.noteCreationHistory && user.noteCreationHistory.length > 0 ? (
+                    user.noteCreationHistory.slice(0, 4).map((note: any) => (
+                      <div
+                        key={note._id}
+                        className="flex items-center justify-between p-3.5 rounded-2xl bg-black/40 border border-white/[0.04] hover:border-white/[0.1] transition-all group"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 shrink-0">
+                            <FileText size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate group-hover:text-red-300 transition-colors">
+                              {note.title || "Lecture Study Guide"}
+                            </p>
+                            <p className="text-[10px] text-neutral-500 font-mono">{formatDate(note.createdAt)}</p>
+                          </div>
+                        </div>
+                        {note.slug && (
+                          <Link
+                            href={`/notes/${note.slug}`}
+                            className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 text-xs font-bold flex items-center gap-1 shrink-0 ml-3"
+                          >
+                            <Eye size={12} />
+                            <span className="hidden sm:inline">Open</span>
+                          </Link>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center rounded-2xl bg-black/20 border border-white/[0.04] text-neutral-500 text-xs space-y-2">
+                      <p>No study notes generated yet.</p>
+                      <Link
+                        href="/youtube-to-notes"
+                        className="inline-block px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition-all"
+                      >
+                        Create Your First Note
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 2: QUOTAS & FEATURE ALLOWANCES */}
+          {activeTab === "quotas" && (
+            <motion.div
+              key="quotas"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-6"
+            >
+              <PlanQuotasCard quotaData={quotaData} isPremium={isPremium} />
+
+              {/* Plan Comparison Breakdown Card */}
+              <div className="rounded-3xl bg-[#0d0d12] border border-white/[0.08] p-6 sm:p-8 space-y-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Tier Comparison & Feature Matrix</h3>
+                  <p className="text-xs text-neutral-400 mt-1">
+                    Upgrade anytime to expand your monthly limits, process longer lectures, and unlock turbo processing.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Free Plan */}
+                  <div className="p-5 rounded-2xl bg-black/40 border border-white/[0.06] space-y-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Free Tier</span>
+                      <h4 className="text-xl font-black text-white mt-1">$0 / ₹0</h4>
+                      <p className="text-xs text-neutral-400 mt-0.5">Daily basic quotas</p>
+                    </div>
+                    <ul className="text-xs text-neutral-300 space-y-2">
+                      <li className="flex items-center gap-2"><Check size={13} className="text-emerald-400" /> 5 notes / day (up to 60 min)</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-emerald-400" /> 2 slide decks / day (up to 8 slides)</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-emerald-400" /> 100 PaperChat messages / day</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-emerald-400" /> 5 quizzes & flashcard sets / day</li>
+                    </ul>
+                  </div>
+
+                  {/* Pro Scholar */}
+                  <div className="p-5 rounded-2xl bg-[#110c0e] border-2 border-red-500/50 shadow-xl space-y-4 relative">
+                    <div className="absolute -top-3 right-4 px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-extrabold uppercase tracking-widest">
+                      POPULAR
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">Pro Scholar ⭐</span>
+                      <h4 className="text-xl font-black text-white mt-1">$9.99 / ₹799 <span className="text-xs font-normal text-neutral-400">/mo</span></h4>
+                      <p className="text-xs text-neutral-400 mt-0.5">30 hrs AI content / month</p>
+                    </div>
+                    <ul className="text-xs text-neutral-200 space-y-2">
+                      <li className="flex items-center gap-2"><Check size={13} className="text-red-400" /> 120 notes / month (up to 4 hrs)</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-red-400" /> 10 slide decks / month (20 slides)</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-red-400" /> 2,000 PaperChat messages / mo</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-red-400" /> Unlimited flashcards & 30 quizzes</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-red-400" /> Priority cloud queue</li>
+                    </ul>
+                  </div>
+
+                  {/* Power Scholar */}
+                  <div className="p-5 rounded-2xl bg-black/40 border border-white/[0.06] space-y-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-yellow-400">Power Scholar 👑</span>
+                      <h4 className="text-xl font-black text-white mt-1">$19.99 / ₹1,599 <span className="text-xs font-normal text-neutral-400">/mo</span></h4>
+                      <p className="text-xs text-neutral-400 mt-0.5">100 hrs AI content / month</p>
+                    </div>
+                    <ul className="text-xs text-neutral-300 space-y-2">
+                      <li className="flex items-center gap-2"><Check size={13} className="text-emerald-400" /> 350 notes / month (up to 8 hrs)</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-emerald-400" /> 30 slide decks / month (40 slides)</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-emerald-400" /> 10,000 PaperChat messages / mo</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-emerald-400" /> Unlimited quizzes & diagrams</li>
+                      <li className="flex items-center gap-2"><Check size={13} className="text-emerald-400" /> Instant Turbo processing</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="pt-2 text-center">
+                  <Link
+                    href="/pricing"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg active:scale-98 transition-all"
+                  >
+                    <span>View All Pricing Plans</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 3: ACTIVITY HISTORY */}
+          {activeTab === "history" && (
+            <motion.div
+              key="history"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-6"
+            >
+              <div className="rounded-3xl bg-[#0d0d12] border border-white/[0.08] p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Full Activity Log</h3>
+                    <p className="text-xs text-neutral-400">All lecture documents and summaries generated by your account</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {user.noteCreationHistory && user.noteCreationHistory.length > 0 ? (
+                    user.noteCreationHistory.map((note: any) => (
+                      <div
+                        key={note._id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-black/40 border border-white/[0.04] hover:border-white/[0.1] transition-all"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 shrink-0">
+                            <FileText size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-white truncate">{note.title || "Study Lecture Notes"}</p>
+                            <p className="text-[11px] text-neutral-500 font-mono">Created on {formatDate(note.createdAt)}</p>
+                          </div>
+                        </div>
+
+                        {note.slug && (
+                          <Link
+                            href={`/notes/${note.slug}`}
+                            className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 transition-all"
+                          >
+                            <span>Open Note</span>
+                            <ExternalLink size={12} />
+                          </Link>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-12 text-center rounded-2xl bg-black/20 border border-white/[0.04] text-neutral-500 text-sm space-y-2">
+                      <p>No activity history logged yet.</p>
+                      <Link
+                        href="/youtube-to-notes"
+                        className="inline-block px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs"
+                      >
+                        Start Learning
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 4: BILLING & INVOICES */}
+          {activeTab === "billing" && (
+            <motion.div
+              key="billing"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-6"
+            >
+              {/* Billing Header */}
+              <div className="rounded-3xl bg-[#0d0d12] border border-white/[0.08] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">Current Subscription</span>
+                    <Badge className={cn("text-[9px] uppercase font-bold px-2 py-0.5", isPremium ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-white/10 text-neutral-400")}>
+                      {isPremium ? "Active" : "Free"}
+                    </Badge>
+                  </div>
+                  <h3 className="text-2xl font-black text-white mt-1">{planName}</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    {user.membership?.expiresAt ? `Renews on ${formatDate(user.membership.expiresAt)}` : "Free Tier access with daily replenished quotas."}
+                  </p>
+                </div>
+                <Link
+                  href="/pricing"
+                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg active:scale-98 transition-all self-start sm:self-auto"
+                >
+                  {isPremium ? "Extend / Change Plan" : "Upgrade to Pro"}
+                </Link>
+              </div>
+
+              {/* Invoices List */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Payment & Invoice History</h3>
+                    <p className="text-xs text-neutral-400">Download authentic invoices and view receipts</p>
+                  </div>
+                </div>
+
+                {user.transactions && user.transactions.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {user.transactions.map((tx: any) => (
+                      <ReceiptCard
+                        key={tx._id}
+                        tx={tx}
+                        user={user}
+                        onDownload={() => generateInvoice(tx)}
+                        downloading={downloadingId === tx._id}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-3xl bg-[#0d0d12] border border-white/[0.08] p-12 text-center flex flex-col items-center justify-center space-y-3">
+                    <History size={40} className="text-neutral-600" />
+                    <h4 className="text-base font-bold text-white">No Transactions Yet</h4>
+                    <p className="text-xs text-neutral-400 max-w-sm">
+                      Your authentic billing invoices will automatically generate here whenever you upgrade or renew.
+                    </p>
+                    <Link
+                      href="/pricing"
+                      className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-white font-bold text-xs"
+                    >
+                      View Pricing
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 5: SUPPORT */}
+          {activeTab === "support" && (
+            <motion.div
+              key="support"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <SupportTab user={user} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-// --- SUB-COMPONENTS ---
+// ─── Subcomponents ────────────────────────────────────────────────────────────
 
-// ── Daily Stack Widget ────────────────────────────────────────────
-function DailyStackWidget({ user }: { user: any }) {
-   const DAILY_CAP = user.membership?.isActive ? Infinity : 10;
-   const tokensLeft = Math.max(0, user.tokens ?? 0);
-   const usedToday = Math.max(0, DAILY_CAP - tokensLeft);
-   const pct = DAILY_CAP === Infinity ? 0 : Math.min(100, Math.round((tokensLeft / DAILY_CAP) * 100));
-   const isPremium = !!user.membership?.isActive;
-
-   // Countdown to midnight
-   const [timeToReset, setTimeToReset] = useState("");
-   useEffect(() => {
-      const tick = () => {
-         const now = new Date();
-         const midnight = new Date();
-         midnight.setHours(24, 0, 0, 0);
-         const diff = midnight.getTime() - now.getTime();
-         const h = Math.floor(diff / 3600000);
-         const m = Math.floor((diff % 3600000) / 60000);
-         const s = Math.floor((diff % 60000) / 1000);
-         setTimeToReset(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
-      };
-      tick();
-      const id = setInterval(tick, 1000);
-      return () => clearInterval(id);
-   }, []);
-
-   // Streak display
-   const streak = user.streak?.count || 0;
-   const lastVisit = user.streak?.lastVisit ? new Date(user.streak.lastVisit) : null;
-   const visitedToday = lastVisit ? lastVisit.toDateString() === new Date().toDateString() : false;
-
-   return (
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-neutral-900/30 p-6">
-         {/* Background glow */}
-         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-blue-500/5 pointer-events-none" />
-
-         <div className="relative z-10">
-            <div className="flex items-center justify-between mb-5">
-               <div className="flex items-center gap-2">
-                  <TrendingUp size={15} className="text-neutral-400" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Daily Stack</span>
-               </div>
-               {!isPremium && (
-                  <div className="flex items-center gap-1.5 text-neutral-500">
-                     <Clock size={11} />
-                     <span className="text-[10px] font-mono font-bold text-neutral-400">Resets in {timeToReset}</span>
-                  </div>
-               )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-               {/* Streak block */}
-               <div className={cn(
-                  "p-4 rounded-2xl border flex flex-col gap-2",
-                  visitedToday
-                     ? "bg-orange-500/10 border-orange-500/20"
-                     : "bg-white/[0.02] border-white/5"
-               )}>
-                  <div className="flex items-center justify-between">
-                     <span className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Streak</span>
-                     <Flame size={18} className={visitedToday ? "text-orange-400" : "text-neutral-700"} fill={visitedToday ? "currentColor" : "none"} />
-                  </div>
-                  <span className="text-3xl font-black text-white">{streak}</span>
-                  <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wide">
-                     {visitedToday ? "✓ Active today" : streak === 0 ? "Log in to start" : "Come back tomorrow!"}
-                  </span>
-               </div>
-
-               {/* Token bar block */}
-               <div className="md:col-span-2 p-4 rounded-2xl border bg-white/[0.02] border-white/5 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                     <span className="text-[9px] font-black uppercase tracking-widest text-neutral-500">
-                        {isPremium ? "Premium Tokens" : "Daily Tokens"}
-                     </span>
-                     <div className="flex items-center gap-1">
-                        <Coins size={12} className="text-yellow-400" />
-                        <span className="text-[10px] font-black text-white">
-                           {isPremium ? `${tokensLeft.toLocaleString()} left` : `${tokensLeft} / ${DAILY_CAP} left`}
-                        </span>
-                     </div>
-                  </div>
-
-                  {!isPremium && (
-                     <>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                           <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
-                              transition={{ duration: 0.8, ease: "easeOut" }}
-                              className={cn(
-                                 "h-full rounded-full",
-                                 pct > 60 ? "bg-emerald-500" : pct > 30 ? "bg-amber-500" : "bg-red-500"
-                              )}
-                           />
-                        </div>
-                        <div className="flex justify-between text-[9px] text-neutral-600 font-bold uppercase">
-                           <span>{usedToday} used today</span>
-                           <span className={pct === 0 ? "text-red-500" : ""}>
-                              {pct === 0 ? "All used up — resets at midnight" : `${pct}% remaining`}
-                           </span>
-                        </div>
-                     </>
-                  )}
-
-                  {isPremium && (
-                     <div className="flex items-center gap-2 mt-1">
-                        <ShieldCheck size={12} className="text-emerald-400" />
-                        <span className="text-[10px] text-emerald-400 font-bold">Pro Scholar Active — full suite enabled</span>
-                     </div>
-                  )}
-
-                  <div className="flex items-center gap-1 mt-auto">
-                     <RefreshCw size={9} className="text-neutral-600" />
-                     <span className="text-[9px] text-neutral-600">
-                        {isPremium
-                           ? `Plan expires: ${formatDate(user.membership?.expiresAt)}`
-                           : `Replenished every day at 12:00 AM • Last reset: ${user.lastTokenReset ? formatDate(user.lastTokenReset) : 'Never'}`}
-                     </span>
-                  </div>
-               </div>
-            </div>
-         </div>
-      </div>
-   );
-}
-
-function ProfileInfoRow({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
-    return (
-        <div className="flex items-center justify-between px-3 py-2.5 bg-black/40 border border-white/5 rounded-lg">
-            <div className="flex items-center gap-2 text-neutral-500">
-                <Icon size={12}/> <span className="font-medium">{label}</span>
-            </div>
-            <span className="text-neutral-300 font-medium truncate max-w-[140px]">{value}</span>
-        </div>
-    )
-}
-
-function StatCard({ label, value, icon, unit }: any) {
-   return (
-      <div className="bg-neutral-900/40 border border-white/5 rounded-2xl p-4 flex flex-col gap-3 group hover:bg-neutral-900/60 transition-colors">
-         <div className="flex items-center justify-between">
-            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">{label}</span>
-            <div className="bg-black p-1.5 rounded-lg border border-white/5 text-neutral-400 group-hover:text-white transition-colors">{icon}</div>
-         </div>
-         <div>
-            <div className="text-xl font-bold text-white">{value}</div>
-            <div className="text-[10px] text-neutral-600 font-medium uppercase tracking-wide mt-0.5">{unit}</div>
-         </div>
-      </div>
-   )
-}
-
-function NavButton({ active, onClick, icon, label }: any) {
-   return (
-      <button 
-         onClick={onClick}
-         className={cn(
-            "flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wide rounded-xl transition-all w-full text-left",
-            active ? "bg-white text-black shadow-lg" : "text-neutral-500 hover:bg-white/5 hover:text-white"
-         )}
-      >
-         {icon} {label}
-         {active && <ChevronRight size={14} className="ml-auto opacity-50" />}
-      </button>
-   )
-}
-
-function ActivityItem({ item, type }: { item: any, type: 'note' }) {
-   return (
-      <div className="flex items-center gap-4 bg-neutral-900/30 border border-white/5 p-4 rounded-2xl hover:bg-neutral-900/50 transition-colors group cursor-default">
-         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5 bg-blue-500/10 text-blue-500">
-            <FileText size={18} />
-         </div>
-         <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-bold text-white truncate pr-4">{item.videoTitle || "Untitled Project"}</h4>
-            <div className="flex items-center gap-2 mt-1.5">
-               <Badge variant="outline" className="border-white/10 text-neutral-500 text-[9px] px-1.5 py-0 uppercase font-bold tracking-wide">
-                  {item.model || "AI Note"}
-               </Badge>
-               <span className="text-[10px] text-neutral-600 font-mono">{formatDate(item.createdAt)}</span>
-            </div>
-         </div>
-         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-            <ChevronRight size={14} className="text-neutral-500" />
-         </div>
-      </div>
-   )
-}
-
-function ReceiptCard({ tx, user, onDownload, downloading }: any) {
-    const totalAmt = parseFloat(tx.amount);
-
-    return (
-        <div className="relative bg-neutral-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-6 md:p-8 flex flex-col overflow-hidden group shadow-2xl transition-all duration-300 hover:border-white/20 hover:bg-neutral-900/80">
-            {/* Ambient Lighting */}
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-red-600/10 blur-[60px] rounded-full pointer-events-none transition-all duration-700 group-hover:bg-red-600/20" />
-            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-600/10 blur-[60px] rounded-full pointer-events-none transition-all duration-700 group-hover:bg-blue-600/20" />
-            
-            <div className="relative z-10 flex flex-col h-full">
-                {/* Header Section */}
-                <div className="flex justify-between items-start mb-8">
-                    <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 bg-black rounded-xl p-0.5 border border-white/10 flex items-center justify-center shadow-lg relative overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-50" />
-                          <Layers className="text-white relative z-10" size={20} />
-                       </div>
-                       <div>
-                          <h3 className="text-lg md:text-xl font-black text-white leading-tight uppercase tracking-tight italic">Paperxify</h3>
-                          <p className="text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-bold">Invoice</p>
-                       </div>
-                    </div>
-                    <div className="text-right">
-                       <p className="text-2xl font-black text-white tracking-tighter">{formatCurrency(totalAmt)}</p>
-                       <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] uppercase font-black tracking-widest mt-1.5 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                           {tx.status}
-                       </Badge>
-                    </div>
-                </div>
-
-                {/* Details Section (The "Paper" part) */}
-                <div className="bg-black/50 rounded-2xl p-5 border border-white/5 space-y-4 mb-6 relative">
-                   {/* Dotted cutting line illusion */}
-                   <div className="absolute left-[-5px] right-[-5px] top-1/2 -translate-y-1/2 border-t-2 border-dashed border-neutral-900 z-0 h-[1px]" />
-                   <div className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-neutral-900 rounded-full z-10" />
-                   <div className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-neutral-900 rounded-full z-10" />
-
-                   <div className="flex justify-between items-center text-sm relative z-10">
-                      <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Billed To</span>
-                      <span className="text-white font-bold">{user.name}</span>
-                   </div>
-                   <div className="flex justify-between items-center text-sm relative z-10 pt-2 border-t border-white/5">
-                      <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Date Paid</span>
-                      <span className="text-neutral-300 font-medium">{formatDate(tx.timestamp)}</span>
-                   </div>
-                   <div className="flex justify-between items-center text-sm relative z-10 pt-2 border-t border-white/5">
-                      <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Invoice Code</span>
-                      <span className="text-neutral-400 font-mono text-xs bg-white/5 px-2 py-0.5 rounded">INV-{tx._id.slice(-6).toUpperCase()}</span>
-                   </div>
-                   <div className="flex justify-between items-center text-sm relative z-10 pt-2 border-t border-white/5 pb-1">
-                      <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Plan Access</span>
-                      <span className="text-white font-black italic">{tx.packageName}</span>
-                   </div>
-                </div>
-
-                {/* Amount summary */}
-                <div className="flex-col gap-2 mb-auto px-2 hidden sm:flex">
-                   <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-neutral-500 uppercase tracking-widest">Total Paid</span>
-                      <span className="text-neutral-300">{formatCurrency(totalAmt)}</span>
-                   </div>
-                </div>
-
-                {/* Footer Actions */}
-                <div className="mt-8 pt-5 border-t border-white/10 flex gap-3">
-                    <Button 
-                       onClick={onDownload}
-                       disabled={downloading}
-                       className="w-full bg-white hover:bg-neutral-200 text-black font-black uppercase italic tracking-widest text-xs rounded-xl h-12 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
-                    >
-                       {downloading ? (
-                           <><Loader2 className="animate-spin w-4 h-4 mr-2" /> Generating PDF...</>
-                       ) : (
-                           <><Download className="w-4 h-4 mr-2" /> Download Original Invoice</>
-                       )}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    )
-}
-
-function PlanQuotasCard({ quotaData }: { quotaData: any }) {
+function PlanQuotasCard({ quotaData, isPremium }: { quotaData: any; isPremium?: boolean }) {
   if (!quotaData) return null;
   const { planName, planDisplayName, period, features, maxVideoLengthMin, maxSlides, paperChatMessages } = quotaData;
 
@@ -770,7 +737,7 @@ function PlanQuotasCard({ quotaData }: { quotaData: any }) {
     },
     {
       key: "paperchat",
-      title: "PaperChat AI Messages",
+      title: "PaperChat Messages",
       icon: "💬",
       used: quotaData.paperChatUsed ?? 0,
       limit: paperChatMessages ?? 100,
@@ -797,12 +764,12 @@ function PlanQuotasCard({ quotaData }: { quotaData: any }) {
     },
     {
       key: "diagrams",
-      title: "Mind Maps & Diagrams",
+      title: "Mind Maps",
       icon: "🗺️",
       used: features?.diagrams?.used ?? 0,
       limit: features?.diagrams?.limit ?? 3,
       unlimited: features?.diagrams?.unlimited ?? false,
-      extra: "Visual knowledge graphs",
+      extra: "Knowledge graphs",
     },
     {
       key: "study",
@@ -811,23 +778,24 @@ function PlanQuotasCard({ quotaData }: { quotaData: any }) {
       used: features?.study?.used ?? 0,
       limit: features?.study?.limit ?? 10,
       unlimited: features?.study?.unlimited ?? false,
-      extra: "Step-by-step solutions",
+      extra: "Step-by-step solves",
     },
   ];
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-neutral-900/40 p-6 md:p-7 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/5">
+    <div className="rounded-3xl border border-white/[0.08] bg-[#0d0d12] p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/[0.06]">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="text-xs font-bold uppercase tracking-wider text-red-400">
               {planDisplayName || planName}
             </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-neutral-400 font-mono">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-neutral-400 font-mono">
               {period === "daily" ? "Resets daily at 00:00 UTC" : "Monthly billing cycle"}
             </span>
           </div>
-          <h3 className="text-lg font-bold text-white mt-1">Feature Allowances & Active Quotas</h3>
+          <h3 className="text-xl font-bold text-white mt-1.5">Active Feature Allowances & Credits</h3>
+          <p className="text-xs text-neutral-400 mt-0.5">Real-time quota tracking against your current plan</p>
         </div>
         <Link
           href="/pricing"
@@ -837,7 +805,7 @@ function PlanQuotasCard({ quotaData }: { quotaData: any }) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {quotaItems.map((item) => {
           const pct = item.unlimited
             ? 0
@@ -848,7 +816,7 @@ function PlanQuotasCard({ quotaData }: { quotaData: any }) {
           return (
             <div
               key={item.key}
-              className="p-3.5 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between space-y-2.5"
+              className="p-4 rounded-2xl bg-black/40 border border-white/[0.05] flex flex-col justify-between space-y-3 hover:border-white/[0.1] transition-all"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5">
@@ -863,8 +831,8 @@ function PlanQuotasCard({ quotaData }: { quotaData: any }) {
                 </span>
               </div>
 
-              {!item.unlimited && (
-                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+              {!item.unlimited ? (
+                <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all duration-500",
@@ -873,10 +841,127 @@ function PlanQuotasCard({ quotaData }: { quotaData: any }) {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
+              ) : (
+                <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold">
+                  <CheckCircle2 size={11} />
+                  <span>Full access enabled</span>
+                </div>
               )}
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function DailyStackWidget({ user }: { user: any }) {
+  const isPremium = Boolean(user.membership?.isActive);
+  const [timeToReset, setTimeToReset] = useState("");
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0);
+      const diff = midnight.getTime() - now.getTime();
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeToReset(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const streak = user.streak?.count || 0;
+  const lastVisit = user.streak?.lastVisit ? new Date(user.streak.lastVisit) : null;
+  const visitedToday = lastVisit ? lastVisit.toDateString() === new Date().toDateString() : false;
+
+  return (
+    <div className="rounded-3xl bg-[#0d0d12] border border-white/[0.08] p-6 relative overflow-hidden space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <TrendingUp size={15} className="text-red-400" />
+          <h3 className="text-base font-bold text-white">Daily Learning Habit & Streak</h3>
+        </div>
+        {!isPremium && (
+          <div className="flex items-center gap-1.5 text-neutral-400 text-xs font-mono">
+            <Clock size={12} />
+            <span>Resets in {timeToReset}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.05] flex items-center gap-3.5">
+          <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border", visitedToday ? "bg-orange-500/15 border-orange-500/30 text-orange-400" : "bg-white/[0.05] border-white/[0.08] text-neutral-500")}>
+            <Flame size={20} fill={visitedToday ? "currentColor" : "none"} />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Active Streak</p>
+            <p className="text-xl font-black text-white">{streak} <span className="text-xs font-normal text-neutral-400">Days</span></p>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.05] flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+            <Zap size={20} fill="currentColor" />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Total XP</p>
+            <p className="text-xl font-black text-white">{(user.xp || 0).toLocaleString()} <span className="text-xs font-normal text-neutral-400">XP</span></p>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.05] flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+            <ShieldCheck size={20} />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Plan Status</p>
+            <p className="text-sm font-bold text-white truncate">{isPremium ? "Pro Active" : "Daily Quota Active"}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReceiptCard({ tx, user, onDownload, downloading }: { tx: any; user: any; onDownload: () => void; downloading: boolean }) {
+  const totalAmt = parseFloat(tx.amount || 0);
+
+  return (
+    <div className="rounded-3xl bg-neutral-900/40 border border-white/[0.08] p-5 sm:p-6 flex flex-col justify-between space-y-4 hover:border-white/[0.14] transition-all">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white">
+            <Layers size={18} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-white">{tx.packageName || "Subscription Plan"}</h4>
+            <p className="text-[11px] text-neutral-400 font-mono">INV-{tx._id.slice(-6).toUpperCase()} • {formatDate(tx.timestamp)}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-base font-black text-white">{formatCurrency(totalAmt)}</p>
+          <span className="inline-block text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mt-1">
+            {tx.status || "SUCCESS"}
+          </span>
+        </div>
+      </div>
+
+      <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
+        <span className="text-[11px] text-neutral-400">Period: <strong className="text-neutral-200 capitalize">{tx.billingPeriod || "Monthly"}</strong></span>
+        <Button
+          onClick={onDownload}
+          disabled={downloading}
+          className="h-8 px-3 rounded-lg bg-white/[0.08] hover:bg-white text-white hover:text-black text-xs font-bold transition-all flex items-center gap-1.5"
+        >
+          {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+          <span>PDF Invoice</span>
+        </Button>
       </div>
     </div>
   );
