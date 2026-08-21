@@ -847,98 +847,170 @@ exports.exportPPTX = async (req, res) => {
 
     presentation.slides.forEach(slide => {
       const slideObj = pptx.addSlide();
-      
-      // Dynamic theme-aligned background fill
       slideObj.background = { fill: bgColor };
 
-      const normalized = normalizeSlide(slide);
+      const layout = slide.layout || "bullets";
 
-      if (normalized.layout === "title") {
-        slideObj.addText(normalized.title, {
-          x: 1, y: 2, w: 8, h: 1.5,
-          fontSize: 40, align: "center",
+      if (layout === "title") {
+        slideObj.addText(slide.title || "Presentation Title", {
+          x: 0.8, y: 1.8, w: 8.4, h: 1.5,
+          fontSize: 38, align: "center",
           color: primaryColor, bold: true,
           fontFace: fontFace
         });
-        if (normalized.subtitle) {
-          slideObj.addText(normalized.subtitle, {
-            x: 1, y: 3.8, w: 8, h: 1,
-            fontSize: 18, align: "center",
+        if (slide.subtitle) {
+          slideObj.addText(slide.subtitle, {
+            x: 1.0, y: 3.4, w: 8.0, h: 1.0,
+            fontSize: 16, align: "center",
             color: textColor,
             fontFace: fontFace
           });
         }
-      } else if (normalized.layout === "bullets") {
-        slideObj.addText(normalized.title, {
-          x: 0.5, y: 0.5, w: 9, h: 0.8,
+        if (slide.author) {
+          slideObj.addText(slide.author, {
+            x: 1.0, y: 4.5, w: 8.0, h: 0.5,
+            fontSize: 12, align: "center",
+            color: primaryColor, bold: true,
+            fontFace: fontFace
+          });
+        }
+      } else if (layout === "image_left") {
+        if (slide.image_url) {
+          try {
+            slideObj.addImage({ path: slide.image_url, x: 0.6, y: 0.8, w: 4.2, h: 4.0, rounding: true });
+          } catch (e) {}
+        }
+        slideObj.addText(slide.title || "Topic Insight", {
+          x: 5.1, y: 0.8, w: 4.3, h: 0.8,
+          fontSize: 22, color: primaryColor, bold: true,
+          fontFace: fontFace
+        });
+        const bullets = (slide.bullets || [slide.content || ""]).map(b => ({
+          text: b,
+          options: { bullet: true, color: textColor, fontSize: 13 }
+        }));
+        slideObj.addText(bullets, {
+          x: 5.1, y: 1.8, w: 4.3, h: 3.0,
+          fontFace: fontFace
+        });
+      } else if (layout === "image_right") {
+        slideObj.addText(slide.title || "Topic Insight", {
+          x: 0.6, y: 0.8, w: 4.3, h: 0.8,
+          fontSize: 22, color: primaryColor, bold: true,
+          fontFace: fontFace
+        });
+        const bullets = (slide.bullets || [slide.content || ""]).map(b => ({
+          text: b,
+          options: { bullet: true, color: textColor, fontSize: 13 }
+        }));
+        slideObj.addText(bullets, {
+          x: 0.6, y: 1.8, w: 4.3, h: 3.0,
+          fontFace: fontFace
+        });
+        if (slide.image_url) {
+          try {
+            slideObj.addImage({ path: slide.image_url, x: 5.2, y: 0.8, w: 4.2, h: 4.0, rounding: true });
+          } catch (e) {}
+        }
+      } else if (layout === "metric_callout" || layout === "metric") {
+        slideObj.addText(slide.title || "Key Metrics", {
+          x: 0.6, y: 0.6, w: 8.8, h: 0.8,
           fontSize: 24, color: primaryColor, bold: true,
           fontFace: fontFace
         });
-        const bulletItems = normalized.bullets.map(b => ({
+        const metrics = slide.metrics || [
+          { value: slide.metric?.value || "99.4%", label: slide.metric?.label || "KPI Index" },
+          { value: "3.5x", label: "Acceleration" },
+          { value: "< 10ms", label: "P99 Latency" }
+        ];
+        metrics.slice(0, 3).forEach((m, idx) => {
+          const xPos = 0.6 + idx * 2.95;
+          slideObj.addShape(pptx.ShapeType.roundRect, { x: xPos, y: 1.6, w: 2.75, h: 2.8, fill: { color: "111115" }, line: { color: primaryColor, width: 1 } });
+          slideObj.addText(m.value, { x: xPos, y: 2.0, w: 2.75, h: 1.2, fontSize: 32, bold: true, color: primaryColor, align: "center", fontFace });
+          slideObj.addText(m.label, { x: xPos, y: 3.2, w: 2.75, h: 0.8, fontSize: 11, bold: true, color: textColor, align: "center", fontFace });
+        });
+      } else if (layout === "timeline" || layout === "steps" || layout === "roadmap") {
+        slideObj.addText(slide.title || "Deployment Timeline", {
+          x: 0.6, y: 0.6, w: 8.8, h: 0.8,
+          fontSize: 24, color: primaryColor, bold: true,
+          fontFace: fontFace
+        });
+        const events = (slide.events || [
+          { year: "Phase 1", description: "Architecture Discovery" },
+          { year: "Phase 2", description: "Semantic Indexing" },
+          { year: "Phase 3", description: "Production Scale" }
+        ]).slice(0, 4);
+        const cardW = 8.5 / events.length;
+        events.forEach((ev, idx) => {
+          const xPos = 0.6 + idx * (cardW + 0.15);
+          slideObj.addShape(pptx.ShapeType.roundRect, { x: xPos, y: 1.6, w: cardW, h: 3.0, fill: { color: "111115" }, line: { color: accentColor, width: 1 } });
+          slideObj.addText(ev.year, { x: xPos + 0.1, y: 1.8, w: cardW - 0.2, h: 0.5, fontSize: 13, bold: true, color: accentColor, fontFace });
+          slideObj.addText(ev.description, { x: xPos + 0.1, y: 2.4, w: cardW - 0.2, h: 2.0, fontSize: 10.5, color: textColor, fontFace });
+        });
+      } else if (layout === "comparison" || layout === "two_column_text") {
+        slideObj.addText(slide.title || "Comparison", {
+          x: 0.6, y: 0.6, w: 8.8, h: 0.8,
+          fontSize: 24, color: primaryColor, bold: true,
+          fontFace: fontFace
+        });
+        const leftItems = (slide.columns?.left || ["Baseline"]).map((item, idx) => ({
+          text: item,
+          options: { bullet: idx > 0, fontSize: idx === 0 ? 15 : 12, bold: idx === 0, color: idx === 0 ? primaryColor : textColor }
+        }));
+        slideObj.addShape(pptx.ShapeType.roundRect, { x: 0.6, y: 1.6, w: 4.1, h: 3.2, fill: { color: "111115" }, line: { color: primaryColor, width: 1 } });
+        slideObj.addText(leftItems, { x: 0.8, y: 1.8, w: 3.7, h: 2.8, fontFace });
+
+        const rightItems = (slide.columns?.right || ["AI Modern"]).map((item, idx) => ({
+          text: item,
+          options: { bullet: idx > 0, fontSize: idx === 0 ? 15 : 12, bold: idx === 0, color: idx === 0 ? accentColor : textColor }
+        }));
+        slideObj.addShape(pptx.ShapeType.roundRect, { x: 5.0, y: 1.6, w: 4.1, h: 3.2, fill: { color: "111115" }, line: { color: accentColor, width: 1 } });
+        slideObj.addText(rightItems, { x: 5.2, y: 1.8, w: 3.7, h: 2.8, fontFace });
+      } else if (layout === "pros_cons") {
+        slideObj.addText(slide.title || "Advantages vs Challenges", {
+          x: 0.6, y: 0.6, w: 8.8, h: 0.8,
+          fontSize: 24, color: primaryColor, bold: true,
+          fontFace: fontFace
+        });
+        const proItems = ["Advantages", ...(slide.pros || ["High accuracy", "Infinite scale"])].map((item, idx) => ({
+          text: item,
+          options: { bullet: idx > 0, fontSize: idx === 0 ? 15 : 12, bold: idx === 0, color: idx === 0 ? "10B981" : textColor }
+        }));
+        slideObj.addShape(pptx.ShapeType.roundRect, { x: 0.6, y: 1.6, w: 4.1, h: 3.2, fill: { color: "064E3B" }, line: { color: "10B981", width: 1 } });
+        slideObj.addText(proItems, { x: 0.8, y: 1.8, w: 3.7, h: 2.8, fontFace });
+
+        const conItems = ["Key Challenges", ...(slide.cons || ["Initial setup overhead"])].map((item, idx) => ({
+          text: item,
+          options: { bullet: idx > 0, fontSize: idx === 0 ? 15 : 12, bold: idx === 0, color: idx === 0 ? "EF4444" : textColor }
+        }));
+        slideObj.addShape(pptx.ShapeType.roundRect, { x: 5.0, y: 1.6, w: 4.1, h: 3.2, fill: { color: "450A0A" }, line: { color: "EF4444", width: 1 } });
+        slideObj.addText(conItems, { x: 5.2, y: 1.8, w: 3.7, h: 2.8, fontFace });
+      } else if (layout === "quote") {
+        slideObj.addText(`"${slide.quote_text || slide.title || ""}"`, {
+          x: 1.0, y: 1.8, w: 8.0, h: 1.8,
+          fontSize: 24, italic: true, align: "center",
+          color: primaryColor, fontFace
+        });
+        if (slide.author) {
+          slideObj.addText(`-- ${slide.author} ${slide.role ? `(${slide.role})` : ""}`, {
+            x: 1.0, y: 3.8, w: 8.0, h: 0.8,
+            fontSize: 14, bold: true, align: "center",
+            color: textColor, fontFace
+          });
+        }
+      } else {
+        // Bento cards / bullets
+        slideObj.addText(slide.title || "Key Takeaways", {
+          x: 0.6, y: 0.6, w: 8.8, h: 0.8,
+          fontSize: 24, color: primaryColor, bold: true,
+          fontFace: fontFace
+        });
+        const bulletItems = (slide.bullets || ["First takeaway", "Second takeaway"]).map(b => ({
           text: b,
-          options: { bullet: true, color: textColor, fontSize: 16 }
+          options: { bullet: true, color: textColor, fontSize: 13 }
         }));
         slideObj.addText(bulletItems, {
-          x: 0.5, y: 1.5, w: 9, h: 4.5,
-          fontFace: fontFace
-        });
-      } else if (normalized.layout === "comparison") {
-        slideObj.addText(normalized.title, {
-          x: 0.5, y: 0.5, w: 9, h: 0.8,
-          fontSize: 24, color: primaryColor, bold: true,
-          fontFace: fontFace
-        });
-
-        // Left column
-        const leftCol = normalized.columns?.left || [];
-        const leftItems = leftCol.map((item, idx) => ({
-          text: item,
-          options: {
-            bullet: idx > 0,
-            fontSize: idx === 0 ? 18 : 14,
-            bold: idx === 0,
-            color: idx === 0 ? primaryColor : textColor
-          }
-        }));
-        slideObj.addText(leftItems, {
-          x: 0.5, y: 1.5, w: 4.25, h: 4.5,
-          fontFace: fontFace
-        });
-
-        // Right column
-        const rightCol = normalized.columns?.right || [];
-        const rightItems = rightCol.map((item, idx) => ({
-          text: item,
-          options: {
-            bullet: idx > 0,
-            fontSize: idx === 0 ? 18 : 14,
-            bold: idx === 0,
-            color: idx === 0 ? accentColor : textColor
-          }
-        }));
-        slideObj.addText(rightItems, {
-          x: 5.25, y: 1.5, w: 4.25, h: 4.5,
-          fontFace: fontFace
-        });
-      } else if (normalized.layout === "metric") {
-        slideObj.addText(normalized.title, {
-          x: 0.5, y: 0.5, w: 9, h: 0.8,
-          fontSize: 24, color: primaryColor, bold: true,
-          fontFace: fontFace
-        });
-        slideObj.addText(normalized.metric?.value || "0%", {
-          x: 0.5, y: 2, w: 4, h: 1.8,
-          fontSize: 64, bold: true, color: primaryColor, align: "center",
-          fontFace: fontFace
-        });
-        slideObj.addText(normalized.metric?.label || "Metric Label", {
-          x: 0.5, y: 4, w: 4, h: 0.8,
-          fontSize: 16, bold: true, color: accentColor, align: "center",
-          fontFace: fontFace
-        });
-        slideObj.addText(normalized.metric?.description || "", {
-          x: 5, y: 2, w: 4.5, h: 3,
-          fontSize: 16, color: textColor,
+          x: 0.6, y: 1.6, w: 8.8, h: 3.2,
           fontFace: fontFace
         });
       }
@@ -960,7 +1032,7 @@ exports.exportPPTX = async (req, res) => {
 };
 
 /**
- * Export to PDF (Beautiful HTML → PDF with all 17 layouts)
+ * Export to PDF
  * GET /api/presentation/:slug/export/pdf
  */
 exports.exportPDF = async (req, res) => {
@@ -984,56 +1056,186 @@ exports.exportPDF = async (req, res) => {
 
     const renderSlide = (slide, idx) => {
       const layout = slide.layout || "bullets";
-      const border = hexToRgba(T.primary, 0.15);
-      const cardBg = hexToRgba(T.primary, 0.04);
+      const border = hexToRgba(T.primary, 0.20);
+      const cardBg = hexToRgba(T.primary, 0.05);
       let body = "";
 
       if (layout === "title") {
         body = `
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:30px;max-width:1200px;margin:0 auto;position:relative;z-index:2;">
-            <h1 style="font-size:76px;font-weight:900;line-height:1.2;margin:0;background:linear-gradient(160deg,#ffffff 30%,${T.primary});-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1px;">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:24px;max-width:1200px;margin:0 auto;position:relative;z-index:2;">
+            <h1 style="font-size:72px;font-weight:900;line-height:1.2;margin:0;background:linear-gradient(160deg,#ffffff 30%,${T.primary});-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1px;">
               ${slide.title || ""}
             </h1>
-            <div style="width:140px;height:6px;border-radius:4px;background:${T.primary};box-shadow:0 0 15px ${T.primary};margin:10px auto;"></div>
-            ${slide.subtitle ? `<p style="font-size:28px;color:#d4d4d4;font-weight:300;margin:0;max-width:900px;line-height:1.5;">${slide.subtitle}</p>` : ""}
-            ${slide.author ? `<p style="font-size:18px;color:${T.primary};font-family:monospace;letter-spacing:3px;text-transform:uppercase;margin-top:20px;">// ${slide.author}</p>` : ""}
+            <div style="width:140px;height:6px;border-radius:4px;background:${T.primary};box-shadow:0 0 15px ${T.primary};margin:5px auto;"></div>
+            ${slide.subtitle ? `<p style="font-size:26px;color:#d4d4d4;font-weight:300;margin:0;max-width:900px;line-height:1.5;">${slide.subtitle}</p>` : ""}
+            ${slide.author ? `<p style="font-size:18px;color:${T.primary};font-family:monospace;letter-spacing:3px;text-transform:uppercase;margin-top:15px;">// ${slide.author}</p>` : ""}
           </div>
         `;
       }
-      else if (layout === "section_break") {
-        body = `
-          <div style="display:flex;flex-direction:column;justify-content:center;height:100%;padding-left:80px;border-left:8px solid ${T.primary};max-width:1200px;margin:0 auto;position:relative;z-index:2;gap:20px;">
-            <span style="font-family:monospace;text-transform:uppercase;letter-spacing:6px;font-size:16px;font-weight:900;color:${T.primary};">// NEXT CHAPTER</span>
-            <h1 style="font-size:68px;font-weight:900;margin:0;color:#ffffff;line-height:1.2;letter-spacing:-1.5px;">${slide.title || ""}</h1>
-            ${slide.subtitle ? `<p style="font-size:26px;color:#a3a3a3;font-weight:300;margin:0;max-width:900px;line-height:1.5;">${slide.subtitle}</p>` : ""}
-          </div>
-        `;
-      }
-      else if (layout === "conclusion") {
-        const bullets = slide.bullets || [];
-        const cards = bullets.map(b => `
-          <div style="padding:28px;border-radius:18px;border:1px solid ${border};background:${cardBg};display:flex;align-items:center;gap:18px;box-shadow:0 8px 32px 0 rgba(0,0,0,0.25);">
-            <span style="color:${T.accent};font-size:26px;line-height:1;flex-shrink:0;">✔</span>
-            <p style="font-size:20px;color:#e5e5e5;font-weight:300;margin:0;line-height:1.6;">${b}</p>
+      else if (layout === "image_left") {
+        const imgEl = slide.image_url 
+          ? `<img src="${slide.image_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:20px;" />`
+          : `<span style="font-size:60px;opacity:0.3;color:#ffffff;">📷</span>`;
+        
+        const bulletItems = (slide.bullets || [slide.content || ""]).map(b => `
+          <div style="display:flex;gap:14px;align-items:start;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${T.primary};flex-shrink:0;margin-top:8px;"></span>
+            <p style="font-size:20px;color:${T.text};font-weight:300;line-height:1.6;margin:0;">${b}</p>
           </div>
         `).join("");
+
         body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:40px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:900;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || "Conclusion"}</h2>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;width:100%;">
-              ${cards}
+          <div style="height:100%;display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
+            <div style="height:480px;border-radius:24px;border:1px solid ${border};background:#111;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.5);">
+              ${imgEl}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:20px;">
+              <h2 style="font-size:42px;font-weight:900;color:${T.primary};margin:0;line-height:1.2;">${slide.title || ""}</h2>
+              ${slide.subtitle ? `<p style="font-size:20px;color:#a3a3a3;margin:0;">${slide.subtitle}</p>` : ""}
+              <div style="display:flex;flex-direction:column;gap:16px;margin-top:10px;">
+                ${bulletItems}
+              </div>
             </div>
           </div>
         `;
       }
-      else if (layout === "bullets") {
-        const items = slide.bullets || [];
+      else if (layout === "image_right") {
+        const imgEl = slide.image_url 
+          ? `<img src="${slide.image_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:20px;" />`
+          : `<span style="font-size:60px;opacity:0.3;color:#ffffff;">📷</span>`;
+        
+        const bulletItems = (slide.bullets || [slide.content || ""]).map(b => `
+          <div style="display:flex;gap:14px;align-items:start;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${T.accent};flex-shrink:0;margin-top:8px;"></span>
+            <p style="font-size:20px;color:${T.text};font-weight:300;line-height:1.6;margin:0;">${b}</p>
+          </div>
+        `).join("");
+
+        body = `
+          <div style="height:100%;display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
+            <div style="display:flex;flex-direction:column;gap:20px;">
+              <h2 style="font-size:42px;font-weight:900;color:${T.primary};margin:0;line-height:1.2;">${slide.title || ""}</h2>
+              ${slide.subtitle ? `<p style="font-size:20px;color:#a3a3a3;margin:0;">${slide.subtitle}</p>` : ""}
+              <div style="display:flex;flex-direction:column;gap:16px;margin-top:10px;">
+                ${bulletItems}
+              </div>
+            </div>
+            <div style="height:480px;border-radius:24px;border:1px solid ${border};background:#111;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.5);">
+              ${imgEl}
+            </div>
+          </div>
+        `;
+      }
+      else if (layout === "metric_callout" || layout === "metric") {
+        const metrics = slide.metrics || [
+          { value: slide.metric?.value || "99.4%", label: slide.metric?.label || "Metric KPI" },
+          { value: "3.5x", label: "Acceleration" },
+          { value: "< 10ms", label: "Latency" }
+        ];
+        const metricCards = metrics.slice(0, 3).map(m => `
+          <div style="flex:1;padding:48px 32px;border-radius:24px;border:1px solid ${border};background:${cardBg};text-align:center;box-shadow:0 12px 48px 0 rgba(0,0,0,0.3);display:flex;flex-direction:column;justify-content:center;gap:12px;">
+            <span style="font-size:68px;font-weight:900;background:linear-gradient(to right, ${T.primary}, ${T.accent});-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;letter-spacing:-2px;">${m.value}</span>
+            <span style="font-size:16px;font-weight:800;color:${T.text};text-transform:uppercase;letter-spacing:2px;font-family:monospace;">${m.label}</span>
+          </div>
+        `).join("");
+        body = `
+          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:40px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
+            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
+            <div style="display:flex;gap:30px;width:100%;">${metricCards}</div>
+          </div>
+        `;
+      }
+      else if (layout === "timeline" || layout === "steps") {
+        const events = (slide.events || [
+          { year: "Phase 1", description: "Architecture Discovery" },
+          { year: "Phase 2", description: "Semantic Indexing" },
+          { year: "Phase 3", description: "Production Scale" }
+        ]).slice(0, 4);
+        const eventCards = events.map((ev, idx) => `
+          <div style="flex:1;padding:28px 24px;border-radius:20px;border:1px solid ${border};background:#0d0d12;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 32px rgba(0,0,0,0.35);min-height:220px;">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+              <span style="font-family:monospace;font-size:18px;font-weight:900;color:${T.primary};">${ev.year}</span>
+              <div style="flex:1;height:1px;background:rgba(255,255,255,0.15);"></div>
+            </div>
+            <p style="font-size:18px;color:#d4d4d4;font-weight:300;line-height:1.6;margin:0;">${ev.description}</p>
+          </div>
+        `).join("");
+        body = `
+          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:40px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
+            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
+            <div style="display:flex;gap:24px;width:100%;">${eventCards}</div>
+          </div>
+        `;
+      }
+      else if (layout === "comparison" || layout === "two_column_text") {
+        const leftItems = (slide.columns?.left || ["Baseline"]).map((item, idx) => `
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:${T.primary};flex-shrink:0;"></span>
+            <span style="font-size:18px;color:${idx === 0 ? T.primary : T.text};font-weight:${idx === 0 ? "700" : "300"};">${item}</span>
+          </div>
+        `).join("");
+
+        const rightItems = (slide.columns?.right || ["AI Modern"]).map((item, idx) => `
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="color:${T.accent};font-size:16px;flex-shrink:0;">✔</span>
+            <span style="font-size:18px;color:${idx === 0 ? T.accent : "#ffffff"};font-weight:${idx === 0 ? "700" : "400"};">${item}</span>
+          </div>
+        `).join("");
+
+        body = `
+          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
+            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;width:100%;">
+              <div style="padding:36px;border-radius:24px;border:1px solid ${border};background:${cardBg};display:flex;flex-direction:column;gap:16px;">
+                ${leftItems}
+              </div>
+              <div style="padding:36px;border-radius:24px;border:1px solid ${hexToRgba(T.primary, 0.4)};background:${hexToRgba(T.primary, 0.1)};display:flex;flex-direction:column;gap:16px;">
+                ${rightItems}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      else if (layout === "pros_cons") {
+        const proItems = (slide.pros || ["High accuracy", "Infinite scale"]).map(p => `
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="color:#10B981;font-size:18px;">✔</span>
+            <span style="font-size:18px;color:#e5e5e5;font-weight:300;">${p}</span>
+          </div>
+        `).join("");
+
+        const conItems = (slide.cons || ["Initial setup overhead"]).map(c => `
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="color:#EF4444;font-size:18px;">✖</span>
+            <span style="font-size:18px;color:#e5e5e5;font-weight:300;">${c}</span>
+          </div>
+        `).join("");
+
+        body = `
+          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
+            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;width:100%;">
+              <div style="padding:36px;border-radius:24px;border:1px solid rgba(16,185,129,0.3);background:rgba(6,78,59,0.25);display:flex;flex-direction:column;gap:16px;">
+                <span style="font-size:16px;font-weight:900;color:#10B981;text-transform:uppercase;letter-spacing:2px;">Advantages & Benefits</span>
+                ${proItems}
+              </div>
+              <div style="padding:36px;border-radius:24px;border:1px solid rgba(239,68,68,0.3);background:rgba(69,10,10,0.25);display:flex;flex-direction:column;gap:16px;">
+                <span style="font-size:16px;font-weight:900;color:#EF4444;text-transform:uppercase;letter-spacing:2px;">Challenges & Constraints</span>
+                ${conItems}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      else {
+        // Default bento cards / bullets
+        const items = slide.bullets || ["Key insight"];
         const listItems = items.map((b, idx) => `
-          <div style="padding:24px;border-radius:18px;border:1px solid ${border};background:${cardBg};display:flex;align-items:start;gap:20px;box-shadow:0 8px 32px 0 rgba(0,0,0,0.25);">
-            <span style="width:34px;height:34px;border-radius:50%;border:1px solid ${border};color:${T.accent};font-family:monospace;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;background:${hexToRgba(T.primary, 0.12)};flex-shrink:0;margin-top:2px;">
+          <div style="padding:26px 28px;border-radius:20px;border:1px solid ${border};background:${cardBg};display:flex;align-items:start;gap:18px;box-shadow:0 8px 32px 0 rgba(0,0,0,0.25);">
+            <span style="width:34px;height:34px;border-radius:50%;border:1px solid ${border};color:${T.accent};font-family:monospace;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;background:${hexToRgba(T.primary, 0.15)};flex-shrink:0;margin-top:2px;">
               0${idx + 1}
             </span>
-            <p style="font-size:21px;color:${T.text};font-weight:300;line-height:1.6;margin:0;">${b}</p>
+            <p style="font-size:20px;color:${T.text};font-weight:300;line-height:1.6;margin:0;">${b}</p>
           </div>
         `).join("");
         body = `
@@ -1044,274 +1246,6 @@ exports.exportPDF = async (req, res) => {
             </div>
           </div>
         `;
-      }
-      else if (layout === "steps") {
-        const items = slide.steps || [];
-        const stepCards = items.map((step, idx) => `
-          <div style="flex:1;padding:32px 28px;border-radius:20px;border:1px solid ${border};background:${cardBg};display:flex;flex-direction:column;gap:20px;position:relative;box-shadow:0 10px 40px 0 rgba(0,0,0,0.25);">
-            <div style="width:44px;height:44px;border-radius:50%;color:${T.accent};background:${hexToRgba(T.primary, 0.15)};font-size:20px;font-weight:950;font-family:monospace;display:flex;align-items:center;justify-content:center;border:1px solid ${border};">
-              ${idx + 1}
-            </div>
-            <p style="font-size:19px;color:${T.text};font-weight:300;line-height:1.6;margin:0;">${step}</p>
-          </div>
-        `).join("");
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:40px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-            <div style="display:flex;gap:24px;width:100%;">
-              ${stepCards}
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "paragraph") {
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:32px;max-width:1200px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-            <div style="padding:44px;border-radius:24px;border:1px solid ${border};background:${cardBg};box-shadow:0 12px 48px 0 rgba(0,0,0,0.35);">
-              <p style="font-size:24px;color:${T.text};font-weight:300;line-height:1.8;margin:0;white-space:pre-wrap;">${slide.content || ""}</p>
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "quote") {
-        body = `
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:36px;max-width:1100px;margin:0 auto;position:relative;z-index:2;">
-            <span style="font-size:100px;line-height:0.1;color:${T.primary};opacity:0.4;font-family:Georgia, serif;font-weight:bold;">“</span>
-            <blockquote style="font-size:36px;color:${T.text};font-weight:400;font-style:italic;line-height:1.6;margin:0;">
-              "${slide.quote_text || ""}"
-            </blockquote>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-              <span style="font-size:22px;font-weight:800;color:#ffffff;">${slide.author || ""}</span>
-              ${slide.role ? `<span style="font-size:14px;font-family:monospace;letter-spacing:3px;text-transform:uppercase;color:${T.primary};">${slide.role}</span>` : ""}
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "two_column_text") {
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;width:100%;">
-              <div style="padding:32px;border-radius:20px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.005);box-shadow:0 8px 32px 0 rgba(0,0,0,0.15);">
-                <p style="font-size:19px;color:#d4d4d4;font-weight:300;line-height:1.75;margin:0;white-space:pre-wrap;">${slide.left_text || ""}</p>
-              </div>
-              <div style="padding:32px;border-radius:20px;border:1px solid ${border};background:${cardBg};box-shadow:0 8px 32px 0 rgba(0,0,0,0.25);">
-                <p style="font-size:19px;color:${T.text};font-weight:300;line-height:1.75;margin:0;white-space:pre-wrap;">${slide.right_text || ""}</p>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "comparison") {
-        const L = slide.columns?.left || [];
-        const R = slide.columns?.right || [];
-        const lHeader = L[0] || "Left Column";
-        const rHeader = R[0] || "Right Column";
-        const lItems = L.slice(1).map(item => `
-          <li style="font-size:18px;color:#d4d4d4;font-weight:300;padding:8px 0;list-style:none;display:flex;align-items:start;gap:10px;">
-            <span style="color:${T.primary};flex-shrink:0;">▸</span>
-            <span>${item}</span>
-          </li>
-        `).join("");
-        const rItems = R.slice(1).map(item => `
-          <li style="font-size:18px;color:#d4d4d4;font-weight:300;padding:8px 0;list-style:none;display:flex;align-items:start;gap:10px;">
-            <span style="color:${T.accent};flex-shrink:0;">▸</span>
-            <span>${item}</span>
-          </li>
-        `).join("");
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;width:100%;">
-              <div style="padding:32px;border-radius:20px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.005);box-shadow:0 8px 32px 0 rgba(0,0,0,0.15);">
-                <span style="font-family:monospace;font-size:14px;color:#888888;text-transform:uppercase;letter-spacing:2px;display:block;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:14px;margin-bottom:20px;">${lHeader}</span>
-                <ul style="padding:0;margin:0;display:flex;flex-direction:column;gap:10px;">${lItems}</ul>
-              </div>
-              <div style="padding:32px;border-radius:20px;border:1px solid ${border};background:${cardBg};box-shadow:0 8px 32px 0 rgba(0,0,0,0.25);">
-                <span style="font-family:monospace;font-size:14px;color:${T.accent};text-transform:uppercase;letter-spacing:2px;display:block;border-bottom:1px solid ${border};padding-bottom:14px;margin-bottom:20px;">${rHeader}</span>
-                <ul style="padding:0;margin:0;display:flex;flex-direction:column;gap:10px;">${rItems}</ul>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "pros_cons") {
-        const pItems = (slide.pros || []).map(p => `
-          <li style="font-size:18px;color:#e2fcf0;font-weight:300;padding:8px 0;list-style:none;display:flex;align-items:start;gap:10px;">
-            <span style="color:#10b981;font-weight:900;flex-shrink:0;">✓</span>
-            <span>${p}</span>
-          </li>
-        `).join("");
-        const cItems = (slide.cons || []).map(c => `
-          <li style="font-size:18px;color:#fee2e2;font-weight:300;padding:8px 0;list-style:none;display:flex;align-items:start;gap:10px;">
-            <span style="color:#ef4444;font-weight:900;flex-shrink:0;">✗</span>
-            <span>${c}</span>
-          </li>
-        `).join("");
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;width:100%;">
-              <div style="padding:32px;border-radius:20px;border:1px solid rgba(16,185,129,0.15);background:rgba(16,185,129,0.02);box-shadow:0 8px 32px 0 rgba(0,0,0,0.15);">
-                <span style="font-family:monospace;font-size:15px;color:#10b981;font-weight:800;text-transform:uppercase;letter-spacing:2px;display:block;border-bottom:1px solid rgba(16,185,129,0.1);padding-bottom:14px;margin-bottom:20px;">✓ Advantages</span>
-                <ul style="padding:0;margin:0;display:flex;flex-direction:column;gap:10px;">${pItems}</ul>
-              </div>
-              <div style="padding:32px;border-radius:20px;border:1px solid rgba(239,68,68,0.15);background:rgba(239,68,68,0.02);box-shadow:0 8px 32px 0 rgba(0,0,0,0.25);">
-                <span style="font-family:monospace;font-size:15px;color:#ef4444;font-weight:800;text-transform:uppercase;letter-spacing:2px;display:block;border-bottom:1px solid rgba(239,68,68,0.1);padding-bottom:14px;margin-bottom:20px;">✗ Limitations</span>
-                <ul style="padding:0;margin:0;display:flex;flex-direction:column;gap:10px;">${cItems}</ul>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-      else if (["metric", "metric_callout"].includes(layout)) {
-        const metrics = slide.metrics || [];
-        if (metrics.length >= 2) {
-          const count = Math.min(metrics.length, 3);
-          const metricCards = metrics.slice(0, count).map(m => `
-            <div style="flex:1;padding:48px 28px;border-radius:24px;border:1px solid ${border};background:${cardBg};text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;box-shadow:0 10px 40px 0 rgba(0,0,0,0.25);">
-              <span style="font-size:${count === 3 ? "56px" : "72px"};font-weight:900;background:linear-gradient(to right, ${T.primary}, ${T.accent});-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1.5px;">${m.value}</span>
-              <span style="font-size:14px;font-weight:700;color:${T.primary};text-transform:uppercase;letter-spacing:2px;font-family:monospace;">${m.label}</span>
-            </div>
-          `).join("");
-          body = `
-            <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:40px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-              <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-              <div style="display:flex;gap:24px;width:100%;">${metricCards}</div>
-            </div>
-          `;
-        } else {
-          const m = metrics[0] || slide.metric || { value: "0", label: "Metric", description: "" };
-          body = `
-            <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:40px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-              <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-              <div style="display:grid;grid-template-columns:5fr 7fr;gap:44px;align-items:center;width:100%;">
-                <div style="padding:54px 40px;border-radius:24px;border:1px solid ${border};background:${cardBg};text-align:center;box-shadow:0 12px 48px 0 rgba(0,0,0,0.3);display:flex;flex-direction:column;gap:14px;">
-                  <span style="font-size:80px;font-weight:900;background:linear-gradient(to right, ${T.primary}, ${T.accent});-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;letter-spacing:-2.5px;">${m.value}</span>
-                  <span style="font-size:15px;font-weight:800;color:${T.primary};text-transform:uppercase;letter-spacing:2px;font-family:monospace;">${m.label}</span>
-                </div>
-                <p style="font-size:24px;color:${T.text};font-weight:300;line-height:1.75;margin:0;white-space:pre-wrap;">${m.description || slide.content || ""}</p>
-              </div>
-            </div>
-          `;
-        }
-      }
-      else if (layout === "matrix_2x2") {
-        const quads = (slide.quadrants || ["", "", "", ""]).slice(0, 4);
-        const quadColors = [T.primary, T.accent, T.accent, T.primary];
-        const quadItems = quads.map((qtext, idx) => `
-          <div style="padding:32px;border-radius:20px;border:1px solid ${hexToRgba(quadColors[idx], 0.25)};background:${hexToRgba(quadColors[idx], 0.06)};display:flex;flex-direction:column;justify-content:center;box-shadow:0 8px 32px 0 rgba(0,0,0,0.25);">
-            <p style="font-size:19px;color:${T.text};font-weight:300;line-height:1.65;margin:0;">${qtext}</p>
-          </div>
-        `).join("");
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-            <div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:24px;aspect-ratio:2.4/1;width:100%;">
-              ${quadItems}
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "timeline") {
-        const events = (slide.events || []).slice(0, 5);
-        const eventCards = events.map((ev, idx) => `
-          <div style="flex:1;padding:28px 24px;border-radius:18px;border:1px solid ${border};background:#000000;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 32px 0 rgba(0,0,0,0.3);position:relative;z-index:2;min-height:220px;">
-            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
-              <span style="font-family:monospace;font-size:18px;font-weight:900;color:${T.primary};letter-spacing:1px;">${ev.year}</span>
-              <div style="flex:1;height:1px;background:rgba(255,255,255,0.15);"></div>
-            </div>
-            <p style="font-size:17px;color:#d4d4d4;font-weight:300;line-height:1.6;margin:0;flex-grow:1;">${ev.description}</p>
-          </div>
-        `).join("");
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:40px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-            <div style="display:flex;gap:24px;position:relative;width:100%;">
-              ${eventCards}
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "roadmap") {
-        const phases = (slide.phases || []).slice(0, 3);
-        const phaseCards = phases.map((p, idx) => `
-          <div style="flex:1;padding:36px 32px;border-radius:24px;border:1px solid ${border};background:#000000;display:flex;flex-direction:column;gap:20px;box-shadow:0 10px 40px 0 rgba(0,0,0,0.3);min-height:260px;">
-            <span style="font-family:monospace;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:3px;color:${T.primary};border-bottom:1px solid ${border};padding-bottom:12px;display:block;">${p.phase}</span>
-            <p style="font-size:18px;color:#d4d4d4;font-weight:300;line-height:1.65;margin:0;flex-grow:1;">${p.goal}</p>
-          </div>
-        `).join("");
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:800;color:${T.primary};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-            <div style="display:flex;gap:28px;width:100%;">
-              ${phaseCards}
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "image_left") {
-        const imgEl = slide.image_url 
-          ? `<img src="${slide.image_url}" alt="${slide.alt_text || "Slide Image"}" style="width:100%;height:100%;object-fit:cover;opacity:0.85;" />`
-          : `<span style="font-size:56px;opacity:0.2;color:#ffffff;">📷</span>`;
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;width:100%;">
-              <div style="height:500px;border-radius:24px;border:1px solid ${border};background:#121212;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 48px 0 rgba(0,0,0,0.35);">
-                ${imgEl}
-              </div>
-              <div style="display:flex;flex-direction:column;gap:24px;">
-                <h2 style="font-size:44px;font-weight:850;color:${T.primary};margin:0;">${slide.title || ""}</h2>
-                <p style="font-size:20px;color:${T.text};font-weight:300;line-height:1.8;margin:0;white-space:pre-wrap;">${slide.content || ""}</p>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "image_right") {
-        const imgEl = slide.image_url 
-          ? `<img src="${slide.image_url}" alt="${slide.alt_text || "Slide Image"}" style="width:100%;height:100%;object-fit:cover;opacity:0.85;" />`
-          : `<span style="font-size:56px;opacity:0.2;color:#ffffff;">📷</span>`;
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;width:100%;">
-              <div style="display:flex;flex-direction:column;gap:24px;">
-                <h2 style="font-size:44px;font-weight:850;color:${T.primary};margin:0;">${slide.title || ""}</h2>
-                <p style="font-size:20px;color:${T.text};font-weight:300;line-height:1.8;margin:0;white-space:pre-wrap;">${slide.content || ""}</p>
-              </div>
-              <div style="height:500px;border-radius:24px;border:1px solid ${border};background:#121212;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 48px 0 rgba(0,0,0,0.35);">
-                ${imgEl}
-              </div>
-            </div>
-          </div>
-        `;
-      }
-      else if (layout === "gallery_grid") {
-        const imgs = (slide.images || []).slice(0, 4);
-        const gridCards = imgs.map((img, idx) => `
-          <div style="flex:1;height:260px;border-radius:20px;border:1px solid ${border};background:#121212;overflow:hidden;box-shadow:0 10px 36px 0 rgba(0,0,0,0.25);">
-            <img src="${img}" alt="Gallery ${idx + 1}" style="width:100%;height:100%;object-fit:cover;opacity:0.85;" />
-          </div>
-        `).join("");
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:36px;max-width:1400px;margin:0 auto;position:relative;z-index:2;width:100%;">
-            <h2 style="font-size:48px;font-weight:800;color:#ffffff;margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${slide.title || ""}</h2>
-            <div style="display:flex;gap:24px;width:100%;">
-              ${gridCards}
-            </div>
-          </div>
-        `;
-      }
-      else {
-        // Generic fallback
-        const normalized = normalizeSlide(slide);
-        const lItems = (normalized.bullets || []).map(b => `<li style="font-size:21px;color:${T.text};padding:7px 0 7px 28px;position:relative;font-weight:300;"><span style="position:absolute;left:0;color:${T.primary};">●</span>${b}</li>`).join("");
-        body = `
-          <div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:24px;">
-            <h2 style="font-size:44px;font-weight:800;color:${T.accent};margin:0;border-left:6px solid ${T.primary};padding-left:20px;">${normalized.title}</h2>
-            <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;">${lItems}</ul>
-          </div>`;
       }
 
       const watermark = !isSubscribed ? `
