@@ -813,33 +813,68 @@ function PlanQuotasCard({ quotaData, isPremium }: { quotaData: any; isPremium?: 
             ? Math.min(100, Math.round((item.used / item.limit) * 100))
             : 0;
 
+          const isExhausted = !item.unlimited && item.limit > 0 && item.used >= item.limit;
+          const isLow = !item.unlimited && item.limit > 0 && pct >= 80 && !isExhausted;
+
           return (
             <div
               key={item.key}
-              className="p-4 rounded-2xl bg-black/40 border border-white/[0.05] flex flex-col justify-between space-y-3 hover:border-white/[0.1] transition-all"
+              className={cn(
+                "p-4 rounded-2xl border flex flex-col justify-between space-y-3 transition-all",
+                isExhausted 
+                  ? "bg-red-950/20 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]" 
+                  : isLow 
+                  ? "bg-amber-950/15 border-amber-500/25" 
+                  : "bg-black/40 border-white/[0.05] hover:border-white/[0.1]"
+              )}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5">
                   <span className="text-lg">{item.icon}</span>
                   <div>
-                    <p className="text-xs font-bold text-white leading-tight">{item.title}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-white leading-tight">{item.title}</p>
+                      {isExhausted && (
+                        <span className="px-1.5 py-0.2 rounded bg-red-500/20 text-red-400 text-[8.5px] font-mono font-bold uppercase">
+                          Limit
+                        </span>
+                      )}
+                      {isLow && (
+                        <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 text-[8.5px] font-mono font-bold uppercase">
+                          Low
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10.5px] text-neutral-400 leading-tight mt-0.5">{item.extra}</p>
                   </div>
                 </div>
-                <span className="text-xs font-mono font-bold text-neutral-200 shrink-0">
+                <span className={cn(
+                  "text-xs font-mono font-bold shrink-0",
+                  isExhausted ? "text-red-400" : isLow ? "text-amber-400" : "text-neutral-200"
+                )}>
                   {item.unlimited ? "Unlimited" : `${item.used} / ${item.limit}`}
                 </span>
               </div>
 
               {!item.unlimited ? (
-                <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all duration-500",
-                      pct >= 90 ? "bg-red-500" : pct >= 60 ? "bg-yellow-400" : "bg-emerald-400"
-                    )}
-                    style={{ width: `${pct}%` }}
-                  />
+                <div className="space-y-1">
+                  <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500",
+                        pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-400" : "bg-emerald-400"
+                      )}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  {isExhausted && (
+                    <div className="flex items-center justify-between text-[10px] pt-0.5">
+                      <span className="text-red-400 font-medium">All allowance used</span>
+                      <Link href="/pricing" className="text-white font-bold underline hover:text-red-300">
+                        Upgrade
+                      </Link>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold">

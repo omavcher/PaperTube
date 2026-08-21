@@ -67,6 +67,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from 'next/link';
 import SubscriptionDialog from "@/components/SubscriptionDialog";
+import QuotaPaywallModal from "@/components/QuotaPaywallModal";
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthLoginModal, PremiumUpgradeModal } from '@/components/AuthGuard';
@@ -622,19 +623,30 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
         setIsGenerating(false);
         const errData = err.response?.data;
 
-        // Correctly handle the new Insufficient Tokens response
-        if (errData?.code === "INSUFFICIENT_TOKENS") {
-            setTokenErrorData(errData);
-        } else if (errData?.code === "MODEL_NOT_AVAILABLE" || errData?.code === "VIDEO_TOO_LONG" || errData?.code === "DAILY_LIMIT_EXCEEDED") {
-            // Show specific error for plan restrictions
-            setPlanErrorData(errData);
+        if (
+          errData?.code === "QUOTA_EXCEEDED" || 
+          errData?.code === "DAILY_LIMIT_EXCEEDED" || 
+          errData?.code === "VIDEO_TOO_LONG" || 
+          errData?.code === "MODEL_NOT_AVAILABLE" ||
+          errData?.code === "POWER_FEATURE_REQUIRED" ||
+          err.response?.status === 403
+        ) {
+          setPlanErrorData(errData || {
+            code: "QUOTA_EXCEEDED",
+            message: "You've reached your plan generation limit for today. Upgrade to Pro Scholar for 120 monthly notes and 4-hour video processing."
+          });
+          setShowPaywall(true);
+        } else if (errData?.code === "INSUFFICIENT_TOKENS") {
+          setTokenErrorData(errData);
+          setPlanErrorData({
+            code: "QUOTA_EXCEEDED",
+            message: "You've reached your daily free generation limit. Upgrade to Pro Scholar to unlock high-capacity monthly allowances."
+          });
+          setShowPaywall(true);
         } else if (errData?.code === "TRANSCRIPT_TOO_LONG") {
-            // Show a proper modal instead of a browser alert
-            setTranscriptErrorData(errData);
-        } else if (err.response?.status === 403) {
-            setShowPaywall(true);
+          setTranscriptErrorData(errData);
         } else {
-            alert(errData?.message || "Something went wrong processing the signal. Please try again.");
+          alert(errData?.message || "Something went wrong processing the signal. Please try again.");
         }
     }
   };
@@ -1486,6 +1498,26 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
 
               {/* ─── 2. MAIN COMMAND CARD ─── */}
               <div className="w-full max-w-4xl relative z-10">
+                {/* Low Daily Quota Warning Banner */}
+                {isLoggedIn && !hasPremiumAccess && userTokens !== null && userTokens <= 2 && (
+                  <div className="mb-3 px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between gap-3 shadow-md">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+                      <span>
+                        {userTokens === 0 
+                          ? "You've reached your free daily note quota. Resets at midnight UTC." 
+                          : `Low quota: Only ${userTokens} note${userTokens === 1 ? '' : 's'} remaining today.`}
+                      </span>
+                    </div>
+                    <Link
+                      href="/pricing"
+                      className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] shrink-0 transition-all active:scale-95 cursor-pointer"
+                    >
+                      Upgrade to Pro
+                    </Link>
+                  </div>
+                )}
+
                 {/* Outer glow ambient effect */}
                 <div className="absolute -inset-px rounded-[1.25rem] sm:rounded-[1.75rem] bg-gradient-to-b from-red-500/10 via-red-500/5 to-transparent pointer-events-none z-0" />
 
@@ -2249,6 +2281,24 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* --- Global Paywall & Auth Modals --- */}
+        <QuotaPaywallModal
+          isOpen={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          errorInfo={planErrorData}
+        />
+
+        <AuthLoginModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+        />
+
+        <PremiumUpgradeModal
+          isOpen={showPremiumModal}
+          onClose={() => setShowPremiumModal(false)}
+          featureName={premiumFeatureName}
+        />
       </div>
     </section>
   );

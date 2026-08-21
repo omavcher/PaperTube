@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from 'next/link';
 import SubscriptionDialog from "@/components/SubscriptionDialog";
+import QuotaPaywallModal from "@/components/QuotaPaywallModal";
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthLoginModal, PremiumUpgradeModal } from '@/components/AuthGuard';
@@ -194,6 +195,7 @@ export default function PPTMain() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumFeatureName, setPremiumFeatureName] = useState("");
   const [tokenErrorData, setTokenErrorData] = useState<any>(null);
+  const [planErrorData, setPlanErrorData] = useState<any>(null);
 
   // Check login & tier on mount
   useEffect(() => {
@@ -460,11 +462,30 @@ export default function PPTMain() {
       }
     } catch (err: any) {
       const errData = err.response?.data;
-      if (errData?.code === "INSUFFICIENT_TOKENS") {
+      if (
+        errData?.code === "QUOTA_EXCEEDED" || 
+        errData?.code === "DAILY_LIMIT_EXCEEDED" || 
+        errData?.code === "MODEL_NOT_AVAILABLE" ||
+        errData?.code === "POWER_FEATURE_REQUIRED" ||
+        err.response?.status === 403
+      ) {
+        setIsGenerating(false);
+        setPlanErrorData(errData || {
+          code: "QUOTA_EXCEEDED",
+          feature: "presentations",
+          featureLabel: "AI Slide Decks",
+          message: "You've reached your AI Slide Decks daily limit on the Free plan. Upgrade to Pro Scholar for 10 monthly decks with 20 slides."
+        });
+        setShowPaywall(true);
+      } else if (errData?.code === "INSUFFICIENT_TOKENS") {
         setIsGenerating(false);
         setTokenErrorData(errData);
-      } else if (errData?.code === "DAILY_LIMIT_EXCEEDED" || err.response?.status === 403) {
-        setIsGenerating(false);
+        setPlanErrorData({
+          code: "QUOTA_EXCEEDED",
+          feature: "presentations",
+          featureLabel: "AI Slide Decks",
+          message: "You've reached your free daily slide deck allowance. Upgrade to Pro Scholar for high-capacity allowances."
+        });
         setShowPaywall(true);
       } else {
         console.warn("Backend slide deck compiler failed, generating local fallback redirect.");
@@ -1113,6 +1134,24 @@ export default function PPTMain() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Global Modals */}
+        <QuotaPaywallModal
+          isOpen={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          errorInfo={planErrorData}
+        />
+
+        <AuthLoginModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+        />
+
+        <PremiumUpgradeModal
+          isOpen={showPremiumModal}
+          onClose={() => setShowPremiumModal(false)}
+          featureName={premiumFeatureName}
+        />
       </div>
 
     </section>
