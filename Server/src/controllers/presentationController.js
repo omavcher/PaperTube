@@ -377,110 +377,63 @@ exports.generateFinal = async (req, res) => {
     }
 
     // Build synthesis prompt
-    const finalPrompt = `Generate the full slide deck content based on the user-approved outline structure: ${JSON.stringify(outline)}.
-Topic: "${title}".
+    // Build synthesis prompt with production-grade depth and visual instructions
+    const finalPrompt = `You are a world-class executive presentation designer and expert subject researcher (matching Gamma.app and Pitch standards).
+Generate a deep, highly detailed, production-grade slide deck based on the user outline: ${JSON.stringify(outline)}.
+
+Presentation Topic: "${title}".
 Language: "${language}".
-Text Density: "${textDensity}".
-Visuals Enabled: ${visuals}.
-Additional Prompt Context: "${prompt}".
+Text Density: "${textDensity || "detailed"}".
+Visuals Enabled: true.
+Additional Context: "${prompt}".
 
-For each slide title in the outline, choose one of the following 17 layout types based on the topic context and supply the corresponding data fields:
-Layout Options:
-1. "title": The main hero cover of the presentation. Fields: "title", "subtitle", "author" (optional, e.g. "By Paperxify AI")
-2. "section_break": A bold divider to introduce a new chapter. Fields: "title", "subtitle"
-3. "conclusion": The final wrap-up or summary slide. Fields: "title", "bullets" (array of 3-4 strings summarizing key takeaways)
-4. "bullets": Standard bulleted list for key takeaways. Fields: "title", "bullets" (array of 3-5 strings)
-5. "paragraph": Long-form text for detailed explanations. Fields: "title", "content" (string representing detailed analysis paragraphs)
-6. "quote": Highlighting a powerful statement or testimonial. Fields: "quote_text" (string), "author" (string), "role" (string, optional)
-7. "two_column_text": Two side-by-side text blocks without comparison. Fields: "title", "left_text" (string), "right_text" (string)
-8. "comparison": Side-by-side feature comparison. Fields: "title", "columns" object containing "left" (array of strings, first item is header) and "right" (array of strings, first item is header)
-9. "pros_cons": Specifically formatted for advantages vs disadvantages. Fields: "title", "pros" (array of strings), "cons" (array of strings)
-10. "metric_callout": One or three massive numbers with short labels. Fields: "title", "metrics" (array of 1 or 3 objects each with "value" and "label")
-11. "matrix_2x2": A four-quadrant grid (e.g., SWOT analysis). Fields: "title", "quadrants" (array of exactly 4 strings for Top-Left, Top-Right, Bottom-Left, Bottom-Right)
-12. "timeline": Chronological events mapped horizontally. Fields: "title", "events" (array of objects with "year" and "description" fields)
-13. "steps": A 1-2-3-4 numbered process flow. Fields: "title", "steps" (array of 3-4 strings)
-14. "roadmap": Future planning (Now, Next, Later). Fields: "title", "phases" (array of 3 objects with "phase" and "goal" fields)
-15. "image_left": Image on the left 50%, text on the right. Fields: "title", "content" (string), "image_url" (string), "alt_text" (string)
-16. "image_right": Image on the right 50%, text on the left. Fields: "title", "content" (string), "image_url" (string), "alt_text" (string)
-17. "gallery_grid": A grid of images. Fields: "title", "images" (array of 2-4 image URLs)
+CRITICAL DESIGN & CONTENT RULES:
+1. DEPTH & SUBSTANCE: Do NOT generate shallow, generic 3-word bullets. Each slide must contain substantive, insightful, technical/factual depth with specific mechanisms, data points, historical milestones, architecture trade-offs, and actionable takeaways.
+2. DIVERSE VISUAL LAYOUTS: Avoid repetitive bullet templates. Utilize a rich, engaging mix of visual layouts:
+   - "title": Hero cover with title, compelling subtitle, and author badge.
+   - "image_left": 50% left side high-res thematic image, 50% right side bold title, content summary, and 3 key detailed takeaways. Supply "image_url" (thematic Unsplash photo URL) and "bullets" (array of 3 rich strings).
+   - "image_right": 50% left side bold analysis with 3 rich bullet points, 50% right side thematic image. Supply "image_url" and "bullets".
+   - "metric_callout": 3 quantitative benchmark KPIs with values (e.g. "99.8%", "3.8x", "< 15ms") and descriptive labels.
+   - "comparison": Multi-factor architectural or strategic comparison (Option A vs Option B) with 3-4 distinct contrast points.
+   - "pros_cons": 3 concrete benefits vs 3 tangible challenges/trade-offs.
+   - "timeline": 3-4 chronological steps or evolutionary milestones.
+   - "matrix_2x2": 4-quadrant strategic matrix (Q1-Q4) with clear category insights.
+   - "bullets": 3-4 Bento cards. Format each bullet with a bold prefix and explanation (e.g. "Dynamic Vector Caching: Sub-millisecond latency retrieval with zero query duplication overhead.").
+   - "quote": Notable quotation with attribution and executive role.
+   - "conclusion": Final executive summary with 3 actionable forward-looking recommendations.
 
-Note: For any image URLs, use high quality Unsplash abstract/tech images matching the theme, e.g. "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800" or similar keywords.
+3. CONTEXTUAL IMAGE URLS: For any slide with "image_left", "image_right", or "gallery_grid", provide a realistic high-definition Unsplash URL relevant to the topic (e.g., technology, energy, architecture, finance, science).
 
-For each slide, you must also provide "speakerNotes" (a paragraph of text representing the presenter script).
+4. SPEAKER NOTES: For every slide, provide a comprehensive, 2-3 sentence teleprompter script in "speakerNotes".
 
-Generate the output in a strict JSON format matching this array structure:
+Output strictly valid raw JSON array format matching this structure:
 [
   {
     "id": 1,
     "title": "Title of Slide",
-    "subtitle": "Cover Subtitle",
+    "subtitle": "Subtitle explanation",
     "layout": "title",
-    "author": "Presented by Paperxify",
-    "speakerNotes": "Presenter notes..."
+    "author": "Presented by Paperxify AI",
+    "speakerNotes": "Welcome everyone..."
   },
   {
     "id": 2,
-    "title": "Section Title",
-    "subtitle": "Chapter introduction summary",
-    "layout": "section_break",
-    "speakerNotes": "Presenter notes..."
-  },
-  {
-    "id": 3,
-    "title": "Introduction to Topic",
-    "layout": "paragraph",
-    "content": "This is a detailed analysis of the core concepts...",
-    "speakerNotes": "Presenter notes..."
-  },
-  {
-    "id": 4,
-    "title": "Key Takeaways",
-    "layout": "bullets",
-    "bullets": ["Bullet 1", "Bullet 2", "Bullet 3"],
-    "speakerNotes": "Presenter notes..."
-  },
-  {
-    "id": 5,
-    "title": "Inspiring Quote",
-    "layout": "quote",
-    "quote_text": "Quantum computing is the next frontier.",
-    "author": "Richard Feynman",
-    "role": "Theoretical Physicist",
-    "speakerNotes": "Presenter notes..."
-  },
-  {
-    "id": 6,
-    "title": "Compare Systems",
-    "layout": "comparison",
-    "columns": {
-      "left": ["Legacy", "High latency"],
-      "right": ["Modern", "Sub-millisecond"]
-    },
-    "speakerNotes": "Presenter notes..."
-  },
-  {
-    "id": 7,
-    "title": "Strategic Overview",
-    "layout": "matrix_2x2",
-    "quadrants": ["Strengths: Speed", "Weaknesses: Cost", "Opportunities: Scale", "Threats: Noise"],
-    "speakerNotes": "Presenter notes..."
-  },
-  {
-    "id": 8,
-    "title": "Historical Timeline",
-    "layout": "timeline",
-    "events": [
-      { "year": "1998", "description": "First 2-qubit computer built" },
-      { "year": "2019", "description": "Quantum supremacy claim" }
+    "title": "Topic Core Mechanisms",
+    "layout": "image_left",
+    "image_url": "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800",
+    "bullets": [
+      "Semantic Chunking Heuristics: Context-aware document partitioning preserves relational continuity.",
+      "Vector Space Optimization: Cosine indexing accelerates nearest-neighbor lookups by 4.2x.",
+      "Real-time Feedback Loops: Automated error telemetry prevents semantic drift."
     ],
-    "speakerNotes": "Presenter notes..."
+    "speakerNotes": "Here we analyze the foundational mechanisms..."
   }
 ]
 
-Do not include any extra text, comments, markdown tags (like \`\`\`json) or warnings. Return only the JSON array.`;
+Return only the raw JSON array. No markdown tags, no code blocks.`;
 
     const messages = [
-      { role: "system", content: "You are a professional PowerPoint designer. Write strict raw JSON code array only." },
+      { role: "system", content: "You are a world-class presentation creator. Output strict raw JSON array only." },
       { role: "user", content: finalPrompt }
     ];
 
@@ -491,40 +444,66 @@ Do not include any extra text, comments, markdown tags (like \`\`\`json) or warn
       throw new Error("Failed to generate a valid detailed presentation slides array.");
     }
 
+    // Curated high-res fallback visuals for topic categories
+    const fallbackVisuals = [
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800", // Hardware/Chip
+      "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800", // Earth/Network
+      "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800", // Code/Data
+      "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800", // Business/Finance
+      "https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800", // Modern Tech
+      "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800"  // Collaboration
+    ];
+
     const slug = generateSlug(title);
     const newPresentation = new Presentation({
       owner: userId,
       title: title,
       slug: slug,
       theme: chosenTheme,
-      slides: slidesData.map((slide, idx) => ({
-        id: idx + 1,
-        title: slide.title || "Slide Title",
-        subtitle: slide.subtitle || "",
-        layout: slide.layout || "bullets",
-        bullets: slide.bullets || [],
-        columns: slide.columns || { left: [], right: [] },
-        metric: slide.metric || { value: "", label: "", description: "" },
-        speakerNotes: slide.speakerNotes || "",
-        variantIndex: slide.variantIndex || 0,
-        bgImageIndex: slide.bgImageIndex || 0,
-        author: slide.author || "",
-        content: slide.content || "",
-        quote_text: slide.quote_text || "",
-        role: slide.role || "",
-        left_text: slide.left_text || "",
-        right_text: slide.right_text || "",
-        pros: slide.pros || [],
-        cons: slide.cons || [],
-        metrics: slide.metrics || [],
-        quadrants: slide.quadrants || [],
-        events: slide.events || [],
-        steps: slide.steps || [],
-        phases: slide.phases || [],
-        image_url: slide.image_url || "",
-        alt_text: slide.alt_text || "",
-        images: slide.images || []
-      })),
+      slides: slidesData.map((slide, idx) => {
+        let img = slide.image_url;
+        if ((slide.layout === "image_left" || slide.layout === "image_right" || slide.layout === "gallery_grid") && (!img || !img.startsWith("http"))) {
+          img = fallbackVisuals[idx % fallbackVisuals.length];
+        }
+
+        return {
+          id: idx + 1,
+          title: slide.title || "Slide Title",
+          subtitle: slide.subtitle || "",
+          layout: slide.layout || (idx === 0 ? "title" : idx % 3 === 1 ? "image_left" : "bullets"),
+          bullets: slide.bullets || [],
+          columns: slide.columns || { left: [], right: [] },
+          metric: slide.metric || { value: "", label: "", description: "" },
+          speakerNotes: slide.speakerNotes || "",
+          variantIndex: slide.variantIndex || 0,
+          bgImageIndex: slide.bgImageIndex || 0,
+          author: slide.author || "",
+          content: slide.content || "",
+          quote_text: slide.quote_text || "",
+          role: slide.role || "",
+          left_text: slide.left_text || "",
+          right_text: slide.right_text || "",
+          pros: slide.pros || [],
+          cons: slide.cons || [],
+          metrics: slide.metrics || [],
+          quadrants: slide.quadrants || [],
+          events: slide.events || [],
+          steps: slide.steps || [],
+          phases: slide.phases || [],
+          image_url: img || "",
+          alt_text: slide.alt_text || slide.title || "Topic visualization",
+          images: slide.images || (img ? [img] : [])
+        };
+      }),
+      generationDetails: {
+        model,
+        language,
+        slideCount: slidesData.length,
+        prompt,
+        cost: isSubscribed ? 0 : tokenCost,
+        processingTime: Math.round((Date.now() - startTime) / 1000)
+      }
+    });
       generationDetails: {
         model,
         language,
