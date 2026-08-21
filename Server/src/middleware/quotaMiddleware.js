@@ -9,6 +9,7 @@ const Homework = require("../models/Homework");
 const MathSolution = require("../models/MathSolution");
 const ExamPlan = require("../models/ExamPlan");
 const LanguageLesson = require("../models/LanguageLesson");
+const AiChat = require("../models/AiChat");
 
 // ─── Paperxify Pricing v2 — Calibrated for 75%+ Net Profit Margin ────────────
 // Pricing:
@@ -143,24 +144,26 @@ async function getFeatureUsageCount(userId, featureType, startDate, limit) {
   // If limit is effectively "unlimited", skip expensive DB count
   if (limit >= 999999) return 0;
   
+  const userQuery = { $or: [{ owner: userId }, { userId: userId }], createdAt: { $gte: startDate } };
+
   try {
     switch (featureType) {
       case "notes":
-        return await Note.countDocuments({ userId, createdAt: { $gte: startDate } });
+        return await Note.countDocuments(userQuery);
       case "presentations":
-        return await Presentation.countDocuments({ userId, createdAt: { $gte: startDate } });
+        return await Presentation.countDocuments(userQuery);
       case "quizzes":
-        return await Quiz.countDocuments({ userId, createdAt: { $gte: startDate } });
+        return await Quiz.countDocuments(userQuery);
       case "flashcards":
-        return await FlashcardSet.countDocuments({ userId, createdAt: { $gte: startDate } });
+        return await FlashcardSet.countDocuments(userQuery);
       case "diagrams":
-        return await Diagram.countDocuments({ userId, createdAt: { $gte: startDate } });
+        return await Diagram.countDocuments(userQuery);
       case "study": {
         const [hw, math, plan, tutor] = await Promise.all([
-          Homework.countDocuments({ userId, createdAt: { $gte: startDate } }).catch(() => 0),
-          MathSolution.countDocuments({ userId, createdAt: { $gte: startDate } }).catch(() => 0),
-          ExamPlan.countDocuments({ userId, createdAt: { $gte: startDate } }).catch(() => 0),
-          LanguageLesson.countDocuments({ userId, createdAt: { $gte: startDate } }).catch(() => 0),
+          Homework.countDocuments(userQuery).catch(() => 0),
+          MathSolution.countDocuments(userQuery).catch(() => 0),
+          ExamPlan.countDocuments(userQuery).catch(() => 0),
+          LanguageLesson.countDocuments(userQuery).catch(() => 0),
         ]);
         return hw + math + plan + tutor;
       }
@@ -198,6 +201,23 @@ async function getUserQuotaStatus(userId) {
       getFeatureUsageCount(userId, "study",         startDate, planConfig.study),
     ]);
 
+  // Count live PaperChat messages in current cycle
+  let paperChatUsed = 0;
+  try {
+    const userNotes = await Note.find({ $or: [{ owner: userId }, { userId: userId }] }).select('_id').limit(500);
+    const noteIds = userNotes.map(n => n._id);
+    const chats = await AiChat.find({ noteId: { $in: noteIds } });
+    for (const c of chats) {
+      for (const m of (c.messages || [])) {
+        if (m.role === 'user' && m.timestamp && new Date(m.timestamp) >= startDate) {
+          paperChatUsed++;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[QuotaMiddleware] Error counting PaperChat messages:", e.message);
+  }
+
   const buildFeature = (used, limit, label) => ({
     used: isUnlimited(limit) ? 0 : used,
     limit: isUnlimited(limit) ? -1 : limit,           // -1 = unlimited (for frontend)
@@ -215,6 +235,7 @@ async function getUserQuotaStatus(userId) {
     maxVideoLengthMin: planConfig.maxVideoLengthMin,
     maxSlides: planConfig.maxSlides,
     paperChatMessages: planConfig.paperChatMessages,
+    paperChatUsed,
     features: {
       notes:         buildFeature(notesCount,         planConfig.notes,         "AI Video Notes"),
       presentations: buildFeature(presentationsCount, planConfig.presentations, "AI Slide Decks"),
