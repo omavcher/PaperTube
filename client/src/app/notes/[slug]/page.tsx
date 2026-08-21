@@ -65,6 +65,7 @@ import FlashcardViewer from "@/components/FlashcardViewer";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { exportNotesToPdf } from "@/lib/pdfExporter";
 
 // --- AUTH HELPERS ---
 const getAuthToken = () => {
@@ -94,6 +95,9 @@ interface NoteData {
   thumbnail?: string;
   generationDetails?: any;
   videoUrl?: string;
+  videoId?: string;
+  ownerName?: string;
+  slug?: string;
 }
 
 type UserPlan = "free" | "pro" | "power";
@@ -1869,104 +1873,35 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     await sendCustomMessage();
   };
 
-  // Generate Themed PDF
+  // Generate Production-Grade Themed PDF
   const generatePDF = async () => {
     if (!data || !markdownContent) return;
 
     setIsGeneratingPDF(true);
-    const toastId = toast.loading("⏳ Generating PDF Document...");
+    const toastId = toast.loading("⏳ Assembling High-Resolution Publication PDF...");
 
     try {
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas")
-      ]);
-
-      const theme = selectedTheme;
-      let targetEl = document.querySelector(".premium-note-render") as HTMLElement | null;
-      let tempContainer: HTMLElement | null = null;
+      const targetEl = (document.querySelector(".premium-note-render") || document.querySelector(".premium-note-render-container")) as HTMLElement | null;
 
       if (!targetEl) {
-        tempContainer = document.createElement("div");
-        tempContainer.style.cssText = [
-          "width:800px",
-          "padding:56px 64px",
-          `background:${theme.bg}`,
-          `color:${theme.text}`,
-          `font-family:${theme.font}`,
-          "font-size:14px",
-          "line-height:1.75",
-          "position:fixed",
-          "left:-9999px",
-          "top:0",
-          "z-index:-1"
-        ].join(";");
-
-        const titleEl = document.createElement("h1");
-        titleEl.style.cssText = `font-size:22px;font-weight:800;color:${theme.primary};margin:0 0 8px;border-bottom:2px solid ${theme.border};padding-bottom:12px;font-family:${theme.font};`;
-        titleEl.textContent = data.title || "Note";
-        tempContainer.appendChild(titleEl);
-
-        const bodyEl = document.createElement("div");
-        bodyEl.innerHTML = markdownContent;
-        tempContainer.appendChild(bodyEl);
-
-        document.body.appendChild(tempContainer);
-        targetEl = tempContainer;
+        throw new Error("Note canvas element is not ready. Please try again.");
       }
 
-      const captureW = targetEl.scrollWidth || 800;
-      const canvas = await html2canvas(targetEl, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: theme.bg,
-        width: captureW,
-        windowWidth: captureW
+      const result = await exportNotesToPdf({
+        title: data.title || "Lecture Study Guide",
+        videoUrl: data.videoUrl,
+        videoId: data.videoId,
+        theme: selectedTheme,
+        targetElement: targetEl,
+        authorName: data.ownerName || "Paperxify Scholar",
       });
 
-      if (tempContainer) document.body.removeChild(tempContainer);
-
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 32;
-      const printW = pageW - margin * 2;
-      const ratio = printW / canvas.width;
-      const sliceH = Math.floor((pageH - margin * 2) / ratio);
-
-      let yOff = 0;
-      let page = 0;
-
-      while (yOff < canvas.height) {
-        if (page > 0) pdf.addPage();
-        const thisSlice = Math.min(sliceH, canvas.height - yOff);
-        const sliceCanvas = document.createElement("canvas");
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = thisSlice;
-        const ctx = sliceCanvas.getContext("2d")!;
-        ctx.drawImage(canvas, 0, yOff, canvas.width, thisSlice, 0, 0, canvas.width, thisSlice);
-        pdf.addImage(
-          sliceCanvas.toDataURL("image/jpeg", 0.93),
-          "JPEG",
-          margin,
-          margin,
-          printW,
-          thisSlice * ratio,
-          undefined,
-          "FAST"
-        );
-        yOff += thisSlice;
-        page++;
+      if (result.success) {
+        toast.success(`✅ PDF exported successfully! (${result.pageCount} page${result.pageCount !== 1 ? "s" : ""})`, { id: toastId });
       }
-
-      const fileName = `${(data.title || "Paperxify").replace(/[^\w\s.-]/gi, "_").substring(0, 80)}.pdf`;
-      pdf.save(fileName);
-      toast.success(`✅ PDF downloaded successfully! (${page} page${page !== 1 ? "s" : ""})`, { id: toastId });
     } catch (err: any) {
-      console.error("Client-side PDF error:", err);
-      toast.error(err.message || "PDF generation failed. Please try again.", { id: toastId });
+      console.error("Client-side PDF export error:", err);
+      toast.error(err.message || "PDF export failed. Please try again.", { id: toastId });
     } finally {
       setIsGeneratingPDF(false);
     }
