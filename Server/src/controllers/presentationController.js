@@ -504,15 +504,6 @@ Return only the raw JSON array. No markdown tags, no code blocks.`;
         processingTime: Math.round((Date.now() - startTime) / 1000)
       }
     });
-      generationDetails: {
-        model,
-        language,
-        slideCount: slidesData.length,
-        prompt,
-        cost: isSubscribed ? 0 : tokenCost,
-        processingTime: Math.round((Date.now() - startTime) / 1000)
-      }
-    });
 
     await newPresentation.save();
 
