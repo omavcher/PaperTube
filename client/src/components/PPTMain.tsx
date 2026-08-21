@@ -902,12 +902,18 @@ export default function PPTMain() {
                           <IconCheck size={12} className="text-green-500" />
                         </div>
                       )}
-                      {isLoggedIn && !hasPremiumAccess && userTokens !== null && (
-                        <Link href="/pricing" className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-yellow-500/8 border border-yellow-500/15 text-yellow-500 text-[10px] font-black uppercase tracking-wider hover:bg-yellow-500/15 transition-colors">
-                          <Coins size={11} />
-                          {userTokens.toLocaleString()}
-                        </Link>
-                      )}
+                      <Link 
+                        href="/pricing" 
+                        className={cn(
+                          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                          hasPremiumAccess 
+                            ? "bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20" 
+                            : "bg-white/[0.05] border border-white/[0.08] text-neutral-300 hover:bg-white/[0.1] hover:text-white"
+                        )}
+                      >
+                        {hasPremiumAccess ? <Crown size={11} className="text-yellow-400" /> : <Zap size={11} className="text-red-400" />}
+                        <span>{hasPremiumAccess ? (userPlanId === 'power' ? 'Power' : 'Pro') : 'Upgrade'}</span>
+                      </Link>
                     </div>
                   </div>
 

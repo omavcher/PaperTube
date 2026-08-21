@@ -1523,10 +1523,15 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
 
                       <Link 
                         href="/pricing" 
-                        className="flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] sm:text-xs font-bold text-amber-400 hover:bg-amber-500/15 transition-colors"
+                        className={cn(
+                          "flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all",
+                          hasPremiumAccess 
+                            ? "bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20" 
+                            : "bg-white/[0.05] border border-white/[0.08] text-neutral-300 hover:bg-white/[0.1] hover:text-white"
+                        )}
                       >
-                        <Coins size={11} />
-                        <span>{userTokens !== null ? userTokens : 10}</span>
+                        {hasPremiumAccess ? <Crown size={12} className="text-yellow-400" /> : <Zap size={12} className="text-red-400" />}
+                        <span>{hasPremiumAccess ? (userPlanId === 'power' ? 'Power' : 'Pro') : 'Upgrade'}</span>
                       </Link>
                     </div>
                   </div>
