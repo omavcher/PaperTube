@@ -243,6 +243,53 @@ function makeTimestampsClickable(content: string, videoUrl?: string): string {
   return result;
 }
 
+/**
+ * Robustly parses and formats note content, embedding images from img_with_url
+ * and resolving any [IMAGE_PLACEHOLDER: ...] tags into styled figure blocks.
+ */
+function processNoteContent(rawContent: string, noteData: any): string {
+  let content = rawContent || "";
+
+  // 1. Replace [IMAGE_PLACEHOLDER: title] with actual images from img_with_url
+  const images = noteData?.img_with_url || [];
+  if (Array.isArray(images) && images.length > 0) {
+    let imgIdx = 0;
+    content = content.replace(/\[IMAGE_PLACEHOLDER:\s*([^\]]+)\]/gi, (_match, title) => {
+      const trimmedTitle = (title || "").trim().toLowerCase();
+      const found = images.find(
+        (img: any) =>
+          img.title && img.title.toLowerCase().includes(trimmedTitle) ||
+          trimmedTitle.includes(img.title?.toLowerCase())
+      ) || images[imgIdx % images.length];
+      imgIdx++;
+
+      if (found && found.img_url) {
+        return `\n\n<div class="note-figure-wrapper" style="margin: 20px 0; text-align: center;"><img src="${found.img_url}" alt="${found.title || title}" crossOrigin="anonymous" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: inline-block;" /><div style="font-size: 11px; opacity: 0.7; margin-top: 6px; font-style: italic;">Figure: ${found.title || title}</div></div>\n\n`;
+      }
+      return "";
+    });
+  } else {
+    // Remove unfilled placeholders cleanly
+    content = content.replace(/\[IMAGE_PLACEHOLDER:\s*[^\]]+\]/gi, "");
+  }
+
+  // 2. Parse Markdown if not already HTML
+  const isRawHtml = /^\s*</.test(content);
+  const isFlashcardNote =
+    noteData?.generationDetails?.format === "flashcards" ||
+    (content.trim().startsWith("[") && content.includes('"front"'));
+
+  let htmlContent = content;
+  if (!isRawHtml && !isFlashcardNote && content.trim()) {
+    htmlContent = marked.parse(content) as string;
+  }
+
+  // 3. Make timestamps clickable
+  htmlContent = makeTimestampsClickable(htmlContent, noteData?.videoUrl);
+
+  return htmlContent;
+}
+
 // --- 1. PDF & NOTE CANVAS PREVIEW COMPONENT ---
 const PDFPreviewWithThumbnail: React.FC<{
   content: string;
@@ -570,6 +617,16 @@ const PDFPreviewWithThumbnail: React.FC<{
             title="Choose Theme"
           >
             <Palette size={13} style={{ color: theme.primary }} />
+          </button>
+        )}
+        {onGeneratePDF && (
+          <button
+            onClick={onGeneratePDF}
+            disabled={isGenerating}
+            className="p-1.5 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10 transition-colors flex items-center gap-1 font-bold text-xs"
+            title="Download PDF"
+          >
+            {isGenerating ? <Loader2 size={13} className="animate-spin text-red-400" /> : <FileText size={13} />}
           </button>
         )}
         <button
@@ -1600,13 +1657,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         const foundT = THEMES.find((t) => t.id === tId) || THEMES[0];
         setSelectedTheme(foundT);
 
-        const rawContent = mockNote.content || "";
-        const isRawHtml = /^\s*</.test(rawContent);
-        let htmlContent = rawContent;
-        if (!isRawHtml && rawContent.trim()) {
-          htmlContent = marked.parse(rawContent) as string;
-        }
-        htmlContent = makeTimestampsClickable(htmlContent, mockNote.videoUrl);
+        const htmlContent = processNoteContent(mockNote.content || "", mockNote);
         setMarkdownContent(htmlContent);
         setMessages(mockNote.messages);
         setLoading(false);
@@ -1621,17 +1672,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       const foundT = THEMES.find((t) => t.id === tId) || THEMES[0];
       setSelectedTheme(foundT);
 
-      const rawContent = res.data.content || "";
-      const isRawHtml = /^\s*</.test(rawContent);
-      const isFlashcardNote =
-        res.data.generationDetails?.format === "flashcards" ||
-        (rawContent.trim().startsWith("[") && rawContent.includes('"front"'));
-
-      let htmlContent = rawContent;
-      if (!isRawHtml && !isFlashcardNote && rawContent.trim()) {
-        htmlContent = marked.parse(rawContent) as string;
-      }
-      htmlContent = makeTimestampsClickable(htmlContent, res.data.videoUrl);
+      const htmlContent = processNoteContent(res.data.content || "", res.data);
       setMarkdownContent(htmlContent);
 
       // Load Messages
@@ -1906,6 +1947,8 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       setIsGeneratingPDF(false);
     }
   };
+
+
 
   // Export Markdown
   const exportMarkdown = () => {

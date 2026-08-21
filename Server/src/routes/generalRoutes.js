@@ -19,6 +19,7 @@ router.get('/blog/:slug', generalController.getPostBySlug);
 router.post('/track', generalController.trackMetric);
 
 router.get('/ju', generalController.getJuData);
+router.get('/proxy-image', generalController.proxyImage);
 
 // ─── Pricing Region Detection ─────────────────────────────────────────────────
 // GET /api/general/pricing-region

@@ -1,6 +1,7 @@
 const Bug = require("../models/Bug");
 const Note = require("../models/Note");
 const User = require("../models/User");
+const axios = require("axios");
 
 const SuccessStory = require('../models/SuccessStory');
 const BlogPost = require('../models/BlogPost');
@@ -297,5 +298,41 @@ exports.getJuData = async (req, res) => {
     res.status(200).json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to retrieve data." });
+  }
+};
+
+/**
+ * High-performance image proxy endpoint for PDF exports & client renders.
+ * Ensures 100% CORS-friendly image loading with proper cache headers.
+ */
+exports.proxyImage = async (req, res) => {
+  try {
+    const imageUrl = req.query.url;
+    if (!imageUrl) {
+      return res.status(400).send("Image URL is required");
+    }
+
+    const parsedUrl = new URL(imageUrl);
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      return res.status(400).send("Invalid URL protocol");
+    }
+
+    const response = await axios.get(imageUrl, {
+      responseType: "arraybuffer",
+      timeout: 10000,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Referer: "https://www.youtube.com/"
+      }
+    });
+
+    const contentType = response.headers["content-type"] || "image/jpeg";
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+    res.send(Buffer.from(response.data));
+  } catch (error) {
+    console.warn("proxyImage notice:", error.message);
+    res.status(502).send("Failed to fetch image");
   }
 };

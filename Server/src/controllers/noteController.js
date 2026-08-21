@@ -1011,12 +1011,12 @@ exports.getNoteBySlug = async (req, res) => {
   try {
     const user = req.user;
     
-    const note = await Note.findOne({ slug: req.params.slug }).select('-generationDetails -img_with_url -viewHistory -transcript -videoId');
+    const note = await Note.findOne({ slug: req.params.slug }).select('-viewHistory -transcript');
     if (!note) {
       return res.status(404).json({ message: "Note not found" });
     }
 
-    if (note.owner.toString() !== user._id.toString()) {
+    if (note.owner && note.owner.toString() !== user._id.toString() && note.visibility !== 'public') {
       return res.status(403).json({ 
         message: "Access denied. You are not the owner of this note." 
       });
