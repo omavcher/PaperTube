@@ -10,47 +10,87 @@ const MathSolution = require("../models/MathSolution");
 const ExamPlan = require("../models/ExamPlan");
 const LanguageLesson = require("../models/LanguageLesson");
 
-// ─── Calibrated Quotas Ensuring 70%+ Net Profit Margin ─────────────────────────
+// ─── Paperxify Pricing v2 — Calibrated for 75%+ Net Profit Margin ────────────
+// Pricing:
+//   Free:          $0 / ₹0
+//   Pro Scholar:   $9.99/mo  | $79.99/yr  | ₹799/mo  | ₹6,999/yr
+//   Power Scholar: $19.99/mo | $149.99/yr | ₹1,599/mo | ₹12,999/yr
+//
+// Model routing target:
+//   Flash-Lite → classification, cleanup, simple PaperChat, basic flashcards
+//   Flash       → complex synthesis, detailed notes, PaperChat Tutor, PPT
+//
+// Target variable COGS per user/month:
+//   Free: ≤ $0.25 (acquisition only)
+//   Pro:  ≤ $2.00 → ~75–80% gross margin at $9.99
+//   Power: ≤ $4.00 → ~75–80% gross margin at $19.99
+// ─────────────────────────────────────────────────────────────────────────────
+
 const PLAN_QUOTAS = {
   free: {
     name: "Free",
-    period: "daily",
-    notes: 3,           // 3 video notes / day
-    presentations: 2,   // 2 PPT decks / day
-    quizzes: 5,         // 5 quizzes / day
-    flashcards: 5,      // 5 flashcard sets / day
-    diagrams: 5,        // 5 mind maps / diagrams / day
-    study: 5,           // 5 homework/math/planner/tutor solves / day
-    writer: 2,          // 2 humanizer/essay runs / day
-    maxVideoLengthMin: 45,
+    planDisplayName: "Free Tier",
+    period: "daily",        // limits reset daily at midnight UTC
+    // Core generation limits (per day)
+    notes: 5,              // 5 video notes / day (up to 60 min each)
+    presentations: 2,      // 2 PPT decks / day (up to 8 slides)
+    quizzes: 5,            // 5 quiz sets / day
+    flashcards: 5,         // 5 flashcard sets / day
+    diagrams: 3,           // 3 mind maps / diagrams / day
+    study: 10,             // 10 math/homework solves / day
+    writer: 1,             // 1 humanizer/essay run / day
+    // Capability caps
+    maxVideoLengthMin: 60, // 60 minutes max per video
     maxSlides: 8,
+    paperChatMessages: 100, // 100 PaperChat messages / day
   },
+
   pro: {
     name: "Pro Scholar",
-    period: "monthly",
-    notes: 120,         // 120 notes / month (~4/day)
-    presentations: 60,  // 60 PPT decks / month (~2/day)
-    quizzes: 250,       // 250 quizzes / month
-    flashcards: 250,    // 250 flashcard sets / month
-    diagrams: 250,      // 250 diagrams / month
-    study: 500,         // 500 study solves / month
-    writer: 50,         // 50 humanizer/essay runs / month
-    maxVideoLengthMin: 240, // 4 hours
+    planDisplayName: "Pro Scholar ⭐",
+    period: "monthly",     // limits reset per billing cycle
+    // Core generation limits (per month) — "30 hours of AI study content"
+    // Internally: 120 note generations ≈ avg 15 min each = 30 hrs total
+    notes: 120,            // 120 video notes / month (up to 4 hrs / video)
+    presentations: 10,     // 10 PPT decks / month (up to 20 slides)
+    quizzes: 30,           // 30 quiz sets / month
+    flashcards: 999999,    // Unlimited basic flashcards (low AI cost, safe)
+    diagrams: 15,          // 15 mind maps / diagrams / month
+    study: 500,            // 500 math/homework/study solves / month
+    writer: 50,            // 50 humanizer & essay scans / month
+    // Capability caps
+    maxVideoLengthMin: 240, // 4 hours max per video
     maxSlides: 20,
+    paperChatMessages: 2000, // 2,000 PaperChat messages / month
   },
+
   power: {
     name: "Power Scholar",
-    period: "monthly",
-    notes: 350,         // 350 notes / month (~12/day)
-    presentations: 180, // 180 PPT decks / month (~6/day)
-    quizzes: 800,       // 800 quizzes / month
-    flashcards: 800,    // 800 flashcard sets / month
-    diagrams: 800,      // 800 diagrams / month
-    study: 1500,        // 1,500 study solves / month
-    writer: 200,        // 200 humanizer/plagiarism runs / month
-    maxVideoLengthMin: 720, // 12 hours
+    planDisplayName: "Power Scholar 👑",
+    period: "monthly",     // limits reset per billing cycle
+    // Core generation limits (per month) — "100 hours of AI study content"
+    notes: 350,            // 350 video notes / month (up to 8 hrs / video)
+    presentations: 30,     // 30 PPT decks / month (up to 40 slides)
+    quizzes: 999999,       // Unlimited quizzes
+    flashcards: 999999,    // Unlimited flashcards
+    diagrams: 999999,      // Unlimited mind maps
+    study: 1500,           // 1,500 math/study solves / month
+    writer: 200,           // 200 humanizer & deep essay runs / month
+    // Capability caps
+    maxVideoLengthMin: 480, // 8 hours max per video
     maxSlides: 40,
+    paperChatMessages: 10000, // 10,000 PaperChat messages / month
   }
+};
+
+/**
+ * Exported pricing constants — used by the API route for plan info responses.
+ * All values are in USD. Frontend handles INR conversion via localization.
+ */
+const PLAN_PRICING = {
+  free: { monthly: 0, yearly: 0 },
+  pro:  { monthly: 9.99, yearly: 79.99 },
+  power: { monthly: 19.99, yearly: 149.99 },
 };
 
 /**
@@ -62,25 +102,26 @@ function getUserPlanId(user) {
   if (!expiresAt || expiresAt <= new Date()) return "free";
   
   const planId = String(user.membership.planId || "").toLowerCase();
-  if (planId.includes("power")) return "power";
+  if (planId.includes("power") || planId.includes("premium")) return "power";
   if (planId.includes("pro")) return "pro";
-  return "pro"; // default active paid
+  return "pro"; // default for any active paid plan
 }
 
 /**
- * Calculate the period start date (today 00:00 for free, 30 days ago/billing cycle for pro/power)
+ * Calculate the period start date.
+ * - Free: today at 00:00 UTC (daily reset)
+ * - Pro/Power: start of current billing cycle (anchored to subscription start date)
  */
 function getPeriodStartDate(planId, membership) {
   if (planId === "free") {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
     return today;
   }
-  // For monthly plans, take the startedAt or 30 days back
+  // For monthly plans: anchor to subscription start, cycle every 30 days
   if (membership && membership.startedAt) {
     const started = new Date(membership.startedAt);
     const now = new Date();
-    // find the most recent monthly cycle boundary
     const cycleMs = 30 * 24 * 60 * 60 * 1000;
     const diff = now.getTime() - started.getTime();
     if (diff > 0) {
@@ -88,15 +129,20 @@ function getPeriodStartDate(planId, membership) {
       return new Date(started.getTime() + cyclesPassed * cycleMs);
     }
   }
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  return thirtyDaysAgo;
+  // Fallback: 30 days ago
+  const fallback = new Date();
+  fallback.setDate(fallback.getDate() - 30);
+  return fallback;
 }
 
 /**
- * Fetch current usage count for a specific feature
+ * Fetch current usage count for a specific feature within a period.
+ * Uses -1 sentinel for "unlimited" features to skip DB query.
  */
-async function getFeatureUsageCount(userId, featureType, startDate) {
+async function getFeatureUsageCount(userId, featureType, startDate, limit) {
+  // If limit is effectively "unlimited", skip expensive DB count
+  if (limit >= 999999) return 0;
+  
   try {
     switch (featureType) {
       case "notes":
@@ -119,18 +165,18 @@ async function getFeatureUsageCount(userId, featureType, startDate) {
         return hw + math + plan + tutor;
       }
       case "writer":
-        return 0; // writer tracking if tracked in logs
+        return 0; // tracked separately via writer service logs
       default:
         return 0;
     }
   } catch (err) {
-    console.error(`Error counting usage for ${featureType}:`, err.message);
-    return 0;
+    console.error(`[QuotaMiddleware] Error counting ${featureType} for user ${userId}:`, err.message);
+    return 0; // fail open to not block user on DB error
   }
 }
 
 /**
- * Get comprehensive quota status for a user
+ * Get comprehensive quota status for a user — used by /api/users/quota-status endpoint
  */
 async function getUserQuotaStatus(userId) {
   const user = await User.findById(userId).select("name email membership");
@@ -140,58 +186,49 @@ async function getUserQuotaStatus(userId) {
   const planConfig = PLAN_QUOTAS[planId] || PLAN_QUOTAS.free;
   const startDate = getPeriodStartDate(planId, user.membership);
 
+  const isUnlimited = (limit) => limit >= 999999;
+
   const [notesCount, presentationsCount, quizzesCount, flashcardsCount, diagramsCount, studyCount] =
     await Promise.all([
-      getFeatureUsageCount(userId, "notes", startDate),
-      getFeatureUsageCount(userId, "presentations", startDate),
-      getFeatureUsageCount(userId, "quizzes", startDate),
-      getFeatureUsageCount(userId, "flashcards", startDate),
-      getFeatureUsageCount(userId, "diagrams", startDate),
-      getFeatureUsageCount(userId, "study", startDate),
+      getFeatureUsageCount(userId, "notes",         startDate, planConfig.notes),
+      getFeatureUsageCount(userId, "presentations", startDate, planConfig.presentations),
+      getFeatureUsageCount(userId, "quizzes",       startDate, planConfig.quizzes),
+      getFeatureUsageCount(userId, "flashcards",    startDate, planConfig.flashcards),
+      getFeatureUsageCount(userId, "diagrams",      startDate, planConfig.diagrams),
+      getFeatureUsageCount(userId, "study",         startDate, planConfig.study),
     ]);
+
+  const buildFeature = (used, limit, label) => ({
+    used: isUnlimited(limit) ? 0 : used,
+    limit: isUnlimited(limit) ? -1 : limit,           // -1 = unlimited (for frontend)
+    remaining: isUnlimited(limit) ? -1 : Math.max(0, limit - used),
+    unlimited: isUnlimited(limit),
+    label,
+  });
 
   return {
     planId,
     planName: planConfig.name,
+    planDisplayName: planConfig.planDisplayName,
     period: planConfig.period,
     periodStart: startDate,
+    maxVideoLengthMin: planConfig.maxVideoLengthMin,
+    maxSlides: planConfig.maxSlides,
+    paperChatMessages: planConfig.paperChatMessages,
     features: {
-      notes: {
-        used: notesCount,
-        limit: planConfig.notes,
-        remaining: Math.max(0, planConfig.notes - notesCount),
-      },
-      presentations: {
-        used: presentationsCount,
-        limit: planConfig.presentations,
-        remaining: Math.max(0, planConfig.presentations - presentationsCount),
-      },
-      quizzes: {
-        used: quizzesCount,
-        limit: planConfig.quizzes,
-        remaining: Math.max(0, planConfig.quizzes - quizzesCount),
-      },
-      flashcards: {
-        used: flashcardsCount,
-        limit: planConfig.flashcards,
-        remaining: Math.max(0, planConfig.flashcards - flashcardsCount),
-      },
-      diagrams: {
-        used: diagramsCount,
-        limit: planConfig.diagrams,
-        remaining: Math.max(0, planConfig.diagrams - diagramsCount),
-      },
-      study: {
-        used: studyCount,
-        limit: planConfig.study,
-        remaining: Math.max(0, planConfig.study - studyCount),
-      },
+      notes:         buildFeature(notesCount,         planConfig.notes,         "AI Video Notes"),
+      presentations: buildFeature(presentationsCount, planConfig.presentations, "AI Slide Decks"),
+      quizzes:       buildFeature(quizzesCount,       planConfig.quizzes,       "AI Quiz Sets"),
+      flashcards:    buildFeature(flashcardsCount,    planConfig.flashcards,    "Flashcard Sets"),
+      diagrams:      buildFeature(diagramsCount,      planConfig.diagrams,      "Mind Maps"),
+      study:         buildFeature(studyCount,         planConfig.study,         "Math & Study Solves"),
     },
   };
 }
 
 /**
- * Express middleware to strictly enforce plan quotas before generation
+ * Express middleware — enforces plan quotas before any AI generation route.
+ * Usage: router.post("/generate", enforceQuota("notes"), handler)
  */
 function enforceQuota(featureType) {
   return async (req, res, next) => {
@@ -213,49 +250,102 @@ function enforceQuota(featureType) {
       const planConfig = PLAN_QUOTAS[planId] || PLAN_QUOTAS.free;
       const limit = planConfig[featureType];
 
-      if (limit !== undefined && limit !== null) {
-        const startDate = getPeriodStartDate(planId, user.membership);
-        const usedCount = await getFeatureUsageCount(userId, featureType, startDate);
+      // Skip quota check for unlimited features
+      if (limit === undefined || limit === null || limit >= 999999) {
+        req.quota = { planId, planName: planConfig.name, unlimited: true };
+        return next();
+      }
 
-        if (usedCount >= limit) {
-          const isFree = planId === "free";
-          const periodWord = isFree ? "today" : "this billing cycle";
-          const upgradeSuggestion = isFree ? "Pro Scholar for 120 monthly notes" : "Power Scholar for 350 monthly notes";
+      const startDate = getPeriodStartDate(planId, user.membership);
+      const usedCount = await getFeatureUsageCount(userId, featureType, startDate, limit);
 
-          return res.status(403).json({
-            success: false,
-            code: "QUOTA_EXCEEDED",
-            message: `You have reached your ${planConfig.name} plan limit of ${limit} ${featureType} ${periodWord}. Upgrade to ${upgradeSuggestion} to keep creating.`,
-            feature: featureType,
-            used: usedCount,
-            limit: limit,
-            plan: planConfig.name,
-            period: planConfig.period,
-          });
-        }
+      if (usedCount >= limit) {
+        const isFree = planId === "free";
+        const periodWord = isFree ? "today" : "this month";
+        const upgradeTarget = isFree
+          ? "Pro Scholar ($9.99/mo) for 120 monthly notes, 10 PPTs, 30 quizzes & more"
+          : "Power Scholar ($19.99/mo) for 350 monthly notes, unlimited quizzes & 8-hour videos";
 
-        // Attach quota info to request
-        req.quota = {
-          planId,
-          planName: planConfig.name,
+        return res.status(403).json({
+          success: false,
+          code: "QUOTA_EXCEEDED",
+          message: `You've used all ${limit} ${featureType} for ${periodWord} on the ${planConfig.name} plan. Upgrade to ${upgradeTarget}.`,
+          feature: featureType,
           used: usedCount,
           limit,
-          remaining: limit - usedCount - 1,
-        };
+          plan: planConfig.name,
+          planId,
+          period: planConfig.period,
+          upgradeUrl: "/pricing",
+        });
       }
+
+      // Attach quota info to request for downstream logging
+      req.quota = {
+        planId,
+        planName: planConfig.name,
+        used: usedCount,
+        limit,
+        remaining: limit - usedCount - 1,
+        unlimited: false,
+      };
 
       next();
     } catch (error) {
-      console.error(`Quota check failed for ${featureType}:`, error);
-      // Fail open on unexpected error so user isn't blocked by internal error
+      console.error(`[QuotaMiddleware] Quota check failed for ${featureType}:`, error.message);
+      // Fail open on unexpected internal error — do not block user generation
       next();
     }
   };
 }
 
+/**
+ * Middleware to enforce video length limit before note generation.
+ * Expects req.body.videoDurationMin (number) to be set by route handler.
+ */
+function enforceVideoLength(req, res, next) {
+  try {
+    const userId = req.user?._id;
+    if (!userId) return next();
+
+    // Duration must be set by upstream parser
+    const durationMin = Number(req.body.videoDurationMin || req.body.durationMin || 0);
+    if (!durationMin) return next(); // no duration info, allow and let AI fail gracefully
+
+    const user = req.user;
+    const planId = getUserPlanId(user);
+    const planConfig = PLAN_QUOTAS[planId] || PLAN_QUOTAS.free;
+    const maxMin = planConfig.maxVideoLengthMin;
+
+    if (durationMin > maxMin) {
+      const upgradeMsg = planId === "free"
+        ? "Upgrade to Pro Scholar to process videos up to 4 hours long."
+        : "Upgrade to Power Scholar to process videos up to 8 hours long.";
+
+      return res.status(403).json({
+        success: false,
+        code: "VIDEO_TOO_LONG",
+        message: `Your ${planConfig.name} plan supports videos up to ${maxMin} minutes (${maxMin >= 60 ? Math.round(maxMin / 60) + " hrs" : maxMin + " min"}). This video is ${Math.round(durationMin)} minutes. ${upgradeMsg}`,
+        maxAllowedMin: maxMin,
+        videoDurationMin: durationMin,
+        plan: planConfig.name,
+        upgradeUrl: "/pricing",
+      });
+    }
+
+    next();
+  } catch (err) {
+    console.error("[QuotaMiddleware] Video length check error:", err.message);
+    next(); // fail open
+  }
+}
+
 module.exports = {
   PLAN_QUOTAS,
+  PLAN_PRICING,
   getUserPlanId,
+  getPeriodStartDate,
   getUserQuotaStatus,
   enforceQuota,
+  enforceVideoLength,
 };

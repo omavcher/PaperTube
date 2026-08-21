@@ -614,7 +614,7 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
                     {view === "signup" && (
                       <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-950/20 border border-red-500/15 text-xs text-red-300">
                         <ShieldCheck className="w-4 h-4 text-red-500 shrink-0" />
-                        <span>Have a <strong className="text-red-400">.edu</strong> email? Get <strong className="text-red-400">double credits</strong>!</span>
+                        <span>Have a <strong className="text-red-400">.edu</strong> email? Get a <strong className="text-red-400">50% student discount</strong>!</span>
                       </div>
                     )}
 

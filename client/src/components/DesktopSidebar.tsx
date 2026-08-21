@@ -101,14 +101,11 @@ export function DesktopSidebar({
 }: DesktopSidebarProps) {
   const pathname = usePathname();
 
-  // Dynamic User details & credits calculation from backend data
+  // Dynamic User details & plan status from backend data
   const userName = isLoggedIn ? (user?.name || "User") : "Guest User";
   const userAvatar = user?.picture || "/avatar.png";
   const isPro = Boolean(user?.membership?.isActive || tokenInfo?.isSubscribed);
   const planName = user?.membership?.planName || tokenInfo?.planName || (isPro ? "Pro Scholar" : "Free Plan");
-  const currentCredits = Number(tokenInfo?.tokens ?? user?.tokens ?? user?.credits ?? 0);
-  const maxCredits = Number(tokenInfo?.maxTokens ?? user?.membership?.maxTokens ?? (isPro ? 2000 : 50));
-  const creditPercent = maxCredits > 0 ? Math.min(100, Math.max(0, (currentCredits / maxCredits) * 100)) : 0;
 
   // History / Creations State
   const [creations, setCreations] = useState<any[]>([]);
@@ -776,7 +773,7 @@ export function DesktopSidebar({
                 onClick={() => {
                   window.location.href = "/profile";
                 }}
-                title={`${userName} (${currentCredits} Credits)`}
+                title={`${userName} (${planName})`}
                 className="cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-full border border-red-500/40 overflow-hidden bg-neutral-800 hover:border-red-500 transition-colors">

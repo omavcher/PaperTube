@@ -1,36 +1,37 @@
-// controllers/chatController.js
-// PaperChat AI Personal Tutor & Knowledge Reasoning Engine for Paperxify
-// Ingests structured Knowledge IR, clickable timestamps, Socratic study modes, and multi-tier model routing.
-
+const jwt = require("jsonwebtoken");
 const Note = require("../models/Note");
 const AiChat = require("../models/AiChat");
 const User = require("../models/User");
+const { getUserPlanId, PLAN_QUOTAS, getPeriodStartDate } = require("../middleware/quotaMiddleware");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 // OpenRouter model routing matrix by user subscription tier
 const CHAT_MODELS_BY_TIER = {
   free: [
-    'deepseek/deepseek-chat',
-    'google/gemini-2.0-flash-001',
-    'meta-llama/llama-3.3-70b-instruct',
+    'deepseek/deepseek-v4-flash',
+    'qwen/qwen3.6-flash',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
     'openai/gpt-4o-mini'
   ],
   pro: [
-    'openai/gpt-4o-mini',
-    'deepseek/deepseek-chat',
-    'meta-llama/llama-3.3-70b-instruct'
+      'deepseek/deepseek-v4-flash',
+    'qwen/qwen3.6-flash',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
+    'openai/gpt-4o-mini'
   ],
   scholar: [
-    'openai/gpt-4o-mini',
-    'deepseek/deepseek-chat',
-    'meta-llama/llama-3.3-70b-instruct'
+     'deepseek/deepseek-v4-flash',
+    'qwen/qwen3.6-flash',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
+    'openai/gpt-4o-mini'
   ],
   power: [
+    'google/gemini-3-pro-preview',
+    'openai/gpt-5-nano',
     'openai/gpt-4o',
     'anthropic/claude-3.5-sonnet',
-    'deepseek/deepseek-r1',
-    'openai/gpt-4o-mini'
+    'deepseek/deepseek-v4-flash'
   ]
 };
 
@@ -199,6 +200,64 @@ exports.handleMessage = async (req, res) => {
 
     if (!noteId || !message) {
       return res.status(400).json({ error: "noteId and message are required" });
+    }
+
+    // 1. Resolve authentic user & plan tier
+    let user = null;
+    const authHeader = req.header('Auth') || req.header('Authorization');
+    if (authHeader) {
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+      if (token && token !== 'null' && token !== 'undefined') {
+        try {
+          const decoded = jwt.verify(token, process.env.SESSION_SECRET);
+          user = await User.findById(decoded.id).select('membership name email');
+        } catch (e) {
+          // Token invalid/expired - continue as guest
+        }
+      }
+    }
+
+    const resolvedPlanId = getUserPlanId(user);
+    const planConfig = PLAN_QUOTAS[resolvedPlanId] || PLAN_QUOTAS.free;
+    const chatLimit = planConfig.paperChatMessages || 100;
+    const startDate = getPeriodStartDate(resolvedPlanId, user?.membership);
+
+    // 2. Enforce PaperChat messages limit
+    if (user) {
+      try {
+        const userNotes = await Note.find({ owner: user._id }).select('_id').limit(500);
+        const noteIds = userNotes.map(n => n._id);
+        if (noteId && !noteIds.some(id => id.toString() === noteId)) {
+          noteIds.push(noteId);
+        }
+        const chats = await AiChat.find({ noteId: { $in: noteIds } });
+        let messageCount = 0;
+        for (const c of chats) {
+          for (const m of (c.messages || [])) {
+            if (m.role === 'user' && m.timestamp && new Date(m.timestamp) >= startDate) {
+              messageCount++;
+            }
+          }
+        }
+
+        if (messageCount >= chatLimit) {
+          const periodWord = planConfig.period === 'daily' ? 'today' : 'this month';
+          const upgradeTarget = resolvedPlanId === 'free' ? 'Pro Scholar ($9.99/mo)' : 'Power Scholar ($19.99/mo)';
+          return res.status(403).json({
+            success: false,
+            code: 'QUOTA_EXCEEDED',
+            message: `You've reached your ${planConfig.name} plan limit of ${chatLimit} PaperChat messages for ${periodWord}. Upgrade to ${upgradeTarget} to unlock more messages.`,
+            used: messageCount,
+            limit: chatLimit,
+            plan: planConfig.name,
+            planId: resolvedPlanId,
+            period: planConfig.period,
+            upgradeUrl: '/pricing'
+          });
+        }
+      } catch (err) {
+        console.warn('PaperChat quota counting notice:', err.message);
+      }
     }
 
     let note = null;
@@ -411,8 +470,8 @@ ${highlightContext}
       { role: "user", content: message }
     ];
 
-    // Determine model list based on plan
-    const modelCandidates = CHAT_MODELS_BY_TIER[userPlan] || CHAT_MODELS_BY_TIER.free;
+    // Determine model list based on authoritative resolved plan
+    const modelCandidates = CHAT_MODELS_BY_TIER[resolvedPlanId] || CHAT_MODELS_BY_TIER.free;
 
     // Set streaming headers
     res.setHeader('Content-Type', 'text/event-stream');

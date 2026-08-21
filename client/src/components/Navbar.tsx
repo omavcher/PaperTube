@@ -487,9 +487,6 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
   const userAvatar = user?.picture || "/avatar.png";
   const isPro = Boolean(user?.membership?.isActive || tokenInfo?.isSubscribed);
   const planName = user?.membership?.planName || tokenInfo?.planName || (isPro ? "Pro Scholar" : "Free Plan");
-  const currentCredits = Number(tokenInfo?.tokens ?? user?.tokens ?? user?.credits ?? 0);
-  const maxCredits = Number(tokenInfo?.maxTokens ?? user?.membership?.maxTokens ?? (isPro ? 2000 : 50));
-  const creditPercent = maxCredits > 0 ? Math.min(100, Math.max(0, (currentCredits / maxCredits) * 100)) : 0;
   
   const [mobileCreations, setMobileCreations] = useState<any[]>([]);
   const [mobileLoading, setMobileLoading] = useState(false);
@@ -826,26 +823,24 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
                     <ChevronRight size={13} className="text-neutral-500 shrink-0" />
                   </div>
 
-                  <div className="pt-1 border-t border-white/[0.04] space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1 text-[10.5px] font-medium text-neutral-300">
-                        <Zap size={11} className="text-amber-400 fill-amber-400" />
-                        <span>{currentCredits.toLocaleString()} / {maxCredits.toLocaleString()} Credits</span>
-                      </div>
-                      <Link
-                        href="/pricing"
-                        onClick={onClose}
-                        className="text-[9.5px] font-bold text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-md"
-                      >
-                        Top Up +
-                      </Link>
+                  {/* Plan Status Bar */}
+                  <div className="pt-1 border-t border-white/[0.04] flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-neutral-400">
+                      <span className={cn("w-1.5 h-1.5 rounded-full", isPro ? "bg-emerald-400" : "bg-neutral-500")} />
+                      <span>{isPro ? "Full Scholar Suite" : "Standard Tier"}</span>
                     </div>
-                    <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.7)]" 
-                        style={{ width: `${creditPercent}%` }}
-                      />
-                    </div>
+                    <Link
+                      href="/pricing"
+                      onClick={onClose}
+                      className={cn(
+                        "text-[9.5px] font-bold px-2 py-0.5 rounded-md transition-all shrink-0 cursor-pointer",
+                        isPro 
+                          ? "text-neutral-300 bg-white/[0.05] hover:bg-white/[0.1] border border-white/10" 
+                          : "text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30"
+                      )}
+                    >
+                      {isPro ? "Manage" : "Upgrade →"}
+                    </Link>
                   </div>
                 </div>
               ) : (

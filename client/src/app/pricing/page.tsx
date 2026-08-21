@@ -3,1046 +3,246 @@
 import { useState, useEffect, useRef } from "react";
 import {
   CheckCircle2, X, ArrowRight, Zap, ShieldCheck, Activity,
-  Sparkles, Clock, Star, Lock, Loader2, ChevronDown, Globe,
-  BookOpen, FileText, Layers, Download, Folder, Timer,
-  List, Infinity, AlertCircle, Users, TrendingUp, Award,
-  BarChart3, Flame, Coffee, GraduationCap, Brain, Rocket,
-  Check, BadgeCheck, Shield, Play, MessageCircle, CreditCard
+  Sparkles, Star, Lock, Loader2, ChevronDown,
+  BarChart3, Crown, Check, BadgeCheck,
+  Play, FileText, Layers, Brain
 } from "lucide-react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import api from "@/config/api";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
 import { AuthLoginModal } from "@/components/AuthGuard";
 import { trackPurchase, trackDbActivity } from "@/utils/analytics";
+import { usePricingRegion } from "@/lib/usePricingRegion";
+import PaymentModal, { type BillingPeriod } from "@/components/PaymentModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type BillingPeriod = "monthly" | "yearly";
 
 interface Plan {
-  id: string;
+  id: "free" | "pro" | "power";
   name: string;
+  badge: string;
   tagline: string;
-  persona: string;
-  monthlyPrice: number;
-  yearlyPrice: number;
+  usd: { monthly: number; yearly: number; yearlyPerMonth: number; saving: string };
+  inr: { monthly: number; yearly: number; yearlyPerMonth: number; saving: string };
   cta: string;
   ctaFree?: boolean;
-  hasTrial: boolean;
-  popular?: boolean;
-  highlight?: boolean;
-  badge?: string;
-  accentColor: string;
-  glowColor: string;
-  features: Array<{ text: string; icon: any }>;
+  highlight: boolean;
+  features: string[];
 }
 
-// ─── Plan Data ─────────────────────────────────────────────────────────────────
+// ─── Plan Data (mirrored from quotaMiddleware PLAN_QUOTAS / PLAN_PRICING) ─────
+// Free:          $0 / ₹0
+// Pro Scholar:   $9.99/mo | $79.99/yr | ₹799/mo | ₹6,999/yr
+// Power Scholar: $19.99/mo | $149.99/yr | ₹1,599/mo | ₹12,999/yr
 const PLANS: Plan[] = [
   {
     id: "free",
-    name: "Free",
-    tagline: "Explore the magic, zero risk.",
-    persona: "Perfect for casual learners",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
+    name: "Free Tier",
+    badge: "Forever Free",
+    tagline: "Explore the magic with zero risk.",
+    usd: { monthly: 0, yearly: 0, yearlyPerMonth: 0, saving: "" },
+    inr: { monthly: 0, yearly: 0, yearlyPerMonth: 0, saving: "" },
     cta: "Start for free",
     ctaFree: true,
-    hasTrial: false,
-    accentColor: "text-neutral-400",
-    glowColor: "rgba(255,255,255,0.03)",
+    highlight: false,
     features: [
-      { text: "3 videos per day (up to 45 min)", icon: Play },
-      { text: "2 AI slide decks per day", icon: FileText },
-      { text: "5 quizzes & flashcards per day", icon: Layers },
-      { text: "5 homework & math proves per day", icon: Brain },
-      { text: "Standard PDF export", icon: Download },
+      "5 video notes / day (up to 60 min/video)",
+      "100 PaperChat messages / day",
+      "5 quiz & flashcard sets / day",
+      "3 mind maps & diagrams / day",
+      "2 AI slide decks / day (up to 8 slides)",
+      "10 math & homework solves / day",
+      "1 AI humanizer run / day",
+      "Standard PDF & Markdown export",
     ],
   },
   {
     id: "pro",
-    name: "Pro",
-    tagline: "Everything you need to ace every exam.",
-    persona: "For serious students & daily learners",
-    monthlyPrice: 9,
-    yearlyPrice: 72,
+    name: "Pro Scholar",
+    badge: "⭐ Most Popular",
+    tagline: "30 hours of AI study content per month.",
+    usd: { monthly: 9.99, yearly: 79.99, yearlyPerMonth: 6.67, saving: "~33% off" },
+    inr: { monthly: 799, yearly: 6999, yearlyPerMonth: 583, saving: "~27% off" },
     cta: "Get Pro Scholar",
-    hasTrial: false,
-    popular: true,
     highlight: true,
-    badge: "Most Popular",
-    accentColor: "text-white",
-    glowColor: "rgba(255,255,255,0.08)",
     features: [
-      { text: "120 AI video notes / month (up to 4 hrs / video)", icon: Play },
-      { text: "60 AI slide decks / month (up to 20 slides)", icon: FileText },
-      { text: "250 AI quizzes & flashcard sets / month", icon: Layers },
-      { text: "500 AI homework & math proofs / month", icon: Brain },
-      { text: "50 AI humanizer & essay scans / month", icon: ShieldCheck },
-      { text: "Clean publication PDF (LaTeX + Code)", icon: Download },
-      { text: "Markdown + Notion + Anki export", icon: BookOpen },
-      { text: "Priority cloud processing speed", icon: Zap },
+      "120 AI video notes / month (up to 4 hrs/video)",
+      "2,000 PaperChat messages / month",
+      "30 AI quiz & practice sets / month",
+      "Unlimited flashcard sets",
+      "15 mind maps & diagrams / month",
+      "10 AI slide decks / month (up to 20 slides)",
+      "500 math & study solves / month",
+      "50 AI humanizer & essay scans / month",
+      "Publication-quality PDF (LaTeX + Code)",
+      "Notion + Markdown + Anki export",
+      "Priority cloud processing queue",
     ],
   },
   {
     id: "power",
-    name: "Power",
-    tagline: "Research-grade output with massive capacity.",
-    persona: "For researchers, grad students & creators",
-    monthlyPrice: 19,
-    yearlyPrice: 144,
+    name: "Power Scholar",
+    badge: "👑 Max Output",
+    tagline: "100 hours of AI learning. No compromises.",
+    usd: { monthly: 19.99, yearly: 149.99, yearlyPerMonth: 10.83, saving: "~37% off" },
+    inr: { monthly: 1599, yearly: 12999, yearlyPerMonth: 1083, saving: "~32% off" },
     cta: "Get Power Scholar",
-    hasTrial: false,
-    accentColor: "text-violet-300",
-    glowColor: "rgba(139,92,246,0.08)",
+    highlight: false,
     features: [
-      { text: "350 AI video notes / month (up to 12 hrs / video)", icon: Play },
-      { text: "180 AI slide decks / month (up to 40 slides)", icon: FileText },
-      { text: "800 AI quizzes & flashcards / month", icon: Layers },
-      { text: "1,500 AI study, LaTeX calculus & language drills / month", icon: Brain },
-      { text: "200 AI humanizer, plagiarism & essay runs / month", icon: ShieldCheck },
-      { text: "Course playlist bulk processing", icon: List },
-      { text: "Deep PDF — textbook-quality output", icon: BookOpen },
-      { text: "Instant turbo queue — zero wait time", icon: Rocket },
+      "350 AI video notes / month (up to 8 hrs/video)",
+      "10,000 PaperChat messages / month",
+      "Unlimited quizzes & practice sets",
+      "Unlimited flashcard sets",
+      "Unlimited mind maps & diagrams",
+      "30 AI slide decks / month (up to 40 slides)",
+      "1,500 math & study solves / month",
+      "200 AI humanizer & deep essay runs / month",
+      "Deep textbook-quality LaTeX PDF export",
+      "Instant turbo queue — zero wait time",
+      "All export formats (PDF, DOCX, PPTX, Markdown, HTML)",
     ],
   },
 ];
 
-// ─── Comparison Table Data ─────────────────────────────────────────────────────
+// ─── Comparison Table ─────────────────────────────────────────────────────────
 const COMPARE_ROWS = [
-  { category: "Usage", feature: "AI Video Notes", free: "3 / day", pro: "120 / mo", power: "350 / mo" },
-  { category: "Usage", feature: "AI Slide Decks (PPT)", free: "2 / day", pro: "60 / mo", power: "180 / mo" },
-  { category: "Usage", feature: "AI Quizzes & Flashcards", free: "5 / day", pro: "250 / mo", power: "800 / mo" },
-  { category: "Usage", feature: "AI Math & Homework Solves", free: "5 / day", pro: "500 / mo", power: "1,500 / mo" },
-  { category: "Usage", feature: "AI Humanizer & Essay Scans", free: "1 / day", pro: "50 / mo", power: "200 / mo" },
-  { category: "Usage", feature: "Max video length", free: "45 min", pro: "4 hrs", power: "12 hrs" },
-  { category: "Notes", feature: "Quick Notes", free: true, pro: true, power: true },
-  { category: "Notes", feature: "Visual Notes (with images)", free: false, pro: true, power: true },
-  { category: "Notes", feature: "Full PDF Notes", free: false, pro: true, power: true },
-  { category: "Notes", feature: "Deep PDF (textbook quality)", free: false, pro: false, power: true },
-  { category: "Export", feature: "PDF export (no watermark)", free: false, pro: true, power: true },
-  { category: "Export", feature: "Markdown export", free: false, pro: true, power: true },
-  { category: "Export", feature: "Notion export", free: false, pro: true, power: true },
-  { category: "Export", feature: "Anki deck (.apkg)", free: false, pro: false, power: true },
-  { category: "Storage", feature: "Saved notes + folders", free: "Last 10", pro: "Up to 500", power: "Up to 2,000" },
-  { category: "Advanced", feature: "Timestamps linked to video", free: false, pro: true, power: true },
-  { category: "Advanced", feature: "Playlist processing", free: false, pro: false, power: true },
-  { category: "Advanced", feature: "Multi-language output", free: false, pro: false, power: true },
-  { category: "Performance", feature: "Processing speed", free: "Shared", pro: "Priority", power: "Instant Turbo" },
+  { feature: "AI Video Notes",           free: "5 / day",   pro: "120 / mo",  power: "350 / mo"  },
+  { feature: "Max Video Length",         free: "60 min",    pro: "4 hours",   power: "8 hours"   },
+  { feature: "PaperChat Messages",       free: "100 / day", pro: "2,000 / mo",power: "10,000 / mo"},
+  { feature: "AI Quiz Sets",             free: "5 / day",   pro: "30 / mo",   power: "Unlimited" },
+  { feature: "Flashcard Sets",           free: "5 / day",   pro: "Unlimited", power: "Unlimited" },
+  { feature: "Mind Maps & Diagrams",     free: "3 / day",   pro: "15 / mo",   power: "Unlimited" },
+  { feature: "AI Slide Decks (PPT)",     free: "2 / day",   pro: "10 / mo",   power: "30 / mo"   },
+  { feature: "Math & Study Solves",      free: "10 / day",  pro: "500 / mo",  power: "1,500 / mo"},
+  { feature: "AI Humanizer & Essays",    free: "1 / day",   pro: "50 / mo",   power: "200 / mo"  },
+  { feature: "Max Slides per Deck",      free: "8 slides",  pro: "20 slides", power: "40 slides" },
+  { feature: "LaTeX Publication PDF",    free: false,       pro: true,        power: true        },
+  { feature: "Notion / Anki Export",     free: false,       pro: true,        power: true        },
+  { feature: "DOCX / PPTX / HTML Export",free: false,       pro: false,       power: true        },
+  { feature: "Processing Speed",         free: "Standard", pro: "Priority GPU", power: "Instant Turbo" },
 ];
 
-// ─── Social proof counter ─────────────────────────────────────────────────────
-function AnimatedNumber({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  // amount: 0 means trigger as soon as any pixel enters viewport
-  const inView = useInView(ref, { once: true, amount: 0 });
-
-  useEffect(() => {
-    if (!inView) return;
-    const duration = 1400;
-    const steps = 60;
-    const increment = target / steps;
-    let current = 0;
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= target) { setCount(target); clearInterval(timer); return; }
-      setCount(Math.floor(current));
-    }, duration / steps);
-    return () => clearInterval(timer);
-  }, [inView, target]);
-
-  // Safety fallback: if the element is already in the viewport on mount
-  // (above-the-fold placement), ensure the target value always shows.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          observer.disconnect();
-          // Give the framer-motion inView hook time to fire first;
-          // if count is still 0 after 1600 ms, snap to target.
-          const fallback = setTimeout(() => {
-            setCount(prev => (prev === 0 ? target : prev));
-          }, 1600);
-          return () => clearTimeout(fallback);
-        }
-      },
-      { threshold: 0 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [target]);
-
-  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
-}
-
-// ─── Testimonials ─────────────────────────────────────────────────────────────
-const TESTIMONIALS = [
-  { name: "Aditya R.", role: "CS Student, IIT Bombay", text: "Went from failing to top 10% in my class. The flashcards + PDF combo is unreal.", rating: 5 },
-  { name: "Sofia M.", role: "Pre-Med, UCLA", text: "I process entire lecture playlists in one sitting. Power plan is a game-changer.", rating: 5 },
-  { name: "James K.", role: "MBA Student", text: "Saves me 3–4 hours per week. Absolutely worth every dollar.", rating: 5 },
-];
-
-// ─── FAQ ─────────────────────────────────────────────────────────────────────
 const FAQS = [
-  { q: "Do I need a credit card for the free trial?", a: "No. The 7-day free trial for Pro and Power plans requires no credit card. You're only charged after the trial ends if you choose to continue." },
-  { q: "What happens after the trial?", a: "You'll get an email reminder before your trial ends. If you don't cancel, your selected plan activates. You can cancel anytime from your profile." },
-  { q: "Is the yearly plan auto-renewed?", a: "No. The yearly plan is a one-time payment for 12 months of access. It does not auto-renew — you'll manually choose to renew when it expires." },
-  { q: "Can I switch plans?", a: "Yes, you can upgrade or downgrade at any time from your profile page. Upgrades take effect immediately." },
-  { q: "What payment methods do you accept?", a: "We support PayPal (credit/debit card, PayPal balance) and LemonSqueezy (Visa, Mastercard, American Express, and more). Both gateways are fully secure." },
-  { q: "Which payment gateway should I use?", a: "Both are equally safe. Choose PayPal if you already have a PayPal account. Choose LemonSqueezy for a seamless credit/debit card experience without needing an account." },
+  { q: "How is '30 hours of AI content' measured?",
+    a: "Pro Scholar gives you 120 video note generations per month. Each generation typically processes 10–15 minutes of lecture, adding up to roughly 20–30 hours of lecture content processed — hence '30 hours of AI study content.'" },
+  { q: "Can I cancel anytime?",
+    a: "Yes. Cancel with one click from your profile. Your access continues until the end of your paid billing period." },
+  { q: "Do 'Unlimited' features really have no limit?",
+    a: "Unlimited flashcards and quizzes in Pro/Power are genuinely unlimited — these are very low AI cost operations. Heavy features like video notes and PPTs have monthly caps to protect our margins and keep prices fair." },
+  { q: "What payment methods are supported?",
+    a: "Globally: PayPal (credit/debit cards, PayPal balance) and LemonSqueezy (Visa, Mastercard, Amex). India: UPI (Google Pay, PhonePe, Paytm), RuPay, Netbanking, and domestic cards via Razorpay." },
+  { q: "Do you offer student discounts?",
+    a: "Students with a verified .edu email receive a 50% discount on Pro Scholar. Sign up with your .edu address to receive the discount automatically." },
+  { q: "Is the yearly plan auto-renewing?",
+    a: "Monthly plans are auto-renewing subscriptions. Yearly plans are one-time annual access payments with no automatic renewal — you choose to renew manually." },
 ];
 
-// ─── Small helpers ─────────────────────────────────────────────────────────────
+// ─── Cell renderer for comparison table ──────────────────────────────────────
 function CellValue({ val, isPro }: { val: boolean | string; isPro?: boolean }) {
-  if (typeof val === "boolean") {
-    return val
-      ? <CheckCircle2 size={16} className={cn("mx-auto", isPro ? "text-white" : "text-emerald-400")} />
-      : <X size={14} className="text-neutral-800 mx-auto" />;
-  }
-  return <span className={cn("font-semibold text-xs", isPro ? "text-white" : "text-neutral-300")}>{val}</span>;
+  if (typeof val === "boolean") return val
+    ? <CheckCircle2 size={14} className={cn("mx-auto", isPro ? "text-red-400" : "text-emerald-400")} />
+    : <X size={12} className="text-neutral-700 mx-auto" />;
+  return <span className={cn("text-xs font-semibold", isPro ? "text-red-400" : "text-neutral-300")}>{val}</span>;
 }
 
-// ─── FAQ Item ─────────────────────────────────────────────────────────────────
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className={cn("border border-white/5 rounded-2xl overflow-hidden transition-colors duration-200", open ? "bg-neutral-900/60" : "bg-neutral-900/20 hover:bg-neutral-900/40")}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full text-left flex items-center justify-between gap-4 p-5 md:p-6"
-      >
-        <span className="text-sm font-semibold text-white">{q}</span>
-        <ChevronDown size={16} className={cn("text-neutral-500 shrink-0 transition-transform duration-300", open && "rotate-180")} />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <p className="px-5 md:px-6 pb-5 text-sm text-neutral-400 leading-relaxed">{a}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// PayPal Smart Buttons (JS SDK) - avoids ALL currency restriction issues
-function PayPalSDKButton({
-  plan, billing, onSuccess, onError,
-}: {
-  plan: Plan;
-  billing: BillingPeriod;
-  onSuccess: () => void;
-  onError: (msg: string) => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [sdkReady, setSdkReady] = useState(false);
-
-  useEffect(() => {
-    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
-    if (!clientId || clientId === "YOUR_PAYPAL_CLIENT_ID") {
-      onError("PayPal Client ID not configured.");
-      return;
-    }
-    const scriptId = "paypal-sdk-script";
-    if (document.getElementById(scriptId)) {
-      if ((window as any).paypal) setSdkReady(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.id = scriptId;
-    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture`;
-    script.async = true;
-    script.onload  = () => setSdkReady(true);
-    script.onerror = () => onError("Failed to load PayPal SDK.");
-    document.body.appendChild(script);
-  }, []);
-
-  useEffect(() => {
-    if (!sdkReady || !containerRef.current || !(window as any).paypal) return;
-    containerRef.current.innerHTML = "";
-    (window as any).paypal.Buttons({
-      style: { layout: "vertical", color: "blue", shape: "pill", label: "pay", height: 48 },
-      createOrder: async () => {
-        // Track PayPal payment attempt
-        trackDbActivity(`/pricing/payment-start-paypal/${plan.id}/${billing}`);
-
-        const token = localStorage.getItem("authToken");
-        const res = await api.post(
-          "/payment/paypal/create-order",
-          { planId: plan.id, billingPeriod: billing },
-          { headers: { Auth: token } }
-        );
-        if (!res.data.success) throw new Error(res.data.message || "Order creation failed");
-        return res.data.orderId;
-      },
-      onApprove: async (data: any) => {
-        try {
-          const token = localStorage.getItem("authToken");
-          const res = await api.post(
-            "/payment/paypal/capture-order",
-            { orderId: data.orderID },
-            { headers: { Auth: token } }
-          );
-          if (res.data.success) onSuccess();
-          else onError("Payment capture failed. Please contact support.");
-        } catch (err: any) {
-          onError(err?.response?.data?.message || "Capture failed");
-        }
-      },
-      onError: (err: any) => {
-        console.error("PayPal SDK error:", err);
-        onError("PayPal payment failed. Please try again.");
-      },
-    }).render(containerRef.current);
-  }, [sdkReady, plan.id, billing]);
-
-  if (!sdkReady) {
-    return (
-      <div className="w-full h-12 flex items-center justify-center gap-2 text-neutral-500 text-xs">
-        <Loader2 size={14} className="animate-spin" /> Loading PayPal…
-      </div>
-    );
-  }
-  return <div ref={containerRef} id="paypal-button-container" className="w-full" />;
-}
-
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
-    if (typeof window !== "undefined" && (window as any).Razorpay) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
-
-function PaymentMethodModal({
-  isOpen, onClose, plan, billing, onLemonSqueezy, onPayPalSuccess, isLemonProcessing, user,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  plan: Plan | null;
-  billing: BillingPeriod;
-  onLemonSqueezy: () => void;
-  onPayPalSuccess: () => void;
-  isLemonProcessing: boolean;
-  user: any;
-}) {
-  const handlePayPalError = (msg: string) => toast.error(msg);
-  const [isRazorpayProcessing, setIsRazorpayProcessing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"india" | "global">("global"); // Default to global
-  const [exchangeRate, setExchangeRate] = useState<number>(85.0);
-
-  // Live exchange rate fetch when open
-  useEffect(() => {
-    if (isOpen) {
-      fetch("https://open.er-api.com/v6/latest/USD")
-        .then(res => res.json())
-        .then(data => {
-          if (data?.rates?.INR) {
-            setExchangeRate(data.rates.INR);
-          }
-        })
-        .catch(err => {
-          console.error("Failed to fetch live exchange rate, using fallback:", err);
-        });
-    }
-  }, [isOpen]);
-
-  const handleRazorpayCheckout = async () => {
-    if (!plan) return;
-    // Track Razorpay payment attempt
-    trackDbActivity(`/pricing/payment-start-razorpay/${plan.id}/${billing}`);
-
-    setIsRazorpayProcessing(true);
-    const scriptLoaded = await loadRazorpayScript();
-    if (!scriptLoaded) {
-      toast.error("Failed to load Razorpay SDK. Please try again.");
-      setIsRazorpayProcessing(false);
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("authToken");
-      // Calculate dynamic INR pricing based on live exchange rate
-      const usdPrice = billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
-      const inrAmount = Math.round(usdPrice * exchangeRate);
-
-      // Step 1: Create Order on backend
-      const res = await api.post(
-        "/payment/create-order",
-        {
-          packageId: plan.id,
-          packageType: "subscription",
-          finalAmount: inrAmount,
-          billingPeriod: billing,
-          packageName: `${plan.name} (${billing})`
-        },
-        { headers: { Auth: token } }
-      );
-
-      if (!res.data.success) {
-        toast.error(res.data.message || "Failed to create order");
-        setIsRazorpayProcessing(false);
-        return;
-      }
-
-      const orderData = res.data.order;
-      const keyId = res.data.key || "rzp_test_S7R44fJcrPnhgf";
-
-      const options = {
-        key: keyId,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: "PaperXify",
-        description: `${plan.name} Subscription (${billing})`,
-        order_id: orderData.id,
-        handler: async function (response: any) {
-          try {
-            const verifyRes = await api.post(
-              "/payment/verify",
-              {
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature,
-                packageId: plan.id,
-                packageType: "subscription",
-                finalAmount: inrAmount,
-                billingPeriod: billing,
-                status: "success"
-              },
-              { headers: { Auth: token } }
-            );
-
-            if (verifyRes.data.success) {
-              onClose();
-              onPayPalSuccess();
-            } else {
-              toast.error(verifyRes.data.message || "Payment verification failed");
-            }
-          } catch (verifyErr: any) {
-            toast.error(verifyErr?.response?.data?.message || "Verification failed");
-          } finally {
-            setIsRazorpayProcessing(false);
-          }
-        },
-        prefill: {
-          name: user?.name || "",
-          email: user?.email || "",
-          contact: user?.mobile || ""
-        },
-        theme: {
-          color: "#7c3aed" // Clean purple theme matching PaperXify
-        },
-        modal: {
-          ondismiss: function() {
-            setIsRazorpayProcessing(false);
-          }
-        }
-      };
-
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to initiate payment");
-      setIsRazorpayProcessing(false);
-    }
-  };
-
-  if (!plan) return null;
-
-  // Calculate pricing values to show
-  const usdPrice = billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/85 backdrop-blur-md transform-gpu"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: 15 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="relative w-full max-w-md md:max-w-3xl bg-neutral-950 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-          >
-            {/* Ambient Top Glow */}
-            <div
-              className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 pointer-events-none rounded-t-[2rem] opacity-40 transition-all duration-300"
-              style={{ background: `radial-gradient(ellipse at top, ${plan.glowColor || 'rgba(255,255,255,0.05)'}, transparent 70%)` }}
-            />
-            {/* Film grain / noise overlay */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20viewBox=%220%200%20200%20200%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter%20id=%22noise%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.8%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23noise)%22/%3E%3C/svg%3E')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
-
-            <div className="relative z-10">
-              {/* Top Close Button */}
-              <button
-                onClick={onClose}
-                className="absolute top-0 right-0 p-2 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
-              >
-                <X size={16} />
-              </button>
-
-              {/* Grid Layout: Landscape on desktop, Portrait on mobile */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-stretch">
-                
-                {/* Left Side: Plan details and Trust info */}
-                <div className="md:col-span-5 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10 pb-6 md:pb-0 md:pr-6">
-                  <div className="space-y-5">
-                    {/* Header */}
-                    <div>
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/8 text-[9px] font-black uppercase tracking-wider text-neutral-400 mb-2">
-                        <Lock size={10} className="text-emerald-400 animate-pulse" />
-                        <span>Secure Checkout</span>
-                      </div>
-                      <h3 className="text-xl font-black text-white tracking-tight">Choose payment method</h3>
-                      <p className="text-xs text-neutral-500 mt-1 font-light">Unlock premium AI-powered tools instantly.</p>
-                    </div>
-
-                    {/* Selected Plan Details Card */}
-                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex flex-col justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className={cn("text-base font-black tracking-tight", plan.accentColor)}>
-                            {plan.name} Plan
-                          </span>
-                          {plan.id === "power" && (
-                            <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/20">
-                              Power
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-neutral-500">
-                          {billing === "monthly" ? "Monthly Subscription" : "Yearly Access (No auto-renew)"}
-                        </p>
-                      </div>
-                      <div>
-                        <div className="flex flex-col">
-                          <span className="text-2xl font-black text-white leading-none">
-                            ${usdPrice}
-                          </span>
-                          <span className="text-[9px] text-neutral-500 mt-1">
-                            / {billing === "monthly" ? "month" : "year"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Logo Strip & SSL info (Sticky/Aligned on left) */}
-                  <div className="mt-6 space-y-4">
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[8px] text-neutral-600 font-bold uppercase tracking-wider">
-                        Supported Platforms
-                      </span>
-                      <div className="flex flex-wrap items-center gap-3 opacity-55 grayscale hover:grayscale-0 hover:opacity-80 transition-all duration-300">
-                        <span className="text-[9px] font-black text-white border border-white/10 px-1 py-0.5 rounded">UPI</span>
-                        <span className="text-[9px] font-bold text-white">GPay</span>
-                        <span className="text-[9px] font-bold text-white">Paytm</span>
-                        <span className="text-[9px] font-bold text-white">Visa</span>
-                        <span className="text-[9px] font-bold text-white">Mastercard</span>
-                        <span className="text-[9px] font-bold text-white">Apple Pay</span>
-                      </div>
-                    </div>
-
-                    <div className="text-[9px] text-neutral-600 flex items-center gap-1.5 pt-3 border-t border-white/5">
-                      <ShieldCheck size={11} className="text-emerald-500 shrink-0" />
-                      <span>256-bit SSL encrypted connection</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Side: Tab Selector and actual Payment Options */}
-                <div className="md:col-span-7 pt-4 md:pt-0 flex flex-col justify-between min-h-[340px]">
-                  <div>
-                    {/* Stepper indicators */}
-                    <div className="flex items-center justify-center md:justify-end gap-3 mb-5">
-                      <div className="flex items-center gap-1 text-[10px] text-neutral-500 font-bold tracking-wider uppercase">
-                        <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[8px] text-emerald-400 font-bold">
-                          ✓
-                        </div>
-                        <span>Account</span>
-                      </div>
-                      <div className="w-4 h-px bg-white/10" />
-                      <div className="flex items-center gap-1 text-[10px] text-white font-bold tracking-wider uppercase">
-                        <div className="w-3.5 h-3.5 rounded-full bg-white text-black flex items-center justify-center text-[8px] font-black">
-                          2
-                        </div>
-                        <span>Payment</span>
-                      </div>
-                    </div>
-
-                    {/* Tab Selector for Region */}
-                    <div className="relative flex p-1 bg-white/[0.03] border border-white/5 rounded-2xl mb-5">
-                      <button
-                        onClick={() => setActiveTab("global")}
-                        className={cn(
-                          "flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 relative z-10",
-                          activeTab === "global" ? "text-black" : "text-neutral-400 hover:text-neutral-200"
-                        )}
-                      >
-                        <span className="text-xs">🌐</span> PayPal & Global
-                      </button>
-                      <button
-                        onClick={() => setActiveTab("india")}
-                        className={cn(
-                          "flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 relative z-10",
-                          activeTab === "india" ? "text-black" : "text-neutral-400 hover:text-neutral-200"
-                        )}
-                      >
-                        <span className="text-xs">🇮🇳</span> UPI & India Cards
-                      </button>
-                      <motion.div
-                        className="absolute inset-y-1 rounded-xl bg-white shadow-md pointer-events-none"
-                        initial={false}
-                        animate={{
-                          left: activeTab === "global" ? "4px" : "50%",
-                          right: activeTab === "global" ? "50%" : "4px",
-                        }}
-                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                      />
-                    </div>
-
-                    {/* Tab Contents */}
-                    <div className="min-h-[220px] flex flex-col justify-center">
-                      {activeTab === "global" ? (
-                        <motion.div
-                          key="global-tab"
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 8 }}
-                          transition={{ duration: 0.15 }}
-                          className="space-y-4"
-                        >
-                          {/* PayPal Integration Container */}
-                          <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-3.5">
-                            <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider mb-2 text-center">
-                              Pay with PayPal Balance / Credit Card
-                            </p>
-                            <PayPalSDKButton
-                              plan={plan}
-                              billing={billing}
-                              onSuccess={onPayPalSuccess}
-                              onError={handlePayPalError}
-                            />
-                          </div>
-
-                          {/* Divider */}
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 h-px bg-white/5" />
-                            <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider">
-                              or credit card
-                            </span>
-                            <div className="flex-1 h-px bg-white/5" />
-                          </div>
-
-                          {/* LemonSqueezy option */}
-                          <button
-                            id="btn-lemonsqueezy"
-                            onClick={onLemonSqueezy}
-                            disabled={isLemonProcessing || isRazorpayProcessing}
-                            className="w-full flex items-center justify-center gap-3 h-12 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-white/5 hover:border-white/10 transition-all duration-200 active:scale-95 disabled:opacity-60 font-bold text-white text-xs"
-                          >
-                            {isLemonProcessing ? (
-                              <Loader2 size={16} className="animate-spin" />
-                            ) : (
-                              <>
-                                <span className="text-base">🍋</span>
-                                <span>Pay with LemonSqueezy (USD Cards)</span>
-                              </>
-                            )}
-                          </button>
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="india-tab"
-                          initial={{ opacity: 0, x: 8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -8 }}
-                          transition={{ duration: 0.15 }}
-                          className="space-y-4"
-                        >
-                          <div className="space-y-4 text-center">
-                            <p className="text-xs text-neutral-400 leading-relaxed max-w-sm mx-auto font-light">
-                              Ideal for Indian users. Direct UPI (Google Pay, PhonePe, Paytm, BHIM), RuPay, Netbanking, or domestic Credit/Debit cards.
-                            </p>
-
-                            <button
-                              id="btn-razorpay"
-                              onClick={handleRazorpayCheckout}
-                              disabled={isRazorpayProcessing || isLemonProcessing}
-                              className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:via-indigo-500 hover:to-blue-600 border border-blue-500/30 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 font-bold text-white text-sm shadow-[0_4px_24px_rgba(37,99,235,0.25)] shadow-blue-500/20"
-                            >
-                              {isRazorpayProcessing ? (
-                                <Loader2 size={18} className="animate-spin" />
-                              ) : (
-                                <>
-                                  <CreditCard size={16} className="text-blue-200" />
-                                  <span>Pay with Razorpay</span>
-                                </>
-                              )}
-                            </button>
-                            <p className="text-[10px] text-neutral-500 italic mt-2.5">
-                              * Razorpay converts USD to INR dynamically at checkout.
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-center text-[9px] text-neutral-600 mt-4">
-                    Cancel subscription anytime from your profile settings.
-                  </p>
-                </div>
-
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ─── Success Modal ─────────────────────────────────────────────────────────────
-function SuccessModal({ isOpen, onClose, planName }: { isOpen: boolean; onClose: () => void; planName: string }) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-xl"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-md bg-neutral-900 border border-emerald-500/20 rounded-3xl p-8 shadow-2xl overflow-hidden"
-          >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-40 bg-[radial-gradient(circle_at_center,_rgba(16,185,129,0.18)_0%,_transparent_70%)] pointer-events-none" />
-            <div className="text-center space-y-6 relative z-10">
-              <motion.div
-                initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
-                className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center"
-              >
-                <CheckCircle2 className="w-10 h-10 text-emerald-400" />
-              </motion.div>
-              <div>
-                <h3 className="text-2xl font-bold text-white mb-2">You're all set! 🎉</h3>
-                <p className="text-sm text-neutral-400">{planName} plan activated. Time to study smarter.</p>
-              </div>
-              <button
-                onClick={onClose}
-                className="w-full py-3.5 bg-white text-black font-bold uppercase tracking-wide text-xs rounded-xl hover:bg-neutral-100 transition-colors"
-              >
-                Start Learning →
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ─── Plan Card ─────────────────────────────────────────────────────────────────
-function PlanCard({
-  plan, billing, onSelect, isProcessing, selectedId,
-}: {
-  plan: Plan; billing: BillingPeriod;
-  onSelect: (plan: Plan) => void; isProcessing: boolean; selectedId: string | null;
-}) {
-  const price = billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
-  const monthlyEquiv = billing === "yearly" && plan.monthlyPrice > 0
-    ? (plan.yearlyPrice / 12).toFixed(2)
-    : null;
-  const isLoading = isProcessing && selectedId === plan.id;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className={cn(
-        "relative flex flex-col rounded-[2rem] border transition-all duration-500 group",
-        plan.highlight
-          ? "bg-gradient-to-b from-neutral-800/80 to-neutral-900/80 border-white/20 shadow-[0_0_80px_rgba(255,255,255,0.06)] z-10 md:-mt-4 md:-mb-4 pb-4"
-          : plan.id === "power"
-          ? "bg-gradient-to-b from-violet-950/30 to-black/60 border-violet-500/15 hover:border-violet-500/30"
-          : "bg-neutral-950/60 border-white/5 hover:border-white/10"
-      )}
-    >
-      {/* Top glow */}
-      <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 pointer-events-none rounded-t-[2rem] opacity-60"
-        style={{ background: `radial-gradient(ellipse at top, ${plan.glowColor}, transparent 70%)` }}
-      />
-
-      {/* Popular badge */}
-      {plan.badge && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-1.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-full shadow-[0_0_30px_rgba(255,255,255,0.3)] whitespace-nowrap">
-          <Sparkles size={10} />
-          {plan.badge}
-        </div>
-      )}
-
-      <div className={cn("p-7 flex flex-col flex-1", plan.highlight && "pt-10")}>
-        {/* Header */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className={cn("text-xl font-black tracking-tight", plan.accentColor)}>{plan.name}</h3>
-            {plan.id === "power" && (
-              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/20">Power</span>
-            )}
-          </div>
-          <p className="text-sm text-neutral-500 font-medium leading-relaxed">{plan.tagline}</p>
-          <p className="text-[10px] text-neutral-600 mt-1 font-medium flex items-center gap-1">
-            <Users size={9} /> {plan.persona}
-          </p>
-        </div>
-
-        {/* Price block */}
-        <div className="mb-6 pb-6 border-b border-white/5">
-          <div className="flex items-end gap-1.5">
-            {price === 0 ? (
-              <span className="text-5xl font-black text-white tracking-tighter">Free</span>
-            ) : (
-              <>
-                <span className="text-2xl font-bold text-neutral-400 mb-1">$</span>
-                <span className={cn("text-6xl font-black tracking-tighter leading-none", plan.highlight ? "text-white" : plan.id === "power" ? "text-violet-200" : "text-white")}>
-                  {price}
-                </span>
-                <div className="flex flex-col mb-1">
-                  <span className="text-xs text-neutral-500 font-medium leading-tight">
-                    / {billing === "monthly" ? "month" : "year"}
-                  </span>
-                  {monthlyEquiv && billing === "yearly" && (
-                    <span className="text-[10px] text-emerald-400 font-bold leading-tight">${monthlyEquiv}/mo</span>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Savings & billing notes */}
-          {price > 0 && billing === "yearly" && (
-            <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <TrendingUp size={10} className="text-emerald-400" />
-                <span className="text-[10px] font-bold text-emerald-400">Save ~17%</span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/8 border border-amber-500/15">
-                <AlertCircle size={10} className="text-amber-400/80" />
-                <span className="text-[10px] font-semibold text-amber-400/80">One-time · No auto-renewal</span>
-              </div>
-            </div>
-          )}
-          {price > 0 && billing === "monthly" && plan.hasTrial && (
-            <p className="text-[11px] text-neutral-600 mt-2 flex items-center gap-1">
-              <Shield size={10} /> No credit card required during trial
-            </p>
-          )}
-          {price === 0 && (
-            <p className="text-[11px] text-neutral-600 mt-2">Free forever. No credit card needed.</p>
-          )}
-        </div>
-
-        {/* CTA */}
-        <button
-          onClick={() => onSelect(plan)}
-          disabled={isProcessing}
-          className={cn(
-            "w-full h-13 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-95 mb-2 group/btn relative overflow-hidden",
-            plan.highlight
-              ? "bg-white text-black hover:bg-neutral-100 shadow-[0_4px_24px_rgba(255,255,255,0.18)] hover:shadow-[0_4px_32px_rgba(255,255,255,0.28)]"
-              : plan.id === "power"
-              ? "bg-violet-600 text-white hover:bg-violet-500 border border-violet-500/50 shadow-[0_4px_24px_rgba(139,92,246,0.2)] hover:shadow-[0_4px_32px_rgba(139,92,246,0.35)]"
-              : "bg-neutral-800/80 text-neutral-300 border border-white/8 hover:bg-neutral-700/80 hover:text-white hover:border-white/15"
-          )}
-        >
-          {isLoading ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <>
-              {plan.hasTrial && <Sparkles size={13} className="opacity-80" />}
-              {plan.cta}
-              <ArrowRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
-            </>
-          )}
-        </button>
-
-        {plan.hasTrial && (
-          <p className="text-center text-[10px] text-neutral-600 mb-5 font-medium">
-            {billing === "yearly" ? "No auto-renew after 12 months" : "Cancel anytime — no charge during trial"}
-          </p>
-        )}
-
-        {/* Feature divider */}
-        <p className={cn("text-[9px] font-black uppercase tracking-[0.18em] mb-4 flex items-center gap-2", plan.highlight ? "text-neutral-400" : "text-neutral-600")}>
-          <span className="flex-1 h-px bg-white/5" />
-          {plan.id === "free" ? "Included" : `Everything in ${plan.id === "pro" ? "Free" : "Pro"}, plus`}
-          <span className="flex-1 h-px bg-white/5" />
-        </p>
-
-        {/* Features */}
-        <div className="space-y-2.5 flex-1">
-          {plan.features.map((f, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.05 * i + 0.3, duration: 0.3 }}
-              className="flex items-start gap-3 group/feat"
-            >
-              <div className={cn(
-                "mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-200",
-                plan.highlight ? "bg-white/10 text-white group-hover/feat:bg-white group-hover/feat:text-black" 
-                : plan.id === "power" ? "bg-violet-500/15 text-violet-400 group-hover/feat:bg-violet-500/25"
-                : "bg-white/[0.04] text-neutral-500 group-hover/feat:bg-white/[0.08]"
-              )}>
-                <f.icon size={10} strokeWidth={2.5} />
-              </div>
-              <span className={cn("text-xs font-medium leading-relaxed transition-colors", 
-                plan.highlight ? "text-neutral-300 group-hover/feat:text-white" 
-                : plan.id === "power" ? "text-neutral-400 group-hover/feat:text-violet-200"
-                : "text-neutral-600 group-hover/feat:text-neutral-400")}>
-                {f.text}
-              </span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Main Component ────────────────────────────────────────────────────────────
+// ─── Main Pricing Page ────────────────────────────────────────────────────────
 export default function PricingPage() {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
+  const [mobileActive, setMobileActive] = useState<"free" | "pro" | "power">("pro");
+  const { region } = usePricingRegion();
+  const isIndia = region === "IN";
   const [user, setUser] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<Plan | null>(null);
-  const [successOpen, setSuccessOpen] = useState(false);
-  const [successPlanName, setSuccessPlanName] = useState("");
-  const [compareOpen, setCompareOpen] = useState(false);
-  const [activeFaq, setActiveFaq] = useState<number | null>(null);
-  // ── Payment method modal state ──────────────────────────────────────────────
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingCheckoutPlan, setPendingCheckoutPlan] = useState<Plan | null>(null);
-  const [processingGateway, setProcessingGateway] = useState<"paypal" | "lemonsqueezy" | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const token = localStorage.getItem("authToken");
-      if (!token) return;
-      try {
-        const res = await api.get("/auth/get-profile", { headers: { Auth: token } });
-        if (res.data.success) setUser(res.data.user);
-      } catch (e) {
-        console.error("Failed to fetch user:", e);
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    api.get("/auth/get-profile", { headers: { Auth: token } })
+      .then(r => { if (r.data.success) setUser(r.data.user); })
+      .catch(() => {});
+  }, []);
+
+  // Dynamically compute the best saving % for the toggle pill badge
+  const maxSaving = (() => {
+    const paidPlans = PLANS.filter(p => p.id !== "free");
+    let best = 0;
+    for (const plan of paidPlans) {
+      const data = isIndia ? plan.inr : plan.usd;
+      const fullYear = data.monthly * 12;
+      if (fullYear > 0) {
+        const pct = Math.round(((fullYear - data.yearly) / fullYear) * 100);
+        if (pct > best) best = pct;
       }
+    }
+    return best;
+  })();
+
+  /**
+   * Price display strategy (no two-monthly-number confusion):
+   *   Monthly → big number = monthly price   | subtext = "Billed monthly"
+   *   Yearly  → big number = YEARLY TOTAL    | subtext = "₹583/mo equivalent · Save X%"
+   */
+  const getDisplayPrice = (plan: Plan) => {
+    const data = isIndia ? plan.inr : plan.usd;
+    const sym = isIndia ? "₹" : "$";
+    const fmt = (n: number) => isIndia ? n.toLocaleString("en-IN") : n.toFixed(2);
+
+    if (plan.id === "free") {
+      return { bigPrice: `${sym}0`, bigPeriod: "", sub: "Forever free · No credit card needed", savingBadge: null };
+    }
+    if (billing === "yearly") {
+      const fullYear = data.monthly * 12;
+      const savePct = fullYear > 0 ? Math.round(((fullYear - data.yearly) / fullYear) * 100) : 0;
+      const perMonthEq = `${sym}${fmt(data.yearlyPerMonth)}/mo`;
+      return {
+        bigPrice: `${sym}${fmt(data.yearly)}`,
+        bigPeriod: "/year",
+        sub: `${perMonthEq} · Billed once a year`,
+        savingBadge: `Save ${savePct}%`,
+      };
+    }
+    return {
+      bigPrice: `${sym}${fmt(data.monthly)}`,
+      bigPeriod: "/month",
+      sub: "Billed monthly · Cancel anytime",
+      savingBadge: null,
     };
-    fetchUser();
-  }, []);
+  };
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("payment") === "success") {
-      const planName = params.get("plan") || "Pro";
-      const billingPeriod = params.get("billing") as "monthly" | "yearly" || "monthly";
-      const planId = planName.toLowerCase() === "power" ? "power" : "pro";
-      
-      const value = planId === "power"
-        ? (billingPeriod === "yearly" ? 144 : 19)
-        : (billingPeriod === "yearly" ? 72 : 9);
-
-      trackPurchase(planId, value);
-      trackDbActivity(`/payment/success/${planId}/${billingPeriod}`);
-
-      setSuccessPlanName(planName);
-      setSuccessOpen(true);
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-    if (params.get("payment") === "cancel") {
-      toast.info("Checkout cancelled — no charge was made.");
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, []);
-
-  const handleSelectPlan = async (plan: Plan) => {
-    if (plan.ctaFree) {
-      const token = localStorage.getItem("authToken");
-      if (!token) { setPendingPlan(plan); setShowLoginModal(true); return; }
-      window.location.href = "/notes";
-      return;
-    }
-    // Track click on payment plan / initiating checkout in database
+  const handleSelectPlan = (plan: Plan) => {
+    if (plan.ctaFree) { window.location.href = "/youtube-to-notes"; return; }
     trackDbActivity(`/pricing/checkout-click/${plan.id}/${billing}`);
-
     const token = localStorage.getItem("authToken");
     if (!token) { setPendingPlan(plan); setShowLoginModal(true); return; }
-    // Open payment method picker
     setPendingCheckoutPlan(plan);
     setSelectedId(plan.id);
     setShowPaymentModal(true);
   };
 
-  const launchLemonSqueezyCheckout = async (plan: Plan) => {
-    // Track LemonSqueezy payment attempt
-    trackDbActivity(`/pricing/payment-start-lemonsqueezy/${plan.id}/${billing}`);
-
+  const launchLemonSqueezy = async (plan: Plan) => {
     setShowPaymentModal(false);
     setIsProcessing(true);
-    setProcessingGateway("lemonsqueezy");
+    trackDbActivity(`/pricing/payment-start-lemonsqueezy/${plan.id}/${billing}`);
     try {
       const token = localStorage.getItem("authToken");
-      const res = await api.post(
-        "/payment/lemonsqueezy/create-checkout",
-        {
-          planId: plan.id,
-          billingPeriod: billing,
-          successUrl: `${window.location.origin}/pricing?payment=success&plan=${encodeURIComponent(plan.name)}&gateway=lemonsqueezy&billing=${billing}`,
-          cancelUrl:  `${window.location.origin}/pricing?payment=cancel`,
-        },
+      const res = await api.post("/payment/lemonsqueezy/create-checkout",
+        { planId: plan.id, billingPeriod: billing,
+          successUrl: `${window.location.origin}/pricing?payment=success&plan=${encodeURIComponent(plan.name)}&billing=${billing}`,
+          cancelUrl: `${window.location.origin}/pricing?payment=cancel` },
         { headers: { Auth: token } }
       );
-      if (res.data.success && res.data.url) {
-        window.location.href = res.data.url;
-      } else {
-        toast.error("Could not start LemonSqueezy checkout. Please try again.");
-      }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to start LemonSqueezy checkout");
-    } finally {
-      setIsProcessing(false);
-      setProcessingGateway(null);
-      setSelectedId(null);
-    }
+      if (res.data.success && res.data.url) window.location.href = res.data.url;
+      else toast.error("Could not start checkout — please try again.");
+    } catch (e: any) { toast.error(e?.response?.data?.message || "Checkout failed"); }
+    finally { setIsProcessing(false); setSelectedId(null); }
   };
 
   return (
@@ -1050,263 +250,196 @@ export default function PricingPage() {
       <AuthLoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-        message="Sign in to get started"
-        onSuccess={() => {
-          setShowLoginModal(false);
-          if (pendingPlan) {
-            if (pendingPlan.ctaFree) window.location.href = "/notes";
-            else {
-              setPendingCheckoutPlan(pendingPlan);
-              setSelectedId(pendingPlan.id);
-              setShowPaymentModal(true);
-            }
-          }
-        }}
+        message="Sign in to continue"
+        onSuccess={() => { setShowLoginModal(false); if (pendingPlan) handleSelectPlan(pendingPlan); }}
       />
-      <PaymentMethodModal
+      <PaymentModal
         isOpen={showPaymentModal}
         onClose={() => { setShowPaymentModal(false); setSelectedId(null); }}
         plan={pendingCheckoutPlan}
         billing={billing}
-        onLemonSqueezy={() => pendingCheckoutPlan && launchLemonSqueezyCheckout(pendingCheckoutPlan)}
+        region={region}
+        onLemon={() => pendingCheckoutPlan && launchLemonSqueezy(pendingCheckoutPlan)}
         onPayPalSuccess={() => {
           setShowPaymentModal(false);
           const planId = pendingCheckoutPlan?.id || "pro";
-          const price = billing === "monthly"
-            ? (pendingCheckoutPlan?.monthlyPrice ?? 9)
-            : (pendingCheckoutPlan?.yearlyPrice ?? 72);
-
+          const price = billing === "monthly" ? (pendingCheckoutPlan?.usd.monthly ?? 9.99) : (pendingCheckoutPlan?.usd.yearly ?? 79.99);
           trackPurchase(planId, price);
           trackDbActivity(`/payment/success/${planId}/${billing}`);
-
-          setSuccessPlanName(pendingCheckoutPlan?.name || "Pro");
-          setSuccessOpen(true);
+          toast.success("Payment successful! Your plan is now active.");
+          setTimeout(() => window.location.href = "/profile", 1500);
         }}
-        isLemonProcessing={isProcessing && processingGateway === "lemonsqueezy"}
+        isLemonLoading={isProcessing}
         user={user}
       />
-      <SuccessModal isOpen={successOpen} onClose={() => setSuccessOpen(false)} planName={successPlanName} />
 
-      <div className="relative min-h-screen bg-black text-white overflow-hidden selection:bg-neutral-800 selection:text-white font-sans">
+      <div className="relative min-h-screen bg-[#070709] text-white overflow-hidden font-sans">
+        {/* Atmospheric glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-[radial-gradient(ellipse_at_top,_rgba(239,68,68,0.12)_0%,_transparent_70%)] pointer-events-none" />
 
-        {/* ── Atmospheric BG ── */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.05)_0%,_transparent_60%)]" />
-          <div className="absolute top-1/3 left-[-10%] w-[500px] h-[500px] bg-violet-900/10 blur-[120px] rounded-full" />
-          <div className="absolute top-1/4 right-[-5%] w-[400px] h-[400px] bg-blue-900/8 blur-[100px] rounded-full" />
-          <div className="absolute inset-0 opacity-[0.12] bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:48px_48px]" />
-        </div>
+        <div className="relative z-10 max-w-[1160px] mx-auto px-4 sm:px-6 pt-24 pb-24">
 
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-28 pb-24">
-
-          {/* ── Hero Section ── */}
-          <div className="text-center mb-6 space-y-4">
-            <motion.div
-              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/8 text-[10px] font-bold uppercase tracking-widest text-neutral-400"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Simple, transparent pricing
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
-              className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05]"
-            >
-              <span className="text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-500">
-                Learn Smarter.
-              </span>
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-b from-neutral-300 to-neutral-600">
-                Pay Less Than a Coffee.
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-              className="text-base md:text-lg text-neutral-400 font-light max-w-lg mx-auto leading-relaxed"
-            >
-              Turn any YouTube lecture into structured notes, flashcards, and PDFs.
-              Start free — upgrade when you're ready.
-            </motion.p>
+          {/* Header */}
+          <div className="text-center mb-8 space-y-3">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+              <Sparkles size={11} className="text-red-400" /> LEARN MORE. REMEMBER MORE.
+            </div>
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+              Choose your <span className="text-[#ef4444]">learning power.</span>
+            </h1>
+            <p className="text-sm text-neutral-400 max-w-lg mx-auto">
+              Turn lectures, videos and study material into an AI-powered learning system.
+              {isIndia && <span className="text-emerald-400 font-semibold"> ₹ India pricing shown.</span>}
+            </p>
           </div>
 
-          {/* ── Social Proof Numbers ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
-            className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mb-14"
-          >
-            {[
-              { value: 24000, suffix: "+", label: "Students enrolled" },
-              { value: 4.9, suffix: "/5", label: "Average rating", isDecimal: true },
-              { value: 98, suffix: "%", label: "Satisfaction rate" },
-            ].map((stat, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="text-right">
-                  <div className="text-lg font-black text-white">
-                    {stat.isDecimal ? stat.value : <AnimatedNumber target={stat.value} suffix={stat.suffix} />}
-                    {stat.isDecimal && stat.suffix}
-                  </div>
-                  <div className="text-[10px] text-neutral-600 font-medium">{stat.label}</div>
-                </div>
-                {i < 2 && <div className="w-px h-8 bg-white/8 mx-2" />}
-              </div>
-            ))}
-            <div className="flex items-center gap-0.5 ml-2">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
-              ))}
-            </div>
-          </motion.div>
-
-          {/* ── Billing Toggle ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
-            className="flex justify-center mb-16"
-          >
-            <div className="relative flex items-center gap-1 p-1.5 rounded-2xl bg-neutral-900/70 border border-white/5 backdrop-blur-sm shadow-xl">
-              {(["monthly", "yearly"] as BillingPeriod[]).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setBilling(period)}
-                  className={cn(
-                    "relative px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-250 flex items-center gap-2.5",
-                    billing === period
-                      ? "bg-white text-black shadow-lg"
-                      : "text-neutral-500 hover:text-neutral-300"
-                  )}
-                >
-                  {period === "monthly" ? "Monthly" : "Yearly"}
-                  {period === "yearly" && (
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-md text-[9px] font-black normal-case tracking-normal transition-colors",
-                      billing === "yearly"
-                        ? "bg-emerald-900/60 text-emerald-300"
-                        : "bg-emerald-500/15 text-emerald-400"
-                    )}>
-                      Save 17%
-                    </span>
-                  )}
+          {/* Billing toggle */}
+          <div className="flex justify-center mb-6">
+            <div className="p-1 rounded-full bg-[#0d0d11] border border-white/[0.08] flex items-center">
+              {(["monthly", "yearly"] as BillingPeriod[]).map((p) => (
+                <button key={p} onClick={() => setBilling(p)} className={cn(
+                  "px-5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                  billing === p ? (p === "yearly" ? "bg-[#ef4444] text-white shadow-sm" : "bg-white text-black shadow-sm") : "text-neutral-400 hover:text-white"
+                )}>
+                  {p === "monthly" ? "Monthly" : "Yearly"}
+                  {p === "yearly" && <span className={cn("px-1.5 py-0.5 rounded-full text-[8.5px] font-bold uppercase", billing === "yearly" ? "bg-black/30 text-white" : "bg-red-500/15 text-red-400 border border-red-500/20")}>Save up to {maxSaving}%</span>}
                 </button>
               ))}
             </div>
-          </motion.div>
-
-          {/* ── Plan Cards ── */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-4 items-start">
-            {PLANS.map((plan, i) => (
-              <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * i + 0.28, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <PlanCard
-                  plan={plan} billing={billing}
-                  onSelect={handleSelectPlan} isProcessing={isProcessing} selectedId={selectedId}
-                />
-              </motion.div>
-            ))}
           </div>
 
-          {/* ── Trial / guarantee note ── */}
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
-            className="text-center mt-8 space-y-2"
-          >
-            <p className="text-xs text-neutral-600 font-medium flex items-center justify-center gap-2">
-              <ShieldCheck size={13} className="text-emerald-500" />
-              Pro & Power include a 7-day free trial · No credit card required during trial · Cancel anytime
-            </p>
-          </motion.div>
-
-          {/* ── What you get section (Value reinforcement) ── */}
-          <div className="mt-24 mb-20">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">
-                One subscription. Every tool you need.
-              </h2>
-              <p className="text-neutral-500 max-w-md mx-auto text-sm">
-                Stop juggling 5 different apps. Paperxify is your all-in-one study co-pilot.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { icon: Brain, title: "AI Note Generation", desc: "Structured notes from any YouTube video, instantly", color: "text-blue-400", bg: "bg-blue-500/8 border-blue-500/15" },
-                { icon: FileText, title: "PDF Export", desc: "Beautiful, clean PDFs ready to print or share", color: "text-emerald-400", bg: "bg-emerald-500/8 border-emerald-500/15" },
-                { icon: Zap, title: "Flashcards", desc: "Auto-generated study cards from your notes", color: "text-amber-400", bg: "bg-amber-500/8 border-amber-500/15" },
-                { icon: Globe, title: "Multi-Language", desc: "Notes in English, German, Spanish, French & more", color: "text-violet-400", bg: "bg-violet-500/8 border-violet-500/15" },
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.08 * i, duration: 0.4 }}
-                  className={cn("p-5 rounded-2xl border flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-200", item.bg)}
-                >
-                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", item.bg)}>
-                    <item.icon size={18} className={item.color} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-white mb-1">{item.title}</p>
-                    <p className="text-[11px] text-neutral-500 leading-relaxed">{item.desc}</p>
-                  </div>
-                </motion.div>
+          {/* Mobile segmented switcher */}
+          <div className="block lg:hidden mb-4">
+            <div className="grid grid-cols-3 p-1 rounded-xl bg-[#0d0d12] border border-white/[0.08] text-xs">
+              {PLANS.map((plan) => (
+                <button key={plan.id} onClick={() => setMobileActive(plan.id)} className={cn(
+                  "py-2 rounded-lg text-center transition-all cursor-pointer font-medium px-1 truncate",
+                  mobileActive === plan.id
+                    ? plan.highlight ? "bg-[#ef4444] text-white font-bold" : "bg-white/[0.08] text-white font-bold"
+                    : plan.highlight ? "text-red-400 font-semibold" : "text-neutral-400"
+                )}>
+                  {plan.id === "free" ? "Free" : plan.id === "pro" ? "⭐ Pro" : "👑 Power"}
+                </button>
               ))}
             </div>
           </div>
 
-          {/* ── Comparison Table ── */}
-          <div className="mb-20">
-            <div className="text-center mb-6">
-              <button
-                onClick={() => setCompareOpen(o => !o)}
-                className="group inline-flex items-center gap-2.5 text-sm font-semibold text-neutral-400 hover:text-white transition-colors"
-              >
-                <BarChart3 size={15} className="text-neutral-600 group-hover:text-white transition-colors" />
-                Full feature comparison
-                <ChevronDown size={15} className={cn("transition-transform duration-300", compareOpen && "rotate-180")} />
-              </button>
-              <p className="text-[11px] text-neutral-700 mt-1">See exactly what each plan includes.</p>
-            </div>
+          {/* Plan Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch mb-10">
+            {PLANS.map((plan) => {
+              const dp = getDisplayPrice(plan);
+              return (
+                <div
+                  key={plan.id}
+                  className={cn(
+                    "rounded-2xl p-5 sm:p-6 flex flex-col justify-between relative transition-all duration-300",
+                    mobileActive !== plan.id && "hidden lg:flex",
+                    plan.highlight
+                      ? "bg-[#0d0c10] border-2 border-red-500/60 shadow-[0_0_40px_rgba(239,68,68,0.18)] ring-1 ring-red-500/30 lg:scale-[1.04] lg:-translate-y-1"
+                      : "bg-[#09090c] border border-white/[0.08] hover:border-white/[0.15]"
+                  )}
+                >
+                  {plan.highlight && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#ef4444] text-white text-[9px] font-extrabold uppercase tracking-widest shadow-md flex items-center gap-1 whitespace-nowrap">
+                      <Crown size={9} /> RECOMMENDED
+                    </div>
+                  )}
 
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <h2 className="text-[17px] font-bold text-white">{plan.name}</h2>
+                      <span className={cn("px-2 py-0.5 rounded-md text-[8.5px] font-bold uppercase tracking-wider",
+                        plan.highlight ? "bg-red-500/15 text-red-400 border border-red-500/30" : "bg-white/[0.04] text-neutral-400 border border-white/[0.06]"
+                      )}>{plan.badge}</span>
+                    </div>
+                    <p className="text-xs text-neutral-400 mb-4">{plan.tagline}</p>
+
+                    {/* Price block — single unambiguous number */}
+                    <div className="mb-5 pb-4 border-b border-white/[0.06]">
+                      <div className="flex items-end gap-2">
+                        <div className="flex items-baseline gap-0.5">
+                          <span className="text-3xl sm:text-4xl font-black text-white tracking-tight">{dp.bigPrice}</span>
+                          {plan.id !== "free" && <span className="text-xs text-neutral-400 ml-1">{dp.bigPeriod}</span>}
+                        </div>
+                        {dp.savingBadge && (
+                          <span className="mb-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                            {dp.savingBadge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-neutral-400 mt-1.5 leading-snug">{dp.sub}</p>
+                    </div>
+
+
+                    {/* Features */}
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-2">
+                        {plan.id === "free" ? "What's included" : `Everything in ${plan.id === "pro" ? "Free" : "Pro"}, plus`}
+                      </p>
+                      {plan.features.map((f, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs text-neutral-200">
+                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5",
+                            plan.highlight ? "bg-red-500/15 text-red-400 border border-red-500/30" : "bg-white/[0.06] text-neutral-300"
+                          )}><Check size={9} strokeWidth={3} /></div>
+                          <span className="leading-snug">{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* CTA */}
+                  <div className="pt-5 mt-5 border-t border-white/[0.04]">
+                    <button
+                      onClick={() => handleSelectPlan(plan)}
+                      disabled={isProcessing && selectedId === plan.id}
+                      className={cn(
+                        "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer active:scale-[0.98]",
+                        plan.highlight
+                          ? "bg-[#ef4444] hover:bg-[#dc2626] text-white shadow-[0_0_18px_rgba(239,68,68,0.35)]"
+                          : "bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.08] text-white"
+                      )}
+                    >
+                      {isProcessing && selectedId === plan.id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : <><span>{plan.cta}</span><ArrowRight size={12} /></>}
+                    </button>
+                    {plan.id !== "free" && (
+                      <p className="text-center text-[10px] text-neutral-600 mt-2">No hidden fees · Cancel anytime</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Comparison Table */}
+          <div className="mb-12">
+            <div className="text-center mb-4">
+              <button onClick={() => setCompareOpen(o => !o)} className="inline-flex items-center gap-2 text-xs font-bold text-neutral-300 hover:text-white bg-white/[0.04] border border-white/[0.08] px-4 py-2 rounded-xl transition-all cursor-pointer">
+                <BarChart3 size={14} className="text-red-400" />
+                {compareOpen ? "Hide comparison" : "Compare all 3 plans"}
+                <ChevronDown size={14} className={cn("transition-transform duration-200", compareOpen && "rotate-180")} />
+              </button>
+            </div>
             <AnimatePresence>
               {compareOpen && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.4, ease: "easeInOut" }}
-                  className="overflow-hidden"
-                >
-                  <div className="overflow-x-auto rounded-2xl border border-white/5 shadow-2xl">
-                    <table className="w-full text-sm min-w-[560px]">
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                  <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-[#09090c]">
+                    <table className="w-full text-xs min-w-[520px]">
                       <thead>
-                        <tr className="border-b border-white/5 bg-neutral-900/80">
-                          <th className="text-left p-4 pl-6 text-neutral-500 font-semibold text-xs uppercase tracking-wider w-[40%]">Feature</th>
-                          <th className="text-center p-4 text-neutral-400 font-bold text-xs w-[20%]">Free</th>
-                          <th className="text-center p-4 text-white font-black text-xs bg-white/[0.04] w-[20%]">
-                            Pro <span className="text-neutral-500 font-normal">— ${billing === "monthly" ? "9" : "72"}</span>
-                          </th>
-                          <th className="text-center p-4 text-violet-300 font-bold text-xs w-[20%]">
-                            Power <span className="text-neutral-500 font-normal">— ${billing === "monthly" ? "19" : "144"}</span>
-                          </th>
+                        <tr className="border-b border-white/[0.08] bg-white/[0.02]">
+                          <th className="text-left p-3 pl-5 text-neutral-400 font-bold uppercase tracking-wider w-[40%]">Feature</th>
+                          <th className="text-center p-3 text-neutral-300 font-bold">Free</th>
+                          <th className="text-center p-3 text-red-400 font-bold bg-red-500/5">Pro Scholar</th>
+                          <th className="text-center p-3 text-white font-bold">Power Scholar</th>
                         </tr>
                       </thead>
                       <tbody>
                         {COMPARE_ROWS.map((row, i) => (
-                          <tr
-                            key={row.feature}
-                            className={cn(
-                              "border-b border-white/[0.03] transition-colors hover:bg-white/[0.015]",
-                              i % 2 === 0 ? "bg-black/10" : "bg-transparent"
-                            )}
-                          >
-                            <td className="p-3 pl-6 text-neutral-400 text-xs font-medium">{row.feature}</td>
+                          <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                            <td className="p-3 pl-5 text-neutral-300 font-medium">{row.feature}</td>
                             <td className="p-3 text-center"><CellValue val={row.free} /></td>
-                            <td className="p-3 text-center bg-white/[0.02]"><CellValue val={row.pro} isPro /></td>
+                            <td className="p-3 text-center bg-red-500/[0.04]"><CellValue val={row.pro} isPro /></td>
                             <td className="p-3 text-center"><CellValue val={row.power} /></td>
                           </tr>
                         ))}
@@ -1318,121 +451,36 @@ export default function PricingPage() {
             </AnimatePresence>
           </div>
 
-          {/* ── Testimonials ── */}
-          <div className="mb-24">
-            <div className="text-center mb-10">
-              <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-2">Loved by 24,000+ students</h2>
-              <p className="text-sm text-neutral-500">Real students. Real results.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {TESTIMONIALS.map((t, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.1 * i, duration: 0.4 }}
-                  className="bg-neutral-900/40 border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all duration-300"
-                >
-                  <div className="flex items-center gap-0.5 mb-4">
-                    {[...Array(t.rating)].map((_, j) => (
-                      <Star key={j} size={12} className="fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-neutral-300 leading-relaxed mb-4 font-medium">"{t.text}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neutral-600 to-neutral-800 flex items-center justify-center text-xs font-black text-white">
-                      {t.name[0]}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-white">{t.name}</p>
-                      <p className="text-[10px] text-neutral-600">{t.role}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── FAQ ── */}
-          <div className="mb-20 max-w-2xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-black text-white tracking-tight mb-2">Frequently asked questions</h2>
-              <p className="text-sm text-neutral-500">Everything you need to know before you commit.</p>
-            </div>
+          {/* FAQs */}
+          <div className="max-w-2xl mx-auto mb-14">
+            <h3 className="text-xl font-bold text-white text-center mb-6">Frequently Asked Questions</h3>
             <div className="space-y-3">
               {FAQS.map((faq, i) => (
-                <FaqItem key={i} q={faq.q} a={faq.a} />
+                <div key={i} className="rounded-xl border border-white/[0.06] bg-[#09090c] p-4">
+                  <p className="text-xs font-bold text-white mb-1.5">{faq.q}</p>
+                  <p className="text-xs text-neutral-400 leading-relaxed">{faq.a}</p>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* ── Final CTA Banner ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-neutral-900 to-black p-10 md:p-16 text-center"
-          >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-48 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.05)_0%,_transparent_70%)] pointer-events-none" />
-            <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-6">
-                <Flame size={10} className="text-orange-400" /> Start learning smarter today
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-4">
-                Your first 7 days are free.
-              </h2>
-              <p className="text-neutral-400 max-w-sm mx-auto text-sm mb-8 leading-relaxed">
-                No credit card. No risk. Just better notes starting from your very first video.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  onClick={() => handleSelectPlan(PLANS[1])}
-                  disabled={isProcessing}
-                  className="px-8 py-4 bg-white text-black font-black text-sm uppercase tracking-wider rounded-2xl hover:bg-neutral-100 transition-all active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_50px_rgba(255,255,255,0.25)] flex items-center gap-2"
-                >
-                  {isProcessing && selectedId === "pro" ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={14} />}
-                  Start Free Trial — Pro
-                </button>
-                <button
-                  onClick={() => handleSelectPlan(PLANS[0])}
-                  className="px-8 py-4 text-neutral-400 hover:text-white text-sm font-semibold transition-colors"
-                >
-                  Or continue with Free →
-                </button>
-              </div>
-              <p className="text-[11px] text-neutral-700 mt-5 flex items-center justify-center gap-1.5">
-                <ShieldCheck size={11} className="text-neutral-600" />
-                PayPal & LemonSqueezy · 256-bit SSL · Cancel anytime
-              </p>
-            </div>
-          </motion.div>
-
-          {/* ── Trust Strip ── */}
-          <div className="mt-14 flex flex-wrap justify-center gap-x-10 gap-y-4">
+          {/* Trust strip */}
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 pt-6 border-t border-white/[0.06]">
             {[
-              { icon: ShieldCheck, text: "256-bit SSL Encryption" },
-              { icon: Activity, text: "99.9% Uptime" },
-              { icon: Lock, text: "PayPal Secured" },
-              { icon: Zap, text: "Instant Access" },
-              { icon: BadgeCheck, text: "No Hidden Fees" },
-            ].map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-2 text-neutral-700 hover:text-neutral-400 transition-colors">
-                <Icon size={12} className="shrink-0" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">{text}</span>
+              { icon: ShieldCheck, text: "256-bit SSL Checkout" },
+              { icon: Activity,    text: "99.9% Uptime" },
+              { icon: Lock,        text: "PayPal & Razorpay Secured" },
+              { icon: Zap,         text: "Instant Activation" },
+              { icon: BadgeCheck,  text: "No Hidden Fees" },
+            ].map(({ icon: Icon, text }, i) => (
+              <div key={i} className="flex items-center gap-1.5 text-neutral-400 text-xs">
+                <Icon size={12} className="text-red-400 shrink-0" /><span>{text}</span>
               </div>
             ))}
-            {/* LemonSqueezy badge */}
-            <div className="flex items-center gap-2 text-neutral-700 hover:text-neutral-400 transition-colors">
-              <span className="text-xs leading-none">🍋</span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">LemonSqueezy</span>
-            </div>
           </div>
 
         </div>
       </div>
-
       <Footer />
     </>
   );

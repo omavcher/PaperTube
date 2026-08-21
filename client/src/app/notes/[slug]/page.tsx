@@ -1777,7 +1777,23 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         })
       });
 
-      if (!response.ok) throw new Error("Failed to connect to chat service");
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => null);
+        if (response.status === 403 || errJson?.code === "QUOTA_EXCEEDED") {
+          setMessages((prev) => [
+            ...prev,
+            {
+              _id: "quota-err-" + Date.now(),
+              role: "assistant",
+              content: `⚠️ **Message Quota Limit Reached**\n\n${errJson?.message || "You've reached your PaperChat message quota for this billing period."}\n\n👉 [**Upgrade to Pro or Power Scholar**](/pricing) to unlock thousands of messages, turbo priority queue, and advanced models.`,
+              timestamp: new Date().toISOString(),
+              mode: currentMode
+            }
+          ]);
+          return;
+        }
+        throw new Error(errJson?.message || "Failed to connect to chat service");
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();

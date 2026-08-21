@@ -10,30 +10,30 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 // OpenRouter model routing matrix
 const MODEL_ROUTING = {
   fast_extraction: [
-    'deepseek/deepseek-chat',
-    'meta-llama/llama-3.3-70b-instruct',
+    'deepseek/deepseek-v4-flash',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
     'openai/gpt-4o-mini',
     'google/gemini-flash-1.5'
   ],
   chapter_detection: [
-    'deepseek/deepseek-chat',
-    'meta-llama/llama-3.3-70b-instruct',
+    'deepseek/deepseek-v4-flash',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
     'openai/gpt-4o-mini'
   ],
   synthesis_free: [
-    'deepseek/deepseek-chat',
-    'meta-llama/llama-3.3-70b-instruct',
+    'deepseek/deepseek-v4-flash',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
     'openai/gpt-4o-mini'
   ],
   synthesis_pro: [
-    'deepseek/deepseek-chat',
+    'deepseek/deepseek-v4-flash',
     'openai/gpt-4o-mini',
-    'meta-llama/llama-3.3-70b-instruct'
+    'nvidia/nemotron-3-ultra-550b-a55b:free'
   ],
   synthesis_power: [
     'openai/gpt-4o',
-    'deepseek/deepseek-chat',
-    'meta-llama/llama-3.3-70b-instruct'
+    'deepseek/deepseek-v4-flash',
+    'nvidia/nemotron-3-ultra-550b-a55b:free'
   ]
 };
 
@@ -47,11 +47,11 @@ const PLAN_LIMITS = {
 
 // Accurate pricing per million tokens from OpenRouter (Input / Output USD)
 const MODEL_COSTS = {
-  'google/gemini-2.0-flash-001': { input: 0.10, output: 0.40 },
+  'qwen/qwen3.6-flash': { input: 0.10, output: 0.40 },
   'google/gemini-flash-1.5': { input: 0.075, output: 0.30 },
-  'deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
+  'deepseek/deepseek-v4-flash': { input: 0.14, output: 0.28 },
   'deepseek/deepseek-v4-flash': { input: 0.15, output: 0.60 },
-  'meta-llama/llama-3.3-70b-instruct': { input: 0.20, output: 0.60 },
+  'nvidia/nemotron-3-ultra-550b-a55b:free': { input: 0.20, output: 0.60 },
   'openai/gpt-4o-mini': { input: 0.15, output: 0.60 },
   'openai/gpt-4o': { input: 2.50, output: 10.00 },
   'anthropic/claude-3.5-sonnet': { input: 3.00, output: 15.00 },

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/config/api"; 
 import SupportTab from "./SupportTab";
+import Link from "next/link";
 
 // --- PDF Generation Libraries ---
 import jsPDF from "jspdf";
@@ -62,6 +63,7 @@ export default function ProfilePage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [emailingId, setEmailingId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
+  const [quotaData, setQuotaData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,14 +80,19 @@ export default function ProfilePage() {
            // Handle no token
         }
 
-        const res = await api.get('/auth/get-profile', { 
-          headers: { 'Auth': token } 
-        });
+        const [res, qRes] = await Promise.all([
+          api.get('/auth/get-profile', { headers: { 'Auth': token } }),
+          api.get('/users/quota-status', { headers: { 'Auth': token } }).catch(() => null)
+        ]);
 
         if (res.data.success) {
             setProfileData(res.data.user);
         } else {
             setError(res.data.message || "Failed to load profile");
+        }
+
+        if (qRes?.data?.success) {
+            setQuotaData(qRes.data.data);
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -340,11 +347,19 @@ export default function ProfilePage() {
                                   {user.membership?.expiresAt ? `Renews on ${formatDate(user.membership.expiresAt)}` : "Upgrade to unlock premium features."}
                                </p>
                             </div>
-                           
+                            <Link
+                              href="/pricing"
+                              className="px-5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 whitespace-nowrap"
+                            >
+                              {user.membership?.isActive ? "Extend / Manage Plan" : "Upgrade to Pro"}
+                            </Link>
                          </div>
                       </div>
 
-                      {​/* Recent Activity */}
+                      {/* Plan Quotas & Credits Usage Widget */}
+                      <PlanQuotasCard quotaData={quotaData} />
+
+                      {/* Recent Activity */}
                       <div className="space-y-4">
                          <div className="flex items-center justify-between">
                             <h3 className="text-sm font-bold uppercase tracking-widest text-neutral-500">Recent Activity</h3>
@@ -399,10 +414,19 @@ export default function ProfilePage() {
                    >
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
-                              <h2 className="text-2xl font-black text-white uppercase italic tracking-tight">Billing History</h2>
-                              <p className="text-sm text-neutral-500 font-medium mt-1">View and download your authentic past invoices.</p>
+                              <h2 className="text-2xl font-black text-white uppercase italic tracking-tight">Billing & Quota Management</h2>
+                              <p className="text-sm text-neutral-500 font-medium mt-1">Review your active feature allowances and past authentic invoices.</p>
                           </div>
+                          <Link
+                            href="/pricing"
+                            className="px-5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 whitespace-nowrap self-start md:self-auto"
+                          >
+                            View All Pricing Plans
+                          </Link>
                       </div>
+
+                      {/* Quota & Feature Allowances Widget */}
+                      <PlanQuotasCard quotaData={quotaData} />
 
                       {user.transactions && user.transactions.length > 0 ? (
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -719,4 +743,141 @@ function ReceiptCard({ tx, user, onDownload, downloading }: any) {
             </div>
         </div>
     )
+}
+
+function PlanQuotasCard({ quotaData }: { quotaData: any }) {
+  if (!quotaData) return null;
+  const { planName, planDisplayName, period, features, maxVideoLengthMin, maxSlides, paperChatMessages } = quotaData;
+
+  const quotaItems = [
+    {
+      key: "notes",
+      title: "AI Video Notes",
+      icon: "📹",
+      used: features?.notes?.used ?? 0,
+      limit: features?.notes?.limit ?? 5,
+      unlimited: features?.notes?.unlimited ?? false,
+      extra: `${maxVideoLengthMin >= 60 ? Math.round(maxVideoLengthMin / 60) + " hrs" : maxVideoLengthMin + " min"} max/video`,
+    },
+    {
+      key: "presentations",
+      title: "AI Slide Decks",
+      icon: "📊",
+      used: features?.presentations?.used ?? 0,
+      limit: features?.presentations?.limit ?? 2,
+      unlimited: features?.presentations?.unlimited ?? false,
+      extra: `Up to ${maxSlides} slides/deck`,
+    },
+    {
+      key: "paperchat",
+      title: "PaperChat AI Messages",
+      icon: "💬",
+      used: quotaData.paperChatUsed ?? 0,
+      limit: paperChatMessages ?? 100,
+      unlimited: false,
+      extra: `${period === "daily" ? "Daily reset" : "Monthly cycle"}`,
+    },
+    {
+      key: "quizzes",
+      title: "AI Quiz Sets",
+      icon: "🧠",
+      used: features?.quizzes?.used ?? 0,
+      limit: features?.quizzes?.limit ?? 5,
+      unlimited: features?.quizzes?.unlimited ?? false,
+      extra: features?.quizzes?.unlimited ? "Unlimited" : "Practice sets",
+    },
+    {
+      key: "flashcards",
+      title: "Flashcard Sets",
+      icon: "🃏",
+      used: features?.flashcards?.used ?? 0,
+      limit: features?.flashcards?.limit ?? 5,
+      unlimited: features?.flashcards?.unlimited ?? false,
+      extra: "Spaced repetition sets",
+    },
+    {
+      key: "diagrams",
+      title: "Mind Maps & Diagrams",
+      icon: "🗺️",
+      used: features?.diagrams?.used ?? 0,
+      limit: features?.diagrams?.limit ?? 3,
+      unlimited: features?.diagrams?.unlimited ?? false,
+      extra: "Visual knowledge graphs",
+    },
+    {
+      key: "study",
+      title: "Math & Study Solves",
+      icon: "📐",
+      used: features?.study?.used ?? 0,
+      limit: features?.study?.limit ?? 10,
+      unlimited: features?.study?.unlimited ?? false,
+      extra: "Step-by-step solutions",
+    },
+  ];
+
+  return (
+    <div className="rounded-3xl border border-white/10 bg-neutral-900/40 p-6 md:p-7 space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/5">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-400">
+              {planDisplayName || planName}
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-neutral-400 font-mono">
+              {period === "daily" ? "Resets daily at 00:00 UTC" : "Monthly billing cycle"}
+            </span>
+          </div>
+          <h3 className="text-lg font-bold text-white mt-1">Feature Allowances & Active Quotas</h3>
+        </div>
+        <Link
+          href="/pricing"
+          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition-all shadow-md active:scale-98 self-start sm:self-auto"
+        >
+          {planName === "Free" ? "Upgrade Plan" : "Extend / Manage Plan"}
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        {quotaItems.map((item) => {
+          const pct = item.unlimited
+            ? 0
+            : item.limit > 0
+            ? Math.min(100, Math.round((item.used / item.limit) * 100))
+            : 0;
+
+          return (
+            <div
+              key={item.key}
+              className="p-3.5 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between space-y-2.5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-lg">{item.icon}</span>
+                  <div>
+                    <p className="text-xs font-bold text-white leading-tight">{item.title}</p>
+                    <p className="text-[10.5px] text-neutral-400 leading-tight mt-0.5">{item.extra}</p>
+                  </div>
+                </div>
+                <span className="text-xs font-mono font-bold text-neutral-200 shrink-0">
+                  {item.unlimited ? "Unlimited" : `${item.used} / ${item.limit}`}
+                </span>
+              </div>
+
+              {!item.unlimited && (
+                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-500",
+                      pct >= 90 ? "bg-red-500" : pct >= 60 ? "bg-yellow-400" : "bg-emerald-400"
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
