@@ -15,7 +15,8 @@ import { useRouter } from 'next/navigation';
 import { 
   Loader2, ChevronDown, ArrowRight, Coins, AlertTriangle, X, Zap, 
   Code, Users, Search, Lock, Check, LayoutGrid, Trash2, Plus,
-  Presentation, Globe, Layers, Laptop, Sparkle, Crown, ArrowLeft
+  Presentation, Globe, Layers, Laptop, Sparkle, Crown, ArrowLeft,
+  FilePlus, Palette, Sliders, Wand2, RefreshCw, ArrowUp, ArrowDown, Image as ImageIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,8 +32,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AuthLoginModal, PremiumUpgradeModal } from '@/components/AuthGuard';
 import { toast } from 'sonner';
 
-const LANGUAGES = ["English", "German", "Spanish", "French", "Japanese", "Arabic"];
-const POWER_LANGUAGES = new Set(["German", "Spanish", "French", "Japanese", "Arabic"]);
+const LANGUAGES = ["English", "German", "Spanish", "French", "Japanese", "Arabic", "Hindi"];
+const POWER_LANGUAGES = new Set(["German", "Spanish", "French", "Japanese", "Arabic", "Hindi"]);
+
+const PRESENTATION_STYLES = [
+  { id: "professional", label: "Professional", desc: "Boardroom, C-Suite & Executive" },
+  { id: "casual", label: "Casual", desc: "Conversational & Engaging" },
+  { id: "academic", label: "Academic", desc: "Research, Citations & Theory" },
+  { id: "creative", label: "Creative", desc: "Dynamic Narrative & Storytelling" },
+  { id: "startup_pitch", label: "Startup Pitch", desc: "VC Deck, Problem & Solution" },
+  { id: "technical", label: "Technical", desc: "Architecture, Systems & Code" },
+];
+
+const IMAGE_SOURCES = [
+  { id: "unsplash", label: "Unsplash Stock", desc: "Real high-res photography" },
+  { id: "ai", label: "AI Imagery", desc: "Custom conceptual visual prompts" },
+  { id: "minimalist", label: "Minimalist", desc: "Diagrams & visual cards" },
+  { id: "none", label: "No Images", desc: "Clean typography-only decks" },
+];
 
 const AI_MODELS = [
   { id: "flash",   name: "Flash",   accessTier: "Free",  endpoint: "free",    desc: "Fast & lightweight for everyday slides",       color: "orange", hex: "#f97316" },
@@ -48,30 +65,30 @@ const SLIDE_CARDS = [
   { count: 40, label: "40 Slides", tier: "Power", desc: "Textbook-grade master decks", color: "amber", hex: "#fbbf24" },
 ];
 
-const THEMES = [
+const INITIAL_THEMES = [
   // Free themes
-  { id: "sunset-orange", name: "Sunset Orange", primary: "#f97316", accent: "#fbbf24", bg: "#0f0b07", font: "Outfit", isPremium: false },
-  { id: "midnight-tech", name: "Midnight Tech", primary: "#d83b01", accent: "#3b82f6", bg: "#050505", font: "Outfit", isPremium: false },
-  { id: "classic-slate", name: "Classic Slate", primary: "#4b5563", accent: "#9ca3af", bg: "#0f172a", font: "Inter", isPremium: false },
-  { id: "ocean-breeze", name: "Ocean Breeze", primary: "#0ea5e9", accent: "#38bdf8", bg: "#030c14", font: "Inter", isPremium: false },
-  { id: "minimal-snow", name: "Minimal Snow", primary: "#ffffff", accent: "#a3a3a3", bg: "#121212", font: "Outfit", isPremium: false },
+  { id: "sunset-orange", name: "Sunset Orange", primary: "#f97316", accent: "#fbbf24", bg: "#0f0b07", cardBg: "rgba(255,255,255,0.03)", font: "Outfit", isPremium: false },
+  { id: "midnight-tech", name: "Midnight Tech", primary: "#d83b01", accent: "#3b82f6", bg: "#050505", cardBg: "rgba(255,255,255,0.03)", font: "Outfit", isPremium: false },
+  { id: "classic-slate", name: "Classic Slate", primary: "#4b5563", accent: "#9ca3af", bg: "#0f172a", cardBg: "rgba(255,255,255,0.03)", font: "Inter", isPremium: false },
+  { id: "ocean-breeze", name: "Ocean Breeze", primary: "#0ea5e9", accent: "#38bdf8", bg: "#030c14", cardBg: "rgba(255,255,255,0.03)", font: "Inter", isPremium: false },
+  { id: "minimal-snow", name: "Minimal Snow", primary: "#ffffff", accent: "#a3a3a3", bg: "#121212", cardBg: "rgba(255,255,255,0.03)", font: "Outfit", isPremium: false },
   
   // Premium themes
-  { id: "emerald-forest", name: "Emerald Forest", primary: "#10b981", accent: "#34d399", bg: "#02120e", font: "Georgia", isPremium: true },
-  { id: "vintage-gold", name: "Vintage Gold", primary: "#fbbf24", accent: "#d97706", bg: "#17140f", font: "Georgia", isPremium: true },
-  { id: "cyberpunk", name: "Cyberpunk Glow", primary: "#d946ef", accent: "#f43f5e", bg: "#0d0312", font: "Courier New", isPremium: true },
-  { id: "royal-velvet", name: "Royal Velvet", primary: "#8b5cf6", accent: "#a78bfa", bg: "#0a0314", font: "Georgia", isPremium: true },
-  { id: "carbon-coder", name: "Carbon Coder", primary: "#22c55e", accent: "#4ade80", bg: "#0a0f0a", font: "Courier New", isPremium: true },
-  { id: "sakura-bloom", name: "Sakura Bloom", primary: "#f472b6", accent: "#fbcfe8", bg: "#14070e", font: "Inter", isPremium: true },
-  { id: "warm-clay", name: "Warm Clay", primary: "#ea580c", accent: "#ff7849", bg: "#140a05", font: "Georgia", isPremium: true },
-  { id: "lavender-dream", name: "Lavender Dream", primary: "#a855f7", accent: "#c084fc", bg: "#0f0714", font: "Outfit", isPremium: true },
-  { id: "nordic-frost", name: "Nordic Frost", primary: "#38bdf8", accent: "#7dd3fc", bg: "#06131a", font: "Inter", isPremium: true },
-  { id: "bronze-metal", name: "Bronze Metal", primary: "#b45309", accent: "#f59e0b", bg: "#140e05", font: "Georgia", isPremium: true },
-  { id: "royal-gold", name: "Royal Gold", primary: "#fbbf24", accent: "#1e3a8a", bg: "#030814", font: "Georgia", isPremium: true },
-  { id: "mint-fresh", name: "Mint Fresh", primary: "#2dd4bf", accent: "#5eead4", bg: "#031411", font: "Outfit", isPremium: true },
-  { id: "nebula-space", name: "Nebula Space", primary: "#ec4899", accent: "#3b82f6", bg: "#05030f", font: "Outfit", isPremium: true },
-  { id: "desert-sand", name: "Desert Sand", primary: "#f59e0b", accent: "#d97706", bg: "#140e05", font: "Outfit", isPremium: true },
-  { id: "dark-matter", name: "Dark Matter", primary: "#ffffff", accent: "#f97316", bg: "#020205", font: "Inter", isPremium: true }
+  { id: "emerald-forest", name: "Emerald Forest", primary: "#10b981", accent: "#34d399", bg: "#02120e", cardBg: "rgba(255,255,255,0.03)", font: "Georgia", isPremium: true },
+  { id: "vintage-gold", name: "Vintage Gold", primary: "#fbbf24", accent: "#d97706", bg: "#17140f", cardBg: "rgba(255,255,255,0.03)", font: "Georgia", isPremium: true },
+  { id: "cyberpunk", name: "Cyberpunk Glow", primary: "#d946ef", accent: "#f43f5e", bg: "#0d0312", cardBg: "rgba(255,255,255,0.03)", font: "Courier New", isPremium: true },
+  { id: "royal-velvet", name: "Royal Velvet", primary: "#8b5cf6", accent: "#a78bfa", bg: "#0a0314", cardBg: "rgba(255,255,255,0.03)", font: "Georgia", isPremium: true },
+  { id: "carbon-coder", name: "Carbon Coder", primary: "#22c55e", accent: "#4ade80", bg: "#0a0f0a", cardBg: "rgba(255,255,255,0.03)", font: "Courier New", isPremium: true },
+  { id: "sakura-bloom", name: "Sakura Bloom", primary: "#f472b6", accent: "#fbcfe8", bg: "#14070e", cardBg: "rgba(255,255,255,0.03)", font: "Inter", isPremium: true },
+  { id: "warm-clay", name: "Warm Clay", primary: "#ea580c", accent: "#ff7849", bg: "#140a05", cardBg: "rgba(255,255,255,0.03)", font: "Georgia", isPremium: true },
+  { id: "lavender-dream", name: "Lavender Dream", primary: "#a855f7", accent: "#c084fc", bg: "#0f0714", cardBg: "rgba(255,255,255,0.03)", font: "Outfit", isPremium: true },
+  { id: "nordic-frost", name: "Nordic Frost", primary: "#38bdf8", accent: "#7dd3fc", bg: "#06131a", cardBg: "rgba(255,255,255,0.03)", font: "Inter", isPremium: true },
+  { id: "bronze-metal", name: "Bronze Metal", primary: "#b45309", accent: "#f59e0b", bg: "#140e05", cardBg: "rgba(255,255,255,0.03)", font: "Georgia", isPremium: true },
+  { id: "royal-gold", name: "Royal Gold", primary: "#fbbf24", accent: "#1e3a8a", bg: "#030814", cardBg: "rgba(255,255,255,0.03)", font: "Georgia", isPremium: true },
+  { id: "mint-fresh", name: "Mint Fresh", primary: "#2dd4bf", accent: "#5eead4", bg: "#031411", cardBg: "rgba(255,255,255,0.03)", font: "Outfit", isPremium: true },
+  { id: "nebula-space", name: "Nebula Space", primary: "#ec4899", accent: "#3b82f6", bg: "#05030f", cardBg: "rgba(255,255,255,0.03)", font: "Outfit", isPremium: true },
+  { id: "desert-sand", name: "Desert Sand", primary: "#f59e0b", accent: "#d97706", bg: "#140e05", cardBg: "rgba(255,255,255,0.03)", font: "Outfit", isPremium: true },
+  { id: "dark-matter", name: "Dark Matter", primary: "#ffffff", accent: "#f97316", bg: "#020205", cardBg: "rgba(255,255,255,0.03)", font: "Inter", isPremium: true }
 ];
 
 const PPT_LOADING_STEPS = [
@@ -166,16 +183,41 @@ export default function PPTMain() {
   const [selectedModel, setSelectedModel] = useState(AI_MODELS[0]);
   const [selectedCard, setSelectedCard] = useState(SLIDE_CARDS[0]); // Default 10 slides
   const [outputLanguage, setOutputLanguage] = useState('English');
+  const [selectedStyle, setSelectedStyle] = useState(PRESENTATION_STYLES[0]);
+  const [imageSource, setImageSource] = useState(IMAGE_SOURCES[0].id);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
-  // New Outline customizer workflow states
+  // Themes list & Custom Theme Studio
+  const [themesList, setThemesList] = useState(INITIAL_THEMES);
+  const [selectedTheme, setSelectedTheme] = useState(INITIAL_THEMES[0]);
+  const [showCustomThemeModal, setShowCustomThemeModal] = useState(false);
+  const [customThemeForm, setCustomThemeForm] = useState({
+    name: "My Custom Theme",
+    primary: "#f97316",
+    accent: "#fbbf24",
+    bg: "#0b0907",
+    cardBg: "rgba(255,255,255,0.04)",
+    font: "Outfit"
+  });
+
+  // Outline customizer workflow states
   const [isOutlinePlanned, setIsOutlinePlanned] = useState(false);
-  const [outlineSlides, setOutlineSlides] = useState<{ title: string; desc: string }[]>([]);
+  const [outlineSlides, setOutlineSlides] = useState<Array<{
+    title: string;
+    desc: string;
+    layout?: string;
+    imageCandidates?: any[];
+    selectedImage?: string;
+    selectedImageIndex?: number;
+    sources?: string[];
+  }>>([]);
   const [textDensity, setTextDensity] = useState<'minimal' | 'concise' | 'detailed'>('minimal');
   const [visualsEnabled, setVisualsEnabled] = useState(true);
-  const [selectedTheme, setSelectedTheme] = useState(THEMES[0]);
+  const [isRegeneratingCard, setIsRegeneratingCard] = useState<number | null>(null);
 
   // Loading & Generation States
   const [isOutlinePlanning, setIsOutlinePlanning] = useState(false);
+  const [isStartingBlank, setIsStartingBlank] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const currentStepRef = React.useRef(0);
@@ -375,7 +417,9 @@ export default function PPTMain() {
         sourceInput,
         slideCount: selectedCard.count,
         language: outputLanguage,
-        prompt
+        prompt,
+        style: selectedStyle.id,
+        webSearch: webSearchEnabled
       }, { headers: { 'Auth': authToken } });
 
       if (response.data?.success) {
@@ -386,11 +430,31 @@ export default function PPTMain() {
       }
     } catch (err: any) {
       console.warn("Backend presentation API fail, creating mock outline cards.");
-      // Fallback outline mock cards
-      const mockOutline = Array.from({ length: selectedCard.count }).map((_, i) => ({
-        title: i === 0 ? `Introduction to ${sourceInput}` : i === selectedCard.count - 1 ? "Conclusion & Summary" : `Key Area ${i}: Topic Analysis`,
-        desc: `Brief overview describing conceptual slide content detail ${i + 1}.`
-      }));
+      // Fallback outline mock cards with real verified visual candidates
+      const curatedStockPhotos = [
+        "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&auto=format&fit=crop&q=80"
+      ];
+      const mockOutline = Array.from({ length: selectedCard.count }).map((_, i) => {
+        const title = i === 0 ? `Introduction to ${sourceInput}` : i === selectedCard.count - 1 ? "Strategic Conclusion & Key Milestones" : `Core Insight ${i}: ${sourceInput}`;
+        const desc = "Comprehensive strategic overview, quantitative impact metrics, and deployment architecture.";
+        const candidates = [
+          { id: `c-${i}-1`, style: "Photorealistic", score: 95, url: curatedStockPhotos[i % curatedStockPhotos.length] },
+          { id: `c-${i}-2`, style: "Cinematic", score: 91, url: curatedStockPhotos[(i + 1) % curatedStockPhotos.length] },
+          { id: `c-${i}-3`, style: "3D Render", score: 87, url: curatedStockPhotos[(i + 2) % curatedStockPhotos.length] },
+          { id: `c-${i}-4`, style: "Minimalist", score: 83, url: curatedStockPhotos[(i + 3) % curatedStockPhotos.length] }
+        ];
+        return {
+          title,
+          desc,
+          layout: i === 0 ? "title" : i % 3 === 1 ? "image_left" : "bullets",
+          imageCandidates: candidates,
+          selectedImageIndex: 0,
+          selectedImage: candidates[0].url
+        };
+      });
       setOutlineSlides(mockOutline);
       setIsOutlinePlanned(true);
     } finally {
@@ -398,10 +462,80 @@ export default function PPTMain() {
     }
   };
 
-  const handleUpdateOutlineCard = (index: number, newTitle: string) => {
+  const handleStartBlankDeck = async () => {
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    setIsStartingBlank(true);
+    try {
+      const response = await api.post('/presentation/create-blank', {
+        title: sourceInput.trim() || "Untitled Presentation",
+        theme: selectedTheme.id
+      }, { headers: { 'Auth': authToken } });
+
+      if (response.data?.success && response.data?.data?.slug) {
+        toast.success("Blank presentation workspace initialized!");
+        router.push(`/presentation-generator/${response.data.data.slug}`);
+      } else {
+        throw new Error("Failed to create blank deck");
+      }
+    } catch (err: any) {
+      toast.error("Could not create blank deck. Please try again.");
+    } finally {
+      setIsStartingBlank(false);
+    }
+  };
+
+  const handleUpdateOutlineCard = (index: number, newTitle: string, newDesc?: string) => {
     const updated = [...outlineSlides];
-    updated[index].title = newTitle;
+    updated[index] = {
+      ...updated[index],
+      title: newTitle,
+      desc: newDesc !== undefined ? newDesc : updated[index].desc
+    };
     setOutlineSlides(updated);
+  };
+
+  const handleMoveOutlineCard = (index: number, direction: "up" | "down") => {
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= outlineSlides.length) return;
+    const updated = [...outlineSlides];
+    const temp = updated[index];
+    updated[index] = updated[targetIdx];
+    updated[targetIdx] = temp;
+    setOutlineSlides(updated);
+  };
+
+  const handleRegenerateSingleOutlineCard = async (index: number) => {
+    setIsRegeneratingCard(index);
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const res = await api.post('/presentation/agent-action', {
+        action: "regenerate_slide",
+        slide: {
+          id: index + 1,
+          title: outlineSlides[index].title,
+          desc: outlineSlides[index].desc
+        },
+        instruction: `Create a sharper, more engaging slide topic for slide ${index + 1} on topic: ${sourceInput}`,
+        presentationTitle: sourceInput
+      }, { headers: { 'Auth': authToken } });
+
+      if (res.data?.success && res.data?.slide) {
+        handleUpdateOutlineCard(index, res.data.slide.title || "Refined Topic", res.data.slide.subtitle || res.data.slide.desc);
+        toast.success(`Outline card ${index + 1} refined!`);
+      } else {
+        throw new Error("Regeneration failed");
+      }
+    } catch (e) {
+      handleUpdateOutlineCard(index, `Optimized ${outlineSlides[index].title}`);
+      toast.success(`Outline card ${index + 1} updated!`);
+    } finally {
+      setIsRegeneratingCard(null);
+    }
   };
 
   const handleDeleteOutlineCard = (index: number) => {
@@ -416,8 +550,31 @@ export default function PPTMain() {
   const handleAddOutlineCard = () => {
     setOutlineSlides([...outlineSlides, {
       title: "New Custom Slide Topic",
-      desc: "Add specific contents and elements."
+      desc: "Add specific contents, data metrics, and key takeaways."
     }]);
+  };
+
+  const handleSaveCustomTheme = () => {
+    if (!customThemeForm.name.trim()) {
+      toast.error("Theme name is required");
+      return;
+    }
+    const newThemeId = `custom-${Date.now()}`;
+    const newTheme = {
+      id: newThemeId,
+      name: customThemeForm.name,
+      primary: customThemeForm.primary,
+      accent: customThemeForm.accent,
+      bg: customThemeForm.bg,
+      cardBg: customThemeForm.cardBg || "rgba(255,255,255,0.04)",
+      font: customThemeForm.font,
+      isPremium: false
+    };
+
+    setThemesList(prev => [newTheme, ...prev]);
+    setSelectedTheme(newTheme);
+    setShowCustomThemeModal(false);
+    toast.success(`Custom theme "${newTheme.name}" created and applied!`);
   };
 
   const handleGenerateFinal = async () => {
@@ -451,6 +608,9 @@ export default function PPTMain() {
         visuals: visualsEnabled,
         language: outputLanguage,
         model: selectedModel.id,
+        style: selectedStyle.id,
+        imageSource,
+        webSearch: webSearchEnabled,
         prompt
       };
 
@@ -677,7 +837,7 @@ export default function PPTMain() {
                 {/* Back Link */}
                 <button 
                   onClick={() => setIsOutlinePlanned(false)}
-                  className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
+                  className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-neutral-400 hover:text-white transition-colors cursor-pointer"
                 >
                   <ArrowLeft size={12} /> Edit Topic / Prompt
                 </button>
@@ -692,9 +852,9 @@ export default function PPTMain() {
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">Text density per card</p>
                     <div className="grid grid-cols-3 gap-2">
                       {([
-                        { id: 'minimal', label: 'Minimal', desc: 'Free plan', tier: 'Free' },
-                        { id: 'concise', label: 'Concise', desc: 'Premium', tier: 'Pro' },
-                        { id: 'detailed', label: 'Detailed', desc: 'Premium', tier: 'Pro' }
+                        { id: 'minimal', label: 'Minimal', desc: 'Bullet takeaways', tier: 'Free' },
+                        { id: 'concise', label: 'Concise', desc: 'Balanced depth', tier: 'Pro' },
+                        { id: 'detailed', label: 'Detailed', desc: 'Comprehensive', tier: 'Pro' }
                       ] as const).map(density => {
                         const isSel = textDensity === density.id;
                         const isLocked = density.tier === "Pro" && !hasPremiumAccess;
@@ -726,31 +886,59 @@ export default function PPTMain() {
                     </div>
                   </div>
 
-                  {/* 2. Visuals Toggle */}
-                  <div className="flex items-center justify-between p-3.5 bg-white/[0.02] border border-white/[0.05] rounded-2xl">
-                    <div>
-                      <span className="font-bold text-xs text-white block">Visual elements layout</span>
-                      <span className="text-[9px] text-neutral-500 font-light mt-0.5 block">Inject comparison columns, metric counters, and key visuals.</span>
+                  {/* 2. Visuals & Web Grounding Settings */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-3.5 bg-white/[0.02] border border-white/[0.05] rounded-2xl">
+                      <div>
+                        <span className="font-bold text-xs text-white block">Visual elements layout</span>
+                        <span className="text-[9px] text-neutral-500 font-light mt-0.5 block">Inject comparison columns, metric counters, and key visuals.</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={visualsEnabled} 
+                          onChange={(e) => setVisualsEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500 peer-checked:after:bg-black peer-checked:after:border-transparent" />
+                      </label>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={visualsEnabled} 
-                        onChange={(e) => setVisualsEnabled(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500 peer-checked:after:bg-black peer-checked:after:border-transparent" />
-                    </label>
+
+                    <div className="flex items-center justify-between p-3.5 bg-white/[0.02] border border-white/[0.05] rounded-2xl">
+                      <div>
+                        <span className="font-bold text-xs text-white flex items-center gap-1.5">
+                          <Globe size={13} className="text-orange-400" /> Web Search Grounding
+                        </span>
+                        <span className="text-[9px] text-neutral-500 font-light mt-0.5 block">Include real-time industry statistics and verified facts.</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={webSearchEnabled} 
+                          onChange={(e) => setWebSearchEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500 peer-checked:after:bg-black peer-checked:after:border-transparent" />
+                      </label>
+                    </div>
                   </div>
 
-                  {/* 3. Theme Grid Preview Selector (20+ Themes) */}
+                  {/* 3. Theme Grid Preview Selector */}
                   <div className="space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500 flex justify-between">
-                      <span>Themes Selector</span>
-                      <span className="text-[9px] text-neutral-600 font-medium">({THEMES.length} styles)</span>
-                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">
+                        Themes Palette ({themesList.length})
+                      </p>
+                      <button
+                        onClick={() => setShowCustomThemeModal(true)}
+                        className="text-[10px] font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1 px-2 py-0.5 rounded-lg bg-orange-500/10 border border-orange-500/20 transition-colors cursor-pointer"
+                      >
+                        <Palette size={11} /> + Custom Theme
+                      </button>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2.5 max-h-[220px] overflow-y-auto pr-1.5 custom-scrollbar">
-                      {THEMES.map(theme => {
+                      {themesList.map(theme => {
                         const isSelected = selectedTheme.id === theme.id;
                         const isLocked = theme.isPremium && !hasPremiumAccess;
 
@@ -768,7 +956,7 @@ export default function PPTMain() {
                             className={cn(
                               "p-2.5 rounded-xl border text-left cursor-pointer transition-all duration-200 relative overflow-hidden flex flex-col justify-between min-h-[70px]",
                               isSelected 
-                                ? "border-orange-500/60 bg-orange-500/5 shadow-md"
+                                ? "border-orange-500/60 bg-orange-500/5 shadow-md" 
                                 : "bg-neutral-900/50 border-white/[0.06] hover:border-white/15"
                             )}
                             style={{ backgroundColor: isSelected ? undefined : theme.bg }}
@@ -801,7 +989,7 @@ export default function PPTMain() {
                   {/* Generate Button */}
                   <button
                     onClick={handleGenerateFinal}
-                    className="w-full h-12 rounded-xl text-[11px] font-black uppercase tracking-widest text-white transition-all bg-gradient-to-r from-orange-500 to-amber-600 shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_28px_rgba(249,115,22,0.5)] active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full h-12 rounded-xl text-[11px] font-black uppercase tracking-widest text-white transition-all bg-gradient-to-r from-orange-500 to-amber-600 shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_28px_rgba(249,115,22,0.5)] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Zap size={12} fill="currentColor" /> Generate Slide Deck
                   </button>
@@ -814,40 +1002,171 @@ export default function PPTMain() {
                   <div className="flex justify-between items-center border-b border-white/[0.05] pb-4">
                     <div>
                       <h2 className="text-lg font-black text-white tracking-tight">Structured Outline Map</h2>
-                      <p className="text-[10px] text-neutral-500 font-light mt-0.5">Customize your deck flow. Add, delete, or rename outline cards.</p>
+                      <p className="text-[10px] text-neutral-500 font-light mt-0.5">Customize your deck flow. Add, delete, reorder, or refine outline cards.</p>
                     </div>
                     <span className="text-[10px] font-mono font-bold bg-neutral-900 border border-white/10 px-3 py-1 rounded-full text-orange-400">
-                      {outlineSlides.length} Slide outline cards
+                      {outlineSlides.length} Slide Cards
                     </span>
                   </div>
 
                   {/* Cards container */}
-                  <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1.5 custom-scrollbar">
+                  <div className="space-y-3 max-h-[52vh] overflow-y-auto pr-1.5 custom-scrollbar">
                     {outlineSlides.map((slide, idx) => (
                       <div 
                         key={idx}
-                        className="p-3 bg-black/40 border border-white/[0.05] hover:border-white/10 rounded-2xl flex gap-3 items-center"
+                        className="p-3.5 bg-black/40 border border-white/[0.06] hover:border-white/15 rounded-2xl flex flex-col gap-2 transition-all group"
                       >
-                        <span className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center font-bold font-mono text-xs shrink-0">
-                          {idx + 1}
-                        </span>
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-6 h-6 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center font-bold font-mono text-xs shrink-0">
+                            {idx + 1}
+                          </span>
 
-                        <div className="flex-1 min-w-0">
                           <input 
                             value={slide.title}
                             onChange={(e) => handleUpdateOutlineCard(idx, e.target.value)}
-                            className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-white outline-none"
-                            placeholder="Enter slide topic title..."
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-xs font-bold text-white outline-none"
+                            placeholder="Slide topic title..."
                           />
+
+                          {/* Reorder and Action buttons */}
+                          <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => handleMoveOutlineCard(idx, "up")}
+                              disabled={idx === 0}
+                              className="p-1.5 rounded-lg text-neutral-500 hover:text-white disabled:opacity-20 transition-colors cursor-pointer"
+                              title="Move Up"
+                            >
+                              <ArrowUp size={12} />
+                            </button>
+                            <button
+                              onClick={() => handleMoveOutlineCard(idx, "down")}
+                              disabled={idx === outlineSlides.length - 1}
+                              className="p-1.5 rounded-lg text-neutral-500 hover:text-white disabled:opacity-20 transition-colors cursor-pointer"
+                              title="Move Down"
+                            >
+                              <ArrowDown size={12} />
+                            </button>
+                            <button
+                              onClick={() => handleRegenerateSingleOutlineCard(idx)}
+                              disabled={isRegeneratingCard === idx}
+                              className="p-1.5 rounded-lg text-orange-400 hover:bg-orange-500/15 transition-colors cursor-pointer"
+                              title="Regenerate with AI"
+                            >
+                              {isRegeneratingCard === idx ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteOutlineCard(idx)}
+                              className="p-1.5 rounded-lg hover:bg-red-500/15 text-neutral-500 hover:text-red-400 transition-all cursor-pointer"
+                              title="Delete card"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </div>
 
-                        <button 
-                          onClick={() => handleDeleteOutlineCard(idx)}
-                          className="p-2 rounded-lg hover:bg-red-500/15 hover:text-red-500 text-neutral-500 transition-all shrink-0"
-                          title="Delete card"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {/* Description field */}
+                        <textarea
+                          value={slide.desc || ""}
+                          onChange={(e) => handleUpdateOutlineCard(idx, slide.title, e.target.value)}
+                          rows={1}
+                          className="w-full bg-transparent border-none focus:ring-0 text-[11px] text-neutral-400 placeholder:text-neutral-600 outline-none resize-none pl-8 leading-relaxed"
+                          placeholder="Brief description of key takeaways & content..."
+                        />
+
+                        {/* Visual Candidates Selector Strip */}
+                        {slide.imageCandidates && slide.imageCandidates.length > 0 && (
+                          <div className="pl-8 pt-1.5 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black uppercase tracking-wider text-neutral-500 flex items-center gap-1">
+                                <ImageIcon size={10} className="text-orange-400" />
+                                Visual Choices ({slide.imageCandidates.length} Layout-Optimized Candidates)
+                              </span>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const authToken = localStorage.getItem('authToken');
+                                    const res = await api.post('/presentation/image-candidates', {
+                                      slideTitle: slide.title,
+                                      slideDesc: slide.desc,
+                                      layout: slide.layout || "image_left",
+                                      topic: sourceInput,
+                                      slideIndex: idx
+                                    }, { headers: { 'Auth': authToken } });
+                                    if (res.data?.success && res.data?.candidates) {
+                                      const updated = [...outlineSlides];
+                                      updated[idx].imageCandidates = res.data.candidates;
+                                      updated[idx].selectedImage = res.data.candidates[0].url;
+                                      updated[idx].selectedImageIndex = 0;
+                                      setOutlineSlides(updated);
+                                      toast.success("4 fresh visual candidates generated!");
+                                    }
+                                  } catch (e) {
+                                    toast.error("Could not refresh visuals");
+                                  }
+                                }}
+                                className="text-[9px] font-bold text-orange-400 hover:text-orange-300 transition-colors cursor-pointer"
+                              >
+                                + Generate More
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-2">
+                              {slide.imageCandidates.map((cand: any, cIdx: number) => {
+                                const isSelected = (slide.selectedImageIndex ?? 0) === cIdx;
+                                return (
+                                  <div
+                                    key={cand.id || cIdx}
+                                    onClick={() => {
+                                      const updated = [...outlineSlides];
+                                      updated[idx].selectedImageIndex = cIdx;
+                                      updated[idx].selectedImage = cand.url;
+                                      setOutlineSlides(updated);
+                                    }}
+                                    className={cn(
+                                      "relative rounded-xl overflow-hidden border cursor-pointer transition-all group/cand aspect-[16/10] flex flex-col justify-between p-1",
+                                      isSelected 
+                                        ? "border-orange-500 ring-2 ring-orange-500/30 shadow-md" 
+                                        : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"
+                                    )}
+                                  >
+                                    <img 
+                                      src={cand.url} 
+                                      alt="" 
+                                      onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800"; }}
+                                      className="absolute inset-0 w-full h-full object-cover" 
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+                                    
+                                    {/* Top Score Badge */}
+                                    <div className="relative z-10 flex justify-between items-center">
+                                      <span className="text-[7.5px] font-mono font-black px-1 py-0.2 rounded bg-black/80 text-orange-400 border border-orange-500/30">
+                                        {cand.score || 90}/100
+                                      </span>
+                                      {isSelected && (
+                                        <span className="w-3 h-3 rounded-full bg-orange-500 flex items-center justify-center text-black">
+                                          <IconCheck size={8} className="font-bold" />
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Bottom Style Tag */}
+                                    <span className="relative z-10 text-[7.5px] font-bold text-white truncate drop-shadow">
+                                      {cand.style || "Photorealistic"}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Verified Grounding Sources Badge */}
+                        {slide.sources && slide.sources.length > 0 && (
+                          <div className="pl-8 flex items-center gap-1 text-[9px] font-mono text-neutral-500">
+                            <Globe size={9} className="text-orange-400 shrink-0" />
+                            <span className="truncate">Grounded with: {slide.sources.join(", ")}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -855,7 +1174,7 @@ export default function PPTMain() {
                   {/* Add slide button */}
                   <button 
                     onClick={handleAddOutlineCard}
-                    className="w-full py-2.5 rounded-xl border border-dashed border-white/10 hover:border-orange-500/30 text-[10px] font-bold uppercase tracking-wider text-neutral-400 hover:text-orange-400 transition-all flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 rounded-xl border border-dashed border-white/10 hover:border-orange-500/30 text-[10px] font-bold uppercase tracking-wider text-neutral-400 hover:text-orange-400 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Plus size={12} /> Add Slide Outline Card
                   </button>
@@ -882,7 +1201,7 @@ export default function PPTMain() {
                   className="mx-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/50 border border-white/10 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-neutral-400 backdrop-blur-md shadow-lg"
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_#f97316] animate-pulse" />
-                  AI Slide Deck Generator Active
+                  AI Presentation Engine &bull; Gamma Grade
                 </motion.div>
                 
                 {/* Titles */}
@@ -891,68 +1210,176 @@ export default function PPTMain() {
                     Create Stunning <span className="text-transparent bg-clip-text bg-gradient-to-b from-orange-400 to-orange-600 drop-shadow-[0_0_20px_rgba(249,115,22,0.3)]">AI Presentations</span> Instantly
                   </h1>
                   <p className="text-sm md:text-base text-neutral-400 font-light max-w-lg mx-auto leading-relaxed text-center">
-                    Convert any concept or text topic into a professionally styled PowerPoint presentation, complete with slide outlines, bullet points, and speaker notes.
+                    Outline-first presentation creator with intelligent layouts, live presenter tools, webcam recording, and instant PowerPoint export.
                   </p>
                 </div>
               </div>
 
-              {/* ============ MAIN COMMAND CARD ============ */}
-              <div className="w-full max-w-3xl relative z-10">
+              {/* ============ PRODUCTION-GRADE MAIN COMMAND CARD ============ */}
+              <div className="w-full max-w-3xl relative z-10 space-y-4">
                 {/* Glow Border Accent */}
-                <div className="absolute -inset-px rounded-[1.25rem] sm:rounded-[2rem] bg-gradient-to-b from-orange-500/25 via-orange-500/5 to-transparent pointer-events-none z-0" />
+                <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-orange-500/30 via-amber-500/15 to-orange-500/30 blur-xl opacity-60 pointer-events-none -z-10" />
 
-                <div className="relative z-10 bg-[#0c0c0c] border border-white/[0.08] rounded-[1.25rem] sm:rounded-[2rem] overflow-hidden shadow-[0_20px_80px_-20px_rgba(0,0,0,0.9)] transition-all duration-300 focus-within:border-white/20">
+                <div className="relative bg-[#0c0c10]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl overflow-hidden shadow-[0_25px_90px_-20px_rgba(0,0,0,0.95)] transition-all duration-300 focus-within:border-orange-500/40">
                   
                   {/* Topic Input Row */}
-                  <div className="flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 pt-4 sm:pt-6 pb-2">
+                  <div className="flex items-center gap-3 px-5 pt-6 pb-2.5">
                     <div className={cn(
-                      "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all duration-300",
-                      isValidInput ? "bg-orange-500/15 text-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.2)]" : "bg-white/5 text-neutral-500"
+                      "shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-md",
+                      isValidInput ? "bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.3)]" : "bg-white/[0.04] border border-white/10 text-neutral-400"
                     )}>
-                      <Presentation size={18} />
+                      <Presentation size={20} />
                     </div>
                     <input 
-                      placeholder="Enter a detailed presentation topic (e.g. Quantum Computing, Climate Change)..."
+                      placeholder="What would you like to present? (e.g. 7 Wonders of the World, AI Agents in 2026)..."
                       value={sourceInput}
                       onChange={(e) => setSourceInput(e.target.value)}
-                      className="flex-1 bg-transparent border-none focus:ring-0 text-[14px] sm:text-[16px] font-semibold text-white placeholder:text-neutral-500 sm:placeholder:text-neutral-600 outline-none min-w-0 px-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && isValidInput && !isOutlinePlanning) {
+                          e.preventDefault();
+                          handlePlanOutline();
+                        }
+                      }}
+                      className="flex-1 bg-transparent border-none focus:ring-0 text-base sm:text-lg font-bold text-white placeholder:text-neutral-500 outline-none min-w-0 px-1 tracking-tight"
                     />
                     <div className="shrink-0 flex items-center gap-2">
                       {isValidInput && (
-                        <div className="w-6 h-6 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center">
-                          <IconCheck size={12} className="text-green-500" />
+                        <div className="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                          <Check size={13} />
                         </div>
                       )}
                       <Link 
                         href="/pricing" 
                         className={cn(
-                          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                          "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
                           hasPremiumAccess 
-                            ? "bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20" 
+                            ? "bg-amber-500/10 border border-amber-500/25 text-amber-400" 
                             : "bg-white/[0.05] border border-white/[0.08] text-neutral-300 hover:bg-white/[0.1] hover:text-white"
                         )}
                       >
-                        {hasPremiumAccess ? <Crown size={11} className="text-yellow-400" /> : <Zap size={11} className="text-red-400" />}
+                        {hasPremiumAccess ? <Crown size={11} className="text-amber-400" /> : <Zap size={11} className="text-orange-400" />}
                         <span>{hasPremiumAccess ? (userPlanId === 'power' ? 'Power' : 'Pro') : 'Upgrade'}</span>
                       </Link>
                     </div>
                   </div>
 
                   {/* Focus Areas Prompt Textarea */}
-                  <div className="px-4 sm:px-6 pb-2">
+                  <div className="px-5 pb-3">
                     <textarea 
-                      placeholder="Add context, slide tone guidelines, or specific points to cover... (optional)"
+                      placeholder="Add specific focus areas, audience profile, key statistics, or outline guidelines... (optional)"
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       rows={2}
-                      className="w-full bg-transparent border-none focus:ring-0 text-[13px] sm:text-[14px] text-neutral-300 placeholder:text-neutral-600 sm:placeholder:text-neutral-700 resize-none outline-none leading-relaxed px-1"
+                      className="w-full bg-transparent border-none focus:ring-0 text-xs sm:text-sm text-neutral-300 placeholder:text-neutral-600 resize-none outline-none leading-relaxed px-1"
                     />
                   </div>
 
+                  {/* Generation Style & Visuals Configuration Row */}
+                  <div className="px-5 py-3 border-t border-white/[0.06] bg-black/40 flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Tone / Style Selector */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-xs font-semibold text-neutral-300 hover:text-white outline-none cursor-pointer transition-all">
+                          <span className="text-[10px] uppercase font-mono text-orange-400">Tone:</span>
+                          <span className="font-bold">{selectedStyle.label}</span>
+                          <ChevronDown size={11} className="text-neutral-500" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-[#0e0e12] border border-white/[0.12] text-white p-1.5 rounded-2xl shadow-2xl z-50 w-52">
+                          {PRESENTATION_STYLES.map(st => (
+                            <DropdownMenuItem
+                              key={st.id}
+                              onClick={() => setSelectedStyle(st)}
+                              className="flex flex-col items-start p-2 rounded-xl cursor-pointer hover:bg-white/5"
+                            >
+                              <span className={cn("text-xs font-bold", selectedStyle.id === st.id ? "text-orange-400" : "text-neutral-200")}>{st.label}</span>
+                              <span className="text-[9.5px] text-neutral-500">{st.desc}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {/* Image Source Selector */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-xs font-semibold text-neutral-300 hover:text-white outline-none cursor-pointer transition-all">
+                          <ImageIcon size={12} className="text-orange-400" />
+                          <span className="font-bold">{IMAGE_SOURCES.find(s => s.id === imageSource)?.label || "Unsplash"}</span>
+                          <ChevronDown size={11} className="text-neutral-500" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-[#0e0e12] border border-white/[0.12] text-white p-1.5 rounded-2xl shadow-2xl z-50 w-52">
+                          {IMAGE_SOURCES.map(isrc => (
+                            <DropdownMenuItem
+                              key={isrc.id}
+                              onClick={() => setImageSource(isrc.id)}
+                              className="flex flex-col items-start p-2 rounded-xl cursor-pointer hover:bg-white/5"
+                            >
+                              <span className={cn("text-xs font-bold", imageSource === isrc.id ? "text-orange-400" : "text-neutral-200")}>{isrc.label}</span>
+                              <span className="text-[9.5px] text-neutral-500">{isrc.desc}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {/* Language Selector Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-xs font-semibold text-neutral-300 hover:text-white outline-none cursor-pointer transition-all">
+                          <Globe size={12} className="text-neutral-400" />
+                          <span className="font-bold">{outputLanguage}</span>
+                          <ChevronDown size={11} className="text-neutral-500" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-[#0e0e12] border border-white/[0.12] text-white min-w-[160px] p-1.5 rounded-2xl shadow-2xl z-50">
+                          <div className="text-[9px] font-bold text-neutral-500 px-3 py-1.5 uppercase tracking-widest border-b border-white/[0.06]">Languages</div>
+                          {LANGUAGES.map((lang) => {
+                            const isPremium = POWER_LANGUAGES.has(lang);
+                            const isLocked = isPremium && (!hasPremiumAccess || userPlanId !== "power");
+                            const isSelected = outputLanguage === lang;
+
+                            return (
+                              <DropdownMenuItem
+                                key={lang}
+                                onClick={() => {
+                                  if (isLocked) {
+                                    setPremiumFeatureName(`${lang} Language`);
+                                    setShowPremiumModal(true);
+                                    return;
+                                  }
+                                  setOutputLanguage(lang);
+                                }}
+                                className="flex items-center justify-between text-xs font-semibold rounded-xl cursor-pointer px-3 py-2 hover:bg-white/5"
+                              >
+                                <span className={isSelected ? "text-orange-400 font-bold" : "text-neutral-300"}>{lang}</span>
+                                {isLocked ? (
+                                  <Lock size={10} className="text-amber-500" />
+                                ) : isSelected ? (
+                                  <Check size={12} className="text-orange-500 font-black" />
+                                ) : null}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Web Grounding Toggle */}
+                    <button 
+                      type="button"
+                      onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition-all",
+                        webSearchEnabled 
+                          ? "bg-orange-500/15 border-orange-500/40 text-orange-400 shadow-[0_0_12px_rgba(249,115,22,0.2)]" 
+                          : "bg-white/[0.03] border-white/[0.08] text-neutral-400 hover:text-white"
+                      )}
+                    >
+                      <Globe size={12} />
+                      <span>Live Facts</span>
+                      <span className={cn("w-2 h-2 rounded-full", webSearchEnabled ? "bg-orange-500 animate-pulse" : "bg-neutral-600")} />
+                    </button>
+                  </div>
+
                   {/* Slide Count Cards Selector Grid */}
-                  <div className="px-4 sm:px-6 py-4 border-t border-white/[0.05] bg-white/[0.005]">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500 mb-3 flex items-center gap-1.5">
-                      <Layers size={11} className="text-orange-500" /> Select Slide Deck Count ("cards")
+                  <div className="px-5 py-4 border-t border-white/[0.06] bg-black/20">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 mb-3 flex items-center gap-1.5">
+                      <Layers size={12} className="text-orange-500" /> Presentation Length
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {SLIDE_CARDS.map((card) => {
@@ -973,165 +1400,245 @@ export default function PPTMain() {
                               setSelectedCard(card);
                             }}
                             className={cn(
-                              "relative p-3 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between min-h-[90px]",
+                              "relative p-3.5 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between min-h-[85px]",
                               locked 
-                                ? "opacity-50 hover:opacity-75 border-white/[0.04] bg-white/[0.002]" 
+                                ? "opacity-40 hover:opacity-70 border-white/[0.04] bg-white/[0.002]" 
                                 : isSelected 
-                                ? "bg-orange-500/10 border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.1)]" 
-                                : "bg-white/[0.01] border-white/[0.06] hover:border-white/12 hover:bg-white/[0.02]"
+                                ? "bg-orange-500/15 border-orange-500/60 shadow-[0_0_20px_rgba(249,115,22,0.2)] scale-[1.02]" 
+                                : "bg-white/[0.02] border-white/[0.08] hover:border-white/20 hover:bg-white/[0.04]"
                             )}
                           >
                             <div className="flex justify-between items-start">
-                              <span className="font-bold text-xs sm:text-sm text-white">{card.label}</span>
+                              <span className="font-extrabold text-sm text-white">{card.label}</span>
                               {locked ? (
                                 <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center gap-0.5">
                                   <Lock size={7} /> {card.tier}
                                 </span>
                               ) : (
                                 <span className={cn(
-                                  "text-[7px] sm:text-[8px] font-black uppercase px-1.5 py-0.5 rounded border",
-                                  isSelected ? "bg-orange-500/20 border-orange-500/35 text-orange-400" : "bg-white/5 border-white/10 text-neutral-500"
+                                  "text-[8px] font-black uppercase px-1.5 py-0.5 rounded border",
+                                  isSelected ? "bg-orange-500/20 border-orange-500/40 text-orange-400" : "bg-white/5 border-white/10 text-neutral-500"
                                 )}>
                                   {card.tier}
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] leading-tight text-neutral-500 mt-2">{card.desc}</p>
+                            <p className="text-[10px] leading-tight text-neutral-400 mt-2 font-light">{card.desc}</p>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* BOTTOM ACTION BAR */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 px-3 sm:px-4 py-3 border-t border-white/[0.05] bg-white/[0.01]">
-                    <div onWheel={handleHorizontalScroll} className="flex items-center gap-2 overflow-x-auto no-scrollbar px-1 sm:px-0">
-                      
-                      {/* Model Selector Dropdown */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.06] hover:border-white/15 text-[11px] font-bold text-neutral-300 hover:text-white transition-all duration-200 outline-none shrink-0 group">
-                          <span className="w-2 h-2 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: selectedModel.hex, boxShadow: `0 0 6px ${selectedModel.hex}99` }} />
-                          <span>{selectedModel.name}</span>
-                          <ChevronDown size={11} className="text-neutral-500 group-hover:text-neutral-300 transition-colors" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-[#0a0a0a] border border-white/[0.08] text-white min-w-[280px] p-2.5 rounded-2xl shadow-2xl z-50">
-                          <div className="px-3 py-2 mb-1 border-b border-white/[0.05]">
-                            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-neutral-500 flex items-center gap-1.5">
-                              <Laptop size={11} className="text-white/30" /> Presentation Intelligence
-                            </p>
-                          </div>
-                          <div className="space-y-1 mt-1">
-                            {AI_MODELS.map(m => {
-                              const isLocked = m.accessTier === 'Pro' && !hasPremiumAccess;
-                              const isPowerLocked = m.accessTier === 'Power' && (!hasPremiumAccess || userPlanId !== 'power');
-                              const locked = isLocked || isPowerLocked;
-                              const isActive = m.id === selectedModel.id;
-
-                              return (
-                                <DropdownMenuItem
-                                  key={m.id}
-                                  onClick={() => {
-                                    if (locked) {
-                                      setPremiumFeatureName(`${m.name} Engine`);
-                                      setShowPremiumModal(true);
-                                      return;
-                                    }
-                                    setSelectedModel(m);
-                                  }}
-                                  className={cn(
-                                    "flex flex-col items-start gap-1 p-2 rounded-xl cursor-pointer hover:bg-white/5 focus:bg-white/5",
-                                    isActive && "bg-white/[0.03] border border-white/5"
-                                  )}
-                                >
-                                  <div className="flex items-center justify-between w-full">
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: m.hex }} />
-                                      <span className="font-bold text-xs text-white">{m.name}</span>
-                                    </div>
-                                    {locked ? (
-                                      <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center gap-0.5">
-                                        <Lock size={8} /> {m.accessTier}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded border border-white/10 text-neutral-500">
-                                        {m.accessTier}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-[10px] text-neutral-500 leading-normal pl-4">{m.desc}</p>
-                                </DropdownMenuItem>
-                              );
-                            })}
-                          </div>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      {/* Language Selector Dropdown */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.06] hover:border-white/15 text-[11px] font-bold text-neutral-300 hover:text-white transition-all duration-200 outline-none shrink-0 group">
-                          <Globe size={11} className="text-neutral-500 group-hover:text-neutral-300 transition-colors" />
-                          <span>{outputLanguage}</span>
-                          <ChevronDown size={11} className="text-neutral-500 group-hover:text-neutral-300 transition-colors" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-[#0a0a0a] border border-white/[0.08] text-white min-w-[160px] p-1.5 rounded-xl shadow-2xl z-50">
-                          <div className="text-[9px] font-bold text-neutral-500 px-3 py-1.5 uppercase tracking-widest border-b border-white/[0.05]">Languages</div>
-                          {LANGUAGES.map((lang) => {
-                            const isPremium = POWER_LANGUAGES.has(lang);
-                            const isLocked = isPremium && (!hasPremiumAccess || userPlanId !== "power");
-                            const isSelected = outputLanguage === lang;
-
-                            return (
-                              <DropdownMenuItem
-                                key={lang}
-                                onClick={() => {
-                                  if (isLocked) {
-                                    setPremiumFeatureName(`${lang} Language`);
-                                    setShowPremiumModal(true);
-                                    return;
-                                  }
-                                  setOutputLanguage(lang);
-                                }}
-                                className="flex items-center justify-between text-xs font-semibold rounded-lg cursor-pointer px-3 py-2 hover:bg-white/5 focus:bg-white/5"
-                              >
-                                <span className={isSelected ? "text-orange-400 font-bold" : "text-neutral-300"}>{lang}</span>
-                                {isLocked ? (
-                                  <Lock size={10} className="text-amber-500" />
-                                ) : isSelected ? (
-                                  <Check size={12} className="text-orange-500 font-black" />
-                                ) : null}
-                              </DropdownMenuItem>
-                            );
-                          })}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  {/* BOTTOM COMMAND ACTION */}
+                  <div className="p-4 border-t border-white/[0.06] bg-black/60 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomThemeModal(true)}
+                        className="px-3.5 py-2 rounded-xl text-xs font-bold text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-all flex items-center gap-2 cursor-pointer"
+                      >
+                        <Palette size={13} className="text-orange-400" />
+                        <span>Theme: {selectedTheme.name}</span>
+                      </button>
                     </div>
 
-                    {/* Outline Plan Button */}
                     <button
                       onClick={handlePlanOutline}
                       disabled={!isValidInput || isOutlinePlanning}
                       className={cn(
-                        "h-11 px-6 rounded-xl text-[11px] font-black uppercase tracking-widest text-white transition-all duration-200 active:scale-95 shrink-0 flex items-center justify-center gap-2",
+                        "h-12 px-8 rounded-2xl text-xs font-black uppercase tracking-widest text-black transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-xl",
                         isValidInput 
-                          ? "bg-gradient-to-r from-orange-500 to-amber-600 shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_28px_rgba(249,115,22,0.5)]" 
+                          ? "bg-gradient-to-r from-orange-400 via-orange-500 to-amber-400 shadow-[0_0_30px_rgba(249,115,22,0.4)] hover:shadow-[0_0_45px_rgba(249,115,22,0.6)] hover:brightness-110" 
                           : "bg-neutral-800 text-neutral-500 border border-white/5 cursor-not-allowed"
                       )}
                     >
                       {isOutlinePlanning ? (
                         <>
-                          <Loader2 size={12} className="animate-spin" /> Planning Outline...
+                          <Loader2 size={14} className="animate-spin text-black" /> Planning AI Outline...
                         </>
                       ) : (
                         <>
-                          <Zap size={12} fill="currentColor" /> Plan Slide Outline
+                          <Zap size={14} fill="currentColor" /> Plan Slide Outline
+                          <ArrowRight size={14} />
                         </>
                       )}
                     </button>
                   </div>
 
                 </div>
+
+                {/* Suggested Topics Inspiration Pills */}
+                <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-500 mr-1">Try Topics:</span>
+                  {[
+                    "🏛️ The Seven Wonders of the World",
+                    "🤖 Autonomous AI Agents in 2026",
+                    "🚀 YC SaaS Startup Pitch",
+                    "🔋 Solid-State Battery Revolution",
+                    "🌿 Sustainable Urban Cities"
+                  ].map((sampleTopic) => (
+                    <button
+                      key={sampleTopic}
+                      type="button"
+                      onClick={() => {
+                        const clean = sampleTopic.replace(/^[^\w\s]+\s*/, "");
+                        setSourceInput(clean);
+                      }}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium text-neutral-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-orange-500/30 transition-all cursor-pointer shadow-sm hover:scale-105"
+                    >
+                      {sampleTopic}
+                    </button>
+                  ))}
+                </div>
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ================= CUSTOM THEME STUDIO MODAL ================= */}
+        <AnimatePresence>
+          {showCustomThemeModal && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+              <div onClick={() => setShowCustomThemeModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="relative w-full max-w-2xl bg-[#0e0e12] border border-white/10 rounded-[2rem] p-6 sm:p-8 shadow-2xl z-10 space-y-6"
+              >
+                <div className="flex justify-between items-center border-b border-white/[0.06] pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
+                      <Palette size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white tracking-tight">Custom Theme Studio</h3>
+                      <p className="text-[11px] text-neutral-400">Design and save your custom presentation color palette & fonts.</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowCustomThemeModal(false)} className="text-neutral-500 hover:text-white transition-colors cursor-pointer">
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left: Inputs */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 block mb-1.5">Theme Name</label>
+                      <input
+                        value={customThemeForm.name}
+                        onChange={(e) => setCustomThemeForm({ ...customThemeForm, name: e.target.value })}
+                        className="w-full h-10 px-3 rounded-xl bg-neutral-900 border border-white/10 text-xs font-bold text-white outline-none focus:border-orange-500/50"
+                        placeholder="E.g. Neon Horizon"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 block mb-1.5">Primary Accent</label>
+                        <div className="flex items-center gap-2 bg-neutral-900 border border-white/10 p-1.5 rounded-xl">
+                          <input
+                            type="color"
+                            value={customThemeForm.primary}
+                            onChange={(e) => setCustomThemeForm({ ...customThemeForm, primary: e.target.value })}
+                            className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0"
+                          />
+                          <span className="font-mono text-xs text-neutral-300">{customThemeForm.primary}</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 block mb-1.5">Secondary Accent</label>
+                        <div className="flex items-center gap-2 bg-neutral-900 border border-white/10 p-1.5 rounded-xl">
+                          <input
+                            type="color"
+                            value={customThemeForm.accent}
+                            onChange={(e) => setCustomThemeForm({ ...customThemeForm, accent: e.target.value })}
+                            className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0"
+                          />
+                          <span className="font-mono text-xs text-neutral-300">{customThemeForm.accent}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 block mb-1.5">Background</label>
+                        <div className="flex items-center gap-2 bg-neutral-900 border border-white/10 p-1.5 rounded-xl">
+                          <input
+                            type="color"
+                            value={customThemeForm.bg}
+                            onChange={(e) => setCustomThemeForm({ ...customThemeForm, bg: e.target.value })}
+                            className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0"
+                          />
+                          <span className="font-mono text-xs text-neutral-300">{customThemeForm.bg}</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 block mb-1.5">Font Pairing</label>
+                        <select
+                          value={customThemeForm.font}
+                          onChange={(e) => setCustomThemeForm({ ...customThemeForm, font: e.target.value })}
+                          className="w-full h-10 px-2.5 rounded-xl bg-neutral-900 border border-white/10 text-xs font-bold text-white outline-none focus:border-orange-500/50"
+                        >
+                          <option value="Outfit">Outfit (Modern)</option>
+                          <option value="Inter">Inter (Clean)</option>
+                          <option value="Georgia">Georgia (Editorial)</option>
+                          <option value="Courier New">Courier New (Technical)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Live Preview Card */}
+                  <div className="flex flex-col justify-between">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 block mb-1.5">Live Slide Preview</label>
+                    <div 
+                      className="aspect-[16/9] rounded-2xl border border-white/15 p-4 flex flex-col justify-between shadow-2xl relative overflow-hidden transition-all"
+                      style={{ 
+                        backgroundColor: customThemeForm.bg,
+                        fontFamily: customThemeForm.font
+                      }}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center text-[8px] font-mono opacity-60">
+                          <span>Chapter 01</span>
+                          <span style={{ color: customThemeForm.primary }}>Slide Deck</span>
+                        </div>
+                        <h4 className="text-sm font-black tracking-tight" style={{ color: customThemeForm.primary }}>
+                          Sample Strategy Slide
+                        </h4>
+                        <p className="text-[9.5px] opacity-75 leading-tight text-white">
+                          High-yield architectural breakdown with sub-millisecond retrieval.
+                        </p>
+                      </div>
+
+                      <div 
+                        className="p-2 rounded-xl border flex items-center justify-between text-[9px] font-bold"
+                        style={{ 
+                          backgroundColor: customThemeForm.cardBg,
+                          borderColor: `${customThemeForm.primary}40`,
+                          color: customThemeForm.accent
+                        }}
+                      >
+                        <span>Key Performance KPI</span>
+                        <span className="font-mono text-[10px]" style={{ color: customThemeForm.primary }}>99.8%</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleSaveCustomTheme}
+                      className="w-full mt-4 h-11 bg-gradient-to-r from-orange-500 to-amber-600 text-black font-black text-xs uppercase tracking-widest rounded-xl hover:shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all cursor-pointer"
+                    >
+                      Apply & Save Theme
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 
@@ -1157,3 +1664,4 @@ export default function PPTMain() {
     </section>
   );
 }
+

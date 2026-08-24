@@ -7,13 +7,9 @@ const GOOGLE_CX = process.env.GOOGLE_SEARCH_CX || process.env.GOOGLE_CX;
 
 const BLOCKED_DOMAINS = [
   'instagram.com', 'facebook.com', 'twitter.com', 'x.com', 'youtube.com', 'youtube.in',
-  'tiktok.com', 'snapchat.com', 'linkedin.com', 'flickr.com', 'vimeo.com',
-  'quora.com', 'medium.com', 'whatsapp.com', 'telegram.org', 'discord.com',
-  'pinterest.com', 'shutterstock.com', 'gettyimages.com', 'istockphoto.com',
-  'alamy.com', 'dreamstime.com', '123rf.com', 'stock.adobe.com', 'depositphotos.com',
-  'website-files.com', 'webflow.com', 'freepik.com', 'vecteezy.com', 'unsplash.com',
-  'pexels.com', 'pixabay.com', 'cleanpng.com', 'pngwing.com', 'pngtree.com',
-  'rawpixel.com', 'canva.com', 'elements.envato.com'
+  'tiktok.com', 'snapchat.com', 'linkedin.com', 'vimeo.com',
+  'quora.com', 'whatsapp.com', 'telegram.org', 'discord.com', 'pinterest.com',
+  'website-files.com', 'canva.com'
 ];
 
 /**
@@ -55,15 +51,6 @@ async function verifyImageUrl(url, timeoutMs = 3500) {
     const contentType = res.headers.get('content-type') || '';
     if (!contentType.startsWith('image/')) return false;
 
-    // Check size (ignore tiny tracking pixels < 10KB or huge raw images > 15MB)
-    const contentLength = res.headers.get('content-length');
-    if (contentLength) {
-      const size = parseInt(contentLength, 10);
-      if (size < 10240 || size > 15728640) {
-        return false;
-      }
-    }
-
     return true;
   } catch (err) {
     return false;
@@ -72,14 +59,12 @@ async function verifyImageUrl(url, timeoutMs = 3500) {
 
 /**
  * Fetch candidate images from Google Custom Search
- * Targets technical diagrams, flowcharts, architecture diagrams and scientific figures.
  */
-async function searchGoogleImages(query, count = 3) {
+async function searchGoogleImages(query, count = 4) {
   if (!GOOGLE_API_KEY || !GOOGLE_CX) return [];
 
   try {
-    // Strictly target educational diagrams and exclude lifestyle/marketing stock photos
-    const cleanQuery = `${query} diagram flowchart architecture schematic -stock -person -people -woman -man -laptop -banner -cover -wallpaper`;
+    const cleanQuery = `${query} photography 4k -stock -person -people -woman -man -laptop -banner -cover -wallpaper`;
     const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
       cleanQuery
     )}&cx=${GOOGLE_CX}&searchType=image&num=${count}&safe=active&key=${GOOGLE_API_KEY}`;
@@ -98,11 +83,11 @@ async function searchGoogleImages(query, count = 3) {
 }
 
 /**
- * Fetch candidate images from Wikimedia Commons (Strictly Educational & Scientific)
+ * Fetch candidate images from Wikimedia Commons
  */
-async function searchWikimediaImages(query, count = 3) {
+async function searchWikimediaImages(query, count = 4) {
   try {
-    const cleanQuery = `${query} diagram`;
+    const cleanQuery = query.replace(/[^\w\s]/g, " ").trim();
     const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(
       cleanQuery
     )}&gsrlimit=${count}&prop=imageinfo&iiprop=url|mime|size&origin=*`;
@@ -183,10 +168,77 @@ async function getVerifiedImagesForFigures(figureTitles) {
   return results;
 }
 
+/**
+ * Presentation High-Resolution Image Search (Google Custom Search + Wikimedia + Unsplash fallback)
+ * Fetches real photographic and conceptual imagery for presentation slides.
+ */
+async function searchPresentationImages(query, count = 4) {
+  if (!query || typeof query !== 'string') return [];
+
+  const cleanQuery = query.replace(/[^\w\s]/g, " ").trim();
+  const results = [];
+
+  // 1. Try Google Search for real presentation imagery
+  if (GOOGLE_API_KEY && GOOGLE_CX) {
+    try {
+      const fetchCount = Math.min(10, count * 2);
+      const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(cleanQuery)}&cx=${GOOGLE_CX}&searchType=image&num=${fetchCount}&safe=active&key=${GOOGLE_API_KEY}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          for (const item of data.items) {
+            if (item.link && (item.link.startsWith('http://') || item.link.startsWith('https://'))) {
+              try {
+                const parsed = new URL(item.link);
+                const isBlocked = BLOCKED_DOMAINS.some(d => parsed.hostname.toLowerCase().includes(d));
+                if (!isBlocked && !results.includes(item.link)) {
+                  results.push(item.link);
+                }
+              } catch {
+                // Ignore malformed URLs
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`Google image search failed for presentation "${cleanQuery}":`, e.message);
+    }
+  }
+
+  // 2. Try Wikimedia Commons
+  if (results.length < count) {
+    try {
+      const wikiCandidates = await searchWikimediaImages(cleanQuery, count - results.length);
+      for (const w of wikiCandidates) {
+        if (w && !results.includes(w)) results.push(w);
+      }
+    } catch (e) {}
+  }
+
+  // 3. Guaranteed fast, gorgeous curated Unsplash topic photo fallbacks
+  const topicKeyword = encodeURIComponent(cleanQuery.split(" ").slice(0, 2).join(","));
+  const curatedBackups = [
+    `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80`,
+    `https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80`,
+    `https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80`,
+    `https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&auto=format&fit=crop&q=80`
+  ];
+
+  while (results.length < count) {
+    const backup = curatedBackups[results.length % curatedBackups.length];
+    results.push(backup);
+  }
+
+  return results.slice(0, count);
+}
+
 module.exports = {
   verifyImageUrl,
   getVerifiedSearchImage,
   getVerifiedImagesForFigures,
   searchGoogleImages,
   searchWikimediaImages,
+  searchPresentationImages
 };

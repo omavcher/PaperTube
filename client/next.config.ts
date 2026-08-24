@@ -23,13 +23,30 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
   },
 
-  webpack: (config, { isServer, dev }) => {
+  webpack: (config, { isServer, dev, webpack }) => {
+    if (webpack) {
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/^node:/, (resource: any) => {
+          resource.request = resource.request.replace(/^node:/, "");
+        })
+      );
+    }
+
     config.resolve.fallback = {
       ...config.resolve.fallback,
       canvas: false,
       fs: false,
       path: false,
       encoding: false,
+      http: false,
+      https: false,
+      stream: false,
+      zlib: false,
+      buffer: false,
+      os: false,
+      net: false,
+      tls: false,
+      child_process: false,
     };
 
     if (!dev && !isServer) {

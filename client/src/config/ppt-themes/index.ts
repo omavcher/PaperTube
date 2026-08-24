@@ -19,6 +19,7 @@ import { nebulaSpaceTheme } from "./nebula-space";
 import { desertSandTheme } from "./desert-sand";
 import { darkMatterTheme } from "./dark-matter";
 
+export * from "./types";
 export { sunsetOrangeTheme } from "./sunset-orange";
 export { midnightTechTheme } from "./midnight-tech";
 export { classicSlateTheme } from "./classic-slate";

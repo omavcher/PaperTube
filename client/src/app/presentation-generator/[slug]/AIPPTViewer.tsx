@@ -1,46 +1,41 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { 
   ChevronLeft, ChevronRight, Play, Download, LayoutGrid, X, 
   Loader2, Presentation, ArrowLeft, RefreshCw, FileText, Check, 
   MessageSquare, Edit3, Save, Maximize2, ShieldAlert, Sparkles, Image as ImageIcon,
   Plus, Trash2, Copy, ArrowUp, ArrowDown, Wand2, Lightbulb, Zap, TrendingUp,
-  Mic, Clock, Compass, Layers, CheckCircle2, XCircle, Quote, Code, BarChart3,
-  Calendar, CheckSquare, Split, Palette, Eye, ExternalLink, Link2
+  Clock, Compass, Layers, CheckCircle2, XCircle, Quote, Code, BarChart3,
+  Calendar, CheckSquare, Split, Palette, Eye, ExternalLink, Link2, Share2,
+  Send, Eraser, Moon, Sun, Sliders, Sparkle, Upload, Globe, Fullscreen,
+  Minimize2
 } from "lucide-react";
 import Link from "next/link";
 import api from "@/config/api";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import QRCode from "react-qr-code";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PPT_THEMES_MAP } from "@/config/ppt-themes";
+import { PPT_THEMES_MAP, PPTThemeConfig } from "@/config/ppt-themes";
+import { exportPresentationToPPTX, fetchImageAsBase64 } from "@/lib/presentationExporter";
+import html2canvas from "html2canvas";
 
-export interface Slide {
-  id: number;
+interface Slide {
+  id: number | string;
   title: string;
   subtitle?: string;
-  layout: 
-    | "title" | "section_break" | "conclusion"
-    | "bullets" | "paragraph" | "quote" | "two_column_text"
-    | "comparison" | "pros_cons" | "metric_callout" | "matrix_2x2"
-    | "timeline" | "steps" | "roadmap"
-    | "image_left" | "image_right" | "gallery_grid"
-    | "metric";
+  layout: string;
   bullets?: string[];
   columns?: { left: string[]; right: string[] };
-  metric?: { value: string; label: string; description: string };
-  speakerNotes: string;
-  variantIndex?: number;
-  bgImageIndex?: number;
-  
-  // Custom layout fields
+  metric?: { value: string; label: string; description?: string };
+  speakerNotes?: string;
   author?: string;
   content?: string;
   quote_text?: string;
@@ -55,30 +50,43 @@ export interface Slide {
   steps?: string[];
   phases?: { phase: string; goal: string }[];
   image_url?: string;
+  imageCandidates?: any[];
+  sources?: string[];
   alt_text?: string;
   images?: string[];
+  [key: string]: any;
 }
 
 interface PresentationData {
   _id?: string;
+  slug: string;
   title: string;
+  theme: string;
   slides: Slide[];
-  theme?: string;
+  [key: string]: any;
 }
 
-const LAYOUT_CHOICES: { id: Slide["layout"]; label: string; icon: any; desc: string }[] = [
-  { id: "title", label: "Title Hero", icon: Presentation, desc: "Hero header with subtitle & author badge" },
-  { id: "image_left", label: "Visual Split (Image Left)", icon: ImageIcon, desc: "50% visual image, 50% detailed takeaways" },
-  { id: "image_right", label: "Visual Split (Image Right)", icon: ImageIcon, desc: "50% detailed takeaways, 50% visual image" },
-  { id: "bullets", label: "Bento Cards / Bullets", icon: LayoutGrid, desc: "Feature cards with deep takeaways" },
+interface ChatMessage {
+  id: string;
+  sender: "user" | "agent";
+  text: string;
+  toolAction?: string;
+  timestamp: Date;
+}
+
+const SLIDE_LAYOUT_OPTIONS = [
+  { id: "title", label: "Title Hero", icon: Presentation, desc: "Hero title & thesis banner" },
+  { id: "image_left", label: "Visual Split Left", icon: Split, desc: "50% Image left, 50% Takeaways right" },
+  { id: "image_right", label: "Visual Split Right", icon: Split, desc: "50% Takeaways left, 50% Image right" },
+  { id: "bullets", label: "Bento Cards", icon: LayoutGrid, desc: "Structured key insight feature cards" },
   { id: "comparison", label: "Comparison VS", icon: Split, desc: "Side-by-side comparative column cards" },
-  { id: "metric_callout", label: "Key Metrics", icon: BarChart3, desc: "Big bold KPI statistics & benchmarks" },
-  { id: "timeline", label: "Process Timeline", icon: Calendar, desc: "Sequential chronological milestones" },
-  { id: "gallery_grid", label: "Visual Gallery Showcase", icon: Layers, desc: "Multi-image showcase with captions" },
+  { id: "metric_callout", label: "Key Metrics & KPIs", icon: BarChart3, desc: "High-impact bold data benchmarks" },
+  { id: "timeline", label: "Process Timeline", icon: Calendar, desc: "Sequential phase roadmap" },
+  { id: "gallery_grid", label: "Visual Showcase", icon: ImageIcon, desc: "Multi-image showcase grid" },
   { id: "pros_cons", label: "Pros & Cons", icon: CheckSquare, desc: "Advantages vs Disadvantages grid" },
-  { id: "quote", label: "Editorial Quote", icon: Quote, desc: "Statement with author attribution" },
+  { id: "quote", label: "Editorial Quote", icon: Quote, desc: "Executive quote with author attribution" },
   { id: "paragraph", label: "Deep-Dive Analysis", icon: FileText, desc: "Detailed analytical explanation" },
-  { id: "matrix_2x2", label: "2x2 Matrix", icon: Layers, desc: "Four-quadrant strategic matrix (SWOT)" },
+  { id: "matrix_2x2", label: "2x2 Matrix", icon: Layers, desc: "Four-quadrant strategic matrix" },
   { id: "conclusion", label: "Summary & Close", icon: CheckCircle2, desc: "Key takeaways and next steps" }
 ];
 
@@ -87,30 +95,41 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
   const [loading, setLoading] = useState(true);
   const [presentation, setPresentation] = useState<PresentationData | null>(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [activeRightTab, setActiveRightTab] = useState<"copilot" | "notes" | "design" | "outline">("copilot");
+  const [activeRightTab, setActiveRightTab] = useState<"copilot" | "layouts" | "notes">("copilot");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExporting, setIsExporting] = useState<"pptx" | "pdf" | null>(null);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportStatusText, setExportStatusText] = useState("");
+  const [exportSlideIndex, setExportSlideIndex] = useState<number | null>(null);
+  const [exportSlidesData, setExportSlidesData] = useState<Slide[]>([]);
+  const exportStageRef = useRef<HTMLDivElement>(null);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const [isSlidePulsing, setIsSlidePulsing] = useState(false);
 
-  // Mobile navigation tabs & modal drawers
-  const [mobileTab, setMobileTab] = useState<"canvas" | "deck" | "copilot" | "notes">("canvas");
-  const [showLayoutMenu, setShowLayoutMenu] = useState(false);
-
-  // AI Co-Pilot State
+  // Conversational AI Agent State
   const [copilotPrompt, setCopilotPrompt] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: "welcome",
+      sender: "agent",
+      text: "👋 Welcome to your AI Presentation Studio! I can rewrite slides, add 3-KPI metrics, switch to comparison/timeline layouts, replace photography, or draft speaker scripts.",
+      timestamp: new Date()
+    }
+  ]);
 
-  // Presenter Mode State
-  const [presenterSeconds, setPresenterSeconds] = useState(0);
-  const [showPresenterNotes, setShowPresenterNotes] = useState(true);
+  // Share Modal State
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedEmbed, setCopiedEmbed] = useState(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  // Visual Studio Modal State
+  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [isGeneratingVisuals, setIsGeneratingVisuals] = useState(false);
+  const [visualCandidates, setVisualCandidates] = useState<any[]>([]);
+  const [customImagePrompt, setCustomImagePrompt] = useState("");
 
-  // Touch Swipe Handling for Mobile
-  const touchStartXRef = useRef<number | null>(null);
-  const touchStartYRef = useRef<number | null>(null);
-
-  // Load presentation from API or generate dynamic rich presentation content
+  // Load presentation data
   useEffect(() => {
     const fetchPresentation = async () => {
       setLoading(true);
@@ -125,7 +144,7 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
           throw new Error("No slide deck data found");
         }
       } catch (err) {
-        console.warn("Backend presentation API not found, creating dynamic presentation for demo.");
+        console.warn("Backend presentation API fallback to starter slides.");
         const niceTitle = slug
           .replace(/-/g, " ")
           .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -134,405 +153,71 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
           {
             id: 1,
             title: niceTitle,
-            subtitle: "Production-Grade AI Architecture, Ingestion Pipelines & Deployment Roadmap",
+            subtitle: "Strategic Architecture, Core Mechanics & Deployment Roadmap",
             layout: "title",
-            author: "Generated with Paperxify AI",
-            speakerNotes: "Welcome everyone. Today we are exploring " + niceTitle + ". We will examine the foundational architecture, ingestion mechanics, key benchmarks, and evolutionary milestones."
+            author: "Paperxify Presentation Studio",
+            speakerNotes: "Welcome everyone. Today we are presenting " + niceTitle + "."
           },
           {
             id: 2,
             title: "Core Mechanics & Architectural Foundation",
             layout: "image_left",
-            image_url: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800",
+            image_url: `https://image.pollinations.ai/prompt/${encodeURIComponent("technology architecture network graphic 16:9 modern")}&width=1280&height=720&nologo=true`,
             bullets: [
-              "Semantic Chunking Heuristics: Context-aware document partitioning preserves parent-child relational continuity.",
-              "Vector Space Optimization: Hierarchical HNSW indexing accelerates sub-millisecond similarity lookups.",
-              "Dynamic Routing: Socratic query classification prevents token exhaustion and context pollution."
+              "Semantic Layering: Context-aware document partitioning preserves schema continuity.",
+              "Vector Caching: HNSW indexing accelerates sub-millisecond retrieval by 3.8x.",
+              "Real-time Feedback: Telemetry triggers automated healing cycles."
             ],
-            speakerNotes: "Let us examine the foundational mechanics: semantic chunking, vector indexing, and dynamic query routing."
+            speakerNotes: "This slide outlines the primary architecture pillars."
           },
           {
             id: 3,
-            title: "Key Performance Benchmarks",
+            title: "Quantitative Impact & KPI Benchmarks",
             layout: "metric_callout",
             metrics: [
-              { value: "99.8%", label: "Retrieval Precision Index" },
-              { value: "3.8x", label: "Learning Speed Multiplier" },
-              { value: "< 15ms", label: "P99 Inference Latency" }
+              { value: "99.8%", label: "Accuracy Target" },
+              { value: "4.2x", label: "Throughput Multiplier" },
+              { value: "< 18ms", label: "Latency Benchmark" }
             ],
-            speakerNotes: "These metrics summarize our key benchmarks across 1.2M automated queries under peak high-load concurrency."
-          },
-          {
-            id: 4,
-            title: "Architecture Comparison: Legacy vs AI-Native",
-            layout: "comparison",
-            columns: {
-              left: [
-                "Legacy Relational Monoliths:",
-                "Rigid relational schemas with severe bottleneck overhead (>450ms)",
-                "Manual synchronization scripts prone to data drift",
-                "High operational complexity and linear infrastructure cost"
-              ],
-              right: [
-                "AI-Native Vector Graphs:",
-                "Dynamic semantic embeddings with sub-millisecond retrieval (<15ms)",
-                "Self-healing knowledge graphs with automated re-indexing",
-                "Infinite horizontal scaling on serverless edge clusters"
-              ]
-            },
-            speakerNotes: "Notice the stark difference in response latency and schema flexibility when transitioning from legacy databases to vector graphs."
-          },
-          {
-            id: 5,
-            title: "Evolutionary Deployment Roadmap",
-            layout: "timeline",
-            events: [
-              { year: "Phase 1", description: "Multimodal Document OCR Extraction & Vector Partitioning" },
-              { year: "Phase 2", description: "Hierarchical Indexing & Socratic Retrieval Clustering" },
-              { year: "Phase 3", description: "Active Recall Flashcards & Real-Time Stream Engine" },
-              { year: "Phase 4", description: "Global Multi-Tenant Auto-Scaling Mesh Deployment" }
-            ],
-            speakerNotes: "Our deployment roadmap spans 4 distinct phases, from ingestion to global auto-scaling."
-          },
-          {
-            id: 6,
-            title: "System Capabilities & High-Yield Features",
-            layout: "image_right",
-            image_url: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800",
-            bullets: [
-              "Sub-Millisecond Cache Invalidation: Edge workers keep document state synchronized in real-time.",
-              "Active Recall Knowledge Testing: Automated Spaced Repetition reinforces 3.8x better concept retention.",
-              "Universal Multi-Format Export: Direct native generation of vector PDFs and PowerPoint presentations."
-            ],
-            speakerNotes: "These high-yield capabilities ensure maximum learner engagement and seamless knowledge handoffs."
-          },
-          {
-            id: 7,
-            title: "Strategic Impact vs Complexity Matrix",
-            layout: "matrix_2x2",
-            quadrants: [
-              "Quick Wins: Prompt Caching & Edge Vector Lookups",
-              "Major Projects: Custom Fine-Tuning & Quantized Model Deployments",
-              "Fill-Ins: UI Micro-Animations & Theme Personalization",
-              "Hard Slogs: Manual OCR Clean-up & Data Normalization"
-            ],
-            speakerNotes: "This 2x2 prioritization matrix helps teams distinguish quick architectural wins from heavy long-term investments."
-          },
-          {
-            id: 8,
-            title: "Executive Summary & Next Actions",
-            layout: "conclusion",
-            bullets: [
-              "Deploy semantic grounding to eliminate LLM hallucinations across production queries.",
-              "Leverage active recall flashcards to guarantee concept mastery and lifelong retention.",
-              "Export native PPTX presentations for immediate stakeholder alignment and board briefings."
-            ],
-            speakerNotes: "In conclusion, modern AI presentation engineering transforms dense data into engaging, memorable visual stories."
+            speakerNotes: "Key metrics demonstrating performance gains."
           }
         ];
 
         setPresentation({
+          _id: "demo-id",
+          slug,
           title: niceTitle,
-          slides: mockSlides,
-          theme: "sunset-orange"
+          theme: "sunset-orange",
+          slides: mockSlides
         });
       } finally {
         setLoading(false);
       }
     };
-
     fetchPresentation();
   }, [slug]);
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!presentation) return;
-      if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA" || (document.activeElement as HTMLElement)?.isContentEditable) {
+      if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") {
         return;
       }
-
-      if (e.key === "ArrowRight" || e.key === "Space") {
+      if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
         e.preventDefault();
-        setActiveSlideIndex((prev) => Math.min(presentation.slides.length - 1, prev + 1));
-      } else if (e.key === "ArrowLeft") {
+        setActiveSlideIndex((prev) => Math.min((presentation?.slides.length || 1) - 1, prev + 1));
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
         e.preventDefault();
         setActiveSlideIndex((prev) => Math.max(0, prev - 1));
-      } else if (e.key.toLowerCase() === "f") {
-        e.preventDefault();
-        triggerFullscreen();
-      } else if (e.key === "Escape" && isFullscreen) {
+      } else if (e.key === "f" || e.key === "F") {
+        setIsFullscreen((prev) => !prev);
+      } else if (e.key === "Escape") {
         setIsFullscreen(false);
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [presentation, isFullscreen]);
-
-  // Presenter Timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isFullscreen) {
-      interval = setInterval(() => {
-        setPresenterSeconds((s) => s + 1);
-      }, 1000);
-    } else {
-      setPresenterSeconds(0);
-    }
-    return () => clearInterval(interval);
-  }, [isFullscreen]);
-
-  // Sync fullscreen state change
-  useEffect(() => {
-    const onFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
-  }, []);
-
-  const triggerFullscreen = () => {
-    if (!containerRef.current) return;
-    if (!isFullscreen) {
-      containerRef.current.requestFullscreen().then(() => {
-        setIsFullscreen(true);
-      }).catch(() => {
-        toast.error("Failed to enter fullscreen mode.");
-      });
-    } else {
-      document.exitFullscreen().then(() => {
-        setIsFullscreen(false);
-      }).catch(() => {});
-    }
-  };
-
-  const handleExport = async (format: "pptx" | "pdf") => {
-    setIsExporting(format);
-    try {
-      const token = localStorage.getItem("authToken");
-      const res = await api.get(`/presentation/${slug}/export/${format}`, {
-        headers: { 'Auth': token },
-        responseType: 'blob'
-      });
-      
-      const blob = new Blob([res.data], { 
-        type: format === 'pdf' 
-          ? 'application/pdf' 
-          : 'application/vnd.openxmlformats-officedocument.presentationml.presentation' 
-      });
-      
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${slug}.${format}`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success(`Presentation exported as ${format.toUpperCase()}!`);
-    } catch (err) {
-      console.error(err);
-      toast.error(`Failed to export presentation as ${format.toUpperCase()}`);
-    } finally {
-      setIsExporting(null);
-    }
-  };
-
-  // Update Slide Content Inline
-  const updateCurrentSlide = (updater: (slide: Slide) => Partial<Slide>) => {
-    if (!presentation) return;
-    setPresentation((prev) => {
-      if (!prev) return null;
-      const updated = [...prev.slides];
-      const target = updated[activeSlideIndex];
-      updated[activeSlideIndex] = { ...target, ...updater(target) };
-      return { ...prev, slides: updated };
-    });
-  };
-
-  // Slide Operations: Add, Duplicate, Delete, Move
-  const handleAddSlide = () => {
-    if (!presentation) return;
-    const newSlide: Slide = {
-      id: Date.now(),
-      title: "New Strategic Concept",
-      subtitle: "Add detailed takeaways and key premise",
-      layout: "image_left",
-      image_url: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800",
-      bullets: [
-        "First foundational mechanism or takeaway.",
-        "Second practical implementation consideration.",
-        "Third measurable result or next milestone."
-      ],
-      speakerNotes: "Introduce this slide by highlighting the main objective..."
-    };
-
-    const updated = [...presentation.slides];
-    updated.splice(activeSlideIndex + 1, 0, newSlide);
-    setPresentation({ ...presentation, slides: updated });
-    setActiveSlideIndex(activeSlideIndex + 1);
-    toast.success("New slide added");
-  };
-
-  const handleDuplicateSlide = () => {
-    if (!presentation) return;
-    const current = presentation.slides[activeSlideIndex];
-    const duplicated: Slide = {
-      ...JSON.parse(JSON.stringify(current)),
-      id: Date.now(),
-      title: `${current.title} (Copy)`
-    };
-    const updated = [...presentation.slides];
-    updated.splice(activeSlideIndex + 1, 0, duplicated);
-    setPresentation({ ...presentation, slides: updated });
-    setActiveSlideIndex(activeSlideIndex + 1);
-    toast.success("Slide duplicated");
-  };
-
-  const handleDeleteSlide = () => {
-    if (!presentation) return;
-    if (presentation.slides.length <= 1) {
-      toast.error("Presentation must have at least 1 slide");
-      return;
-    }
-    const updated = presentation.slides.filter((_, i) => i !== activeSlideIndex);
-    setPresentation({ ...presentation, slides: updated });
-    setActiveSlideIndex(Math.max(0, activeSlideIndex - 1));
-    toast.success("Slide deleted");
-  };
-
-  const handleMoveSlide = (direction: "up" | "down") => {
-    if (!presentation) return;
-    const targetIdx = direction === "up" ? activeSlideIndex - 1 : activeSlideIndex + 1;
-    if (targetIdx < 0 || targetIdx >= presentation.slides.length) return;
-
-    const updated = [...presentation.slides];
-    const temp = updated[activeSlideIndex];
-    updated[activeSlideIndex] = updated[targetIdx];
-    updated[targetIdx] = temp;
-
-    setPresentation({ ...presentation, slides: updated });
-    setActiveSlideIndex(targetIdx);
-  };
-
-  const switchSlideLayout = (layout: Slide["layout"]) => {
-    if (!presentation) return;
-    const current = presentation.slides[activeSlideIndex];
-    const updated: Partial<Slide> = { layout };
-
-    if ((layout === "image_left" || layout === "image_right") && !current.image_url) {
-      updated.image_url = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800";
-      if (!current.bullets || current.bullets.length === 0) {
-        updated.bullets = [
-          "Key Takeaway 1: Deep architectural principle and execution.",
-          "Key Takeaway 2: Sub-millisecond performance telemetry.",
-          "Key Takeaway 3: Scalable resilient knowledge graph."
-        ];
-      }
-    } else if (layout === "metric_callout" && (!current.metrics || current.metrics.length === 0)) {
-      updated.metrics = [
-        { value: "98.5%", label: "Precision Rate" },
-        { value: "3.2x", label: "Speed Multiplier" },
-        { value: "< 20ms", label: "Latency" }
-      ];
-    } else if (layout === "timeline" && (!current.events || current.events.length === 0)) {
-      updated.events = [
-        { year: "Phase 1", description: "Architecture Ingestion & Research" },
-        { year: "Phase 2", description: "Model Training & Evaluation" },
-        { year: "Phase 3", description: "Production Deployment & Scaling" }
-      ];
-    } else if (layout === "matrix_2x2" && (!current.quadrants || current.quadrants.length === 0)) {
-      updated.quadrants = [
-        "Strengths: High throughput vector indexing",
-        "Weaknesses: High initial memory footprint",
-        "Opportunities: Multi-modal document embeddings",
-        "Threats: Third-party API rate limits"
-      ];
-    }
-
-    updateCurrentSlide(() => updated);
-    setShowLayoutMenu(false);
-    toast.success(`Switched to ${layout.replace("_", " ")} layout`);
-  };
-
-  // 1-Click AI Co-Pilot Enhancements
-  const handleEnhanceSlide = async (action: string, customPromptText?: string) => {
-    if (!presentation) return;
-    setIsEnhancing(true);
-    const toastId = toast.loading("🪄 Gamma AI refining slide layout & copy...");
-
-    try {
-      const token = localStorage.getItem("authToken");
-      const current = presentation.slides[activeSlideIndex];
-      const res = await api.post(`/presentation/${slug}/enhance-slide`, {
-        slide: current,
-        action,
-        customPrompt: customPromptText
-      }, {
-        headers: { 'Auth': token }
-      });
-
-      if (res.data?.success && res.data?.slide) {
-        updateCurrentSlide(() => res.data.slide);
-        toast.success("Slide enhanced with AI!", { id: toastId });
-        setCopilotPrompt("");
-      } else {
-        throw new Error("AI refinement response empty");
-      }
-    } catch (e) {
-      if (action === "concise") {
-        updateCurrentSlide((s) => ({
-          bullets: (s.bullets || []).map((b) => b.split(" ").slice(0, 10).join(" ") + ".")
-        }));
-        toast.success("Slide tightened for clarity!", { id: toastId });
-      } else if (action === "metrics") {
-        updateCurrentSlide(() => ({
-          layout: "metric_callout",
-          metrics: [
-            { value: "99.4%", label: "Accuracy Index" },
-            { value: "4.5x", label: "Efficiency Boost" },
-            { value: "0.2s", label: "Sync Latency" }
-          ]
-        }));
-        toast.success("Added quantitative metrics!", { id: toastId });
-      } else {
-        toast.error("AI enhancement request failed. Please try again.", { id: toastId });
-      }
-    } finally {
-      setIsEnhancing(false);
-    }
-  };
-
-  // Change Theme
-  const changeTheme = (themeId: string) => {
-    if (!presentation) return;
-    setPresentation({ ...presentation, theme: themeId });
-    toast.success(`Applied ${PPT_THEMES_MAP[themeId]?.name || themeId} theme`);
-  };
-
-  // Touch Swipe Handlers for Mobile Slide Navigation
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0].clientX;
-    touchStartYRef.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartXRef.current === null || touchStartYRef.current === null || !presentation) return;
-    const diffX = touchStartXRef.current - e.changedTouches[0].clientX;
-    const diffY = touchStartYRef.current - e.changedTouches[0].clientY;
-
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
-      if (diffX > 0) {
-        setActiveSlideIndex((prev) => Math.min(presentation.slides.length - 1, prev + 1));
-      } else {
-        setActiveSlideIndex((prev) => Math.max(0, prev - 1));
-      }
-    }
-    touchStartXRef.current = null;
-    touchStartYRef.current = null;
-  };
+  }, [presentation]);
 
   // Debounced auto-save effect
   useEffect(() => {
@@ -555,22 +240,354 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
     return () => clearTimeout(delayDebounce);
   }, [presentation]);
 
+  // Helper to update current active slide
+  const updateCurrentSlide = useCallback((updater: (current: Slide) => Partial<Slide>) => {
+    setPresentation((prev) => {
+      if (!prev) return prev;
+      const updatedSlides = [...prev.slides];
+      const target = updatedSlides[activeSlideIndex];
+      if (!target) return prev;
+      updatedSlides[activeSlideIndex] = { ...target, ...updater(target) };
+      return { ...prev, slides: updatedSlides };
+    });
+  }, [activeSlideIndex]);
+
+  // Slide Deck operations
+  const handleAddSlide = () => {
+    if (!presentation) return;
+    const newSlide: Slide = {
+      id: Date.now(),
+      title: "New Strategic Slide",
+      subtitle: "Click to edit key description and takeaways",
+      layout: "image_left",
+      image_url: `https://image.pollinations.ai/prompt/${encodeURIComponent("clean corporate presentation graphic 16:9 modern")}&width=1280&height=720&nologo=true&seed=${Date.now() % 9999}`,
+      bullets: [
+        "First foundational premise and actionable insight.",
+        "Second quantitative benchmark or key implementation step."
+      ],
+      speakerNotes: "Speaker notes for this new slide."
+    };
+    const updated = [...presentation.slides];
+    updated.splice(activeSlideIndex + 1, 0, newSlide);
+    setPresentation({ ...presentation, slides: updated });
+    setActiveSlideIndex(activeSlideIndex + 1);
+    toast.success("New slide added!");
+  };
+
+  const handleDeleteSlide = (idx: number) => {
+    if (!presentation || presentation.slides.length <= 1) {
+      toast.error("Presentation must have at least 1 slide.");
+      return;
+    }
+    const updated = presentation.slides.filter((_, i) => i !== idx);
+    setPresentation({ ...presentation, slides: updated });
+    setActiveSlideIndex((prev) => Math.min(updated.length - 1, prev));
+    toast.success("Slide deleted.");
+  };
+
+  const handleMoveSlide = (idx: number, direction: "up" | "down") => {
+    if (!presentation) return;
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= presentation.slides.length) return;
+    const updated = [...presentation.slides];
+    const temp = updated[idx];
+    updated[idx] = updated[targetIdx];
+    updated[targetIdx] = temp;
+    setPresentation({ ...presentation, slides: updated });
+    setActiveSlideIndex(targetIdx);
+  };
+
+  // Image candidates helpers
+  const handleOpenImagePicker = async () => {
+    const active = presentation?.slides?.[activeSlideIndex];
+    if (!active) return;
+    setIsImagePickerOpen(true);
+    if (active.imageCandidates && active.imageCandidates.length > 0) {
+      setVisualCandidates(active.imageCandidates);
+    } else {
+      handleRefreshVisualCandidates();
+    }
+  };
+
+  const handleRefreshVisualCandidates = async () => {
+    const active = presentation?.slides?.[activeSlideIndex];
+    if (!active) return;
+    setIsGeneratingVisuals(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await api.post("/presentation/image-candidates", {
+        slideTitle: active.title,
+        slideDesc: active.subtitle || active.content || "",
+        layout: active.layout || "image_left",
+        topic: presentation?.title || "",
+        slideIndex: activeSlideIndex
+      }, { headers: { 'Auth': token } });
+
+      if (res.data?.success && res.data?.candidates) {
+        setVisualCandidates(res.data.candidates);
+        updateCurrentSlide(() => ({ imageCandidates: res.data.candidates }));
+        toast.success("Generated 4 AI visual choices!");
+      }
+    } catch (e) {
+      toast.error("Could not generate visual candidates");
+    } finally {
+      setIsGeneratingVisuals(false);
+    }
+  };
+
+  const handleSelectVisualCandidate = (cand: any) => {
+    updateCurrentSlide(() => ({
+      image_url: cand.url,
+      alt_text: cand.title
+    }));
+    setIsImagePickerOpen(false);
+    toast.success(`Applied ${cand.style || "selected"} visual!`);
+  };
+
+  const handleGenerateCustomImage = () => {
+    if (!customImagePrompt.trim()) return;
+    const cleanPrompt = customImagePrompt.trim();
+    const seed = Date.now() % 99999;
+    const aiUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt + ", 16:9 widescreen, professional presentation photography, 8k uhd")}&width=1280&height=720&nologo=true&seed=${seed}`;
+    
+    updateCurrentSlide(() => ({
+      image_url: aiUrl,
+      alt_text: cleanPrompt
+    }));
+    setIsImagePickerOpen(false);
+    setCustomImagePrompt("");
+    toast.success("Generated & applied custom visual!");
+  };
+
+  // Auto-scroll chat on message updates
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, isEnhancing]);
+
+  // AI Co-Pilot Agent Action (Gamma Grade)
+  const handleSendCopilotPrompt = async (presetPrompt?: string) => {
+    const query = presetPrompt || copilotPrompt;
+    if (!query.trim() || !presentation) return;
+
+    const currentSlide = presentation.slides[activeSlideIndex];
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: "user",
+      text: query,
+      timestamp: new Date()
+    };
+    setChatMessages((prev) => [...prev, userMsg]);
+    if (!presetPrompt) setCopilotPrompt("");
+    setIsEnhancing(true);
+
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await api.post("/presentation/agent-action", {
+        action: "chat_agent",
+        slide: currentSlide,
+        slides: presentation.slides,
+        activeSlideIndex: activeSlideIndex,
+        instruction: query,
+        presentationTitle: presentation.title,
+        theme: presentation.theme
+      }, { headers: { 'Auth': token } });
+
+      if (res.data?.success) {
+        const tool = res.data.tool;
+        const msg = res.data.message || "Updated slide based on your instruction.";
+
+        if ((tool === "regenerate_slide" || tool === "search_facts") && res.data.slide) {
+          updateCurrentSlide(() => res.data.slide);
+          setIsSlidePulsing(true);
+          setTimeout(() => setIsSlidePulsing(false), 1800);
+        } else if (tool === "create_slide" && res.data.slide) {
+          const updated = [...presentation.slides];
+          updated.splice(activeSlideIndex + 1, 0, res.data.slide);
+          setPresentation({ ...presentation, slides: updated });
+          setActiveSlideIndex(activeSlideIndex + 1);
+          setIsSlidePulsing(true);
+          setTimeout(() => setIsSlidePulsing(false), 1800);
+        } else if (tool === "change_theme" && res.data.themeId) {
+          setPresentation({ ...presentation, theme: res.data.themeId });
+        } else if (tool === "replace_image" && res.data.imageUrl) {
+          updateCurrentSlide(() => ({ image_url: res.data.imageUrl }));
+          setIsSlidePulsing(true);
+          setTimeout(() => setIsSlidePulsing(false), 1800);
+        }
+
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            sender: "agent",
+            text: msg,
+            toolAction: tool,
+            timestamp: new Date()
+          }
+        ]);
+        toast.success("AI Copilot updated slide!");
+      }
+    } catch (err: any) {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          sender: "agent",
+          text: "I encountered an issue processing that instruction. Please try again.",
+          timestamp: new Date()
+        }
+      ]);
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  // 1:1 Pixel-Perfect HD Canvas Slide Exporter (PDF & PowerPoint) with Linear Progress HUD
+  const handleExport = async (format: "pptx" | "pdf") => {
+    if (!presentation) return;
+    setIsExporting(format);
+    setExportProgress(5);
+    setExportStatusText("Inlining high-resolution photography & diagrams...");
+    try {
+      // Step 1: Pre-convert all images to Base64 (using direct fetch + server proxy fallback)
+      const inlinedSlides: Slide[] = await Promise.all(
+        presentation.slides.map(async (s, i) => {
+          if (s.image_url) {
+            const b64 = await fetchImageAsBase64(s.image_url);
+            setExportProgress(Math.round(5 + ((i + 1) / presentation.slides.length) * 20));
+            return { ...s, image_url: b64 || s.image_url };
+          }
+          return s;
+        })
+      );
+
+      setExportSlidesData(inlinedSlides);
+      setExportProgress(25);
+      setExportStatusText("Initializing widescreen graphics pipeline...");
+
+      let pptxInstance: any = null;
+      let pdfInstance: any = null;
+
+      if (format === "pptx") {
+        const pptxgenModule = await import("pptxgenjs");
+        const PptxClass = pptxgenModule.default || pptxgenModule;
+        pptxInstance = new (PptxClass as any)();
+        pptxInstance.layout = "LAYOUT_16x9";
+        pptxInstance.title = presentation.title || "Presentation";
+      } else {
+        const jsPDFModule = await import("jspdf");
+        const jsPDFClass = jsPDFModule.default || (jsPDFModule as any).jsPDF || jsPDFModule;
+        pdfInstance = new (jsPDFClass as any)({
+          orientation: "landscape",
+          unit: "mm",
+          format: [297, 167.0625]
+        });
+      }
+
+      const totalSlides = inlinedSlides.length;
+      for (let i = 0; i < totalSlides; i++) {
+        setExportSlideIndex(i);
+        const currentPct = Math.round(25 + ((i + 1) / totalSlides) * 65);
+        setExportProgress(currentPct);
+        setExportStatusText(`Rendering slide ${i + 1} of ${totalSlides} at 2x Retina HD...`);
+        
+        // Wait for React DOM to mount
+        await new Promise((r) => setTimeout(r, 120));
+
+        if (exportStageRef.current) {
+          // Preload and decode all images in the stage before taking snapshot
+          const imgs = Array.from(exportStageRef.current.querySelectorAll("img"));
+          await Promise.all(
+            imgs.map(async (img) => {
+              if (!img.complete) {
+                await new Promise((resolve) => {
+                  img.onload = resolve;
+                  img.onerror = resolve;
+                  setTimeout(resolve, 800);
+                });
+              }
+              if (img.decode) {
+                try { await img.decode(); } catch {}
+              }
+            })
+          );
+
+          // Allow DOM repaint
+          await new Promise((r) => setTimeout(r, 80));
+
+          const canvas = await html2canvas(exportStageRef.current, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: activeTheme.colors.bg || "#060608",
+            logging: false
+          });
+
+          const imgData = canvas.toDataURL("image/jpeg", 0.95);
+
+          if (format === "pptx") {
+            const slideObj = pptxInstance.addSlide();
+            slideObj.addImage({
+              data: imgData,
+              x: 0,
+              y: 0,
+              w: 10,
+              h: 5.625
+            });
+            if (inlinedSlides[i].speakerNotes) {
+              slideObj.addNotes(inlinedSlides[i].speakerNotes);
+            }
+          } else {
+            if (i > 0) pdfInstance.addPage([297, 167.0625], "landscape");
+            pdfInstance.addImage(imgData, "JPEG", 0, 0, 297, 167.0625);
+          }
+        }
+      }
+
+      setExportProgress(95);
+      setExportStatusText(`Finalizing & packaging ${format.toUpperCase()} deck...`);
+      await new Promise((r) => setTimeout(r, 200));
+
+      setExportSlideIndex(null);
+      const cleanTitle = (presentation.title || "presentation").replace(/[^\w\s.-]/gi, "_").substring(0, 50);
+
+      if (format === "pptx") {
+        await pptxInstance.writeFile({ fileName: `${cleanTitle}.pptx` });
+      } else {
+        pdfInstance.save(`${cleanTitle}.pdf`);
+      }
+
+      setExportProgress(100);
+      setExportStatusText("Export complete! Starting download...");
+      toast.success(`1:1 Pixel-Perfect ${format.toUpperCase()} downloaded successfully!`);
+      await new Promise((r) => setTimeout(r, 400));
+    } catch (err: any) {
+      console.error("Client export error:", err);
+      toast.error(`Export failed: ${err.message || "Please try again"}`);
+    } finally {
+      setIsExporting(null);
+      setExportSlideIndex(null);
+      setExportProgress(0);
+      setExportStatusText("");
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#070709] flex flex-col items-center justify-center text-white px-4 text-center">
-        <Loader2 className="animate-spin text-orange-500 mb-4" size={40} />
-        <p className="font-mono text-xs text-neutral-400 animate-pulse">Launching Gamma-grade presentation workspace...</p>
+      <div className="min-h-screen bg-[#060608] flex flex-col items-center justify-center text-white px-4 text-center">
+        <Loader2 className="animate-spin text-orange-500 mb-4" size={36} />
+        <p className="font-mono text-xs text-neutral-400">Loading Presentation Studio...</p>
       </div>
     );
   }
 
   if (!presentation) {
     return (
-      <div className="min-h-screen bg-[#070709] flex flex-col items-center justify-center text-white px-4 text-center">
+      <div className="min-h-screen bg-[#060608] flex flex-col items-center justify-center text-white px-4 text-center">
         <ShieldAlert className="text-orange-500 mb-4" size={48} />
         <h2 className="text-xl font-bold mb-4">Presentation Not Found</h2>
         <Link href="/presentation-generator" className="px-5 py-2.5 bg-orange-500 text-black font-bold text-xs uppercase tracking-widest rounded-xl">
-          Return to Dashboard
+          Return to Presentations
         </Link>
       </div>
     );
@@ -578,16 +595,16 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
 
   const slides = presentation.slides;
   const currentSlide = slides[activeSlideIndex] || slides[0];
-
   const activeThemeId = presentation.theme || "sunset-orange";
   const activeTheme = PPT_THEMES_MAP[activeThemeId] || PPT_THEMES_MAP["sunset-orange"];
+  const publicShareUrl = typeof window !== 'undefined' ? `${window.location.origin}/presentation-generator/${slug}` : `https://paperxify.com/presentation-generator/${slug}`;
 
   return (
-    <div className="h-screen bg-[#060608] text-white flex flex-col font-sans select-none relative overflow-hidden pt-14 sm:pt-16">
+    <div className="h-screen bg-[#060608] text-white flex flex-col font-sans select-none relative overflow-hidden pt-14">
       
-      {/* ─── HEADER CONTROL BAR ─── */}
-      <header className="fixed top-0 inset-x-0 h-14 sm:h-16 bg-[#0a0a0d]/95 backdrop-blur-xl border-b border-white/[0.08] flex items-center justify-between px-3 sm:px-6 z-40 shadow-md">
-        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 mr-2">
+      {/* ─── 1. TOP EXECUTIVE HEADER BAR ─── */}
+      <header className="fixed top-0 inset-x-0 h-14 bg-[#0a0a0d]/95 backdrop-blur-xl border-b border-white/[0.08] flex items-center justify-between px-4 z-40 shadow-md">
+        <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
           <Link 
             href="/presentation-generator" 
             className="p-2 bg-neutral-900 border border-white/[0.08] hover:border-orange-500/40 rounded-xl text-neutral-400 hover:text-white transition-all cursor-pointer shrink-0"
@@ -596,858 +613,762 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
             <ArrowLeft size={15} />
           </Link>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                value={presentation.title}
-                onChange={(e) => setPresentation({ ...presentation, title: e.target.value })}
-                className="font-bold text-xs sm:text-sm tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.04] px-1 py-0.5 rounded-lg transition-colors w-full max-w-[180px] sm:max-w-md truncate"
-                placeholder="Presentation Title"
-              />
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-neutral-500 truncate">
-              <span className="text-orange-400 flex items-center gap-1">
-                <Presentation size={10} /> Gamma Studio
-              </span>
-              <span>•</span>
-              <span>{slides.length} Slides</span>
-            </div>
+            <input
+              type="text"
+              value={presentation.title}
+              onChange={(e) => setPresentation({ ...presentation, title: e.target.value })}
+              className="font-bold text-sm tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.04] px-1 py-0.5 rounded-lg transition-colors w-full max-w-md truncate"
+              placeholder="Presentation Title"
+            />
           </div>
         </div>
-        
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* Present Slideshow Button */}
-          <button 
-            onClick={triggerFullscreen}
-            className="flex items-center gap-1.5 h-8 sm:h-10 px-2.5 sm:px-4 rounded-xl text-[10px] sm:text-[10.5px] font-bold uppercase tracking-widest text-black bg-gradient-to-r from-orange-500 to-amber-500 hover:shadow-[0_0_25px_rgba(249,115,22,0.4)] transition-all active:scale-95 shrink-0 cursor-pointer shadow-md"
-            title="Start Slideshow (F)"
-          >
-            <Play size={11} fill="currentColor" />
-            <span>Present</span>
-            <span className="hidden md:inline font-mono opacity-80">(F)</span>
-          </button>
 
+        {/* Right Header Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          
           {/* Theme Selector Dropdown */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-1.5 h-8 sm:h-10 px-2 sm:px-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] text-[10px] font-bold uppercase tracking-wider text-neutral-300 hover:text-white transition-all outline-none shrink-0 cursor-pointer">
-              <Palette size={13} style={{ color: activeTheme.colors.primary }} />
-              <span className="hidden md:inline">{activeTheme.name}</span>
+            <DropdownMenuTrigger className="px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-white/[0.08] text-xs font-bold text-neutral-300 hover:text-white flex items-center gap-2 cursor-pointer transition-all outline-none">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: activeTheme.colors.primary }} />
+              <span className="hidden sm:inline">{activeTheme.name}</span>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-[#0e0e12] border border-white/[0.12] text-white p-2 rounded-2xl shadow-2xl z-50 w-60 max-h-80 overflow-y-auto custom-scrollbar">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 px-2 py-1">Select Theme Palette</p>
-              <div className="space-y-1">
-                {Object.values(PPT_THEMES_MAP).map((t: any) => {
-                  const isSelected = t.id === activeThemeId;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => changeTheme(t.id)}
-                      className={cn(
-                        "w-full flex items-center justify-between p-2 rounded-xl text-left text-xs font-bold transition-colors cursor-pointer",
-                        isSelected ? "bg-white/[0.10] text-white border border-white/10" : "hover:bg-white/[0.04] text-neutral-400 hover:text-white"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full shrink-0 border border-white/20" style={{ backgroundColor: t.colors.primary }} />
-                        <span>{t.name}</span>
-                      </div>
-                      {isSelected && <Check size={12} className="text-orange-400" />}
-                    </button>
-                  );
-                })}
-              </div>
+            <DropdownMenuContent className="bg-[#111115] border-white/10 text-white rounded-2xl p-2 w-56 max-h-72 overflow-y-auto custom-scrollbar">
+              {Object.values(PPT_THEMES_MAP).map((th) => (
+                <DropdownMenuItem
+                  key={th.id}
+                  onClick={() => setPresentation({ ...presentation, theme: th.id })}
+                  className="flex items-center justify-between p-2 rounded-xl hover:bg-white/[0.08] cursor-pointer text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: th.colors.primary }} />
+                    <span className="font-semibold">{th.name}</span>
+                  </div>
+                  {activeThemeId === th.id && <Check size={12} className="text-orange-400" />}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Export Dropdown */}
+          {/* Fullscreen Present */}
+          <button
+            onClick={() => setIsFullscreen(true)}
+            className="px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-white/[0.08] text-xs font-bold text-neutral-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Present Fullscreen (F)"
+          >
+            <Play size={13} fill="currentColor" />
+            <span className="hidden sm:inline">Present</span>
+          </button>
+
+          {/* Share Modal Trigger */}
+          <button
+            onClick={() => setIsShareModalOpen(true)}
+            className="px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-white/[0.08] text-xs font-bold text-neutral-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Share2 size={13} />
+            <span className="hidden sm:inline">Share</span>
+          </button>
+
+          {/* Direct One-Click PPTX Export Button */}
+          <button
+            onClick={() => handleExport("pptx")}
+            disabled={isExporting !== null}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-black font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-lg hover:shadow-orange-500/20 active:scale-95 cursor-pointer disabled:opacity-50"
+            title="Download PowerPoint Presentation (.pptx)"
+          >
+            {isExporting === "pptx" ? <Loader2 size={13} className="animate-spin" /> : <Presentation size={13} />}
+            <span>Export PPTX</span>
+          </button>
+
+          {/* Export Dropdown for PDF & other options */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-1.5 h-8 sm:h-10 px-2.5 sm:px-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] text-[10px] font-bold uppercase tracking-wider text-neutral-300 hover:text-white transition-all outline-none shrink-0 cursor-pointer">
-              {isExporting ? <Loader2 size={13} className="animate-spin text-orange-500" /> : <Download size={13} />}
-              <span className="hidden sm:inline">Export</span>
+            <DropdownMenuTrigger 
+              disabled={isExporting !== null}
+              className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-white/[0.08] text-neutral-300 hover:text-white flex items-center justify-center transition-all cursor-pointer outline-none"
+              title="More export options (PDF)"
+            >
+              <Download size={14} />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-[#0e0e12] border border-white/[0.12] text-white p-1.5 rounded-2xl shadow-2xl z-50 w-52">
+            <DropdownMenuContent className="bg-[#111115] border-white/10 text-white rounded-2xl p-1.5 w-48 shadow-2xl">
               <DropdownMenuItem 
                 onClick={() => handleExport("pptx")}
-                className="flex items-center gap-2.5 text-xs font-bold rounded-xl cursor-pointer px-3 py-2.5 hover:bg-white/5 focus:bg-white/5 text-neutral-200 hover:text-white"
+                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/[0.08] cursor-pointer text-xs font-bold"
               >
-                <Presentation size={14} className="text-orange-500" /> PowerPoint (.pptx)
+                <Presentation size={14} className="text-orange-400" />
+                <span>PowerPoint (.pptx)</span>
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => handleExport("pdf")}
-                className="flex items-center gap-2.5 text-xs font-bold rounded-xl cursor-pointer px-3 py-2.5 hover:bg-white/5 focus:bg-white/5 text-neutral-200 hover:text-white"
+                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/[0.08] cursor-pointer text-xs font-bold"
               >
-                <FileText size={14} className="text-red-500" /> PDF Document (.pdf)
+                <FileText size={14} className="text-red-400" />
+                <span>Adobe PDF (.pdf)</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
 
-      {/* ─── CORE WORKSPACE BODY ─── */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] pb-16 md:pb-0">
+      {/* ─── 2. MAIN 3-PANEL WORKSPACE ─── */}
+      <div className="flex-1 flex overflow-hidden">
         
-        {/* ─── LEFT PANEL: DESKTOP SLIDE THUMBNAIL MANAGER ─── */}
-        <aside className="w-56 shrink-0 bg-[#08080a] border-r border-white/[0.06] p-3.5 overflow-y-auto hidden md:flex flex-col gap-2.5 custom-scrollbar h-full">
-          <div className="flex items-center justify-between px-1 mb-1">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">Slides Deck</span>
+        {/* LEFT PANEL: SLIDE DECK NAVIGATOR RAIL */}
+        <aside className="w-56 bg-[#08080a] border-r border-white/[0.06] flex flex-col z-20 shrink-0">
+          <div className="p-3 border-b border-white/[0.06] flex justify-between items-center">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Slide Deck ({slides.length})</span>
             <button
               onClick={handleAddSlide}
-              className="p-1 rounded-lg bg-white/[0.04] hover:bg-orange-500/20 text-neutral-400 hover:text-orange-400 transition-colors cursor-pointer"
+              className="p-1 rounded-lg bg-white/[0.05] hover:bg-orange-500 hover:text-black text-neutral-300 transition-all cursor-pointer"
               title="Add New Slide"
             >
               <Plus size={13} />
             </button>
           </div>
 
-          {slides.map((slide, idx) => {
-            const isActive = activeSlideIndex === idx;
-            return (
-              <div
-                key={slide.id}
-                onClick={() => setActiveSlideIndex(idx)}
-                className={cn(
-                  "cursor-pointer flex flex-col gap-1.5 p-2.5 rounded-2xl border transition-all text-left group relative",
-                  isActive 
-                    ? "bg-orange-500/10 border-orange-500/40 shadow-sm" 
-                    : "bg-white/[0.01] border-white/[0.05] hover:border-white/15 hover:bg-white/[0.02]"
-                )}
-              >
-                <div className="flex justify-between items-center text-[9px] font-mono text-neutral-500">
-                  <span className="font-bold">Slide {idx + 1}</span>
-                  <span className="text-[8px] uppercase tracking-wider px-1.5 rounded bg-white/[0.04] text-neutral-400">
-                    {slide.layout.replace("_", " ")}
-                  </span>
-                </div>
-                <span className={cn("text-[11px] font-bold truncate", isActive ? "text-orange-400" : "text-neutral-300 group-hover:text-white")}>
-                  {slide.title || `Slide ${idx + 1}`}
-                </span>
-                
-                <div className="w-full aspect-[16/9] rounded-xl bg-black/60 border border-white/[0.06] mt-0.5 p-1.5 flex flex-col justify-between overflow-hidden relative">
-                  {slide.image_url ? (
-                    <img src={slide.image_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />
-                  ) : null}
-                  <div className="h-1.5 w-1/2 rounded bg-white/20 relative z-10" />
-                  <div className="space-y-0.5 relative z-10">
-                    <div className="h-1 w-full rounded bg-white/10" />
-                    <div className="h-1 w-3/4 rounded bg-white/10" />
+          {/* Thumbnails list */}
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 custom-scrollbar">
+            {slides.map((s, idx) => {
+              const isActive = activeSlideIndex === idx;
+              return (
+                <div
+                  key={s.id || idx}
+                  onClick={() => setActiveSlideIndex(idx)}
+                  className={cn(
+                    "group relative rounded-xl p-2 transition-all cursor-pointer border flex flex-col gap-1.5",
+                    isActive 
+                      ? "bg-orange-500/10 border-orange-500 shadow-md ring-1 ring-orange-500/30" 
+                      : "bg-[#0d0d11] border-white/[0.05] hover:border-white/20 opacity-70 hover:opacity-100"
+                  )}
+                >
+                  <div className="flex justify-between items-center text-[9px] font-mono">
+                    <span className="font-bold text-neutral-400">{idx + 1}</span>
+                    <span className="text-[8px] uppercase tracking-wider text-neutral-500">{s.layout.replace("_", " ")}</span>
+                    
+                    {/* Hover actions */}
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveSlide(idx, "up");
+                        }}
+                        disabled={idx === 0}
+                        className="p-0.5 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer"
+                      >
+                        <ArrowUp size={10} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveSlide(idx, "down");
+                        }}
+                        disabled={idx === slides.length - 1}
+                        className="p-0.5 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer"
+                      >
+                        <ArrowDown size={10} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSlide(idx);
+                        }}
+                        className="p-0.5 text-neutral-400 hover:text-red-400 cursor-pointer"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Real-time Rich Thumbnail Preview */}
+                  <SlideThumbnailPreview slide={s} theme={activeTheme} />
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </aside>
 
-        {/* ─── CENTER PANEL: UNIFIED 16:9 WYSIWYG CANVAS ─── */}
-        <main className="flex-1 bg-[#060608] p-3 sm:p-6 flex flex-col justify-center items-center overflow-hidden h-full relative">
+        {/* CENTER PANEL: PRISTINE 16:9 PRESENTATION CANVAS */}
+        <main className="flex-1 bg-[#050507] flex flex-col items-center justify-center p-6 relative overflow-hidden">
           
-          {/* Top Canvas Action Pill Toolbar */}
-          <div className="w-full max-w-4xl flex items-center justify-between mb-2 sm:mb-3 z-20 gap-2 shrink-0">
-            {/* Layout Switcher */}
-            <div className="relative">
-              <button
-                onClick={() => setShowLayoutMenu(!showLayoutMenu)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-neutral-900 border border-white/[0.10] hover:border-orange-500/40 text-[11px] sm:text-xs font-bold text-neutral-300 hover:text-white transition-all cursor-pointer shadow-sm"
-              >
-                <LayoutGrid size={13} className="text-orange-400 shrink-0" />
-                <span className="capitalize truncate max-w-[130px] sm:max-w-none">{currentSlide.layout.replace("_", " ")}</span>
-                <ChevronLeft size={12} className={cn("transition-transform shrink-0", showLayoutMenu ? "rotate-90" : "-rotate-90")} />
-              </button>
-
-              <AnimatePresence>
-                {showLayoutMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                    className="absolute top-full left-0 mt-2 w-72 bg-[#0e0e12] border border-white/[0.12] rounded-2xl p-2 shadow-2xl z-50 space-y-1 max-h-80 overflow-y-auto custom-scrollbar"
-                  >
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 px-2 py-1">Switch Slide Layout</p>
-                    {LAYOUT_CHOICES.map((choice) => {
-                      const isCurr = currentSlide.layout === choice.id;
-                      return (
-                        <button
-                          key={choice.id}
-                          onClick={() => switchSlideLayout(choice.id)}
-                          className={cn(
-                            "w-full flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors cursor-pointer",
-                            isCurr ? "bg-orange-500/15 text-orange-400 border border-orange-500/30" : "hover:bg-white/[0.04] text-neutral-300 hover:text-white"
-                          )}
-                        >
-                          <choice.icon size={15} className="mt-0.5 shrink-0 text-neutral-400" />
-                          <div className="flex-1 min-w-0">
-                            <span className="text-xs font-bold block">{choice.label}</span>
-                            <span className="text-[9.5px] text-neutral-500 block truncate">{choice.desc}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Slide Manipulation Actions */}
-            <div className="flex items-center gap-1 bg-neutral-900 border border-white/[0.08] p-1 rounded-xl shrink-0">
-              <button
-                onClick={() => handleMoveSlide("up")}
-                disabled={activeSlideIndex === 0}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-white disabled:opacity-30 transition-colors cursor-pointer"
-                title="Move Slide Up / Left"
-              >
-                <ArrowUp size={13} />
-              </button>
-              <button
-                onClick={() => handleMoveSlide("down")}
-                disabled={activeSlideIndex === slides.length - 1}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-white disabled:opacity-30 transition-colors cursor-pointer"
-                title="Move Slide Down / Right"
-              >
-                <ArrowDown size={13} />
-              </button>
-              <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
-              <button
-                onClick={handleDuplicateSlide}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                title="Duplicate Slide"
-              >
-                <Copy size={13} />
-              </button>
-              <button
-                onClick={handleDeleteSlide}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
-                title="Delete Slide"
-              >
-                <Trash2 size={13} />
-              </button>
-              <button
-                onClick={handleAddSlide}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-500/15 hover:bg-orange-500/25 text-orange-400 text-[11px] sm:text-xs font-bold transition-colors cursor-pointer"
-                title="Add New Slide"
-              >
-                <Plus size={12} />
-                <span className="hidden sm:inline">New</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ─── UNIFIED TRUE 16:9 SLIDE CONTAINER ─── */}
+          {/* Main Slide Card Container */}
           <div 
-            ref={wrapperRef} 
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-            className="w-full max-w-4xl flex items-center justify-center relative min-h-0 shrink"
+            className={cn(
+              "relative w-full max-w-4xl min-h-[480px] max-h-[85vh] aspect-[16/9] rounded-3xl border shadow-2xl p-6 sm:p-10 flex flex-col justify-center overflow-hidden transition-all duration-500",
+              isSlidePulsing && "ring-2 ring-orange-500 shadow-[0_0_70px_rgba(249,115,22,0.4)] scale-[1.008]"
+            )}
+            style={{
+              backgroundColor: activeTheme.colors.bg,
+              borderColor: activeTheme.colors.border || "rgba(255,255,255,0.08)",
+              fontFamily: activeTheme.fontFamily
+            }}
           >
+            {/* Ambient Background Gradient Accent */}
             <div 
-              ref={containerRef}
-              className={cn(
-                "w-full aspect-[16/9] rounded-2xl sm:rounded-3xl border border-white/[0.12] shadow-[0_20px_60px_rgba(0,0,0,0.95)] flex flex-col justify-between overflow-hidden relative transition-all duration-200",
-                isFullscreen 
-                  ? "w-screen h-screen max-w-none rounded-none border-none bg-black p-8 sm:p-16 fixed inset-0 z-50" 
-                  : "p-3.5 sm:p-7 md:p-10"
-              )}
-              style={{
-                fontFamily: activeTheme.fontFamily,
-                backgroundColor: activeTheme.colors.bg,
-                backgroundImage: `linear-gradient(to bottom right, ${activeTheme.colors.bg}, #000000)`,
-              }}
-            >
-              {/* Background ambient lighting */}
-              <div 
-                className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
-                style={{ backgroundColor: activeTheme.colors.primary }}
+              className="absolute -top-32 -right-32 w-80 h-80 rounded-full blur-3xl opacity-20 pointer-events-none"
+              style={{ backgroundColor: activeTheme.colors.primary }}
+            />
+
+            {/* Slide WYSIWYG Editable Content Area */}
+            <div className="flex-1 flex flex-col justify-center min-h-0 z-10 overflow-hidden">
+              <SlideEditableCanvas 
+                slide={currentSlide}
+                theme={activeTheme}
+                onUpdate={updateCurrentSlide}
+                onOpenImagePicker={handleOpenImagePicker}
               />
-              <div 
-                className="absolute bottom-0 left-0 w-64 sm:w-96 h-64 sm:h-96 rounded-full blur-3xl opacity-15 pointer-events-none"
-                style={{ backgroundColor: activeTheme.colors.accent }}
-              />
-
-              {/* Slide Internal Header */}
-              <div className="flex justify-between items-center text-[9px] sm:text-[10px] font-mono text-neutral-400 z-10">
-                <span className="font-bold tracking-wider truncate max-w-[200px] sm:max-w-md">{presentation.title}</span>
-                <span 
-                  className="uppercase tracking-widest text-[7.5px] sm:text-[8.5px] px-2 sm:px-2.5 py-0.5 rounded-full border shrink-0"
-                  style={{ color: activeTheme.colors.primary, borderColor: `${activeTheme.colors.primary}40`, backgroundColor: `${activeTheme.colors.primary}10` }}
-                >
-                  {currentSlide.layout.replace("_", " ")}
-                </span>
-              </div>
-
-              {/* Slide WYSIWYG Content Area */}
-              <div className="my-auto flex-1 flex flex-col justify-center min-h-0 py-1 sm:py-3 z-10 overflow-hidden">
-                <SlideEditableCanvas 
-                  slide={currentSlide}
-                  theme={activeTheme}
-                  onUpdate={updateCurrentSlide}
-                />
-              </div>
-
-              {/* Slide Internal Footer */}
-              <div className="flex justify-between items-center text-[8.5px] sm:text-[10px] font-mono text-neutral-500 pt-1.5 sm:pt-2 border-t border-white/[0.06] z-10">
-                <span className="hidden sm:inline">Paperxify AI Presentations</span>
-                <span className="sm:hidden text-orange-400 font-bold flex items-center gap-1">
-                  <Sparkles size={10} /> Swipe
-                </span>
-                <span>Slide {activeSlideIndex + 1} of {slides.length}</span>
-              </div>
-
-              {/* Presenter Mode Overlay Dock (Fullscreen Only) */}
-              {isFullscreen && (
-                <div className="fixed bottom-6 inset-x-0 flex flex-col items-center gap-3 z-50 pointer-events-auto">
-                  <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-black/80 backdrop-blur-2xl border border-white/15 shadow-2xl">
-                    <button
-                      onClick={() => setActiveSlideIndex((prev) => Math.max(0, prev - 1))}
-                      disabled={activeSlideIndex === 0}
-                      className="p-1.5 rounded-lg hover:bg-white/10 disabled:opacity-30 cursor-pointer"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <span className="text-xs font-mono font-bold text-white px-2">
-                      {activeSlideIndex + 1} / {slides.length}
-                    </span>
-                    <button
-                      onClick={() => setActiveSlideIndex((prev) => Math.min(slides.length - 1, prev + 1))}
-                      disabled={activeSlideIndex === slides.length - 1}
-                      className="p-1.5 rounded-lg hover:bg-white/10 disabled:opacity-30 cursor-pointer"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                    <div className="w-[1px] h-4 bg-white/20 mx-1" />
-                    <div className="flex items-center gap-1.5 text-xs font-mono text-orange-400">
-                      <Clock size={13} />
-                      <span>{Math.floor(presenterSeconds / 60)}:{(presenterSeconds % 60).toString().padStart(2, "0")}</span>
-                    </div>
-                    <div className="w-[1px] h-4 bg-white/20 mx-1" />
-                    <button
-                      onClick={() => setShowPresenterNotes(!showPresenterNotes)}
-                      className={cn(
-                        "px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer",
-                        showPresenterNotes ? "bg-orange-500/20 text-orange-400 border border-orange-500/40" : "text-neutral-400 hover:text-white"
-                      )}
-                    >
-                      <MessageSquare size={13} className="inline mr-1" /> Notes
-                    </button>
-                    <button
-                      onClick={triggerFullscreen}
-                      className="p-1.5 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white cursor-pointer ml-1"
-                      title="Exit Fullscreen (Esc)"
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-
-                  {showPresenterNotes && currentSlide.speakerNotes && (
-                    <div className="max-w-2xl w-full p-4 rounded-2xl bg-black/90 backdrop-blur-2xl border border-white/15 text-neutral-200 text-xs leading-relaxed shadow-2xl max-h-32 overflow-y-auto custom-scrollbar">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-orange-400 block mb-1">Speaker Notes Teleprompter</span>
-                      {currentSlide.speakerNotes}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Quick Pagination Bar */}
-          <div className="w-full max-w-4xl flex items-center justify-between pt-2 sm:pt-3 z-20 shrink-0">
+          {/* Bottom Floating Slide Counter and Navigation Bar */}
+          <div className="mt-4 flex items-center gap-3 z-10">
             <button
               onClick={() => setActiveSlideIndex((prev) => Math.max(0, prev - 1))}
               disabled={activeSlideIndex === 0}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-neutral-900 border border-white/[0.08] hover:bg-neutral-800 disabled:opacity-30 text-xs font-bold text-neutral-300 hover:text-white transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/10 text-xs font-semibold text-white disabled:opacity-20 transition-all cursor-pointer shadow-md flex items-center gap-1.5"
             >
-              <ChevronLeft size={14} /> <span className="hidden sm:inline">Previous</span>
+              <ChevronLeft size={14} /> Previous
             </button>
-
-            <span className="text-xs font-mono font-bold text-neutral-400">
+            <span className="text-xs font-mono font-bold text-neutral-400 px-3 py-1 rounded-lg bg-black/40 border border-white/[0.06]">
               Slide {activeSlideIndex + 1} of {slides.length}
             </span>
-
             <button
               onClick={() => setActiveSlideIndex((prev) => Math.min(slides.length - 1, prev + 1))}
               disabled={activeSlideIndex === slides.length - 1}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-neutral-900 border border-white/[0.08] hover:bg-neutral-800 disabled:opacity-30 text-xs font-bold text-neutral-300 hover:text-white transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/10 text-xs font-semibold text-white disabled:opacity-20 transition-all cursor-pointer shadow-md flex items-center gap-1.5"
             >
-              <span className="hidden sm:inline">Next</span> <ChevronRight size={14} />
+              Next <ChevronRight size={14} />
             </button>
           </div>
         </main>
 
-        {/* ─── RIGHT PANEL: DESKTOP AI CO-PILOT & PRESENTER NOTES ─── */}
-        <aside className="w-80 shrink-0 bg-[#09090c] border-l border-white/[0.06] hidden md:flex flex-col h-full overflow-hidden">
-          <div className="flex border-b border-white/[0.06] bg-[#0c0c10] p-1.5 gap-1 shrink-0">
+        {/* RIGHT PANEL: AI CO-PILOT & SLIDE INSPECTOR */}
+        <aside className="w-80 bg-[#08080a] border-l border-white/[0.06] flex flex-col z-20 shrink-0">
+          
+          {/* Tabs */}
+          <div className="grid grid-cols-3 border-b border-white/[0.06] p-1.5 gap-1 bg-black/40">
             <button
               onClick={() => setActiveRightTab("copilot")}
               className={cn(
-                "flex-1 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                "py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1",
                 activeRightTab === "copilot" ? "bg-orange-500/15 text-orange-400 border border-orange-500/30" : "text-neutral-400 hover:text-white"
               )}
             >
-              <Wand2 size={13} /> AI Co-Pilot
+              <Wand2 size={11} /> Co-Pilot
+            </button>
+            <button
+              onClick={() => setActiveRightTab("layouts")}
+              className={cn(
+                "py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1",
+                activeRightTab === "layouts" ? "bg-orange-500/15 text-orange-400 border border-orange-500/30" : "text-neutral-400 hover:text-white"
+              )}
+            >
+              <LayoutGrid size={11} /> Layout
             </button>
             <button
               onClick={() => setActiveRightTab("notes")}
               className={cn(
-                "flex-1 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                "py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1",
                 activeRightTab === "notes" ? "bg-orange-500/15 text-orange-400 border border-orange-500/30" : "text-neutral-400 hover:text-white"
               )}
             >
-              <Mic size={13} /> Script
+              <FileText size={11} /> Notes
             </button>
           </div>
 
-          <div className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-4">
-            {activeRightTab === "copilot" ? (
-              <div className="space-y-4">
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-orange-950/30 to-[#0e0e12] border border-orange-500/25">
-                  <div className="flex items-center gap-2 text-orange-400 text-xs font-black uppercase tracking-wider mb-1">
-                    <Sparkles size={14} />
-                    <span>Gamma AI Slide Actions</span>
-                  </div>
-                  <p className="text-[11px] text-neutral-400 leading-relaxed">
-                    Refine, summarize, expand with data, or rewrite this slide with 1 click.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">Quick AI Actions</p>
-                  <button
-                    onClick={() => handleEnhanceSlide("concise")}
-                    disabled={isEnhancing}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.03] hover:bg-orange-500/10 border border-white/[0.06] hover:border-orange-500/30 text-left transition-all cursor-pointer text-xs font-bold text-neutral-200 hover:text-orange-300"
-                  >
-                    <Zap size={14} className="text-amber-400 shrink-0" />
-                    <span>Make More Concise & Punchy</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleEnhanceSlide("expand")}
-                    disabled={isEnhancing}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.03] hover:bg-orange-500/10 border border-white/[0.06] hover:border-orange-500/30 text-left transition-all cursor-pointer text-xs font-bold text-neutral-200 hover:text-orange-300"
-                  >
-                    <Lightbulb size={14} className="text-yellow-400 shrink-0" />
-                    <span>Enrich with Real-World Examples</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleEnhanceSlide("metrics")}
-                    disabled={isEnhancing}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.03] hover:bg-orange-500/10 border border-white/[0.06] hover:border-orange-500/30 text-left transition-all cursor-pointer text-xs font-bold text-neutral-200 hover:text-orange-300"
-                  >
-                    <TrendingUp size={14} className="text-emerald-400 shrink-0" />
-                    <span>Add Key Statistics & Metrics</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleEnhanceSlide("professional")}
-                    disabled={isEnhancing}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.03] hover:bg-orange-500/10 border border-white/[0.06] hover:border-orange-500/30 text-left transition-all cursor-pointer text-xs font-bold text-neutral-200 hover:text-orange-300"
-                  >
-                    <Compass size={14} className="text-blue-400 shrink-0" />
-                    <span>Elevate to Executive C-Suite Tone</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleEnhanceSlide("notes")}
-                    disabled={isEnhancing}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.03] hover:bg-orange-500/10 border border-white/[0.06] hover:border-orange-500/30 text-left transition-all cursor-pointer text-xs font-bold text-neutral-200 hover:text-orange-300"
-                  >
-                    <Mic size={14} className="text-purple-400 shrink-0" />
-                    <span>Generate Presenter Script</span>
-                  </button>
-                </div>
-
-                <div className="pt-2 border-t border-white/[0.06] space-y-2">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">Custom Slide Prompt</p>
-                  <textarea
-                    value={copilotPrompt}
-                    onChange={(e) => setCopilotPrompt(e.target.value)}
-                    placeholder="e.g. Add 3 comparative bullet points on serverless latency vs dedicated GPUs..."
-                    rows={3}
-                    className="w-full bg-[#121216] border border-white/[0.10] rounded-xl p-2.5 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-orange-500/50 resize-none custom-scrollbar leading-relaxed"
-                  />
-                  <button
-                    onClick={() => handleEnhanceSlide("custom", copilotPrompt)}
-                    disabled={!copilotPrompt.trim() || isEnhancing}
-                    className="w-full py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-40 text-black text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md"
-                  >
-                    {isEnhancing ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
-                    <span>Enhance Slide</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
+          {/* TAB CONTENT: 1. AI CO-PILOT (GAMMA GRADE) */}
+          {activeRightTab === "copilot" && (
+            <div className="flex-1 flex flex-col p-3.5 space-y-3 overflow-hidden">
+              
+              {/* Quick AI Actions Chips */}
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">Presenter Script</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">Quick AI Actions</span>
+                  <span className="text-[9px] font-mono text-orange-400 font-bold">Slide {activeSlideIndex + 1}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
                   <button
-                    onClick={() => handleEnhanceSlide("notes")}
+                    onClick={() => handleSendCopilotPrompt("Rewrite and sharpen this slide for maximum clarity, punch, and visual hierarchy.")}
                     disabled={isEnhancing}
-                    className="text-[10px] font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1 cursor-pointer"
+                    className="p-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/[0.08] hover:border-orange-500/40 text-left text-[9.5px] font-bold text-neutral-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
                   >
-                    <Sparkles size={11} /> AI Auto-Draft
+                    <span>🪄</span> Rewrite & Polish
+                  </button>
+                  <button
+                    onClick={() => handleSendCopilotPrompt("Transform this slide into a 3-metric KPI counter with real quantitative data benchmarks.")}
+                    disabled={isEnhancing}
+                    className="p-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/[0.08] hover:border-orange-500/40 text-left text-[9.5px] font-bold text-neutral-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+                  >
+                    <span>📊</span> 3-Metric KPIs
+                  </button>
+                  <button
+                    onClick={() => handleSendCopilotPrompt("Convert this slide into a side-by-side comparative analysis layout.")}
+                    disabled={isEnhancing}
+                    className="p-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/[0.08] hover:border-orange-500/40 text-left text-[9.5px] font-bold text-neutral-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+                  >
+                    <span>⚖️</span> Comparison
+                  </button>
+                  <button
+                    onClick={() => handleSendCopilotPrompt("Convert this slide into a sequential process timeline roadmap.")}
+                    disabled={isEnhancing}
+                    className="p-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/[0.08] hover:border-orange-500/40 text-left text-[9.5px] font-bold text-neutral-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+                  >
+                    <span>🗺️</span> Timeline
+                  </button>
+                  <button
+                    onClick={() => handleSendCopilotPrompt("Find and apply a cinematic, high-resolution photography visual for this slide topic.")}
+                    disabled={isEnhancing}
+                    className="p-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/[0.08] hover:border-orange-500/40 text-left text-[9.5px] font-bold text-neutral-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+                  >
+                    <span>🖼️</span> Replace Visual
+                  </button>
+                  <button
+                    onClick={() => handleSendCopilotPrompt("Add the next logical slide in this narrative with high-contrast copy.")}
+                    disabled={isEnhancing}
+                    className="p-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/[0.08] hover:border-orange-500/40 text-left text-[9.5px] font-bold text-neutral-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+                  >
+                    <span>➕</span> Insert Next Slide
                   </button>
                 </div>
-                <textarea
-                  value={currentSlide.speakerNotes || ""}
-                  onChange={(e) => updateCurrentSlide(() => ({ speakerNotes: e.target.value }))}
-                  placeholder="Write the talking points or transcript for this slide..."
-                  rows={14}
-                  className="w-full bg-[#121216] border border-white/[0.10] rounded-2xl p-3.5 text-xs text-neutral-200 placeholder:text-neutral-500 outline-none focus:border-orange-500/50 resize-none custom-scrollbar leading-relaxed"
-                />
               </div>
-            )}
-          </div>
+
+              {/* Chat Thread */}
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar text-xs">
+                {chatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "p-3 rounded-2xl max-w-[92%] space-y-1.5 shadow-md transition-all",
+                      msg.sender === "user" 
+                        ? "ml-auto bg-gradient-to-r from-orange-500 to-amber-500 text-black font-semibold rounded-br-none" 
+                        : "bg-[#121216] border border-white/[0.08] text-neutral-200 rounded-bl-none"
+                    )}
+                  >
+                    <p className="text-[11px] leading-relaxed">{msg.text}</p>
+                    {msg.toolAction && (
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        <span className="text-[8.5px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 font-bold">
+                          ✓ Action: {msg.toolAction.replace("_", " ")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {isEnhancing && (
+                  <div className="p-3 rounded-2xl bg-[#121216] border border-orange-500/30 text-orange-400 text-[11px] flex items-center gap-2 shadow-lg animate-pulse">
+                    <Loader2 size={14} className="animate-spin text-orange-400" />
+                    <span>AI Copilot is optimizing slide #{activeSlideIndex + 1}...</span>
+                  </div>
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+
+              {/* Prompt Input Box */}
+              <div className="relative pt-1">
+                <textarea
+                  value={copilotPrompt}
+                  onChange={(e) => setCopilotPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendCopilotPrompt();
+                    }
+                  }}
+                  placeholder="Ask Copilot (e.g. 'Add 3 stats', 'Make it comparison', 'Rewrite')..."
+                  rows={2}
+                  className="w-full bg-[#121216] border border-white/10 rounded-2xl p-3 pr-10 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-orange-500/50 resize-none shadow-inner"
+                />
+                <button
+                  onClick={() => handleSendCopilotPrompt()}
+                  disabled={!copilotPrompt.trim() || isEnhancing}
+                  className="absolute right-2.5 bottom-3.5 p-1.5 rounded-xl bg-orange-500 text-black hover:bg-orange-400 disabled:opacity-20 transition-all cursor-pointer shadow-md"
+                >
+                  <Send size={13} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: 2. LAYOUT SWITCHER */}
+          {activeRightTab === "layouts" && (
+            <div className="flex-1 p-3.5 space-y-3 overflow-y-auto custom-scrollbar">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">Switch Slide Layout</span>
+              <div className="grid grid-cols-1 gap-2">
+                {SLIDE_LAYOUT_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  const isSelected = currentSlide.layout === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => updateCurrentSlide(() => ({ layout: opt.id }))}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-left transition-all flex items-center gap-3 cursor-pointer",
+                        isSelected 
+                          ? "bg-orange-500/15 border-orange-500 text-white" 
+                          : "bg-[#111115] border-white/[0.06] hover:border-white/20 text-neutral-300"
+                      )}
+                    >
+                      <div className={cn("p-2 rounded-lg", isSelected ? "bg-orange-500 text-black" : "bg-white/[0.05] text-orange-400")}>
+                        <Icon size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold leading-tight">{opt.label}</p>
+                        <p className="text-[9.5px] text-neutral-500 truncate mt-0.5">{opt.desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: 3. PRESENTER NOTES */}
+          {activeRightTab === "notes" && (
+            <div className="flex-1 p-3.5 space-y-3 flex flex-col">
+              <div className="flex justify-between items-center">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">Presenter Teleprompter</span>
+                <button
+                  onClick={() => handleSendCopilotPrompt("Draft a natural, engaging presenter talking script for this slide.")}
+                  disabled={isEnhancing}
+                  className="text-[10px] font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles size={11} /> AI Auto-Draft
+                </button>
+              </div>
+              <textarea
+                value={currentSlide.speakerNotes || ""}
+                onChange={(e) => updateCurrentSlide(() => ({ speakerNotes: e.target.value }))}
+                placeholder="Write the talking points or transcript for this slide..."
+                rows={16}
+                className="w-full flex-1 bg-[#121216] border border-white/10 rounded-2xl p-3.5 text-xs text-neutral-200 placeholder:text-neutral-500 outline-none focus:border-orange-500/50 resize-none leading-relaxed custom-scrollbar"
+              />
+            </div>
+          )}
         </aside>
 
       </div>
 
-      {/* ─── 5. MOBILE FLOATING GLASS CAPSULE DOCK ─── */}
-      <div className="md:hidden fixed bottom-3 inset-x-0 z-[70] flex justify-center px-3 pointer-events-none">
-        <nav className="pointer-events-auto w-full max-w-[380px] h-[52px] rounded-full bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/[0.14] shadow-[0_16px_45px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] p-1.5 flex items-center justify-between gap-1">
-          <button
-            type="button"
-            onClick={() => setMobileTab("deck")}
-            className={cn(
-              "relative flex-1 h-full rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer select-none active:scale-95",
-              mobileTab === "deck" ? "text-black font-extrabold" : "text-neutral-400 hover:text-neutral-200"
-            )}
+      {/* ─── 3. FULLSCREEN PRESENTATION MODE MODAL ─── */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-8 select-none">
+          <div className="relative w-full max-w-5xl aspect-[16/9] rounded-3xl border border-white/10 p-10 flex flex-col justify-between shadow-2xl overflow-hidden"
+            style={{
+              backgroundColor: activeTheme.colors.bg,
+              borderColor: activeTheme.colors.border,
+              fontFamily: activeTheme.fontFamily
+            }}
           >
-            {mobileTab === "deck" && (
-              <motion.span
-                layoutId="active-mobile-ppt-pill"
-                transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 shadow-[0_2px_12px_rgba(249,115,22,0.55)]"
+            {/* Slide WYSIWYG Editable Content Area */}
+            <div className="flex-1 flex flex-col justify-center min-h-0 z-10 overflow-hidden">
+              <SlideEditableCanvas 
+                slide={currentSlide}
+                theme={activeTheme}
+                onUpdate={updateCurrentSlide}
               />
-            )}
-            <span className="relative z-10 flex items-center gap-1">
-              <Layers size={13} />
-              <span className="leading-none text-[10.5px]">Deck</span>
-            </span>
-          </button>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setMobileTab("canvas")}
-            className={cn(
-              "relative flex-1 h-full rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer select-none active:scale-95",
-              mobileTab === "canvas" ? "text-black font-extrabold" : "text-neutral-400 hover:text-neutral-200"
-            )}
-          >
-            {mobileTab === "canvas" && (
-              <motion.span
-                layoutId="active-mobile-ppt-pill"
-                transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 shadow-[0_2px_12px_rgba(249,115,22,0.55)]"
-              />
-            )}
-            <span className="relative z-10 flex items-center gap-1">
-              <Eye size={13} />
-              <span className="leading-none text-[10.5px]">Slide</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMobileTab("copilot")}
-            className={cn(
-              "relative flex-1 h-full rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer select-none active:scale-95",
-              mobileTab === "copilot" ? "text-black font-extrabold" : "text-neutral-400 hover:text-neutral-200"
-            )}
-          >
-            {mobileTab === "copilot" && (
-              <motion.span
-                layoutId="active-mobile-ppt-pill"
-                transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 shadow-[0_2px_12px_rgba(249,115,22,0.55)]"
-              />
-            )}
-            <span className="relative z-10 flex items-center gap-1">
-              <Wand2 size={13} />
-              <span className="leading-none text-[10.5px]">AI Co-Pilot</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMobileTab("notes")}
-            className={cn(
-              "relative flex-1 h-full rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer select-none active:scale-95",
-              mobileTab === "notes" ? "text-black font-extrabold" : "text-neutral-400 hover:text-neutral-200"
-            )}
-          >
-            {mobileTab === "notes" && (
-              <motion.span
-                layoutId="active-mobile-ppt-pill"
-                transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 shadow-[0_2px_12px_rgba(249,115,22,0.55)]"
-              />
-            )}
-            <span className="relative z-10 flex items-center gap-1">
-              <Mic size={13} />
-              <span className="leading-none text-[10.5px]">Script</span>
-            </span>
-          </button>
-        </nav>
-      </div>
-
-      {/* ─── 6. MOBILE MODAL DRAWERS ─── */}
-      <AnimatePresence>
-        {/* Mobile Slide Deck Drawer Sheet */}
-        {mobileTab === "deck" && (
-          <div className="md:hidden fixed inset-0 z-[80] flex flex-col justify-end bg-black/80 backdrop-blur-md">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="absolute inset-0" 
-              onClick={() => setMobileTab("canvas")} 
-            />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full bg-[#0d0d12] border-t border-white/[0.14] rounded-t-[2.5rem] p-5 shadow-2xl max-h-[82vh] flex flex-col z-10"
+          {/* Presenter Bottom Floating Controller */}
+          <div className="fixed bottom-6 flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-black/80 backdrop-blur-2xl border border-white/15 shadow-2xl">
+            <button
+              onClick={() => setActiveSlideIndex((prev) => Math.max(0, prev - 1))}
+              disabled={activeSlideIndex === 0}
+              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 cursor-pointer"
             >
-              <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-4 shrink-0" />
-              <div className="flex items-center justify-between mb-4 shrink-0">
-                <div>
-                  <h3 className="text-base font-black text-white">Slide Deck Overview</h3>
-                  <p className="text-[11px] text-neutral-400">{slides.length} slides in presentation</p>
-                </div>
+              <ChevronLeft size={18} />
+            </button>
+            <span className="text-xs font-mono font-bold text-white px-2">
+              {activeSlideIndex + 1} / {slides.length}
+            </span>
+            <button
+              onClick={() => setActiveSlideIndex((prev) => Math.min(slides.length - 1, prev + 1))}
+              disabled={activeSlideIndex === slides.length - 1}
+              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+            >
+              <ChevronRight size={18} />
+            </button>
+            <div className="h-4 w-px bg-white/20 mx-1" />
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="p-2 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white cursor-pointer"
+              title="Exit Fullscreen"
+            >
+              <Minimize2 size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 4. VISUAL CHOICES STUDIO MODAL ─── */}
+      <AnimatePresence>
+        {isImagePickerOpen && (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+            <div onClick={() => setIsImagePickerOpen(false)} className="absolute inset-0 bg-black/85 backdrop-blur-md" />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-2xl bg-[#0e0e12] border border-white/15 rounded-3xl p-6 shadow-2xl z-10 space-y-5"
+            >
+              <div className="flex justify-between items-center border-b border-white/[0.08] pb-3.5">
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleAddSlide}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-500 text-black text-xs font-bold shadow-md cursor-pointer"
-                  >
-                    <Plus size={13} /> Add Slide
-                  </button>
-                  <button
-                    onClick={() => setMobileTab("canvas")}
-                    className="p-1.5 rounded-full bg-white/[0.06] text-neutral-400 hover:text-white"
-                  >
-                    <X size={16} />
-                  </button>
+                  <div className="w-8 h-8 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                    <ImageIcon size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Slide Visual Studio</h3>
+                    <p className="text-[10px] text-neutral-400 font-light">Select an AI-generated candidate or type a custom prompt.</p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setIsImagePickerOpen(false)}
+                  className="p-2 rounded-xl bg-neutral-900 border border-white/[0.08] hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
               </div>
 
-              {/* Grid of Slide Cards */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar grid grid-cols-2 gap-3 pb-8">
-                {slides.map((slide, idx) => {
-                  const isActive = activeSlideIndex === idx;
-                  return (
-                    <div
-                      key={slide.id}
-                      onClick={() => {
-                        setActiveSlideIndex(idx);
-                        setMobileTab("canvas");
-                      }}
-                      className={cn(
-                        "cursor-pointer flex flex-col gap-1.5 p-3 rounded-2xl border transition-all text-left group relative",
-                        isActive 
-                          ? "bg-orange-500/15 border-orange-500/60 shadow-lg" 
-                          : "bg-white/[0.02] border-white/[0.08] hover:border-white/20"
-                      )}
-                    >
-                      <div className="flex justify-between items-center text-[9px] font-mono text-neutral-400">
-                        <span className="font-bold text-white">#{idx + 1}</span>
-                        <span className="uppercase text-[8px] px-1.5 py-0.5 rounded bg-white/[0.06]">
-                          {slide.layout.replace("_", " ")}
-                        </span>
+              {/* Custom Prompt Box */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={customImagePrompt}
+                  onChange={(e) => setCustomImagePrompt(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleGenerateCustomImage()}
+                  placeholder="Describe custom image to generate with AI..."
+                  className="flex-1 bg-[#141418] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-orange-500/50"
+                />
+                <button
+                  onClick={handleGenerateCustomImage}
+                  disabled={!customImagePrompt.trim()}
+                  className="px-3.5 py-2 bg-orange-500 hover:bg-orange-400 disabled:opacity-30 text-black font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                >
+                  <Sparkles size={12} /> Generate
+                </button>
+              </div>
+
+              {/* Candidates Grid */}
+              <div className="grid grid-cols-2 gap-3.5 max-h-72 overflow-y-auto custom-scrollbar pr-1">
+                {visualCandidates.map((cand, idx) => (
+                  <div
+                    key={cand.id || idx}
+                    onClick={() => handleSelectVisualCandidate(cand)}
+                    className="group/item relative rounded-2xl overflow-hidden border border-white/10 hover:border-orange-500/60 p-2 bg-black/50 hover:bg-black/80 transition-all cursor-pointer space-y-2 flex flex-col justify-between"
+                  >
+                    <div className="relative aspect-[16/9] rounded-xl overflow-hidden border border-white/10">
+                      <img src={cand.url} alt="" className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-300" />
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-black/80 backdrop-blur-md text-[9px] font-mono font-bold text-orange-400 border border-orange-500/40">
+                        {cand.score || 92}/100 Match
                       </div>
-                      <span className="text-[11px] font-bold text-neutral-200 line-clamp-2">
-                        {slide.title || `Slide ${idx + 1}`}
-                      </span>
-                      
-                      <div className="w-full aspect-[16/9] rounded-xl bg-black/60 border border-white/[0.06] p-1.5 flex flex-col justify-between overflow-hidden mt-1 relative">
-                        {slide.image_url ? (
-                          <img src={slide.image_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />
-                        ) : null}
-                        <div className="h-1.5 w-1/2 rounded bg-white/30 relative z-10" />
-                        <div className="space-y-0.5 relative z-10">
-                          <div className="h-1 w-full rounded bg-white/15" />
-                          <div className="h-1 w-3/4 rounded bg-white/15" />
-                        </div>
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-lg bg-black/80 backdrop-blur-md text-[9px] font-bold text-white border border-white/20">
+                        {cand.style || "Photorealistic"}
                       </div>
                     </div>
-                  );
-                })}
+
+                    <div className="space-y-0.5">
+                      <h4 className="text-xs font-bold text-white truncate">{cand.title || "Visual Option"}</h4>
+                      <p className="text-[9px] text-neutral-400 line-clamp-1">{cand.description || "16:9 AI Visual"}</p>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectVisualCandidate(cand);
+                      }}
+                      className="w-full py-1.5 rounded-lg bg-white/[0.05] group-hover/item:bg-orange-500 group-hover/item:text-black text-neutral-300 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Check size={11} /> Select Visual
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between border-t border-white/[0.08] pt-3">
+                <span className="text-[10px] font-mono text-neutral-500">All visuals are generated in 16:9 widescreen format</span>
+                <button
+                  onClick={handleRefreshVisualCandidates}
+                  disabled={isGeneratingVisuals}
+                  className="px-3.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-white/15 text-orange-400 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {isGeneratingVisuals ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                  Refresh 4 AI Choices
+                </button>
               </div>
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
 
-        {/* Mobile AI Co-Pilot Drawer Sheet */}
-        {mobileTab === "copilot" && (
-          <div className="md:hidden fixed inset-0 z-[80] flex flex-col justify-end bg-black/80 backdrop-blur-md">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="absolute inset-0" 
-              onClick={() => setMobileTab("canvas")} 
-            />
+      {/* ─── 5. SHARE MODAL ─── */}
+      <AnimatePresence>
+        {isShareModalOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+            <div onClick={() => setIsShareModalOpen(false)} className="absolute inset-0 bg-black/85 backdrop-blur-md" />
             <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full bg-[#0d0d12] border-t border-white/[0.14] rounded-t-[2.5rem] p-5 shadow-2xl max-h-[85vh] flex flex-col z-10"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md bg-[#0e0e12] border border-white/15 rounded-3xl p-6 shadow-2xl z-10 space-y-4"
             >
-              <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 shrink-0" />
-              <div className="flex items-center justify-between mb-3 shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
-                    <Wand2 size={15} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-white">Gamma AI Co-Pilot</h3>
-                    <p className="text-[10.5px] text-neutral-400">Slide {activeSlideIndex + 1} Assistant</p>
-                  </div>
-                </div>
+              <div className="flex justify-between items-center border-b border-white/[0.08] pb-3">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Share2 size={16} className="text-orange-400" /> Share Presentation
+                </h3>
                 <button
-                  onClick={() => setMobileTab("canvas")}
-                  className="p-1.5 rounded-full bg-white/[0.06] text-neutral-400 hover:text-white"
+                  onClick={() => setIsShareModalOpen(false)}
+                  className="p-1.5 rounded-xl bg-neutral-900 border border-white/[0.08] hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
                 >
-                  <X size={16} />
+                  <X size={14} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pb-8">
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    onClick={() => {
-                      handleEnhanceSlide("concise");
-                      setMobileTab("canvas");
-                    }}
-                    disabled={isEnhancing}
-                    className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.03] active:bg-orange-500/15 border border-white/[0.08] text-left text-xs font-bold text-neutral-200"
-                  >
-                    <Zap size={15} className="text-amber-400 shrink-0" />
-                    <span>Make More Concise & Punchy</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleEnhanceSlide("expand");
-                      setMobileTab("canvas");
-                    }}
-                    disabled={isEnhancing}
-                    className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.03] active:bg-orange-500/15 border border-white/[0.08] text-left text-xs font-bold text-neutral-200"
-                  >
-                    <Lightbulb size={15} className="text-yellow-400 shrink-0" />
-                    <span>Enrich with Practical Examples</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleEnhanceSlide("metrics");
-                      setMobileTab("canvas");
-                    }}
-                    disabled={isEnhancing}
-                    className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.03] active:bg-orange-500/15 border border-white/[0.08] text-left text-xs font-bold text-neutral-200"
-                  >
-                    <TrendingUp size={15} className="text-emerald-400 shrink-0" />
-                    <span>Add Key Statistics & Metrics</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleEnhanceSlide("professional");
-                      setMobileTab("canvas");
-                    }}
-                    disabled={isEnhancing}
-                    className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.03] active:bg-orange-500/15 border border-white/[0.08] text-left text-xs font-bold text-neutral-200"
-                  >
-                    <Compass size={15} className="text-blue-400 shrink-0" />
-                    <span>Elevate to Executive C-Suite Tone</span>
-                  </button>
+              {/* QR Code */}
+              <div className="flex flex-col items-center justify-center p-4 bg-black/60 border border-white/[0.08] rounded-2xl space-y-2">
+                <div className="p-3 bg-white rounded-xl shadow-inner">
+                  <QRCode value={publicShareUrl} size={120} />
                 </div>
+                <span className="text-[9.5px] text-neutral-400 font-mono">Scan to view deck on mobile</span>
+              </div>
 
-                <div className="pt-2 border-t border-white/[0.08] space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400">Custom Slide Prompt</span>
-                  <textarea
-                    value={copilotPrompt}
-                    onChange={(e) => setCopilotPrompt(e.target.value)}
-                    placeholder="e.g. Add 3 comparative bullet points on serverless latency vs dedicated GPUs..."
-                    rows={3}
-                    className="w-full bg-[#141418] border border-white/[0.12] rounded-xl p-3 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-orange-500/60 resize-none leading-relaxed"
+              {/* Public Link */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Public Deck URL</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={publicShareUrl}
+                    className="flex-1 bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-neutral-300 font-mono outline-none truncate"
                   />
                   <button
                     onClick={() => {
-                      handleEnhanceSlide("custom", copilotPrompt);
-                      setMobileTab("canvas");
+                      navigator.clipboard.writeText(publicShareUrl);
+                      setCopiedLink(true);
+                      toast.success("Deck link copied!");
+                      setTimeout(() => setCopiedLink(false), 2000);
                     }}
-                    disabled={!copilotPrompt.trim() || isEnhancing}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 disabled:opacity-40 text-black text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-98"
+                    className="px-3 py-2 bg-orange-500 hover:bg-orange-400 text-black font-bold text-xs rounded-xl transition-all cursor-pointer shrink-0"
                   >
-                    {isEnhancing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-                    <span>Enhance Slide</span>
+                    {copiedLink ? <Check size={14} /> : <Copy size={14} />}
                   </button>
                 </div>
               </div>
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
 
-        {/* Mobile Presenter Script Drawer Sheet */}
-        {mobileTab === "notes" && (
-          <div className="md:hidden fixed inset-0 z-[80] flex flex-col justify-end bg-black/80 backdrop-blur-md">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="absolute inset-0" 
-              onClick={() => setMobileTab("canvas")} 
+      {/* ─── 6. 1:1 PIXEL-PERFECT LIVE DOM EXPORT STAGE ─── */}
+      {exportSlideIndex !== null && exportSlidesData[exportSlideIndex] && (
+        <div className="fixed -left-[9999px] top-0 z-[-9999] pointer-events-none">
+          <div
+            ref={exportStageRef}
+            className="w-[1280px] h-[720px] aspect-[16/9] p-12 flex flex-col justify-center overflow-hidden relative"
+            style={{
+              backgroundColor: activeTheme.colors.bg,
+              fontFamily: activeTheme.fontFamily
+            }}
+          >
+            {/* Ambient Background Gradient Accent */}
+            <div 
+              className="absolute -top-32 -right-32 w-80 h-80 rounded-full blur-3xl opacity-20 pointer-events-none"
+              style={{ backgroundColor: activeTheme.colors.primary }}
+            />
+
+            {/* Slide Pure Typography & Layout Static View for 100% Crisp PDF Rendering */}
+            <div className="flex-1 flex flex-col justify-center min-h-0 z-10 overflow-hidden">
+              <SlideStaticView 
+                slide={exportSlidesData[exportSlideIndex]}
+                theme={activeTheme}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 7. PROFESSIONAL LINEAR EXPORT PROGRESS HUD MODAL ─── */}
+      <AnimatePresence>
+        {isExporting && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/85 backdrop-blur-xl"
             />
             <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full bg-[#0d0d12] border-t border-white/[0.14] rounded-t-[2.5rem] p-5 shadow-2xl max-h-[85vh] flex flex-col z-10"
+              initial={{ scale: 0.92, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 15 }}
+              className="relative w-full max-w-lg bg-[#0e0e13]/95 border border-white/15 rounded-3xl p-6 shadow-2xl z-10 space-y-5 overflow-hidden"
+              style={{ boxShadow: "0 25px 70px -15px rgba(0,0,0,0.95), 0 0 50px rgba(249,115,22,0.2)" }}
             >
-              <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 shrink-0" />
-              <div className="flex items-center justify-between mb-3 shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
-                    <Mic size={15} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-white">Presenter Teleprompter Script</h3>
-                    <p className="text-[10.5px] text-neutral-400">Slide {activeSlideIndex + 1} Talking Points</p>
-                  </div>
+              {/* Top ambient glow */}
+              <div className="absolute -top-24 -right-24 w-56 h-56 rounded-full bg-orange-500/20 blur-3xl pointer-events-none" />
+
+              {/* Header */}
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
+                  {isExporting === "pptx" ? <Presentation size={24} className="animate-pulse" /> : <FileText size={24} className="animate-pulse" />}
                 </div>
-                <button
-                  onClick={() => setMobileTab("canvas")}
-                  className="p-1.5 rounded-full bg-white/[0.06] text-neutral-400 hover:text-white"
-                >
-                  <X size={16} />
-                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
+                      Exporting {isExporting === "pptx" ? "PowerPoint (.pptx)" : "Adobe PDF (.pdf)"}
+                    </h3>
+                    <span className="text-sm font-mono font-black text-orange-400">
+                      {exportProgress}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400 font-light truncate mt-0.5">
+                    {exportStatusText || "Generating presentation assets..."}
+                  </p>
+                </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pb-8">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400">Speech Notes</span>
-                  <button
-                    onClick={() => handleEnhanceSlide("notes")}
-                    disabled={isEnhancing}
-                    className="text-xs font-bold text-orange-400 flex items-center gap-1"
-                  >
-                    <Sparkles size={12} /> AI Auto-Draft
-                  </button>
+              {/* Live Slide Stream Card */}
+              {exportSlideIndex !== null && exportSlidesData[exportSlideIndex] && (
+                <div className="rounded-2xl border border-white/10 p-3 bg-black/60 space-y-2">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
+                    <span className="flex items-center gap-1.5 text-orange-400 font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping inline-block" />
+                      Live Canvas Stream
+                    </span>
+                    <span>Slide {exportSlideIndex + 1} of {exportSlidesData.length}</span>
+                  </div>
+                  <div className="w-full aspect-[16/9] rounded-xl overflow-hidden border border-white/10 bg-[#060608] relative">
+                    <SlideThumbnailPreview slide={exportSlidesData[exportSlideIndex]} theme={activeTheme} />
+                  </div>
                 </div>
-                <textarea
-                  value={currentSlide.speakerNotes || ""}
-                  onChange={(e) => updateCurrentSlide(() => ({ speakerNotes: e.target.value }))}
-                  placeholder="Write the talking points or transcript for this slide..."
-                  rows={8}
-                  className="w-full bg-[#141418] border border-white/[0.12] rounded-2xl p-3.5 text-xs text-neutral-200 placeholder:text-neutral-500 outline-none focus:border-orange-500/60 resize-none leading-relaxed"
-                />
-                <button
-                  onClick={() => setMobileTab("canvas")}
-                  className="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.10] text-white text-xs font-bold"
-                >
-                  Done Editing
-                </button>
+              )}
+
+              {/* Linear Progress Bar */}
+              <div className="space-y-1.5">
+                <div className="w-full h-2.5 bg-neutral-900 rounded-full overflow-hidden border border-white/10 p-0.5">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-orange-600 via-orange-500 to-amber-400"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${exportProgress}%` }}
+                    transition={{ ease: "easeOut", duration: 0.3 }}
+                    style={{ boxShadow: "0 0 14px rgba(249,115,22,0.7)" }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-mono text-neutral-500 px-0.5">
+                  <span>100% Studio Visual Parity</span>
+                  <span>{exportSlideIndex !== null ? `Processing Slide ${(exportSlideIndex + 1)} / ${exportSlidesData.length}` : "Preparing..."}</span>
+                </div>
+              </div>
+
+              {/* 3-Stage Process Checklist */}
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/[0.06]">
+                <div className={cn("p-2 rounded-xl border text-center space-y-1 transition-all", exportProgress >= 25 ? "bg-orange-500/10 border-orange-500/30 text-orange-300" : "bg-white/[0.02] border-white/5 text-neutral-500")}>
+                  <p className="text-[9.5px] font-mono uppercase font-bold">1. Inlining Media</p>
+                  <span className="text-[10px] block">{exportProgress >= 25 ? "✓ Complete" : "Pending"}</span>
+                </div>
+                <div className={cn("p-2 rounded-xl border text-center space-y-1 transition-all", exportProgress >= 85 ? "bg-orange-500/10 border-orange-500/30 text-orange-300" : exportProgress >= 25 ? "bg-white/[0.05] border-white/10 text-white" : "bg-white/[0.02] border-white/5 text-neutral-500")}>
+                  <p className="text-[9.5px] font-mono uppercase font-bold">2. 2x HD Sampling</p>
+                  <span className="text-[10px] block">{exportProgress >= 85 ? "✓ Complete" : exportProgress >= 25 ? "Sampling..." : "Pending"}</span>
+                </div>
+                <div className={cn("p-2 rounded-xl border text-center space-y-1 transition-all", exportProgress >= 100 ? "bg-orange-500/10 border-orange-500/30 text-orange-300" : "bg-white/[0.02] border-white/5 text-neutral-500")}>
+                  <p className="text-[9.5px] font-mono uppercase font-bold">3. Direct Download</p>
+                  <span className="text-[10px] block">{exportProgress >= 100 ? "✓ Downloaded" : "Packaging"}</span>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -1458,284 +1379,84 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
   );
 }
 
-// ─── SUB-COMPONENT: PROPORTIONAL 16:9 WYSIWYG EDITABLE SLIDE CANVAS ───
-function SlideEditableCanvas({
-  slide,
-  theme,
-  onUpdate
-}: {
-  slide: Slide;
-  theme: any;
-  onUpdate: (updater: (s: Slide) => Partial<Slide>) => void;
-}) {
+// ─── SUB-COMPONENT: REAL-TIME RICH SLIDE THUMBNAIL PREVIEW ───
+function SlideThumbnailPreview({ slide, theme }: { slide: Slide; theme: PPTThemeConfig }) {
   const colors = theme.colors;
-  const [showImagePrompt, setShowImagePrompt] = useState(false);
 
   switch (slide.layout) {
     case "title":
       return (
-        <div className="text-center space-y-2 sm:space-y-4 max-w-3xl mx-auto py-1 sm:py-3">
-          <input
-            type="text"
-            value={slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-            placeholder="Presentation Title"
-            className="w-full text-center text-lg sm:text-3xl md:text-5xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-2xl p-1 sm:p-2 transition-colors leading-tight"
-          />
-          <div 
-            className="h-1 sm:h-1.5 w-16 sm:w-24 mx-auto rounded-full"
-            style={{ backgroundColor: colors.primary, boxShadow: `0 0 15px ${colors.primary}` }}
-          />
-          <textarea
-            value={slide.subtitle || ""}
-            onChange={(e) => onUpdate(() => ({ subtitle: e.target.value }))}
-            placeholder="Add subtitle or key premise..."
-            rows={2}
-            className="w-full text-center text-[10.5px] sm:text-sm md:text-base text-neutral-300 font-light max-w-xl mx-auto bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-xl p-1 sm:p-2 transition-colors resize-none leading-snug sm:leading-relaxed"
-          />
-          {slide.author && (
-            <input
-              type="text"
-              value={slide.author}
-              onChange={(e) => onUpdate(() => ({ author: e.target.value }))}
-              className="text-[9px] sm:text-xs uppercase font-mono tracking-widest text-center bg-transparent border-0 outline-none hover:bg-white/[0.03] px-2 py-0.5 rounded-lg"
-              style={{ color: colors.primary }}
-            />
-          )}
+        <div 
+          className="aspect-[16/9] w-full rounded-lg border p-2 flex flex-col justify-center items-center text-center relative overflow-hidden transition-all shadow-inner"
+          style={{ backgroundColor: colors.bg, borderColor: colors.border || "rgba(255,255,255,0.08)" }}
+        >
+          <div className="w-1.5 h-1.5 rounded-full mb-1" style={{ backgroundColor: colors.primary }} />
+          <p className="text-[7.5px] font-black text-white line-clamp-2 leading-tight drop-shadow">{slide.title || "Untitled Presentation"}</p>
+          {slide.subtitle && <p className="text-[5.5px] text-neutral-400 line-clamp-1 mt-0.5">{slide.subtitle}</p>}
         </div>
       );
 
-    // ─── VISUAL SPLIT: IMAGE LEFT ───
     case "image_left":
       return (
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 items-center h-full text-left">
-          {/* Left Visual Illustration - Clean & Immersive */}
-          <div className="relative w-full aspect-[4/3] rounded-xl sm:rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
+        <div 
+          className="aspect-[16/9] w-full rounded-lg border p-1.5 grid grid-cols-2 gap-1.5 items-center relative overflow-hidden transition-all shadow-inner"
+          style={{ backgroundColor: colors.bg, borderColor: colors.border || "rgba(255,255,255,0.08)" }}
+        >
+          <div className="w-full h-full rounded bg-neutral-800 overflow-hidden relative">
             <img 
-              src={slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800"} 
-              alt={slide.title || "Illustration"}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              src={slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400"} 
+              alt="" 
+              onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400"; }}
+              className="w-full h-full object-cover"
             />
           </div>
-
-          {/* Right Detailed Content */}
-          <div className="space-y-1.5 sm:space-y-3">
-            <input
-              type="text"
-              value={slide.title || ""}
-              onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-              className="text-sm sm:text-xl md:text-2xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-lg p-0.5 w-full leading-snug"
-              placeholder="Topic Headline"
-            />
-            <div className="space-y-1.5 sm:space-y-2">
-              {(slide.bullets || [
-                "Semantic Layering: Context-aware document partitioning preserves schema continuity.",
-                "Vector Caching: HNSW indexing accelerates sub-millisecond retrieval by 3.8x."
-              ]).map((bullet, idx) => (
-                <div key={idx} className="flex items-start gap-1.5 text-[9px] sm:text-xs text-neutral-300">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1" style={{ backgroundColor: colors.primary }} />
-                  <textarea
-                    value={bullet}
-                    onChange={(e) => {
-                      const next = [...(slide.bullets || [])];
-                      next[idx] = e.target.value;
-                      onUpdate(() => ({ bullets: next }));
-                    }}
-                    rows={2}
-                    className="w-full bg-transparent border-0 outline-none resize-none leading-snug p-0.5 hover:bg-white/[0.02] rounded"
-                  />
-                </div>
-              ))}
+          <div className="flex flex-col justify-center gap-0.5 overflow-hidden">
+            <p className="text-[6.5px] font-bold text-white line-clamp-1 leading-tight">{slide.title || "Topic"}</p>
+            <div className="space-y-0.5">
+              <div className="h-0.5 w-full bg-white/20 rounded" />
+              <div className="h-0.5 w-3/4 bg-white/10 rounded" />
+              <div className="h-0.5 w-1/2 bg-white/10 rounded" />
             </div>
           </div>
         </div>
       );
 
-    // ─── VISUAL SPLIT: IMAGE RIGHT ───
     case "image_right":
       return (
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 items-center h-full text-left">
-          {/* Left Detailed Content */}
-          <div className="space-y-1.5 sm:space-y-3">
-            <input
-              type="text"
-              value={slide.title || ""}
-              onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-              className="text-sm sm:text-xl md:text-2xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-lg p-0.5 w-full leading-snug"
-              placeholder="Topic Headline"
-            />
-            <div className="space-y-1.5 sm:space-y-2">
-              {(slide.bullets || [
-                "Sub-Millisecond Edge Telemetry: Serverless edge workers synchronize state in real-time.",
-                "Active Recall Validation: Automated active recall tests boost retention by 3.8x."
-              ]).map((bullet, idx) => (
-                <div key={idx} className="flex items-start gap-1.5 text-[9px] sm:text-xs text-neutral-300">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1" style={{ backgroundColor: colors.accent }} />
-                  <textarea
-                    value={bullet}
-                    onChange={(e) => {
-                      const next = [...(slide.bullets || [])];
-                      next[idx] = e.target.value;
-                      onUpdate(() => ({ bullets: next }));
-                    }}
-                    rows={2}
-                    className="w-full bg-transparent border-0 outline-none resize-none leading-snug p-0.5 hover:bg-white/[0.02] rounded"
-                  />
-                </div>
-              ))}
+        <div 
+          className="aspect-[16/9] w-full rounded-lg border p-1.5 grid grid-cols-2 gap-1.5 items-center relative overflow-hidden transition-all shadow-inner"
+          style={{ backgroundColor: colors.bg, borderColor: colors.border || "rgba(255,255,255,0.08)" }}
+        >
+          <div className="flex flex-col justify-center gap-0.5 overflow-hidden">
+            <p className="text-[6.5px] font-bold text-white line-clamp-1 leading-tight">{slide.title || "Topic"}</p>
+            <div className="space-y-0.5">
+              <div className="h-0.5 w-full bg-white/20 rounded" />
+              <div className="h-0.5 w-3/4 bg-white/10 rounded" />
+              <div className="h-0.5 w-1/2 bg-white/10 rounded" />
             </div>
           </div>
-
-          {/* Right Visual Illustration - Clean & Immersive */}
-          <div className="relative w-full aspect-[4/3] rounded-xl sm:rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
+          <div className="w-full h-full rounded bg-neutral-800 overflow-hidden relative">
             <img 
-              src={slide.image_url || "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800"} 
-              alt={slide.title || "Illustration"}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          </div>
-        </div>
-      );
-
-    // ─── VISUAL GALLERY SHOWCASE ───
-    case "gallery_grid":
-      return (
-        <div className="space-y-2 sm:space-y-3 text-left">
-          <input
-            type="text"
-            value={slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-            className="text-base sm:text-2xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 w-full"
-            placeholder="Visual Showcase Headline"
-          />
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            {(slide.images || [
-              "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800",
-              "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800",
-              "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800"
-            ]).map((img, i) => (
-              <div key={i} className="aspect-[4/3] rounded-xl overflow-hidden border border-white/10 relative group">
-                <img src={img} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-
-    // ─── DEEP DIVE PARAGRAPH ANALYSIS ───
-    case "paragraph":
-      return (
-        <div className="space-y-2 sm:space-y-3 text-left max-w-3xl mx-auto">
-          <input
-            type="text"
-            value={slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-            className="text-base sm:text-2xl md:text-3xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 w-full"
-            placeholder="Deep-Dive Analysis Headline"
-          />
-          <div className="p-3 sm:p-5 rounded-2xl border shadow-lg space-y-2" style={{ borderColor: colors.border, backgroundColor: `${colors.cardBg}DD` }}>
-            <textarea
-              value={slide.content || "Detailed architectural deep dive into technical implementation, performance benchmarks, error recovery heuristics, and scalability parameters."}
-              onChange={(e) => onUpdate(() => ({ content: e.target.value }))}
-              rows={4}
-              className="w-full text-xs sm:text-sm text-neutral-200 font-light leading-relaxed bg-transparent border-0 outline-none resize-none hover:bg-white/[0.02] p-1 rounded"
+              src={slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400"} 
+              alt="" 
+              onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400"; }}
+              className="w-full h-full object-cover"
             />
           </div>
         </div>
       );
 
     case "metric_callout":
-    case "metric":
       return (
-        <div className="space-y-2 sm:space-y-4 text-left">
-          <input
-            type="text"
-            value={slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-            className="text-base sm:text-2xl md:text-3xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 w-full"
-            placeholder="Key Metrics Title"
-          />
-          <div className="grid grid-cols-3 gap-1.5 sm:gap-3.5">
-            {(slide.metrics || [
-              { value: slide.metric?.value || "99.4%", label: slide.metric?.label || "Metric KPI" },
-              { value: "3.5x", label: "Acceleration" },
-              { value: "< 10ms", label: "Latency" }
-            ]).map((m, idx) => (
-              <div 
-                key={idx}
-                className="p-2 sm:p-4 rounded-xl sm:rounded-2xl border flex flex-col justify-center items-center text-center shadow-lg transition-all hover:scale-[1.02]"
-                style={{ borderColor: colors.border, backgroundColor: `${colors.cardBg}CC` }}
-              >
-                <input
-                  type="text"
-                  value={m.value}
-                  onChange={(e) => {
-                    const nextMetrics = [...(slide.metrics || [])];
-                    if (nextMetrics[idx]) nextMetrics[idx].value = e.target.value;
-                    onUpdate(() => ({ metrics: nextMetrics }));
-                  }}
-                  className="text-sm sm:text-2xl md:text-4xl font-black tracking-tight text-center bg-transparent border-0 outline-none w-full"
-                  style={{ color: colors.primary }}
-                />
-                <input
-                  type="text"
-                  value={m.label}
-                  onChange={(e) => {
-                    const nextMetrics = [...(slide.metrics || [])];
-                    if (nextMetrics[idx]) nextMetrics[idx].label = e.target.value;
-                    onUpdate(() => ({ metrics: nextMetrics }));
-                  }}
-                  className="text-[8px] sm:text-[10.5px] font-bold uppercase tracking-wider text-neutral-300 text-center bg-transparent border-0 outline-none w-full mt-0.5"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-
-    case "timeline":
-    case "steps":
-    case "roadmap":
-      return (
-        <div className="space-y-2 sm:space-y-4 text-left">
-          <input
-            type="text"
-            value={slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-            className="text-base sm:text-2xl md:text-3xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 w-full"
-            placeholder="Process Timeline Title"
-          />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
-            {(slide.events || [
-              { year: "Step 1", description: "Architecture Discovery" },
-              { year: "Step 2", description: "Semantic Indexing" },
-              { year: "Step 3", description: "Inference Tuning" },
-              { year: "Step 4", description: "Production Scale" }
-            ]).map((ev, idx) => (
-              <div 
-                key={idx}
-                className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border flex flex-col gap-1 relative shadow-md"
-                style={{ borderColor: colors.border, backgroundColor: `${colors.cardBg}DD` }}
-              >
-                <div className="flex items-center justify-between">
-                  <span 
-                    className="text-[8.5px] sm:text-[10px] font-mono font-black uppercase px-1.5 py-0.5 rounded-md border"
-                    style={{ color: colors.accent, borderColor: colors.border, backgroundColor: `${colors.primary}15` }}
-                  >
-                    {ev.year}
-                  </span>
-                  <span className="text-[8px] font-mono text-neutral-500">0{idx + 1}</span>
-                </div>
-                <textarea
-                  value={ev.description}
-                  onChange={(e) => {
-                    const nextEvents = [...(slide.events || [])];
-                    if (nextEvents[idx]) nextEvents[idx].description = e.target.value;
-                    onUpdate(() => ({ events: nextEvents }));
-                  }}
-                  rows={2}
-                  className="text-[9.5px] sm:text-xs text-neutral-200 font-light leading-snug bg-transparent border-0 outline-none resize-none hover:bg-white/[0.03] rounded p-0.5"
-                />
+        <div 
+          className="aspect-[16/9] w-full rounded-lg border p-1.5 flex flex-col justify-between relative overflow-hidden transition-all shadow-inner"
+          style={{ backgroundColor: colors.bg, borderColor: colors.border || "rgba(255,255,255,0.08)" }}
+        >
+          <p className="text-[6.5px] font-bold text-white line-clamp-1 text-center">{slide.title || "Metrics"}</p>
+          <div className="grid grid-cols-3 gap-1 my-auto">
+            {(slide.metrics?.slice(0, 3) || [{ value: "99%" }, { value: "4x" }, { value: "<15ms" }]).map((m, i) => (
+              <div key={i} className="p-0.5 rounded bg-black/40 border border-white/10 text-center">
+                <span className="text-[6px] font-black block" style={{ color: i === 0 ? colors.primary : colors.accent }}>{m.value}</span>
               </div>
             ))}
           </div>
@@ -1743,185 +1464,60 @@ function SlideEditableCanvas({
       );
 
     case "comparison":
-    case "two_column_text":
       return (
-        <div className="space-y-2 sm:space-y-4 text-left">
-          <input
-            type="text"
-            value={slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-            className="text-base sm:text-2xl md:text-3xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 w-full"
-            placeholder="Comparison Title"
-          />
-          <div className="grid grid-cols-2 gap-2 sm:gap-4">
-            {/* Left Column */}
-            <div 
-              className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border shadow-lg space-y-1.5 sm:space-y-2.5"
-              style={{ borderColor: colors.border, backgroundColor: `${colors.cardBg}DD` }}
-            >
-              <span className="text-[9.5px] sm:text-xs font-black uppercase tracking-wider block" style={{ color: colors.primary }}>
-                Option A / Baseline
-              </span>
-              <div className="space-y-1 sm:space-y-1.5">
-                {(slide.columns?.left || ["Legacy bottleneck", "Higher cost", "Slow response"]).map((item, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-[9.5px] sm:text-xs text-neutral-300">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: colors.primary }} />
-                    <input
-                      type="text"
-                      value={item}
-                      onChange={(e) => {
-                        const cols = { ...slide.columns } as any;
-                        if (!cols.left) cols.left = [];
-                        cols.left[i] = e.target.value;
-                        onUpdate(() => ({ columns: cols }));
-                      }}
-                      className="bg-transparent border-0 outline-none text-neutral-200 text-[9.5px] sm:text-xs w-full hover:bg-white/[0.03] px-1 rounded"
-                    />
-                  </div>
-                ))}
+        <div 
+          className="aspect-[16/9] w-full rounded-lg border p-1.5 flex flex-col justify-between relative overflow-hidden transition-all shadow-inner"
+          style={{ backgroundColor: colors.bg, borderColor: colors.border || "rgba(255,255,255,0.08)" }}
+        >
+          <p className="text-[6.5px] font-bold text-white line-clamp-1">{slide.title || "Comparison"}</p>
+          <div className="grid grid-cols-2 gap-1 my-auto">
+            <div className="p-1 rounded bg-black/40 border border-white/10 space-y-0.5">
+              <span className="text-[4.5px] font-bold text-neutral-400 uppercase block">Baseline</span>
+              <div className="h-0.5 w-full bg-white/20 rounded" />
+              <div className="h-0.5 w-2/3 bg-white/10 rounded" />
+            </div>
+            <div className="p-1 rounded bg-orange-500/10 border border-orange-500/30 space-y-0.5">
+              <span className="text-[4.5px] font-bold text-orange-400 uppercase block">Modern</span>
+              <div className="h-0.5 w-full bg-orange-400/40 rounded" />
+              <div className="h-0.5 w-2/3 bg-orange-400/20 rounded" />
+            </div>
+          </div>
+        </div>
+      );
+
+    case "conclusion":
+      return (
+        <div 
+          className="aspect-[16/9] w-full rounded-lg border p-1.5 flex flex-col justify-between relative overflow-hidden transition-all shadow-inner"
+          style={{ backgroundColor: colors.bg, borderColor: colors.border || "rgba(255,255,255,0.08)" }}
+        >
+          <p className="text-[6.5px] font-bold text-white line-clamp-1">{slide.title || "Conclusion"}</p>
+          <div className="grid grid-cols-3 gap-1 my-auto">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-0.5 rounded bg-black/40 border border-white/10 space-y-0.5">
+                <span className="w-1 h-1 rounded-full block" style={{ backgroundColor: colors.primary }} />
+                <div className="h-0.5 w-full bg-white/20 rounded" />
               </div>
-            </div>
-
-            {/* Right Column */}
-            <div 
-              className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border shadow-lg space-y-1.5 sm:space-y-2.5"
-              style={{ borderColor: `${colors.primary}50`, backgroundColor: `${colors.primary}10` }}
-            >
-              <span className="text-[9.5px] sm:text-xs font-black uppercase tracking-wider block" style={{ color: colors.accent }}>
-                Option B / AI Modern
-              </span>
-              <div className="space-y-1 sm:space-y-1.5">
-                {(slide.columns?.right || ["Vector clustering", "Zero overhead", "Instant responses"]).map((item, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-[9.5px] sm:text-xs text-neutral-200 font-medium">
-                    <CheckCircle2 size={12} className="shrink-0" style={{ color: colors.accent }} />
-                    <input
-                      type="text"
-                      value={item}
-                      onChange={(e) => {
-                        const cols = { ...slide.columns } as any;
-                        if (!cols.right) cols.right = [];
-                        cols.right[i] = e.target.value;
-                        onUpdate(() => ({ columns: cols }));
-                      }}
-                      className="bg-transparent border-0 outline-none text-white text-[9.5px] sm:text-xs w-full hover:bg-white/[0.03] px-1 rounded font-semibold"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       );
 
-    case "pros_cons":
+    case "gallery_grid":
       return (
-        <div className="space-y-2 sm:space-y-4 text-left">
-          <input
-            type="text"
-            value={slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-            className="text-base sm:text-2xl md:text-3xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 w-full"
-            placeholder="Pros & Cons Title"
-          />
-          <div className="grid grid-cols-2 gap-2 sm:gap-4">
-            <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-emerald-500/30 bg-emerald-950/20 space-y-1 sm:space-y-1.5 shadow-lg">
-              <span className="text-[9.5px] sm:text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 size={12} /> Advantages
-              </span>
-              {(slide.pros || ["High accuracy", "Cost reduction", "Infinite scale"]).map((p, i) => (
-                <input
-                  key={i}
-                  type="text"
-                  value={p}
-                  onChange={(e) => {
-                    const nextPros = [...(slide.pros || [])];
-                    nextPros[i] = e.target.value;
-                    onUpdate(() => ({ pros: nextPros }));
-                  }}
-                  className="bg-transparent border-0 outline-none text-neutral-200 text-[9.5px] sm:text-xs w-full hover:bg-white/[0.04] px-1 rounded"
-                />
-              ))}
-            </div>
-
-            <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-red-500/30 bg-red-950/20 space-y-1 sm:space-y-1.5 shadow-lg">
-              <span className="text-[9.5px] sm:text-xs font-black uppercase tracking-wider text-red-400 flex items-center gap-1">
-                <XCircle size={12} /> Challenges
-              </span>
-              {(slide.cons || ["Initial setup", "Token allocation", "Latency budget"]).map((c, i) => (
-                <input
-                  key={i}
-                  type="text"
-                  value={c}
-                  onChange={(e) => {
-                    const nextCons = [...(slide.cons || [])];
-                    nextCons[i] = e.target.value;
-                    onUpdate(() => ({ cons: nextCons }));
-                  }}
-                  className="bg-transparent border-0 outline-none text-neutral-200 text-[9.5px] sm:text-xs w-full hover:bg-white/[0.04] px-1 rounded"
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-
-    case "quote":
-      return (
-        <div className="max-w-2xl mx-auto text-center space-y-2 sm:space-y-4 py-1 sm:py-3">
-          <Quote size={22} className="mx-auto opacity-70" style={{ color: colors.primary }} />
-          <textarea
-            value={slide.quote_text || slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ quote_text: e.target.value }))}
-            rows={3}
-            className="w-full text-center text-xs sm:text-lg md:text-2xl font-serif italic text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-2xl p-1 resize-none leading-snug sm:leading-relaxed"
-          />
-          <div className="space-y-0.5">
-            <input
-              type="text"
-              value={slide.author || "Author Name"}
-              onChange={(e) => onUpdate(() => ({ author: e.target.value }))}
-              className="text-[9.5px] sm:text-xs font-bold uppercase tracking-widest text-center bg-transparent border-0 outline-none w-full"
-              style={{ color: colors.primary }}
-            />
-            <input
-              type="text"
-              value={slide.role || "Executive / Researcher"}
-              onChange={(e) => onUpdate(() => ({ role: e.target.value }))}
-              className="text-[8.5px] sm:text-[11px] text-neutral-400 text-center bg-transparent border-0 outline-none w-full"
-            />
-          </div>
-        </div>
-      );
-
-    case "matrix_2x2":
-      return (
-        <div className="space-y-2 sm:space-y-4 text-left">
-          <input
-            type="text"
-            value={slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-            className="text-base sm:text-2xl md:text-3xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 w-full"
-            placeholder="Strategic Matrix Title"
-          />
-          <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
-            {(slide.quadrants || ["Q1: Quick Wins", "Q2: Major Projects", "Q3: Fill-Ins", "Q4: Heavy Lifts"]).map((q, i) => (
-              <div 
-                key={i}
-                className="p-2 sm:p-3 rounded-xl sm:rounded-2xl border shadow-md flex items-center gap-1.5"
-                style={{ borderColor: colors.border, backgroundColor: `${colors.cardBg}CC` }}
-              >
-                <span className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0 text-[9px] font-bold font-mono" style={{ backgroundColor: `${colors.primary}20`, color: colors.primary }}>
-                  Q{i + 1}
-                </span>
-                <textarea
-                  value={q}
-                  onChange={(e) => {
-                    const nextQ = [...(slide.quadrants || [])];
-                    nextQ[i] = e.target.value;
-                    onUpdate(() => ({ quadrants: nextQ }));
-                  }}
-                  rows={2}
-                  className="bg-transparent border-0 outline-none text-neutral-200 text-[9.5px] sm:text-xs w-full resize-none hover:bg-white/[0.03] p-0.5 rounded leading-tight"
+        <div 
+          className="aspect-[16/9] w-full rounded-lg border p-1.5 flex flex-col justify-between relative overflow-hidden transition-all shadow-inner"
+          style={{ backgroundColor: colors.bg, borderColor: colors.border || "rgba(255,255,255,0.08)" }}
+        >
+          <p className="text-[6.5px] font-bold text-white line-clamp-1">{slide.title || "Gallery"}</p>
+          <div className="grid grid-cols-3 gap-1 my-auto">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="aspect-[16/10] rounded bg-neutral-800 overflow-hidden relative">
+                <img 
+                  src={slide.images?.[i] || slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400"} 
+                  alt="" 
+                  onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400"; }}
+                  className="w-full h-full object-cover"
                 />
               </div>
             ))}
@@ -1930,44 +1526,977 @@ function SlideEditableCanvas({
       );
 
     case "bullets":
-    case "conclusion":
     default:
       return (
-        <div className="space-y-2 sm:space-y-4 text-left">
-          <input
-            type="text"
-            value={slide.title || ""}
-            onChange={(e) => onUpdate(() => ({ title: e.target.value }))}
-            placeholder="Slide Heading"
-            className="text-base sm:text-2xl md:text-3xl font-black tracking-tight text-white bg-transparent border-0 outline-none hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 w-full"
+        <div 
+          className="aspect-[16/9] w-full rounded-lg border p-1.5 flex flex-col justify-between relative overflow-hidden transition-all shadow-inner"
+          style={{ backgroundColor: colors.bg, borderColor: colors.border || "rgba(255,255,255,0.08)" }}
+        >
+          <p className="text-[6.5px] font-bold text-white line-clamp-1">{slide.title || "Overview"}</p>
+          <div className="grid grid-cols-2 gap-1 my-auto">
+            {(slide.bullets?.slice(0, 4) || ["Pillar 1", "Pillar 2"]).map((b, idx) => (
+              <div key={idx} className="p-0.5 rounded bg-black/40 border border-white/10 space-y-0.5">
+                <div className="flex items-center gap-0.5">
+                  <span className="w-0.5 h-0.5 rounded-full shrink-0" style={{ backgroundColor: colors.primary }} />
+                  <p className="text-[5px] text-neutral-300 line-clamp-1">{b}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+  }
+}
+
+// ─── HELPER COMPONENT: AUTO-GROWING TEXTAREA WITH ZERO SCROLLBARS ───
+function AutoExpandText({
+  value,
+  onChange,
+  className,
+  placeholder,
+  rows = 1
+}: {
+  value: string;
+  onChange?: (val: string) => void;
+  className?: string;
+  placeholder?: string;
+  rows?: number;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = "auto";
+      ref.current.style.height = `${ref.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value || ""}
+      onChange={(e) => {
+        if (onChange) onChange(e.target.value);
+        if (ref.current) {
+          ref.current.style.height = "auto";
+          ref.current.style.height = `${ref.current.scrollHeight}px`;
+        }
+      }}
+      rows={rows}
+      placeholder={placeholder}
+      className={cn(
+        "w-full bg-transparent border-0 outline-none resize-none overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden transition-all",
+        className
+      )}
+    />
+  );
+}
+
+// ─── SUB-COMPONENT: PRISTINE STATIC SLIDE VIEW (FOR CRISP 100% STUDIO-GRADE PDF EXPORT) ───
+function SlideStaticView({ slide, theme }: { slide: Slide; theme: PPTThemeConfig }) {
+  const colors = theme.colors;
+
+  switch (slide.layout) {
+    case "title":
+      return (
+        <div className="text-center space-y-5 max-w-4xl mx-auto py-4 flex flex-col items-center justify-center h-full">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white text-center leading-tight">
+            {slide.title || "Presentation Title"}
+          </h1>
+          <div 
+            className="h-1.5 w-24 mx-auto rounded-full my-2"
+            style={{ backgroundColor: colors.primary, boxShadow: `0 0 20px ${colors.primary}` }}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-3">
-            {(slide.bullets || ["First key insight or concept", "Second structural milestone", "Third actionable recommendation", "Fourth scaling objective"]).map((bullet, idx) => (
-              <div 
-                key={idx}
-                className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border flex gap-2 items-start shadow-md transition-all hover:scale-[1.01]"
-                style={{ borderColor: colors.border, backgroundColor: `${colors.cardBg}DD` }}
-              >
-                <span 
-                  className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border font-mono text-[8px] sm:text-[9.5px] font-black flex items-center justify-center shrink-0 mt-0.5"
-                  style={{ color: colors.accent, borderColor: colors.border, backgroundColor: `${colors.primary}15` }}
-                >
+          {slide.subtitle && (
+            <p className="text-base sm:text-lg text-neutral-300 font-light max-w-3xl mx-auto text-center leading-relaxed">
+              {slide.subtitle}
+            </p>
+          )}
+          {slide.author && (
+            <div 
+              className="text-xs uppercase font-mono tracking-widest text-center px-4 py-1 rounded-full border mt-2 font-bold"
+              style={{ color: colors.primary, borderColor: colors.border || "rgba(255,255,255,0.15)", backgroundColor: "rgba(255,255,255,0.03)" }}
+            >
+              {slide.author}
+            </div>
+          )}
+        </div>
+      );
+
+    case "image_left": {
+      const bullets = (slide.bullets && slide.bullets.length > 0)
+        ? slide.bullets
+        : ["Key insight and structural milestone.", "Quantitative benchmark telemetry."];
+
+      return (
+        <div className="grid grid-cols-2 gap-8 items-center h-full text-left">
+          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border shadow-xl" style={{ borderColor: colors.border }}>
+            <img 
+              src={slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80"} 
+              alt="" 
+              crossOrigin="anonymous"
+              onError={(e) => {
+                e.currentTarget.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80";
+              }}
+              className="w-full h-full object-cover" 
+            />
+          </div>
+
+          <div className="space-y-4 flex flex-col justify-center">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-snug">
+              {slide.title || "Topic Analysis"}
+            </h2>
+            <div className="space-y-3">
+              {bullets.map((bullet, idx) => (
+                <div key={idx} className="flex items-start gap-3 text-sm text-neutral-200">
+                  <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primary}` }} />
+                  <p className="leading-relaxed font-light">{bullet}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    case "image_right": {
+      const bullets = (slide.bullets && slide.bullets.length > 0)
+        ? slide.bullets
+        : ["Strategic insight and core competitive advantage.", "Validation benchmark and performance telemetry."];
+
+      return (
+        <div className="grid grid-cols-2 gap-8 items-center h-full text-left">
+          <div className="space-y-4 flex flex-col justify-center">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-snug">
+              {slide.title || "Topic Analysis"}
+            </h2>
+            <div className="space-y-3">
+              {bullets.map((bullet, idx) => (
+                <div key={idx} className="flex items-start gap-3 text-sm text-neutral-200">
+                  <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.accent, boxShadow: `0 0 8px ${colors.accent}` }} />
+                  <p className="leading-relaxed font-light">{bullet}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border shadow-xl" style={{ borderColor: colors.border }}>
+            <img 
+              src={slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80"} 
+              alt="" 
+              crossOrigin="anonymous"
+              onError={(e) => {
+                e.currentTarget.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80";
+              }}
+              className="w-full h-full object-cover" 
+            />
+          </div>
+        </div>
+      );
+    }
+
+    case "comparison": {
+      const leftItems = slide.columns?.left || slide.pros || ["Baseline Strategy", "Standard Deployment"];
+      const rightItems = slide.columns?.right || slide.cons || ["Modern AI Acceleration", "Real-time Telemetry"];
+
+      return (
+        <div className="space-y-5 flex flex-col justify-center h-full text-left">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {slide.title || "Comparative Analysis"}
+          </h2>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="p-6 rounded-2xl border space-y-3 bg-black/40 shadow-lg" style={{ borderColor: colors.border }}>
+              <span className="text-xs font-mono font-black uppercase tracking-wider block" style={{ color: colors.primary }}>
+                Option A / Baseline
+              </span>
+              <div className="space-y-2">
+                {leftItems.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-neutral-300">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.primary }} />
+                    <p className="leading-relaxed font-light">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl border space-y-3 bg-black/40 shadow-lg" style={{ borderColor: colors.accent || colors.primary }}>
+              <span className="text-xs font-mono font-black uppercase tracking-wider block" style={{ color: colors.accent }}>
+                Option B / Modern AI
+              </span>
+              <div className="space-y-2">
+                {rightItems.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-white">
+                    <span className="text-xs shrink-0 font-bold" style={{ color: colors.accent }}>✓</span>
+                    <p className="leading-relaxed font-medium">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    case "metric_callout": {
+      const metrics = slide.metrics || [
+        { value: "99.8%", label: "Accuracy Multiplier" },
+        { value: "4.2x", label: "Velocity Benchmark" },
+        { value: "< 18ms", label: "P99 Telemetry" }
+      ];
+
+      return (
+        <div className="text-center space-y-6 flex flex-col justify-center h-full">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {slide.title || "Key Metrics & KPIs"}
+          </h2>
+          <div className="grid grid-cols-3 gap-6">
+            {metrics.slice(0, 3).map((m, idx) => (
+              <div key={idx} className="p-6 rounded-2xl border bg-black/40 space-y-2 shadow-lg" style={{ borderColor: idx === 0 ? colors.primary : colors.border }}>
+                <p className="text-4xl sm:text-5xl font-black tracking-tight" style={{ color: idx === 0 ? colors.primary : colors.accent }}>
+                  {m.value}
+                </p>
+                <p className="text-xs uppercase font-mono font-bold text-neutral-400 tracking-wider">
+                  {m.label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case "timeline": {
+      const events = (slide.events || [
+        { year: "Phase 1", description: "Architecture Discovery" },
+        { year: "Phase 2", description: "Semantic Indexing" },
+        { year: "Phase 3", description: "Global Scale" }
+      ]).slice(0, 3);
+
+      return (
+        <div className="space-y-6 flex flex-col justify-center h-full text-left">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {slide.title || "Process Roadmap"}
+          </h2>
+          <div className="grid grid-cols-3 gap-5">
+            {events.map((ev, idx) => (
+              <div key={idx} className="p-6 rounded-2xl border bg-black/40 space-y-3 shadow-lg flex flex-col justify-between" style={{ borderColor: colors.border }}>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-black px-2.5 py-1 rounded-lg border font-bold" style={{ color: colors.primary, borderColor: colors.primary, backgroundColor: "rgba(255,255,255,0.05)" }}>
+                    {ev.year}
+                  </span>
+                  <div className="flex-1 h-px bg-white/10" />
+                </div>
+                <p className="text-xs sm:text-sm text-neutral-300 font-light leading-relaxed">
+                  {ev.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case "gallery_grid": {
+      const images = (slide.images && slide.images.length > 0)
+        ? slide.images
+        : [
+            slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800",
+            "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800",
+            "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800"
+          ];
+      return (
+        <div className="space-y-4 flex flex-col justify-center h-full text-left">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {slide.title || "Visual Showcase"}
+          </h2>
+          <div className="grid grid-cols-3 gap-4 h-64">
+            {images.slice(0, 3).map((imgUrl, idx) => (
+              <div key={idx} className="relative rounded-2xl overflow-hidden border shadow-lg" style={{ borderColor: colors.border }}>
+                <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case "pros_cons": {
+      const prosList = (slide.pros && slide.pros.length > 0) ? slide.pros : ["Strategic Efficiency Multiplier", "Accelerated Velocity"];
+      const consList = (slide.cons && slide.cons.length > 0) ? slide.cons : ["Implementation Overhead", "Migration Complexity"];
+      return (
+        <div className="space-y-5 flex flex-col justify-center h-full text-left">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {slide.title || "Advantages vs Trade-offs"}
+          </h2>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="p-6 rounded-2xl border bg-black/40 space-y-3 shadow-lg" style={{ borderColor: "rgba(34,197,94,0.3)" }}>
+              <span className="text-xs font-mono font-black uppercase tracking-wider text-emerald-400 block">✓ Key Advantages</span>
+              <div className="space-y-2">
+                {prosList.map((p, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-neutral-200">
+                    <span className="text-emerald-400 font-bold">✓</span>
+                    <p className="leading-relaxed font-light">{p}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-6 rounded-2xl border bg-black/40 space-y-3 shadow-lg" style={{ borderColor: "rgba(239,68,68,0.3)" }}>
+              <span className="text-xs font-mono font-black uppercase tracking-wider text-red-400 block">⚠ Trade-offs & Limitations</span>
+              <div className="space-y-2">
+                {consList.map((c, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-neutral-200">
+                    <span className="text-red-400 font-bold">✕</span>
+                    <p className="leading-relaxed font-light">{c}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    case "quote":
+      return (
+        <div className="text-center space-y-6 max-w-3xl mx-auto flex flex-col items-center justify-center h-full">
+          <span className="text-5xl font-serif text-orange-400 font-black">“</span>
+          <p className="text-xl sm:text-2xl font-light italic text-white leading-relaxed">
+            {slide.quote_text || slide.subtitle || "The future of architectural engineering lies in the union of sustainable mastery and digital preservation."}
+          </p>
+          {(slide.author || slide.role) && (
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-white tracking-wide">{slide.author || "Executive Leadership"}</p>
+              {slide.role && <p className="text-xs font-mono text-neutral-400">{slide.role}</p>}
+            </div>
+          )}
+        </div>
+      );
+
+    case "matrix_2x2": {
+      const quads = slide.quadrants || ["Q1: High Impact / Low Effort", "Q2: High Impact / High Effort", "Q3: Low Impact / Low Effort", "Q4: Low Impact / High Effort"];
+      return (
+        <div className="space-y-4 flex flex-col justify-center h-full text-left">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {slide.title || "Strategic 2x2 Matrix"}
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            {quads.slice(0, 4).map((q, idx) => (
+              <div key={idx} className="p-5 rounded-2xl border bg-black/40 space-y-2 shadow-lg" style={{ borderColor: idx === 0 ? colors.primary : colors.border }}>
+                <span className="text-[10px] font-mono font-black uppercase text-orange-400 block">Quadrant 0{idx + 1}</span>
+                <p className="text-xs sm:text-sm text-neutral-200 font-light leading-relaxed">{q}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case "conclusion": {
+      const bullets = (slide.bullets && slide.bullets.length > 0)
+        ? slide.bullets
+        : [
+            "Sustainable Execution: Implement protective policies and international partnerships.",
+            "Technological Heritage: Leverage 3D LiDAR scanning and automated telemetry for preservation.",
+            "Global Stewardship: Engage local communities and educational initiatives for long-term impact."
+          ];
+      return (
+        <div className="space-y-6 flex flex-col justify-center h-full text-left max-w-4xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {slide.title || "Summary & Next Steps"}
+          </h2>
+          <div className="grid grid-cols-3 gap-4">
+            {bullets.slice(0, 3).map((bullet, idx) => (
+              <div key={idx} className="p-5 rounded-2xl border bg-black/40 flex flex-col justify-between space-y-3 shadow-lg" style={{ borderColor: colors.border }}>
+                <div className="flex items-center gap-2 pb-1 border-b border-white/[0.08]">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-orange-400">Takeaway 0{idx + 1}</span>
+                </div>
+                <p className="text-xs sm:text-sm text-neutral-200 font-light leading-relaxed">{bullet}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case "bullets":
+    default: {
+      const bullets = (slide.bullets && slide.bullets.length > 0)
+        ? slide.bullets
+        : [
+            "Strategic implementation milestone across infrastructure.",
+            "Quantitative performance telemetry and latency targets.",
+            "Long-term sustainable deployment and architectural agility."
+          ];
+
+      return (
+        <div className="space-y-6 flex flex-col justify-center h-full text-left">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {slide.title || "Key Strategic Takeaways"}
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            {bullets.slice(0, 4).map((bullet, idx) => (
+              <div key={idx} className="p-5 rounded-2xl border bg-black/40 flex items-start gap-3.5 shadow-lg" style={{ borderColor: colors.border }}>
+                <span className="w-7 h-7 rounded-full border flex items-center justify-center font-mono text-xs font-black shrink-0 mt-0.5" style={{ color: colors.primary, borderColor: colors.primary, backgroundColor: "rgba(255,255,255,0.05)" }}>
                   0{idx + 1}
                 </span>
-                <textarea
-                  value={bullet}
+                <p className="text-xs sm:text-sm text-neutral-200 font-light leading-relaxed">
+                  {bullet}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+  }
+}
+
+// ─── SUB-COMPONENT: 16:9 WYSIWYG EDITABLE SLIDE CANVAS ───
+function SlideEditableCanvas({
+  slide,
+  theme,
+  onUpdate,
+  onOpenImagePicker
+}: {
+  slide: Slide;
+  theme: PPTThemeConfig;
+  onUpdate: (updater: (s: Slide) => Partial<Slide>) => void;
+  onOpenImagePicker?: () => void;
+}) {
+  const colors = theme.colors;
+
+  switch (slide.layout) {
+    case "title":
+      return (
+        <div className="text-center space-y-4 max-w-3xl mx-auto py-2 flex flex-col items-center justify-center h-full">
+          <AutoExpandText
+            value={slide.title || ""}
+            onChange={(val) => onUpdate(() => ({ title: val }))}
+            placeholder="Presentation Title"
+            rows={2}
+            className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white text-center hover:bg-white/[0.03] rounded-2xl p-2 leading-tight"
+          />
+          <div 
+            className="h-1.5 w-20 mx-auto rounded-full my-1"
+            style={{ backgroundColor: colors.primary, boxShadow: `0 0 15px ${colors.primary}` }}
+          />
+          <AutoExpandText
+            value={slide.subtitle || ""}
+            onChange={(val) => onUpdate(() => ({ subtitle: val }))}
+            placeholder="Add subtitle or key thesis premise..."
+            rows={2}
+            className="text-sm sm:text-base text-neutral-300 font-light max-w-2xl mx-auto text-center hover:bg-white/[0.03] rounded-xl p-2 leading-relaxed"
+          />
+          {slide.author && (
+            <input
+              type="text"
+              value={slide.author}
+              onChange={(e) => onUpdate(() => ({ author: e.target.value }))}
+              className="text-xs uppercase font-mono tracking-widest text-center bg-transparent border-0 outline-none hover:bg-white/[0.03] px-3 py-1 rounded-lg mt-2"
+              style={{ color: colors.primary }}
+            />
+          )}
+        </div>
+      );
+
+    case "image_left": {
+      const bullets = (slide.bullets && slide.bullets.length > 0)
+        ? slide.bullets
+        : [
+            "Foundational premise and architectural overview.",
+            "Quantitative benchmark and implementation methodology."
+          ];
+
+      return (
+        <div className="grid grid-cols-2 gap-6 items-center h-full text-left">
+          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
+            <img 
+              src={slide.image_url || `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800`} 
+              alt=""
+              onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800"; }}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            {onOpenImagePicker && (
+              <button
+                onClick={onOpenImagePicker}
+                className="absolute bottom-2.5 right-2.5 px-3 py-1.5 bg-black/80 hover:bg-orange-500 hover:text-black text-white text-[10px] font-bold rounded-xl border border-white/20 transition-all flex items-center gap-1.5 shadow-lg backdrop-blur-sm z-20 cursor-pointer"
+              >
+                <Sparkles size={11} /> Change Visual
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-3 flex flex-col justify-center">
+            <AutoExpandText
+              value={slide.title || ""}
+              onChange={(val) => onUpdate(() => ({ title: val }))}
+              rows={2}
+              className="text-xl sm:text-2xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-lg p-0.5 leading-snug"
+              placeholder="Topic Headline"
+            />
+            <div className="space-y-2.5">
+              {bullets.map((bullet, idx) => (
+                <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-neutral-300">
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.primary }} />
+                  <AutoExpandText
+                    value={bullet}
+                    onChange={(val) => {
+                      const next = [...bullets];
+                      next[idx] = val;
+                      onUpdate(() => ({ bullets: next }));
+                    }}
+                    rows={2}
+                    className="leading-relaxed hover:bg-white/[0.02] rounded text-neutral-200 text-xs sm:text-sm p-0.5"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    case "image_right": {
+      const bullets = (slide.bullets && slide.bullets.length > 0)
+        ? slide.bullets
+        : [
+            "Strategic insight and core competitive advantage.",
+            "Validation benchmark and performance telemetry."
+          ];
+
+      return (
+        <div className="grid grid-cols-2 gap-6 items-center h-full text-left">
+          <div className="space-y-3 flex flex-col justify-center">
+            <AutoExpandText
+              value={slide.title || ""}
+              onChange={(val) => onUpdate(() => ({ title: val }))}
+              rows={2}
+              className="text-xl sm:text-2xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-lg p-0.5 leading-snug"
+              placeholder="Topic Headline"
+            />
+            <div className="space-y-2.5">
+              {bullets.map((bullet, idx) => (
+                <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-neutral-300">
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.accent }} />
+                  <AutoExpandText
+                    value={bullet}
+                    onChange={(val) => {
+                      const next = [...bullets];
+                      next[idx] = val;
+                      onUpdate(() => ({ bullets: next }));
+                    }}
+                    rows={2}
+                    className="leading-relaxed hover:bg-white/[0.02] rounded text-neutral-200 text-xs sm:text-sm p-0.5"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
+            <img 
+              src={slide.image_url || `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800`} 
+              alt=""
+              onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800"; }}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            {onOpenImagePicker && (
+              <button
+                onClick={onOpenImagePicker}
+                className="absolute bottom-2.5 right-2.5 px-3 py-1.5 bg-black/80 hover:bg-orange-500 hover:text-black text-white text-[10px] font-bold rounded-xl border border-white/20 transition-all flex items-center gap-1.5 shadow-lg backdrop-blur-sm z-20 cursor-pointer"
+              >
+                <Sparkles size={11} /> Change Visual
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    case "metric_callout":
+      return (
+        <div className="space-y-6 text-center max-w-3xl mx-auto py-2 flex flex-col justify-center h-full">
+          <AutoExpandText
+            value={slide.title || ""}
+            onChange={(val) => onUpdate(() => ({ title: val }))}
+            rows={2}
+            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 text-center leading-tight"
+            placeholder="Key Metrics Headline"
+          />
+          <div className="grid grid-cols-3 gap-4">
+            {(slide.metrics || [
+              { value: "99.8%", label: "Accuracy Target" },
+              { value: "4.2x", label: "Velocity Multiplier" },
+              { value: "< 18ms", label: "Latency Benchmark" }
+            ]).map((m, i) => (
+              <div 
+                key={i} 
+                className="p-5 rounded-2xl border shadow-lg space-y-1.5 bg-black/40"
+                style={{ borderColor: colors.border }}
+              >
+                <input
+                  type="text"
+                  value={m.value}
                   onChange={(e) => {
-                    const nextBullets = [...(slide.bullets || [])];
-                    nextBullets[idx] = e.target.value;
-                    onUpdate(() => ({ bullets: nextBullets }));
+                    const next = [...(slide.metrics || [])];
+                    next[i] = { ...m, value: e.target.value };
+                    onUpdate(() => ({ metrics: next }));
                   }}
-                  rows={2}
-                  className="text-[10px] sm:text-xs md:text-sm text-neutral-200 font-light leading-snug bg-transparent border-0 outline-none resize-none hover:bg-white/[0.03] rounded w-full p-0.5"
+                  className="text-3xl sm:text-4xl font-black tracking-tight text-center bg-transparent border-0 outline-none w-full"
+                  style={{ color: i === 0 ? colors.primary : colors.accent }}
+                />
+                <input
+                  type="text"
+                  value={m.label}
+                  onChange={(e) => {
+                    const next = [...(slide.metrics || [])];
+                    next[i] = { ...m, label: e.target.value };
+                    onUpdate(() => ({ metrics: next }));
+                  }}
+                  className="text-xs uppercase font-mono tracking-wider text-neutral-400 text-center bg-transparent border-0 outline-none w-full"
                 />
               </div>
             ))}
           </div>
         </div>
       );
+
+    case "conclusion": {
+      const conclusionItems = (slide.bullets && slide.bullets.length > 0)
+        ? slide.bullets
+        : (slide.pros && slide.pros.length > 0)
+        ? slide.pros
+        : (slide.steps && slide.steps.length > 0)
+        ? slide.steps.map(s => typeof s === 'string' ? s : (s as any).title || (s as any).description || "Action Item")
+        : (slide.content && slide.content.length > 5)
+        ? [
+            slide.content,
+            "Implementation Roadmap: Execute targeted milestones with continuous telemetry monitoring.",
+            "Long-Term Impact: Maintain sustainable performance, cultural preservation, and strategic agility."
+          ]
+        : [
+            "Sustainable Preservation: Implement protective policies and international conservation partnerships.",
+            "Technological Heritage: Leverage 3D LiDAR scanning and AR simulations for historical preservation.",
+            "Global Stewardship: Engage local communities and educational initiatives for long-term impact."
+          ];
+
+      return (
+        <div className="space-y-4 text-left flex flex-col justify-center h-full max-w-4xl mx-auto">
+          <AutoExpandText
+            value={slide.title || ""}
+            onChange={(val) => onUpdate(() => ({ title: val }))}
+            rows={2}
+            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            placeholder="Conclusion & Summary"
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+            {conclusionItems.map((bullet, idx) => (
+              <div 
+                key={idx}
+                className="p-4 rounded-2xl border shadow-md space-y-2 bg-black/40 flex flex-col justify-between"
+                style={{ borderColor: colors.border }}
+              >
+                <div className="flex items-center gap-2 pb-1 border-b border-white/[0.06]">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-orange-400">Takeaway {idx + 1}</span>
+                </div>
+                <AutoExpandText
+                  value={bullet}
+                  onChange={(val) => {
+                    const next = [...conclusionItems];
+                    next[idx] = val;
+                    onUpdate(() => ({ bullets: next }));
+                  }}
+                  rows={3}
+                  className="text-xs text-neutral-200 leading-relaxed hover:bg-white/[0.02] rounded p-0.5"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case "comparison": {
+      const leftItems = (slide.columns?.left && slide.columns.left.length > 0)
+        ? slide.columns.left
+        : (slide.pros && slide.pros.length > 0)
+        ? slide.pros
+        : (slide.bullets && slide.bullets.length > 1)
+        ? slide.bullets.slice(0, Math.ceil(slide.bullets.length / 2))
+        : [
+            slide.left_text || "Baseline Approach: Manual coordination with linear scaling overhead.",
+            "Latency Overhead: Sequential processing creates bottlenecks under high load.",
+            "Resource Consumption: Higher compute footprint with fragmented data stores."
+          ];
+
+      const rightItems = (slide.columns?.right && slide.columns.right.length > 0)
+        ? slide.columns.right
+        : (slide.cons && slide.cons.length > 0)
+        ? slide.cons
+        : (slide.bullets && slide.bullets.length > 1)
+        ? slide.bullets.slice(Math.ceil(slide.bullets.length / 2))
+        : [
+            slide.right_text || "Modern Architecture: Event-driven orchestration with autonomous workers.",
+            "Sub-Millisecond Response: Distributed vector indexing accelerates retrieval 4.2x.",
+            "Automated Telemetry: Self-healing error loops prevent context pollution."
+          ];
+
+      return (
+        <div className="space-y-4 text-left flex flex-col justify-center h-full">
+          <AutoExpandText
+            value={slide.title || ""}
+            onChange={(val) => onUpdate(() => ({ title: val }))}
+            rows={2}
+            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            placeholder="Comparative Analysis Headline"
+          />
+          <div className="grid grid-cols-2 gap-4">
+            {/* Left Column Card */}
+            <div className="p-4 rounded-2xl border bg-black/40 space-y-3" style={{ borderColor: colors.border }}>
+              <div className="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
+                <span className="w-2 h-2 rounded-full bg-neutral-400" />
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">Option A / Baseline</span>
+              </div>
+              <div className="space-y-2.5">
+                {leftItems.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs text-neutral-300">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 bg-neutral-500" />
+                    <AutoExpandText
+                      value={item}
+                      onChange={(val) => {
+                        const next = [...leftItems];
+                        next[idx] = val;
+                        onUpdate(() => ({ columns: { left: next, right: rightItems } }));
+                      }}
+                      rows={2}
+                      className="leading-relaxed text-neutral-300 text-xs hover:bg-white/[0.02] rounded p-0.5"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Column Card */}
+            <div className="p-4 rounded-2xl border bg-orange-500/5 space-y-3" style={{ borderColor: colors.primary }}>
+              <div className="flex items-center gap-2 pb-2 border-b border-orange-500/20">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-400">Option B / Modern</span>
+              </div>
+              <div className="space-y-2.5">
+                {rightItems.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs text-neutral-200">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.primary }} />
+                    <AutoExpandText
+                      value={item}
+                      onChange={(val) => {
+                        const next = [...rightItems];
+                        next[idx] = val;
+                        onUpdate(() => ({ columns: { left: leftItems, right: next } }));
+                      }}
+                      rows={2}
+                      className="leading-relaxed text-neutral-100 text-xs hover:bg-white/[0.02] rounded p-0.5"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    case "pros_cons": {
+      const pros = (slide.pros && slide.pros.length > 0) ? slide.pros : (slide.bullets?.slice(0, 2) || ["Accelerated Deployment Velocity", "Cost Reduction across Infrastructure"]);
+      const cons = (slide.cons && slide.cons.length > 0) ? slide.cons : (slide.bullets?.slice(2) || ["Initial Migration Complexity", "Legacy System Compatibility"]);
+
+      return (
+        <div className="space-y-4 text-left flex flex-col justify-center h-full">
+          <AutoExpandText
+            value={slide.title || ""}
+            onChange={(val) => onUpdate(() => ({ title: val }))}
+            rows={2}
+            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            placeholder="Pros & Cons Headline"
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/10 space-y-2.5">
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block pb-1 border-b border-emerald-500/20">Key Advantages</span>
+              {pros.map((p, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-xs text-neutral-200">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <AutoExpandText
+                    value={p}
+                    onChange={(val) => {
+                      const next = [...pros];
+                      next[idx] = val;
+                      onUpdate(() => ({ pros: next }));
+                    }}
+                    rows={2}
+                    className="leading-snug text-neutral-200 text-xs"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="p-4 rounded-2xl border border-rose-500/30 bg-rose-950/10 space-y-2.5">
+              <span className="text-xs font-bold text-rose-400 uppercase tracking-wider block pb-1 border-b border-rose-500/20">Considerations & Risks</span>
+              {cons.map((c, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-xs text-neutral-200">
+                  <span className="text-rose-400 font-bold">✗</span>
+                  <AutoExpandText
+                    value={c}
+                    onChange={(val) => {
+                      const next = [...cons];
+                      next[idx] = val;
+                      onUpdate(() => ({ cons: next }));
+                    }}
+                    rows={2}
+                    className="leading-snug text-neutral-200 text-xs"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    case "timeline": {
+      const events = (slide.events && slide.events.length > 0)
+        ? slide.events
+        : (slide.steps && slide.steps.length > 0)
+        ? slide.steps.map((st, i) => ({ year: `Stage ${i + 1}`, description: typeof st === "string" ? st : (st as any).title || "Execution Step" }))
+        : [
+            { year: "Phase 1", description: "Architecture Discovery & Data Schema Definition" },
+            { year: "Phase 2", description: "Pilot Deployment with Telemetry Monitoring" },
+            { year: "Phase 3", description: "Global Rollout & Performance Optimization" }
+          ];
+
+      return (
+        <div className="space-y-5 text-left flex flex-col justify-center h-full">
+          <AutoExpandText
+            value={slide.title || ""}
+            onChange={(val) => onUpdate(() => ({ title: val }))}
+            rows={2}
+            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            placeholder="Roadmap Timeline Headline"
+          />
+          <div className="grid grid-cols-3 gap-3">
+            {events.map((ev, idx) => (
+              <div key={idx} className="p-4 rounded-2xl border bg-black/40 space-y-2 relative" style={{ borderColor: colors.border }}>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold inline-block" style={{ backgroundColor: colors.primary, color: '#000' }}>
+                  {ev.year}
+                </span>
+                <AutoExpandText
+                  value={ev.description}
+                  onChange={(val) => {
+                    const next = [...events];
+                    next[idx] = { ...ev, description: val };
+                    onUpdate(() => ({ events: next }));
+                  }}
+                  rows={3}
+                  className="text-xs text-neutral-200 leading-relaxed"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case "quote": {
+      return (
+        <div className="text-center space-y-4 max-w-2xl mx-auto py-2 flex flex-col items-center justify-center h-full">
+          <span className="text-4xl text-orange-400 font-serif leading-none">“</span>
+          <AutoExpandText
+            value={slide.quote_text || slide.title || "Innovation distinguishes between a leader and a follower."}
+            onChange={(val) => onUpdate(() => ({ quote_text: val }))}
+            rows={3}
+            className="text-center text-lg sm:text-xl font-medium italic text-neutral-200 leading-relaxed"
+          />
+          <div className="space-y-0.5">
+            <p className="text-xs font-bold text-white uppercase tracking-wider">{slide.author || "Executive Leadership"}</p>
+            {slide.role && <p className="text-[10px] text-neutral-400 font-mono">{slide.role}</p>}
+          </div>
+        </div>
+      );
+    }
+
+    case "gallery_grid": {
+      const images = (slide.images && slide.images.length > 0)
+        ? slide.images
+        : [slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800"];
+
+      return (
+        <div className="space-y-4 text-left flex flex-col justify-center h-full">
+          <AutoExpandText
+            value={slide.title || ""}
+            onChange={(val) => onUpdate(() => ({ title: val }))}
+            rows={2}
+            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            placeholder="Visual Showcase Headline"
+          />
+          <div className="grid grid-cols-3 gap-3">
+            {images.slice(0, 3).map((img, idx) => (
+              <div key={idx} className="relative aspect-[16/10] rounded-2xl overflow-hidden border shadow-md" style={{ borderColor: colors.border }}>
+                <img 
+                  src={img} 
+                  alt="" 
+                  onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800"; }}
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case "bullets":
+    default: {
+      const bulletsList = (slide.bullets && slide.bullets.length > 0)
+        ? slide.bullets
+        : [
+            "Foundational Pillar: Context-aware document partitioning preserves structural integrity.",
+            "Vector Caching: HNSW indexing accelerates sub-millisecond retrieval by 3.8x.",
+            "Dynamic Routing: Socratic classification prevents token exhaustion.",
+            "Continuous Feedback: Automated active recall tests reinforce retention."
+          ];
+      const isDense = bulletsList.length > 4;
+
+      return (
+        <div className="space-y-3 text-left flex flex-col justify-center h-full">
+          <AutoExpandText
+            value={slide.title || ""}
+            onChange={(val) => onUpdate(() => ({ title: val }))}
+            rows={2}
+            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            placeholder="Slide Topic Headline"
+          />
+          <div className={cn("grid gap-2.5", isDense ? "grid-cols-2 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar" : "grid-cols-2")}>
+            {bulletsList.map((bullet, idx) => (
+              <div 
+                key={idx}
+                className="p-3.5 rounded-2xl border shadow-md space-y-1 bg-black/40 flex items-start gap-2.5"
+                style={{ borderColor: colors.border }}
+              >
+                <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.primary }} />
+                <AutoExpandText
+                  value={bullet}
+                  onChange={(val) => {
+                    const next = [...bulletsList];
+                    next[idx] = val;
+                    onUpdate(() => ({ bullets: next }));
+                  }}
+                  rows={2}
+                  className="text-xs sm:text-sm text-neutral-200 leading-relaxed hover:bg-white/[0.02] rounded p-0.5"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
   }
 }
