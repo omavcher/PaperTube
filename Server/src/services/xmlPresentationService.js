@@ -3,7 +3,7 @@
 
 const { searchPresentationImages } = require("./imageSearchService");
 
-/**
+//**
  * Builds the Master XML Presentation Prompt for the LLM
  */
 function buildMasterXMLPrompt(params) {
@@ -32,9 +32,23 @@ Parameters:
 - Additional Context: "${additionalContext}"
 
 ════════════════════════════════════════════════════════════════════════════════
+LAYOUT DIVERSITY & VARIETY MANDATE (CRITICAL)
+════════════════════════════════════════════════════════════════════════════════
+DO NOT repeat the same layout sequentially. You must distribute and cycle dynamically through diverse layouts matching slide content:
+1. Cover/Intro Slide: layout="title"
+2. Visual Feature Slide: layout="image_left" or layout="image_right" (provide rich 4K photography <IMG query="..." />)
+3. Bento Insight Cards: layout="bullets" (3-4 structured insight cards with "Concept Heading: Substantive detail")
+4. Quantitative Data & Telemetry: layout="metric_callout" (3 high-impact numbers e.g. <METRIC value="481 ft" label="Height Record" />)
+5. Chronology or Evolution: layout="timeline" (3-4 milestone events e.g. <EVENT step="2560 BCE">Phase description</EVENT>)
+6. Comparative Analysis / Contrast: layout="comparison" (2 contrasting columns <COLUMN title="Theory A">...</COLUMN><COLUMN title="Theory B">...</COLUMN>)
+7. Deep-Dive Case Study: layout="image_right" or layout="gallery_grid"
+8. Strategic Trade-offs or Quotation: layout="pros_cons" or layout="quote"
+9. Executive Wrap-up: layout="conclusion"
+
+════════════════════════════════════════════════════════════════════════════════
 XML OUTPUT SPECIFICATION & SCHEMA
 ════════════════════════════════════════════════════════════════════════════════
-You must output a single well-formed <PRESENTATION> XML document. Do not output markdown fences or commentary outside the XML.
+Output a single well-formed <PRESENTATION> XML document. Do not output markdown fences or commentary outside the XML.
 
 Allowed XML tags and structures:
 
@@ -45,36 +59,27 @@ Allowed XML tags and structures:
    Custom curated color palette tailored specifically to the presentation subject.
 
 3. <SECTION layout="..." id="1">
-   Represents one slide card. Supported layout attributes:
-   - layout="title": First cover slide with <H1>, <SUBTITLE>, and <AUTHOR>.
-   - layout="image_left": 50% left high-res photographic visual, 50% right title and detailed <BULLETS>.
-   - layout="image_right": 50% left detailed analysis and <BULLETS>, 50% right high-res visual.
-   - layout="comparison": Side-by-side comparative column cards (<COLUMN title="...">...</COLUMN>).
-   - layout="metric_callout": 3 high-impact quantitative KPI metrics (<METRIC value="..." label="..." />).
-   - layout="timeline": Sequential phase roadmap (<EVENT step="...">...</EVENT>).
-   - layout="pros_cons": Benefits vs challenges (<PROS><LI>...</LI></PROS><CONS><LI>...</LI></CONS>).
-   - layout="quote": Executive quotation (<QUOTE author="..." role="...">...</QUOTE>).
-   - layout="bullets": Structured Bento cards (<BULLETS><LI>Bold Heading: Explanation...</LI></BULLETS>).
-   - layout="conclusion": Executive summary and strategic next steps.
+   Supported layouts: "title", "image_left", "image_right", "bullets", "comparison", "metric_callout", "timeline", "pros_cons", "quote", "gallery_grid", "conclusion".
 
 4. Slide Internal Elements:
    - <H1>Slide Main Headline</H1>
    - <SUBTITLE>Compelling sub-headline</SUBTITLE>
    - <AUTHOR>Speaker or Organization</AUTHOR>
-   - <IMG query="high-precision photography search query" />
-     CRITICAL: For every slide that uses an image (image_left, image_right, gallery_grid, title), provide a descriptive, highly specific 4K photography search query (e.g., "taj mahal agra india marble reflection pool 4k", "great wall of china panoramic aerial photography", "modern neural network architecture server room").
-   - <BULLETS><LI>Substantive bullet point with bold concept prefix</LI></BULLETS>
-   - <COLUMN title="Category Name"><LI>Feature 1</LI><LI>Feature 2</LI></COLUMN>
+   - <IMG query="specific photographic visual query e.g. Temple of Artemis Ephesus ruins archaeological site 4k" />
+   - <BULLETS><LI>Headline Keyword: In-depth substantive explanation with concrete facts</LI></BULLETS>
+     NOTE: Do NOT use <Bold> tags inside <LI>. Use "Headline: Explanation" plain text format.
+   - <COLUMN title="Category Name"><LI>Key Point 1</LI><LI>Key Point 2</LI></COLUMN>
    - <METRIC value="99.8%" label="KPI Benchmark Metric" />
-   - <EVENT step="Stage 1">Phase description</EVENT>
+   - <EVENT step="Stage/Year">Phase description</EVENT>
+   - <PROS><LI>Advantage</LI></PROS><CONS><LI>Challenge</LI></CONS>
+   - <QUOTE author="Person Name" role="Title/Affiliation">Executive or Historical Quote</QUOTE>
    - <NOTES>2-3 sentences of natural teleprompter speaker notes script</NOTES>
 
 ════════════════════════════════════════════════════════════════════════════════
 CONTENT & QUALITY RULES
 ════════════════════════════════════════════════════════════════════════════════
-1. SUBSTANTIVE DEPTH: Never write shallow, generic 3-word bullets. Each bullet must explain the "why", "how", specific mechanism, data point, or strategic impact.
-2. DIVERSE LAYOUTS: Alternate layouts dynamically across slides (e.g. Title -> Image Split -> Comparison -> Metrics -> Timeline -> Bento Cards -> Conclusion).
-3. ACCURATE IMAGE QUERIES: Always specify realistic, concrete visual queries in <IMG query="..." /> corresponding precisely to the subject matter.
+1. SUBSTANTIVE DEPTH: Each bullet must explain the specific mechanism, historical fact, quantitative metric, or strategic impact.
+2. ACCURATE REAL PHOTOGRAPHY QUERIES: In <IMG query="..." />, write precise photography search terms for real-world subjects.
 
 Begin your response directly with <PRESENTATION title="${title}"> and end with </PRESENTATION>.`;
 }
@@ -94,6 +99,14 @@ function parsePresentationXML(xmlString) {
   if (!presMatch) return null;
 
   const presContent = presMatch[0];
+
+  const cleanText = (str) => {
+    if (!str) return "";
+    return str
+      .replace(/<\/?(bold|b|strong)>/gi, "")
+      .replace(/\*\*/g, "")
+      .trim();
+  };
 
   // Extract Theme
   let themeData = null;
@@ -134,21 +147,21 @@ function parsePresentationXML(xmlString) {
 
     // Extract H1
     const h1Match = secFull.match(/<H1>([\s\S]*?)<\/H1>/i);
-    const title = h1Match ? h1Match[1].trim() : "Slide Title";
+    const title = cleanText(h1Match ? h1Match[1] : "Slide Title");
 
     // Extract Subtitle
     const subMatch = secFull.match(/<SUBTITLE>([\s\S]*?)<\/SUBTITLE>/i) || secFull.match(/<P>([\s\S]*?)<\/P>/i);
-    const subtitle = subMatch ? subMatch[1].trim() : "";
+    const subtitle = cleanText(subMatch ? subMatch[1] : "");
 
     // Extract Author
     const authorMatch = secFull.match(/<AUTHOR>([\s\S]*?)<\/AUTHOR>/i);
-    const author = authorMatch ? authorMatch[1].trim() : "";
+    const author = cleanText(authorMatch ? authorMatch[1] : "");
 
     // Extract Image Query
     let imageQuery = "";
     const imgMatch = secFull.match(/<IMG\s+query=["']([^"']+)["'][^>]*\/?>/i) || secFull.match(/<IMG>([\s\S]*?)<\/IMG>/i);
     if (imgMatch) {
-      imageQuery = imgMatch[1].trim();
+      imageQuery = cleanText(imgMatch[1]);
     }
 
     // Extract Bullets
@@ -158,13 +171,13 @@ function parsePresentationXML(xmlString) {
       const liRegex = /<LI>([\s\S]*?)<\/LI>/gi;
       let liMatch;
       while ((liMatch = liRegex.exec(bulletBlockMatch[1])) !== null) {
-        bullets.push(liMatch[1].trim());
+        bullets.push(cleanText(liMatch[1]));
       }
     } else {
       const liRegex = /<LI>([\s\S]*?)<\/LI>/gi;
       let liMatch;
       while ((liMatch = liRegex.exec(secFull)) !== null) {
-        bullets.push(liMatch[1].trim());
+        bullets.push(cleanText(liMatch[1]));
       }
     }
 
@@ -174,13 +187,13 @@ function parsePresentationXML(xmlString) {
     let colMatch;
     let colIdx = 0;
     while ((colMatch = colRegex.exec(secFull)) !== null) {
-      const colTitle = colMatch[1].trim();
+      const colTitle = cleanText(colMatch[1]);
       const colBody = colMatch[2];
       const items = [colTitle];
       const liRegex = /<LI>([\s\S]*?)<\/LI>/gi;
       let lim;
       while ((lim = liRegex.exec(colBody)) !== null) {
-        items.push(lim[1].trim());
+        items.push(cleanText(lim[1]));
       }
       if (colIdx === 0) columns.left = items;
       else if (colIdx === 1) columns.right = items;
@@ -197,8 +210,8 @@ function parsePresentationXML(xmlString) {
       const lblM = mAttrs.match(/label=["']([^"']+)["']/i);
       if (valM) {
         metrics.push({
-          value: valM[1].trim(),
-          label: lblM ? lblM[1].trim() : "Metric Benchmark"
+          value: cleanText(valM[1]),
+          label: cleanText(lblM ? lblM[1] : "Metric Benchmark")
         });
       }
     }
@@ -209,8 +222,8 @@ function parsePresentationXML(xmlString) {
     let evMatch;
     while ((evMatch = eventRegex.exec(secFull)) !== null) {
       events.push({
-        year: evMatch[1].trim(),
-        description: evMatch[2].trim()
+        year: cleanText(evMatch[1]),
+        description: cleanText(evMatch[2])
       });
     }
 
@@ -222,7 +235,7 @@ function parsePresentationXML(xmlString) {
       const liRegex = /<LI>([\s\S]*?)<\/LI>/gi;
       let lim;
       while ((lim = liRegex.exec(prosMatch[1])) !== null) {
-        pros.push(lim[1].trim());
+        pros.push(cleanText(lim[1]));
       }
     }
     const consMatch = secFull.match(/<CONS>([\s\S]*?)<\/CONS>/i);
@@ -230,7 +243,7 @@ function parsePresentationXML(xmlString) {
       const liRegex = /<LI>([\s\S]*?)<\/LI>/gi;
       let lim;
       while ((lim = liRegex.exec(consMatch[1])) !== null) {
-        cons.push(lim[1].trim());
+        cons.push(cleanText(lim[1]));
       }
     }
 
@@ -240,26 +253,25 @@ function parsePresentationXML(xmlString) {
     let quoteRole = "";
     const quoteMatch = secFull.match(/<QUOTE([^>]*)>([\s\S]*?)<\/QUOTE>/i);
     if (quoteMatch) {
-      quote_text = quoteMatch[2].trim();
+      quote_text = cleanText(quoteMatch[2]);
       const qAttr = quoteMatch[1];
       const qaM = qAttr.match(/author=["']([^"']+)["']/i);
       const qrM = qAttr.match(/role=["']([^"']+)["']/i);
-      if (qaM) quoteAuthor = qaM[1].trim();
-      if (qrM) quoteRole = qrM[1].trim();
+      if (qaM) quoteAuthor = cleanText(qaM[1]);
+      if (qrM) quoteRole = cleanText(qrM[1]);
     }
 
     // Extract Notes
     const notesMatch = secFull.match(/<NOTES>([\s\S]*?)<\/NOTES>/i);
-    const speakerNotes = notesMatch ? notesMatch[1].trim() : "";
+    const speakerNotes = cleanText(notesMatch ? notesMatch[1] : "");
 
     // Auto-detect layout if not explicitly set
-    if (layout === "bullets") {
+    if (layout === "bullets" || layout === "image_left") {
       if (metrics.length >= 2) layout = "metric_callout";
       else if (events.length >= 2) layout = "timeline";
       else if (columns.left.length > 0 && columns.right.length > 0) layout = "comparison";
       else if (pros.length > 0 && cons.length > 0) layout = "pros_cons";
       else if (quote_text) layout = "quote";
-      else if (imageQuery && sections.length > 0) layout = "image_left";
     }
 
     sections.push({
@@ -280,6 +292,12 @@ function parsePresentationXML(xmlString) {
       quoteRole,
       speakerNotes
     });
+  }
+
+  return {
+    theme: themeData,
+    slides: sections
+    }
   }
 
   return {

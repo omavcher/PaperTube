@@ -1548,6 +1548,49 @@ function SlideThumbnailPreview({ slide, theme }: { slide: Slide; theme: PPTTheme
   }
 }
 
+// ─── HELPER COMPONENT: RENDER RICH FORMATTED BULLET WITH BOLD HEADINGS ───
+function FormattedBulletText({ text, className }: { text: string; className?: string }) {
+  if (!text) return null;
+
+  // Clean raw tags if any (<Bold>, </Bold>, <b>, </b>, <strong>, </strong>)
+  const xmlBoldMatch = text.match(/^<bold>([\s\S]*?)<\/bold>([\s\S]*)$/i);
+  if (xmlBoldMatch) {
+    return (
+      <p className={className}>
+        <strong className="font-bold text-white tracking-tight">{xmlBoldMatch[1].trim()} </strong>
+        <span>{xmlBoldMatch[2].trim()}</span>
+      </p>
+    );
+  }
+
+  const mdBoldMatch = text.match(/^\*\*([\s\S]*?)\*\*([\s\S]*)$/);
+  if (mdBoldMatch) {
+    return (
+      <p className={className}>
+        <strong className="font-bold text-white tracking-tight">{mdBoldMatch[1].trim()} </strong>
+        <span>{mdBoldMatch[2].trim()}</span>
+      </p>
+    );
+  }
+
+  // Check for clean "Heading: Body" format
+  const colonIdx = text.indexOf(":");
+  if (colonIdx > 0 && colonIdx < 50 && !text.startsWith("http")) {
+    const heading = text.substring(0, colonIdx + 1).replace(/<\/?(bold|b|strong)>/gi, "").replace(/\*\*/g, "");
+    const body = text.substring(colonIdx + 1).replace(/<\/?(bold|b|strong)>/gi, "").replace(/\*\*/g, "");
+    return (
+      <p className={className}>
+        <strong className="font-bold text-white tracking-tight">{heading} </strong>
+        <span>{body.trim()}</span>
+      </p>
+    );
+  }
+
+  // Fallback: clean all tags
+  const clean = text.replace(/<\/?(bold|b|strong)>/gi, "").replace(/\*\*/g, "").trim();
+  return <p className={className}>{clean}</p>;
+}
+
 // ─── HELPER COMPONENT: AUTO-GROWING TEXTAREA WITH ZERO SCROLLBARS ───
 function AutoExpandText({
   value,
@@ -1563,20 +1606,22 @@ function AutoExpandText({
   rows?: number;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const cleanValue = (value || "").replace(/<\/?(bold|b|strong)>/gi, "").replace(/\*\*/g, "");
 
   useEffect(() => {
     if (ref.current) {
       ref.current.style.height = "auto";
       ref.current.style.height = `${ref.current.scrollHeight}px`;
     }
-  }, [value]);
+  }, [cleanValue]);
 
   return (
     <textarea
       ref={ref}
-      value={value || ""}
+      value={cleanValue}
       onChange={(e) => {
-        if (onChange) onChange(e.target.value);
+        const sanitized = e.target.value.replace(/<\/?(bold|b|strong)>/gi, "");
+        if (onChange) onChange(sanitized);
         if (ref.current) {
           ref.current.style.height = "auto";
           ref.current.style.height = `${ref.current.scrollHeight}px`;
@@ -1650,7 +1695,7 @@ function SlideStaticView({ slide, theme }: { slide: Slide; theme: PPTThemeConfig
               {bullets.map((bullet, idx) => (
                 <div key={idx} className="flex items-start gap-3 text-sm text-neutral-200">
                   <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primary}` }} />
-                  <p className="leading-relaxed font-light">{bullet}</p>
+                  <FormattedBulletText text={bullet} className="leading-relaxed font-light" />
                 </div>
               ))}
             </div>
@@ -1674,7 +1719,7 @@ function SlideStaticView({ slide, theme }: { slide: Slide; theme: PPTThemeConfig
               {bullets.map((bullet, idx) => (
                 <div key={idx} className="flex items-start gap-3 text-sm text-neutral-200">
                   <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.accent, boxShadow: `0 0 8px ${colors.accent}` }} />
-                  <p className="leading-relaxed font-light">{bullet}</p>
+                  <FormattedBulletText text={bullet} className="leading-relaxed font-light" />
                 </div>
               ))}
             </div>
@@ -1911,7 +1956,7 @@ function SlideStaticView({ slide, theme }: { slide: Slide; theme: PPTThemeConfig
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
                   <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-orange-400">Takeaway 0{idx + 1}</span>
                 </div>
-                <p className="text-xs sm:text-sm text-neutral-200 font-light leading-relaxed">{bullet}</p>
+                <FormattedBulletText text={bullet} className="text-xs sm:text-sm text-neutral-200 font-light leading-relaxed" />
               </div>
             ))}
           </div>
@@ -1940,9 +1985,7 @@ function SlideStaticView({ slide, theme }: { slide: Slide; theme: PPTThemeConfig
                 <span className="w-7 h-7 rounded-full border flex items-center justify-center font-mono text-xs font-black shrink-0 mt-0.5" style={{ color: colors.primary, borderColor: colors.primary, backgroundColor: "rgba(255,255,255,0.05)" }}>
                   0{idx + 1}
                 </span>
-                <p className="text-xs sm:text-sm text-neutral-200 font-light leading-relaxed">
-                  {bullet}
-                </p>
+                <FormattedBulletText text={bullet} className="text-xs sm:text-sm text-neutral-200 font-light leading-relaxed flex-1" />
               </div>
             ))}
           </div>

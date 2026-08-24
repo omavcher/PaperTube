@@ -9,7 +9,10 @@ const BLOCKED_DOMAINS = [
   'instagram.com', 'facebook.com', 'twitter.com', 'x.com', 'youtube.com', 'youtube.in',
   'tiktok.com', 'snapchat.com', 'linkedin.com', 'vimeo.com',
   'quora.com', 'whatsapp.com', 'telegram.org', 'discord.com', 'pinterest.com',
-  'website-files.com', 'canva.com'
+  'website-files.com', 'canva.com',
+  // Watermarked / drawn AI stock & vector sites to avoid cheap or watermarked visuals
+  'dreamstime.com', 'shutterstock.com', 'alamy.com', 'depositphotos.com', 
+  'vectorstock.com', '123rf.com', 'freepik.com', 'istockphoto.com', 'gettyimages.com'
 ];
 
 /**
@@ -64,7 +67,7 @@ async function searchGoogleImages(query, count = 4) {
   if (!GOOGLE_API_KEY || !GOOGLE_CX) return [];
 
   try {
-    const cleanQuery = `${query} photography 4k -stock -person -people -woman -man -laptop -banner -cover -wallpaper`;
+    const cleanQuery = `${query} photography 4k -stock -vector -clipart -watermark`;
     const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
       cleanQuery
     )}&cx=${GOOGLE_CX}&searchType=image&num=${count}&safe=active&key=${GOOGLE_API_KEY}`;
@@ -182,7 +185,7 @@ async function searchPresentationImages(query, count = 4) {
   if (GOOGLE_API_KEY && GOOGLE_CX) {
     try {
       const fetchCount = Math.min(10, count * 2);
-      const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(cleanQuery)}&cx=${GOOGLE_CX}&searchType=image&num=${fetchCount}&safe=active&key=${GOOGLE_API_KEY}`;
+      const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(cleanQuery + " photography -stock -vector -clipart")}&cx=${GOOGLE_CX}&searchType=image&num=${fetchCount}&safe=active&key=${GOOGLE_API_KEY}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -207,7 +210,7 @@ async function searchPresentationImages(query, count = 4) {
     }
   }
 
-  // 2. Try Wikimedia Commons
+  // 2. Try Wikimedia Commons with subject keyword tokens
   if (results.length < count) {
     try {
       const wikiCandidates = await searchWikimediaImages(cleanQuery, count - results.length);
@@ -218,7 +221,6 @@ async function searchPresentationImages(query, count = 4) {
   }
 
   // 3. Guaranteed fast, gorgeous curated Unsplash topic photo fallbacks
-  const topicKeyword = encodeURIComponent(cleanQuery.split(" ").slice(0, 2).join(","));
   const curatedBackups = [
     `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80`,
     `https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80`,
