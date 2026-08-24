@@ -9,7 +9,6 @@ import {
   PageSeoConfig,
 } from "@/config/seo-data";
 import { getHreflangs } from "./hreflang";
-import { reviews } from "@/data/reviews";
 
 const VALID_REGIONS = ["us", "uk", "ca", "au"];
 
@@ -304,54 +303,39 @@ export function generateJsonLdForPage(
 
   const pageUrl = `https://paperxify.com${pathname}`;
 
+  const graph: any[] = [
+    {
+      "@type": "WebApplication",
+      "@id": `${pageUrl}/#webapp`,
+      name: `Paperxify ${seoConfig.h2Accent || "AI Study Suite"}`,
+      url: pageUrl,
+      operatingSystem: "All",
+      applicationCategory: "EducationalApplication",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      description: seoConfig.description,
+    },
+  ];
+
+  if (seoConfig.faqs && seoConfig.faqs.length > 0) {
+    graph.push({
+      "@type": "FAQPage",
+      mainEntity: seoConfig.faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    });
+  }
+
   return {
     "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "WebApplication",
-        "@id": `${pageUrl}/#webapp`,
-        name: `Paperxify ${seoConfig.h2Accent || "YouTube to Notes AI"}`,
-        url: pageUrl,
-        operatingSystem: "All",
-        applicationCategory: "EducationalApplication",
-        offers: {
-          "@type": "Offer",
-          price: "0",
-          priceCurrency: "USD",
-        },
-        description: seoConfig.description,
-        aggregateRating: {
-          "@type": "AggregateRating",
-          ratingValue: "4.9",
-          ratingCount: seoConfig.ratingCount || "7200",
-        },
-        review: reviews.slice(0, 5).map((r) => ({
-          "@type": "Review",
-          author: {
-            "@type": "Person",
-            name: r.name,
-          },
-          datePublished: r.datePublished,
-          reviewBody: r.quote,
-          reviewRating: {
-            "@type": "Rating",
-            bestRating: "5",
-            ratingValue: r.ratingValue,
-            worstRating: "1",
-          },
-        })),
-      },
-      {
-        "@type": "FAQPage",
-        mainEntity: seoConfig.faqs.map((faq) => ({
-          "@type": "Question",
-          name: faq.question,
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: faq.answer,
-          },
-        })),
-      },
-    ],
+    "@graph": graph,
   };
 }

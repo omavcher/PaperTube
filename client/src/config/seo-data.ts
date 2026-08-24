@@ -34,8 +34,8 @@ export interface PageSeoConfig {
 
 export const BASE_SEO_DATA: Record<string, PageSeoConfig> = {
   home: {
-    title: "Paperxify — #1 AI Notes Maker | YouTube to AI Notes & AI PDF Generator",
-    description: "The best free AI notes maker for YouTube. Convert any YT video to AI notes, generate AI PDFs, and create study flashcards in seconds. Trusted by 500,000+ students as the top YouTube AI notes generator & NoteGPT alternative.",
+    title: "Free AI Study Tools: YouTube Notes, PPTs & Mind Maps",
+    description: "Convert YouTube lectures to structured notes, generate slide decks, and create diagrams in seconds. Free for students and educators. No signup needed.",
     keywords: [
       "ai notes maker", "yt to ai notes", "ai notes making", "ai pdf generator", "youtube ai notes generator",
       "youtube to notes ai", "ai youtube note taker", "youtube video note taker", "ai notes from youtube",
@@ -72,8 +72,8 @@ export const BASE_SEO_DATA: Record<string, PageSeoConfig> = {
     ratingCount: "8420"
   },
   "youtube-to-notes": {
-    title: "YouTube to AI Notes — Free AI Notes Maker & AI PDF Generator | Paperxify",
-    description: "Paperxify is the best free AI notes maker for YouTube. Paste any YT link to instantly generate AI notes, AI PDFs, and flashcards. The top YouTube AI notes generator & free NoteGPT alternative trusted by 500,000+ students.",
+    title: "YouTube to Notes AI — Free Video Summarizer & AI PDF",
+    description: "Paste any YouTube link to get concise bullet notes, LaTeX math formulas, timestamps, and downloadable PDFs in 15 seconds. Free NoteGPT alternative.",
     keywords: [
       // Core target keywords (missing before)
       "yt to ai notes", "ai notes maker", "ai notes making", "ai pdf generator", "youtube ai notes generator",
@@ -141,8 +141,8 @@ export const BASE_SEO_DATA: Record<string, PageSeoConfig> = {
     ratingCount: "12480"
   },
   "presentation-generator": {
-    title: "AI Presentation Generator | Free AI PPT Slide Maker | Paperxify",
-    description: "Create stunning, professional presentations in seconds with AI. Paperxify's free AI presentation generator produces structured slide decks, speaker notes, and PPTX exports for any topic — no design skills needed.",
+    title: "Free AI Presentation Generator — Make PPTs in Seconds",
+    description: "Turn any topic, text, or notes into presentation-ready PowerPoint slides with speaker notes. Free PPTX & PDF export with zero design skills needed.",
     keywords: ["ai presentation generator", "free ai ppt maker", "ai slide deck creator", "ai powerpoint generator", "convert text to slides ai", "ai presentation maker online", "free ai ppt generator", "auto slide creator", "ai ppt from topic", "presentation ai tool", "ai slide builder free", "notegpt alternative presentation", "ai lecture slides maker"],
     h1: "Free AI Presentation & Slide Deck Generator | Paperxify",
     h2: "AI-Powered",
@@ -168,8 +168,8 @@ export const BASE_SEO_DATA: Record<string, PageSeoConfig> = {
     ratingCount: "7650"
   },
   "ai-diagram": {
-    title: "AI Diagram & Flowchart Generator | Free Visual Diagram Maker | Paperxify",
-    description: "Generate flowcharts, sequence diagrams, ER diagrams, class maps, timelines, and more instantly using AI. Paperxify's free AI diagram generator turns any concept or text into beautiful structured visual diagrams.",
+    title: "Free AI Diagram Generator — Flowcharts, ER & Maps",
+    description: "Generate editable flowcharts, sequence diagrams, ER schemas, and mind maps from simple text prompts. Free instant visual export to SVG, PNG, and code.",
     keywords: ["ai diagram generator", "free ai flowchart maker", "ai flowchart generator online", "sequence diagram generator ai", "er diagram maker ai", "class diagram generator", "ai mind map creator", "mermaid diagram generator", "ai timeline maker", "ai visual diagram tool", "concept map generator ai"],
     h1: "Free AI Diagram, Flowchart & Visual Concept Map Generator | Paperxify",
     h2: "AI-Powered",
@@ -1075,8 +1075,8 @@ export const AI_WRITER_TOOL_CONFIG: Record<
     ],
   },
   "essay-writer": {
-    title: "AI Essay Writer | Free Academic Essay Generator Online | Paperxify",
-    description: "Write structured, high-quality academic essays in seconds with AI. Paperxify's free AI Essay Writer creates outlines, thesis statements, body paragraphs, and conclusion drafts with academic citations.",
+    title: "Free AI Essay Writer — Academic Outlines & Citations",
+    description: "Generate well-structured essays, thesis statements, and cited drafts in seconds. Beat writer's block with research-backed academic writing assistance.",
     keywords: ["ai essay writer free", "free essay generator", "essay writer ai online", "academic essay generator", "essay helper online", "thesis generator ai", "essay outline creator", "argumentative essay writer", "college essay generator", "essay writing tool"],
     accentColor: "amber",
     bgColor: "bg-amber-950/50",
@@ -1179,8 +1179,8 @@ export const AI_DIAGRAM_FORMAT_CONFIG: Record<
   }
 > = {
   flowchart: {
-    title: "AI Flowchart Generator | Free Process Flow Diagram Maker Online | Paperxify",
-    description: "Generate structured, professional flowcharts instantly using AI. Turn process descriptions, logic sequences, algorithms, and workflows into clean interactive flow diagrams.",
+    title: "Free AI Flowchart Generator — Text to Process Diagram",
+    description: "Turn process steps, code logic, or text workflows into clean, interactive flowcharts in 5 seconds. Export to SVG or PNG for free with zero drawing needed.",
     keywords: ["ai flowchart generator", "free flowchart maker online", "create flowchart with ai", "process flow diagram ai", "algorithm flowchart maker", "workflow diagram creator", "flowchart from text ai", "interactive flowchart maker"],
     badge: "Instant Process Flow Diagram Builder",
     h1: "Free AI Flowchart Generator — Create Process Flow Diagrams from Text | Paperxify",
@@ -1307,8 +1307,8 @@ export const AI_DIAGRAM_FORMAT_CONFIG: Record<
     ],
   },
   er: {
-    title: "AI ER Diagram Generator | Free Entity Relationship Schema Maker | Paperxify",
-    description: "Map database schemas and entity relationships automatically with AI. Paperxify's free AI ER Diagram Generator creates complete entity-relationship diagrams with primary keys, foreign keys, and cardinalities.",
+    title: "Free AI ER Diagram Generator — DB Schema & SQL Mapper",
+    description: "Map relational database schemas instantly. Generate entity relationship diagrams with PKs, FKs, and cardinalities from plain text descriptions or SQL.",
     keywords: ["ai er diagram generator", "entity relationship diagram maker ai", "database schema diagram", "er diagram from text ai", "free erd maker online", "database design tool ai"],
     badge: "Database Schema & ER Diagram Engine",
     h1: "Free AI ER Diagram Generator — Entity Relationship Database Schemas | Paperxify",

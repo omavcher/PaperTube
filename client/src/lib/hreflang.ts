@@ -39,10 +39,8 @@ export function getHreflangs(pathname: string): HrefLang[] {
   const domain = 'https://paperxify.com';
   const hreflangs: HrefLang[] = [];
 
-  // Canonical (Self-referencing)
-  const canonicalUrl = currentRegion 
-    ? `${domain}/${currentRegion}${basePagePath}` 
-    : `${domain}${basePagePath}`;
+  // Canonical (Always points to the root canonical page to consolidate ranking signals)
+  const canonicalUrl = `${domain}${basePagePath}` || `${domain}/`;
   
   hreflangs.push({
     rel: 'canonical',

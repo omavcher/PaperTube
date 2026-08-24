@@ -2,7 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import AIDiagramSeoPage from "@/components/seo/AIDiagramSeoPage";
-import { generateMetadataForPage } from "@/lib/seo-helpers";
+import { generateMetadataForPage, generateJsonLdForPage } from "@/lib/seo-helpers";
 
 const VALID_FORMATS = [
   "flowchart",
@@ -46,5 +46,15 @@ export default async function AIDiagramFormatPage({ params }: PageProps) {
     notFound();
   }
 
-  return <AIDiagramSeoPage region="global" format={lowerFormat} />;
+  const jsonLd = generateJsonLdForPage("ai-diagram", "global", lowerFormat);
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <AIDiagramSeoPage region="global" format={lowerFormat} />
+    </>
+  );
 }

@@ -4,8 +4,7 @@ import React from "react";
 import Link from "next/link";
 import AIDiagramClient from "@/app/ai-diagram/AIDiagramClient";
 import { FAQAccordion } from "@/components/FAQAccordion";
-import { SchemaMarkup } from "@/components/SchemaMarkup";
-import { getLocalizedSeo, generateJsonLdForPage } from "@/lib/seo-helpers";
+import { getLocalizedSeo } from "@/lib/seo-helpers";
 import {
   Table,
   TableBody,
@@ -25,11 +24,9 @@ interface AIDiagramSeoPageProps {
 
 export default function AIDiagramSeoPage({ region, format }: AIDiagramSeoPageProps) {
   const seoConfig = getLocalizedSeo("ai-diagram", region, format);
-  const jsonLd = generateJsonLdForPage("ai-diagram", region, format);
 
   return (
     <div className="min-h-screen bg-[#050505] text-neutral-100 font-sans selection:bg-cyan-950/50 relative overflow-hidden">
-      <SchemaMarkup schema={jsonLd} />
 
       {/* Background Atmosphere */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-cyan-950/5 blur-[140px] rounded-full pointer-events-none z-0" />
@@ -38,8 +35,6 @@ export default function AIDiagramSeoPage({ region, format }: AIDiagramSeoPagePro
 
       {/* Main Content */}
       <main className="relative z-10 w-full flex flex-col items-center">
-        {/* H1 SEO Target Title */}
-        <h1 className="sr-only">{seoConfig.h1}</h1>
 
         {/* Dynamic Client Form Component */}
         <AIDiagramClient initialFormat={format} />
@@ -54,9 +49,9 @@ export default function AIDiagramSeoPage({ region, format }: AIDiagramSeoPagePro
                 <Sparkles size={12} />
                 <span>{seoConfig.badge || "12-Type Visual Diagram Studio"}</span>
               </div>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white uppercase">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white uppercase">
                 {seoConfig.h2} <span className="text-cyan-400 bg-clip-text bg-gradient-to-r from-cyan-500 to-emerald-400">{seoConfig.h2Accent}</span> {seoConfig.h2Rest}
-              </h2>
+              </h1>
               <p className="text-neutral-400 text-sm sm:text-base font-light leading-relaxed">
                 {seoConfig.intro}
               </p>

@@ -54,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
-    priority: route === '' || ['/us', '/uk', '/au', '/ca'].includes(route) ? 1 : 0.8,
+    priority: route === '' ? 1 : 0.8,
   }));
 
   const subjectRoutes = [
