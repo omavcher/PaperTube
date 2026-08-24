@@ -736,90 +736,109 @@ export default function PPTMain() {
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              className="w-full max-w-2xl mx-auto rounded-[2rem] bg-[#0c0c0c] border border-white/[0.08] p-6 sm:p-10 shadow-2xl relative"
+              className="w-full max-w-2xl mx-auto rounded-3xl bg-[#0c0c12]/95 backdrop-blur-2xl border border-white/[0.12] p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-6"
+              style={{ boxShadow: "0 30px 100px -20px rgba(0,0,0,0.95), 0 0 50px rgba(249,115,22,0.15)" }}
             >
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 rounded-t-[2rem]" style={{ width: `${progressPercent}%`, transition: 'width 0.1s linear' }} />
-              
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
-                
-                {/* Stepper Steps (Left Pane) */}
-                <div className="md:col-span-7 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-                      <Presentation className="text-orange-500 animate-pulse" size={20} />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-black text-white tracking-tight">AI PPT Generator Engine</h2>
-                      <p className="text-[10px] text-neutral-500 font-mono">Progress: {Math.round(progressPercent)}% &middot; Stage {currentStep + 1} of 8</p>
-                    </div>
+              {/* Top ambient glow */}
+              <div className="absolute -top-24 -right-24 w-60 h-60 rounded-full bg-orange-500/20 blur-3xl pointer-events-none" />
+
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0 shadow-lg">
+                    <Presentation className="animate-pulse" size={22} />
                   </div>
-
-                  {/* Step list */}
-                  <div className="space-y-3.5 pt-4 border-t border-white/[0.04]">
-                    {PPT_LOADING_STEPS.map((step) => {
-                      const isActive = currentStep === step.id;
-                      const isCompleted = currentStep > step.id;
-
-                      return (
-                        <div key={step.id} className="flex gap-3 items-start">
-                          <div className="mt-0.5">
-                            {isCompleted ? (
-                              <div className="w-5 h-5 rounded-full bg-orange-500 text-black flex items-center justify-center shadow-[0_0_8px_rgba(249,115,22,0.3)]">
-                                <Check size={11} strokeWidth={3} />
-                              </div>
-                            ) : isActive ? (
-                              <div className="w-5 h-5 rounded-full bg-orange-500/10 border border-orange-500 text-orange-500 flex items-center justify-center animate-spin">
-                                <Loader2 size={10} strokeWidth={3} />
-                              </div>
-                            ) : (
-                              <div className="w-5 h-5 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center text-[9px] font-mono text-neutral-600">
-                                {step.id + 1}
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className={cn("text-xs font-bold transition-colors", isActive ? "text-orange-400" : isCompleted ? "text-neutral-400" : "text-neutral-600")}>
-                              {step.label}
-                            </p>
-                            {isActive && (
-                              <motion.p initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} className="text-[10px] text-neutral-500 mt-0.5 leading-normal">
-                                {getSubStatus(currentStep, progressPercent)}
-                              </motion.p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Trivia Box (Right Pane) */}
-                <div className="md:col-span-5 flex flex-col justify-between p-6 bg-white/[0.01] border border-white/[0.05] rounded-2xl">
                   <div>
-                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-neutral-500 block mb-3">Slide Design Insights</span>
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={activeTipIndex}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -5 }}
-                        transition={{ duration: 0.3 }}
-                        className="space-y-2"
-                      >
-                        <h4 className="text-xs font-black text-orange-400 tracking-wide">{TRIVIA_TIPS[activeTipIndex].title}</h4>
-                        <p className="text-[11px] text-neutral-400 leading-relaxed font-light">{TRIVIA_TIPS[activeTipIndex].text}</p>
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-
-                  <div className="mt-8 pt-4 border-t border-white/[0.04]">
-                    <div className="flex justify-between items-center text-[9px] font-mono text-neutral-600">
-                      <span>Paperxify Presentation Tooling</span>
-                      <span>v1.2</span>
-                    </div>
+                    <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                      Compiling Presentation Deck
+                    </h2>
+                    <p className="text-xs text-neutral-400 font-light truncate max-w-md">
+                      {sourceInput ? `Topic: "${sourceInput}"` : "Generating slide architecture..."}
+                    </p>
                   </div>
                 </div>
+                <div className="text-right">
+                  <span className="text-xl font-mono font-black text-orange-400 block">
+                    {Math.round(progressPercent)}%
+                  </span>
+                  <span className="text-[9.5px] font-mono uppercase text-neutral-500 tracking-wider">
+                    Stage {currentStep + 1} of 8
+                  </span>
+                </div>
+              </div>
 
+              {/* Embedded Linear Energy Progress Bar */}
+              <div className="space-y-1.5">
+                <div className="w-full h-2.5 bg-neutral-900 rounded-full overflow-hidden border border-white/10 p-0.5">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-orange-600 via-orange-500 to-amber-400"
+                    style={{ width: `${progressPercent}%`, transition: "width 0.2s ease-out", boxShadow: "0 0 14px rgba(249,115,22,0.7)" }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-[10.5px] font-mono text-neutral-400 px-0.5">
+                  <span className="text-orange-400 font-bold flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping inline-block" />
+                    {getSubStatus(currentStep, progressPercent)}
+                  </span>
+                  <span>{selectedCard.count} Widescreen Slides</span>
+                </div>
+              </div>
+
+              {/* 4-Phase Generation Pipeline */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {[
+                  { phase: "1. Outline Map", label: "Semantic Architecture", activeAt: 0, doneAt: 2 },
+                  { phase: "2. Content Copy", label: "Substantive Bullets", activeAt: 2, doneAt: 4 },
+                  { phase: "3. Photography", label: "Real HD Visuals", activeAt: 4, doneAt: 6 },
+                  { phase: "4. Final Build", label: "16:9 Bento Deck", activeAt: 6, doneAt: 8 },
+                ].map((p, idx) => {
+                  const isDone = currentStep >= p.doneAt;
+                  const isCur = currentStep >= p.activeAt && currentStep < p.doneAt;
+
+                  return (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "p-3 rounded-2xl border flex flex-col justify-between transition-all space-y-2",
+                        isDone 
+                          ? "bg-orange-500/10 border-orange-500/30 text-orange-300"
+                          : isCur 
+                          ? "bg-white/[0.06] border-orange-500/50 text-white shadow-lg ring-1 ring-orange-500/30"
+                          : "bg-white/[0.02] border-white/[0.06] text-neutral-600"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-mono uppercase font-bold">{p.phase}</span>
+                        {isDone ? (
+                          <span className="w-4 h-4 rounded-full bg-orange-500 text-black flex items-center justify-center text-[10px] font-bold">✓</span>
+                        ) : isCur ? (
+                          <Loader2 size={12} className="animate-spin text-orange-400" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
+                        )}
+                      </div>
+                      <p className="text-[11px] font-bold leading-tight">{p.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Active Live Tip Banner */}
+              <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 shrink-0">
+                  <Wand2 size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-neutral-200">
+                    {TRIVIA_TIPS[activeTipIndex].title}
+                  </p>
+                  <p className="text-[11px] text-neutral-400 font-light leading-relaxed truncate">
+                    {TRIVIA_TIPS[activeTipIndex].text}
+                  </p>
+                </div>
+                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-orange-500/15 text-orange-400 font-bold border border-orange-500/30 shrink-0">
+                  Gamma Engine
+                </span>
               </div>
             </motion.div>
           ) : isOutlinePlanned ? (
