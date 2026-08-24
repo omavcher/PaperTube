@@ -3,7 +3,7 @@
 
 const { searchPresentationImages } = require("./imageSearchService");
 
-//**
+/**
  * Builds the Master XML Presentation Prompt for the LLM
  */
 function buildMasterXMLPrompt(params) {
@@ -292,12 +292,6 @@ function parsePresentationXML(xmlString) {
       quoteRole,
       speakerNotes
     });
-  }
-
-  return {
-    theme: themeData,
-    slides: sections
-    }
   }
 
   return {
