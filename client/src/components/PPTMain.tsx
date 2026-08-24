@@ -1225,32 +1225,32 @@ export default function PPTMain() {
                 
                 {/* Titles */}
                 <div className="space-y-3">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-400 leading-[1.1] pb-2 text-center">
+                  <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-neutral-400 leading-[1.1] pb-2 text-center">
                     Create Stunning <span className="text-transparent bg-clip-text bg-gradient-to-b from-orange-400 to-orange-600 drop-shadow-[0_0_20px_rgba(249,115,22,0.3)]">AI Presentations</span> Instantly
                   </h1>
-                  <p className="text-sm md:text-base text-neutral-400 font-light max-w-lg mx-auto leading-relaxed text-center">
+                  <p className="text-xs sm:text-sm md:text-base text-neutral-400 font-light max-w-lg mx-auto leading-relaxed text-center">
                     Outline-first presentation creator with intelligent layouts, live presenter tools, webcam recording, and instant PowerPoint export.
                   </p>
                 </div>
               </div>
 
               {/* ============ PRODUCTION-GRADE MAIN COMMAND CARD ============ */}
-              <div className="w-full max-w-3xl relative z-10 space-y-4">
+              <div className="w-full max-w-3xl relative z-10 space-y-3 sm:space-y-4">
                 {/* Glow Border Accent */}
                 <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-orange-500/30 via-amber-500/15 to-orange-500/30 blur-xl opacity-60 pointer-events-none -z-10" />
 
                 <div className="relative bg-[#0c0c10]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl overflow-hidden shadow-[0_25px_90px_-20px_rgba(0,0,0,0.95)] transition-all duration-300 focus-within:border-orange-500/40">
                   
                   {/* Topic Input Row */}
-                  <div className="flex items-center gap-3 px-5 pt-6 pb-2.5">
+                  <div className="flex items-center gap-2 sm:gap-3 px-3.5 sm:px-5 pt-4 sm:pt-6 pb-2 sm:pb-2.5">
                     <div className={cn(
-                      "shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-md",
+                      "shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 shadow-md",
                       isValidInput ? "bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.3)]" : "bg-white/[0.04] border border-white/10 text-neutral-400"
                     )}>
-                      <Presentation size={20} />
+                      <Presentation size={18} />
                     </div>
                     <input 
-                      placeholder="What would you like to present? (e.g. 7 Wonders of the World, AI Agents in 2026)..."
+                      placeholder="What would you like to present? (e.g. 7 Wonders of the World)..."
                       value={sourceInput}
                       onChange={(e) => setSourceInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -1259,31 +1259,31 @@ export default function PPTMain() {
                           handlePlanOutline();
                         }
                       }}
-                      className="flex-1 bg-transparent border-none focus:ring-0 text-base sm:text-lg font-bold text-white placeholder:text-neutral-500 outline-none min-w-0 px-1 tracking-tight"
+                      className="flex-1 bg-transparent border-none focus:ring-0 text-sm sm:text-lg font-bold text-white placeholder:text-neutral-500 outline-none min-w-0 px-1 tracking-tight"
                     />
-                    <div className="shrink-0 flex items-center gap-2">
+                    <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
                       {isValidInput && (
-                        <div className="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                          <Check size={13} />
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                          <Check size={11} />
                         </div>
                       )}
                       <Link 
                         href="/pricing" 
                         className={cn(
-                          "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                          "flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all",
                           hasPremiumAccess 
                             ? "bg-amber-500/10 border border-amber-500/25 text-amber-400" 
                             : "bg-white/[0.05] border border-white/[0.08] text-neutral-300 hover:bg-white/[0.1] hover:text-white"
                         )}
                       >
-                        {hasPremiumAccess ? <Crown size={11} className="text-amber-400" /> : <Zap size={11} className="text-orange-400" />}
+                        {hasPremiumAccess ? <Crown size={10} className="text-amber-400" /> : <Zap size={10} className="text-orange-400" />}
                         <span>{hasPremiumAccess ? (userPlanId === 'power' ? 'Power' : 'Pro') : 'Upgrade'}</span>
                       </Link>
                     </div>
                   </div>
 
                   {/* Focus Areas Prompt Textarea */}
-                  <div className="px-5 pb-3">
+                  <div className="px-3.5 sm:px-5 pb-2.5 sm:pb-3">
                     <textarea 
                       placeholder="Add specific focus areas, audience profile, key statistics, or outline guidelines... (optional)"
                       value={prompt}
@@ -1294,12 +1294,12 @@ export default function PPTMain() {
                   </div>
 
                   {/* Generation Style & Visuals Configuration Row */}
-                  <div className="px-5 py-3 border-t border-white/[0.06] bg-black/40 flex flex-wrap items-center justify-between gap-2.5">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 border-t border-white/[0.06] bg-black/40 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       {/* Tone / Style Selector */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-xs font-semibold text-neutral-300 hover:text-white outline-none cursor-pointer transition-all">
-                          <span className="text-[10px] uppercase font-mono text-orange-400">Tone:</span>
+                        <DropdownMenuTrigger className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-[11px] sm:text-xs font-semibold text-neutral-300 hover:text-white outline-none cursor-pointer transition-all">
+                          <span className="text-[9px] sm:text-[10px] uppercase font-mono text-orange-400">Tone:</span>
                           <span className="font-bold">{selectedStyle.label}</span>
                           <ChevronDown size={11} className="text-neutral-500" />
                         </DropdownMenuTrigger>
@@ -1319,8 +1319,8 @@ export default function PPTMain() {
 
                       {/* Image Source Selector */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-xs font-semibold text-neutral-300 hover:text-white outline-none cursor-pointer transition-all">
-                          <ImageIcon size={12} className="text-orange-400" />
+                        <DropdownMenuTrigger className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-[11px] sm:text-xs font-semibold text-neutral-300 hover:text-white outline-none cursor-pointer transition-all">
+                          <ImageIcon size={11} className="text-orange-400" />
                           <span className="font-bold">{IMAGE_SOURCES.find(s => s.id === imageSource)?.label || "Unsplash"}</span>
                           <ChevronDown size={11} className="text-neutral-500" />
                         </DropdownMenuTrigger>
@@ -1340,8 +1340,8 @@ export default function PPTMain() {
 
                       {/* Language Selector Dropdown */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-xs font-semibold text-neutral-300 hover:text-white outline-none cursor-pointer transition-all">
-                          <Globe size={12} className="text-neutral-400" />
+                        <DropdownMenuTrigger className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-[11px] sm:text-xs font-semibold text-neutral-300 hover:text-white outline-none cursor-pointer transition-all">
+                          <Globe size={11} className="text-neutral-400" />
                           <span className="font-bold">{outputLanguage}</span>
                           <ChevronDown size={11} className="text-neutral-500" />
                         </DropdownMenuTrigger>
@@ -1383,24 +1383,24 @@ export default function PPTMain() {
                       type="button"
                       onClick={() => setWebSearchEnabled(!webSearchEnabled)}
                       className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition-all",
+                        "flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold cursor-pointer transition-all",
                         webSearchEnabled 
                           ? "bg-orange-500/15 border-orange-500/40 text-orange-400 shadow-[0_0_12px_rgba(249,115,22,0.2)]" 
                           : "bg-white/[0.03] border-white/[0.08] text-neutral-400 hover:text-white"
                       )}
                     >
-                      <Globe size={12} />
+                      <Globe size={11} />
                       <span>Live Facts</span>
-                      <span className={cn("w-2 h-2 rounded-full", webSearchEnabled ? "bg-orange-500 animate-pulse" : "bg-neutral-600")} />
+                      <span className={cn("w-1.5 h-1.5 rounded-full", webSearchEnabled ? "bg-orange-500 animate-pulse" : "bg-neutral-600")} />
                     </button>
                   </div>
 
                   {/* Slide Count Cards Selector Grid */}
-                  <div className="px-5 py-4 border-t border-white/[0.06] bg-black/20">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 mb-3 flex items-center gap-1.5">
-                      <Layers size={12} className="text-orange-500" /> Presentation Length
+                  <div className="px-3.5 sm:px-5 py-3 sm:py-4 border-t border-white/[0.06] bg-black/20">
+                    <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 mb-2.5 flex items-center gap-1.5">
+                      <Layers size={11} className="text-orange-500" /> Presentation Length
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       {SLIDE_CARDS.map((card) => {
                         const isSelected = selectedCard.count === card.count;
                         const isLocked = card.tier === "Pro" && !hasPremiumAccess;
@@ -1419,30 +1419,29 @@ export default function PPTMain() {
                               setSelectedCard(card);
                             }}
                             className={cn(
-                              "relative p-3.5 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between min-h-[85px]",
-                              locked 
-                                ? "opacity-40 hover:opacity-70 border-white/[0.04] bg-white/[0.002]" 
-                                : isSelected 
-                                ? "bg-orange-500/15 border-orange-500/60 shadow-[0_0_20px_rgba(249,115,22,0.2)] scale-[1.02]" 
-                                : "bg-white/[0.02] border-white/[0.08] hover:border-white/20 hover:bg-white/[0.04]"
+                              "p-3 rounded-2xl border transition-all duration-200 text-left relative cursor-pointer",
+                              isSelected 
+                                ? "bg-gradient-to-b from-orange-500/20 to-orange-500/5 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.25)] ring-1 ring-orange-500/50" 
+                                : "bg-[#111115] border-white/[0.06] hover:border-white/20 opacity-80 hover:opacity-100",
+                              locked && "opacity-40"
                             )}
                           >
                             <div className="flex justify-between items-start">
-                              <span className="font-extrabold text-sm text-white">{card.label}</span>
+                              <span className="font-extrabold text-xs sm:text-sm text-white">{card.label}</span>
                               {locked ? (
-                                <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center gap-0.5">
+                                <span className="text-[7.5px] font-black uppercase px-1 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center gap-0.5">
                                   <Lock size={7} /> {card.tier}
                                 </span>
                               ) : (
                                 <span className={cn(
-                                  "text-[8px] font-black uppercase px-1.5 py-0.5 rounded border",
+                                  "text-[7.5px] font-black uppercase px-1 py-0.5 rounded border",
                                   isSelected ? "bg-orange-500/20 border-orange-500/40 text-orange-400" : "bg-white/5 border-white/10 text-neutral-500"
                                 )}>
                                   {card.tier}
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] leading-tight text-neutral-400 mt-2 font-light">{card.desc}</p>
+                            <p className="text-[9px] sm:text-[10px] leading-tight text-neutral-400 mt-1.5 font-light">{card.desc}</p>
                           </div>
                         );
                       })}
@@ -1450,15 +1449,16 @@ export default function PPTMain() {
                   </div>
 
                   {/* BOTTOM COMMAND ACTION */}
-                  <div className="p-4 border-t border-white/[0.06] bg-black/60 flex items-center justify-between gap-4">
+                  <div className="p-3 sm:p-4 border-t border-white/[0.06] bg-black/60 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setShowCustomThemeModal(true)}
-                        className="px-3.5 py-2 rounded-xl text-xs font-bold text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-all flex items-center gap-2 cursor-pointer"
+                        className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer"
                       >
-                        <Palette size={13} className="text-orange-400" />
-                        <span>Theme: {selectedTheme.name}</span>
+                        <Palette size={12} className="text-orange-400" />
+                        <span className="hidden sm:inline">Theme: </span>
+                        <span>{selectedTheme.name}</span>
                       </button>
                     </div>
 
@@ -1466,7 +1466,7 @@ export default function PPTMain() {
                       onClick={handlePlanOutline}
                       disabled={!isValidInput || isOutlinePlanning}
                       className={cn(
-                        "h-12 px-8 rounded-2xl text-xs font-black uppercase tracking-widest text-black transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-xl",
+                        "h-10 sm:h-12 px-4 sm:px-8 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-black transition-all duration-200 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shadow-xl",
                         isValidInput 
                           ? "bg-gradient-to-r from-orange-400 via-orange-500 to-amber-400 shadow-[0_0_30px_rgba(249,115,22,0.4)] hover:shadow-[0_0_45px_rgba(249,115,22,0.6)] hover:brightness-110" 
                           : "bg-neutral-800 text-neutral-500 border border-white/5 cursor-not-allowed"

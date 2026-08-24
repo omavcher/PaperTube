@@ -105,6 +105,7 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
   const exportStageRef = useRef<HTMLDivElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const [isSlidePulsing, setIsSlidePulsing] = useState(false);
+  const [mobileDrawerTab, setMobileDrawerTab] = useState<"slides" | "copilot" | "layouts" | "notes" | null>(null);
 
   // Conversational AI Agent State
   const [copilotPrompt, setCopilotPrompt] = useState("");
@@ -709,10 +710,10 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
       </header>
 
       {/* ─── 2. MAIN 3-PANEL WORKSPACE ─── */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         
-        {/* LEFT PANEL: SLIDE DECK NAVIGATOR RAIL */}
-        <aside className="w-56 bg-[#08080a] border-r border-white/[0.06] flex flex-col z-20 shrink-0">
+        {/* DESKTOP LEFT PANEL: SLIDE DECK NAVIGATOR RAIL */}
+        <aside className="hidden lg:flex w-56 bg-[#08080a] border-r border-white/[0.06] flex-col z-20 shrink-0">
           <div className="p-3 border-b border-white/[0.06] flex justify-between items-center">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Slide Deck ({slides.length})</span>
             <button
@@ -786,12 +787,12 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
         </aside>
 
         {/* CENTER PANEL: PRISTINE 16:9 PRESENTATION CANVAS */}
-        <main className="flex-1 bg-[#050507] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <main className="flex-1 bg-[#050507] flex flex-col items-center justify-center p-2.5 sm:p-4 md:p-6 relative overflow-hidden pb-16 lg:pb-6">
           
           {/* Main Slide Card Container */}
           <div 
             className={cn(
-              "relative w-full max-w-4xl min-h-[480px] max-h-[85vh] aspect-[16/9] rounded-3xl border shadow-2xl p-6 sm:p-10 flex flex-col justify-center overflow-hidden transition-all duration-500",
+              "relative w-full max-w-4xl aspect-[16/9] min-h-0 sm:min-h-[360px] md:min-h-[460px] rounded-2xl sm:rounded-3xl border shadow-2xl p-2.5 sm:p-6 md:p-10 flex flex-col justify-center overflow-hidden transition-all duration-500",
               isSlidePulsing && "ring-2 ring-orange-500 shadow-[0_0_70px_rgba(249,115,22,0.4)] scale-[1.008]"
             )}
             style={{
@@ -818,29 +819,29 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
           </div>
 
           {/* Bottom Floating Slide Counter and Navigation Bar */}
-          <div className="mt-4 flex items-center gap-3 z-10">
+          <div className="mt-2.5 sm:mt-4 flex items-center gap-2 sm:gap-3 z-10">
             <button
               onClick={() => setActiveSlideIndex((prev) => Math.max(0, prev - 1))}
               disabled={activeSlideIndex === 0}
-              className="px-3.5 py-1.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/10 text-xs font-semibold text-white disabled:opacity-20 transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+              className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/10 text-[11px] sm:text-xs font-semibold text-white disabled:opacity-20 transition-all cursor-pointer shadow-md flex items-center gap-1 sm:gap-1.5"
             >
-              <ChevronLeft size={14} /> Previous
+              <ChevronLeft size={13} /> Prev
             </button>
-            <span className="text-xs font-mono font-bold text-neutral-400 px-3 py-1 rounded-lg bg-black/40 border border-white/[0.06]">
-              Slide {activeSlideIndex + 1} of {slides.length}
+            <span className="text-[10px] sm:text-xs font-mono font-bold text-neutral-400 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-lg bg-black/40 border border-white/[0.06]">
+              {activeSlideIndex + 1} / {slides.length}
             </span>
             <button
               onClick={() => setActiveSlideIndex((prev) => Math.min(slides.length - 1, prev + 1))}
               disabled={activeSlideIndex === slides.length - 1}
-              className="px-3.5 py-1.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/10 text-xs font-semibold text-white disabled:opacity-20 transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+              className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-white/10 text-[11px] sm:text-xs font-semibold text-white disabled:opacity-20 transition-all cursor-pointer shadow-md flex items-center gap-1 sm:gap-1.5"
             >
-              Next <ChevronRight size={14} />
+              Next <ChevronRight size={13} />
             </button>
           </div>
         </main>
 
-        {/* RIGHT PANEL: AI CO-PILOT & SLIDE INSPECTOR */}
-        <aside className="w-80 bg-[#08080a] border-l border-white/[0.06] flex flex-col z-20 shrink-0">
+        {/* DESKTOP RIGHT PANEL: AI CO-PILOT & SLIDE INSPECTOR */}
+        <aside className="hidden lg:flex w-80 bg-[#08080a] border-l border-white/[0.06] flex-col z-20 shrink-0">
           
           {/* Tabs */}
           <div className="grid grid-cols-3 border-b border-white/[0.06] p-1.5 gap-1 bg-black/40">
@@ -1042,6 +1043,258 @@ export default function AIPPTViewer({ params }: { params: Promise<{ slug: string
             </div>
           )}
         </aside>
+
+        {/* ─── MOBILE FLOATING BOTTOM DOCK BAR ─── */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0c0c12]/95 backdrop-blur-xl border-t border-white/[0.1] px-2 py-1.5 flex items-center justify-around shadow-2xl">
+          <button
+            onClick={() => setMobileDrawerTab(null)}
+            className={cn(
+              "flex flex-col items-center gap-0.5 text-[9px] font-bold transition-all px-2.5 py-1 rounded-xl cursor-pointer",
+              mobileDrawerTab === null ? "text-orange-400 bg-orange-500/15" : "text-neutral-400 hover:text-white"
+            )}
+          >
+            <Presentation size={14} />
+            <span>Slide</span>
+          </button>
+          
+          <button
+            onClick={() => setMobileDrawerTab(mobileDrawerTab === "slides" ? null : "slides")}
+            className={cn(
+              "flex flex-col items-center gap-0.5 text-[9px] font-bold transition-all px-2.5 py-1 rounded-xl cursor-pointer",
+              mobileDrawerTab === "slides" ? "text-orange-400 bg-orange-500/15" : "text-neutral-400 hover:text-white"
+            )}
+          >
+            <Layers size={14} />
+            <span>Deck ({slides.length})</span>
+          </button>
+          
+          <button
+            onClick={() => setMobileDrawerTab(mobileDrawerTab === "copilot" ? null : "copilot")}
+            className={cn(
+              "flex flex-col items-center gap-0.5 text-[9px] font-bold transition-all px-2.5 py-1 rounded-xl cursor-pointer",
+              mobileDrawerTab === "copilot" ? "text-orange-400 bg-orange-500/15" : "text-neutral-400 hover:text-white"
+            )}
+          >
+            <Wand2 size={14} />
+            <span>Copilot</span>
+          </button>
+
+          <button
+            onClick={() => setMobileDrawerTab(mobileDrawerTab === "layouts" ? null : "layouts")}
+            className={cn(
+              "flex flex-col items-center gap-0.5 text-[9px] font-bold transition-all px-2.5 py-1 rounded-xl cursor-pointer",
+              mobileDrawerTab === "layouts" ? "text-orange-400 bg-orange-500/15" : "text-neutral-400 hover:text-white"
+            )}
+          >
+            <LayoutGrid size={14} />
+            <span>Layout</span>
+          </button>
+
+          <button
+            onClick={() => setMobileDrawerTab(mobileDrawerTab === "notes" ? null : "notes")}
+            className={cn(
+              "flex flex-col items-center gap-0.5 text-[9px] font-bold transition-all px-2.5 py-1 rounded-xl cursor-pointer",
+              mobileDrawerTab === "notes" ? "text-orange-400 bg-orange-500/15" : "text-neutral-400 hover:text-white"
+            )}
+          >
+            <FileText size={14} />
+            <span>Notes</span>
+          </button>
+        </div>
+
+        {/* ─── MOBILE BOTTOM DRAWER SHEET MODAL ─── */}
+        {mobileDrawerTab !== null && (
+          <div className="lg:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end">
+            <div className="bg-[#0e0e14] border-t border-white/15 rounded-t-3xl max-h-[82vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300">
+              
+              {/* Drawer Header */}
+              <div className="p-3.5 border-b border-white/[0.08] flex items-center justify-between bg-black/40">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-orange-400">
+                    {mobileDrawerTab === "slides" && `Slide Deck (${slides.length})`}
+                    {mobileDrawerTab === "copilot" && "AI Copilot Studio"}
+                    {mobileDrawerTab === "layouts" && "Choose Slide Layout"}
+                    {mobileDrawerTab === "notes" && "Presenter Script & Notes"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {mobileDrawerTab === "slides" && (
+                    <button
+                      onClick={handleAddSlide}
+                      className="px-2.5 py-1 rounded-lg bg-orange-500 text-black text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus size={11} /> Add Slide
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setMobileDrawerTab(null)}
+                    className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-neutral-300 cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Drawer Body */}
+              <div className="flex-1 overflow-y-auto p-3.5 custom-scrollbar">
+                
+                {/* 1. Mobile Slides Navigator */}
+                {mobileDrawerTab === "slides" && (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {slides.map((s, idx) => {
+                      const isActive = activeSlideIndex === idx;
+                      return (
+                        <div
+                          key={s.id || idx}
+                          onClick={() => {
+                            setActiveSlideIndex(idx);
+                            setMobileDrawerTab(null);
+                          }}
+                          className={cn(
+                            "rounded-xl p-2 cursor-pointer border flex flex-col gap-1 transition-all",
+                            isActive 
+                              ? "bg-orange-500/15 border-orange-500 ring-1 ring-orange-500/40" 
+                              : "bg-[#0d0d11] border-white/10 opacity-80"
+                          )}
+                        >
+                          <div className="flex justify-between items-center text-[9px] font-mono">
+                            <span className="font-bold text-neutral-300">#{idx + 1}</span>
+                            <span className="text-[8px] uppercase tracking-wider text-neutral-400">{s.layout.replace("_", " ")}</span>
+                          </div>
+                          <SlideThumbnailPreview slide={s} theme={activeTheme} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 2. Mobile Copilot */}
+                {mobileDrawerTab === "copilot" && (
+                  <div className="space-y-3 flex flex-col h-full">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={() => {
+                          handleSendCopilotPrompt("Rewrite and sharpen this slide for maximum clarity and visual punch.");
+                          setMobileDrawerTab(null);
+                        }}
+                        className="p-2 rounded-xl bg-neutral-900 border border-white/10 text-left text-[9.5px] font-bold text-neutral-200 flex items-center gap-1.5"
+                      >
+                        <span>🪄</span> Rewrite & Polish
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleSendCopilotPrompt("Transform this slide into a 3-metric KPI counter with real quantitative data benchmarks.");
+                          setMobileDrawerTab(null);
+                        }}
+                        className="p-2 rounded-xl bg-neutral-900 border border-white/10 text-left text-[9.5px] font-bold text-neutral-200 flex items-center gap-1.5"
+                      >
+                        <span>📊</span> 3-Metric KPIs
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleSendCopilotPrompt("Convert this slide into a side-by-side comparative analysis layout.");
+                          setMobileDrawerTab(null);
+                        }}
+                        className="p-2 rounded-xl bg-neutral-900 border border-white/10 text-left text-[9.5px] font-bold text-neutral-200 flex items-center gap-1.5"
+                      >
+                        <span>⚖️</span> Comparison
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleSendCopilotPrompt("Convert this slide into a sequential process timeline roadmap.");
+                          setMobileDrawerTab(null);
+                        }}
+                        className="p-2 rounded-xl bg-neutral-900 border border-white/10 text-left text-[9.5px] font-bold text-neutral-200 flex items-center gap-1.5"
+                      >
+                        <span>🗺️</span> Timeline
+                      </button>
+                    </div>
+
+                    {/* Chat Messages */}
+                    <div className="max-h-48 overflow-y-auto space-y-2 text-xs pr-1 custom-scrollbar">
+                      {chatMessages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={cn(
+                            "p-2.5 rounded-xl max-w-[90%] text-[11px]",
+                            msg.sender === "user"
+                              ? "ml-auto bg-orange-500 text-black font-semibold"
+                              : "bg-[#14141a] border border-white/10 text-neutral-200"
+                          )}
+                        >
+                          {msg.text}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Input */}
+                    <div className="relative pt-1">
+                      <textarea
+                        value={copilotPrompt}
+                        onChange={(e) => setCopilotPrompt(e.target.value)}
+                        placeholder="Ask Copilot to change this slide..."
+                        rows={2}
+                        className="w-full bg-[#14141a] border border-white/15 rounded-xl p-2.5 pr-10 text-xs text-white outline-none resize-none"
+                      />
+                      <button
+                        onClick={() => {
+                          handleSendCopilotPrompt();
+                          setMobileDrawerTab(null);
+                        }}
+                        disabled={!copilotPrompt.trim() || isEnhancing}
+                        className="absolute right-2 bottom-3 p-1.5 rounded-lg bg-orange-500 text-black"
+                      >
+                        <Send size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Mobile Layouts */}
+                {mobileDrawerTab === "layouts" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {SLIDE_LAYOUT_OPTIONS.map((opt) => {
+                      const Icon = opt.icon;
+                      const isSelected = currentSlide.layout === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => {
+                            updateCurrentSlide(() => ({ layout: opt.id }));
+                            setMobileDrawerTab(null);
+                          }}
+                          className={cn(
+                            "p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer",
+                            isSelected ? "bg-orange-500/20 border-orange-500 text-white" : "bg-[#121218] border-white/10 text-neutral-300"
+                          )}
+                        >
+                          <div className={cn("p-1.5 rounded-lg", isSelected ? "bg-orange-500 text-black" : "bg-white/5 text-orange-400")}>
+                            <Icon size={13} />
+                          </div>
+                          <span className="text-xs font-bold truncate">{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 4. Mobile Notes */}
+                {mobileDrawerTab === "notes" && (
+                  <div className="space-y-3">
+                    <textarea
+                      value={currentSlide.speakerNotes || ""}
+                      onChange={(e) => updateCurrentSlide(() => ({ speakerNotes: e.target.value }))}
+                      placeholder="Write talking points for this slide..."
+                      rows={8}
+                      className="w-full bg-[#121218] border border-white/10 rounded-xl p-3 text-xs text-neutral-200 outline-none leading-relaxed"
+                    />
+                  </div>
+                )}
+
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
 
@@ -2012,16 +2265,16 @@ function SlideEditableCanvas({
   switch (slide.layout) {
     case "title":
       return (
-        <div className="text-center space-y-4 max-w-3xl mx-auto py-2 flex flex-col items-center justify-center h-full">
+        <div className="text-center space-y-2 sm:space-y-4 max-w-3xl mx-auto py-1 sm:py-2 flex flex-col items-center justify-center h-full">
           <AutoExpandText
             value={slide.title || ""}
             onChange={(val) => onUpdate(() => ({ title: val }))}
             placeholder="Presentation Title"
             rows={2}
-            className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white text-center hover:bg-white/[0.03] rounded-2xl p-2 leading-tight"
+            className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight text-white text-center hover:bg-white/[0.03] rounded-2xl p-1 sm:p-2 leading-tight"
           />
           <div 
-            className="h-1.5 w-20 mx-auto rounded-full my-1"
+            className="h-1 sm:h-1.5 w-12 sm:w-20 mx-auto rounded-full my-0.5 sm:my-1"
             style={{ backgroundColor: colors.primary, boxShadow: `0 0 15px ${colors.primary}` }}
           />
           <AutoExpandText
@@ -2029,14 +2282,14 @@ function SlideEditableCanvas({
             onChange={(val) => onUpdate(() => ({ subtitle: val }))}
             placeholder="Add subtitle or key thesis premise..."
             rows={2}
-            className="text-sm sm:text-base text-neutral-300 font-light max-w-2xl mx-auto text-center hover:bg-white/[0.03] rounded-xl p-2 leading-relaxed"
+            className="text-xs sm:text-base text-neutral-300 font-light max-w-2xl mx-auto text-center hover:bg-white/[0.03] rounded-xl p-1 sm:p-2 leading-relaxed"
           />
           {slide.author && (
             <input
               type="text"
               value={slide.author}
               onChange={(e) => onUpdate(() => ({ author: e.target.value }))}
-              className="text-xs uppercase font-mono tracking-widest text-center bg-transparent border-0 outline-none hover:bg-white/[0.03] px-3 py-1 rounded-lg mt-2"
+              className="text-[9px] sm:text-xs uppercase font-mono tracking-widest text-center bg-transparent border-0 outline-none hover:bg-white/[0.03] px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg mt-1"
               style={{ color: colors.primary }}
             />
           )}
@@ -2052,8 +2305,8 @@ function SlideEditableCanvas({
           ];
 
       return (
-        <div className="grid grid-cols-2 gap-6 items-center h-full text-left">
-          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
+        <div className="grid grid-cols-2 gap-2 sm:gap-6 items-center h-full text-left">
+          <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] rounded-xl sm:rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
             <img 
               src={slide.image_url || `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800`} 
               alt=""
@@ -2063,25 +2316,25 @@ function SlideEditableCanvas({
             {onOpenImagePicker && (
               <button
                 onClick={onOpenImagePicker}
-                className="absolute bottom-2.5 right-2.5 px-3 py-1.5 bg-black/80 hover:bg-orange-500 hover:text-black text-white text-[10px] font-bold rounded-xl border border-white/20 transition-all flex items-center gap-1.5 shadow-lg backdrop-blur-sm z-20 cursor-pointer"
+                className="absolute bottom-1.5 sm:bottom-2.5 right-1.5 sm:right-2.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-black/80 hover:bg-orange-500 hover:text-black text-white text-[8px] sm:text-[10px] font-bold rounded-lg sm:rounded-xl border border-white/20 transition-all flex items-center gap-1 shadow-lg backdrop-blur-sm z-20 cursor-pointer"
               >
-                <Sparkles size={11} /> Change Visual
+                <Sparkles size={10} /> <span className="hidden sm:inline">Change</span>
               </button>
             )}
           </div>
 
-          <div className="space-y-3 flex flex-col justify-center">
+          <div className="space-y-1.5 sm:space-y-3 flex flex-col justify-center">
             <AutoExpandText
               value={slide.title || ""}
               onChange={(val) => onUpdate(() => ({ title: val }))}
               rows={2}
-              className="text-xl sm:text-2xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-lg p-0.5 leading-snug"
+              className="text-xs sm:text-xl md:text-2xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-lg p-0.5 leading-tight sm:leading-snug"
               placeholder="Topic Headline"
             />
-            <div className="space-y-2.5">
+            <div className="space-y-1 sm:space-y-2.5">
               {bullets.map((bullet, idx) => (
-                <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-neutral-300">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.primary }} />
+                <div key={idx} className="flex items-start gap-1.5 sm:gap-2.5 text-[8px] sm:text-xs md:text-sm text-neutral-300">
+                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full shrink-0 mt-1 sm:mt-1.5" style={{ backgroundColor: colors.primary }} />
                   <AutoExpandText
                     value={bullet}
                     onChange={(val) => {
@@ -2090,7 +2343,7 @@ function SlideEditableCanvas({
                       onUpdate(() => ({ bullets: next }));
                     }}
                     rows={2}
-                    className="leading-relaxed hover:bg-white/[0.02] rounded text-neutral-200 text-xs sm:text-sm p-0.5"
+                    className="leading-tight sm:leading-relaxed hover:bg-white/[0.02] rounded text-neutral-200 text-[8px] sm:text-xs md:text-sm p-0.5"
                   />
                 </div>
               ))}
@@ -2109,19 +2362,19 @@ function SlideEditableCanvas({
           ];
 
       return (
-        <div className="grid grid-cols-2 gap-6 items-center h-full text-left">
-          <div className="space-y-3 flex flex-col justify-center">
+        <div className="grid grid-cols-2 gap-2 sm:gap-6 items-center h-full text-left">
+          <div className="space-y-1.5 sm:space-y-3 flex flex-col justify-center">
             <AutoExpandText
               value={slide.title || ""}
               onChange={(val) => onUpdate(() => ({ title: val }))}
               rows={2}
-              className="text-xl sm:text-2xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-lg p-0.5 leading-snug"
+              className="text-xs sm:text-xl md:text-2xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-lg p-0.5 leading-tight sm:leading-snug"
               placeholder="Topic Headline"
             />
-            <div className="space-y-2.5">
+            <div className="space-y-1 sm:space-y-2.5">
               {bullets.map((bullet, idx) => (
-                <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-neutral-300">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.accent }} />
+                <div key={idx} className="flex items-start gap-1.5 sm:gap-2.5 text-[8px] sm:text-xs md:text-sm text-neutral-300">
+                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full shrink-0 mt-1 sm:mt-1.5" style={{ backgroundColor: colors.accent }} />
                   <AutoExpandText
                     value={bullet}
                     onChange={(val) => {
@@ -2130,14 +2383,14 @@ function SlideEditableCanvas({
                       onUpdate(() => ({ bullets: next }));
                     }}
                     rows={2}
-                    className="leading-relaxed hover:bg-white/[0.02] rounded text-neutral-200 text-xs sm:text-sm p-0.5"
+                    className="leading-tight sm:leading-relaxed hover:bg-white/[0.02] rounded text-neutral-200 text-[8px] sm:text-xs md:text-sm p-0.5"
                   />
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
+          <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] rounded-xl sm:rounded-2xl overflow-hidden border shadow-lg group" style={{ borderColor: colors.border }}>
             <img 
               src={slide.image_url || `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800`} 
               alt=""
@@ -2147,9 +2400,9 @@ function SlideEditableCanvas({
             {onOpenImagePicker && (
               <button
                 onClick={onOpenImagePicker}
-                className="absolute bottom-2.5 right-2.5 px-3 py-1.5 bg-black/80 hover:bg-orange-500 hover:text-black text-white text-[10px] font-bold rounded-xl border border-white/20 transition-all flex items-center gap-1.5 shadow-lg backdrop-blur-sm z-20 cursor-pointer"
+                className="absolute bottom-1.5 sm:bottom-2.5 right-1.5 sm:right-2.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-black/80 hover:bg-orange-500 hover:text-black text-white text-[8px] sm:text-[10px] font-bold rounded-lg sm:rounded-xl border border-white/20 transition-all flex items-center gap-1 shadow-lg backdrop-blur-sm z-20 cursor-pointer"
               >
-                <Sparkles size={11} /> Change Visual
+                <Sparkles size={10} /> <span className="hidden sm:inline">Change</span>
               </button>
             )}
           </div>
@@ -2159,15 +2412,15 @@ function SlideEditableCanvas({
 
     case "metric_callout":
       return (
-        <div className="space-y-6 text-center max-w-3xl mx-auto py-2 flex flex-col justify-center h-full">
+        <div className="space-y-2 sm:space-y-6 text-center max-w-3xl mx-auto py-1 sm:py-2 flex flex-col justify-center h-full">
           <AutoExpandText
             value={slide.title || ""}
             onChange={(val) => onUpdate(() => ({ title: val }))}
             rows={2}
-            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 text-center leading-tight"
+            className="text-xs sm:text-2xl md:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 text-center leading-tight"
             placeholder="Key Metrics Headline"
           />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-1 sm:gap-4">
             {(slide.metrics || [
               { value: "99.8%", label: "Accuracy Target" },
               { value: "4.2x", label: "Velocity Multiplier" },
@@ -2175,7 +2428,7 @@ function SlideEditableCanvas({
             ]).map((m, i) => (
               <div 
                 key={i} 
-                className="p-5 rounded-2xl border shadow-lg space-y-1.5 bg-black/40"
+                className="p-1.5 sm:p-5 rounded-xl sm:rounded-2xl border shadow-lg space-y-0.5 sm:space-y-1.5 bg-black/40"
                 style={{ borderColor: colors.border }}
               >
                 <input
@@ -2186,7 +2439,7 @@ function SlideEditableCanvas({
                     next[i] = { ...m, value: e.target.value };
                     onUpdate(() => ({ metrics: next }));
                   }}
-                  className="text-3xl sm:text-4xl font-black tracking-tight text-center bg-transparent border-0 outline-none w-full"
+                  className="text-sm sm:text-3xl md:text-4xl font-black tracking-tight text-center bg-transparent border-0 outline-none w-full"
                   style={{ color: i === 0 ? colors.primary : colors.accent }}
                 />
                 <input
@@ -2197,7 +2450,7 @@ function SlideEditableCanvas({
                     next[i] = { ...m, label: e.target.value };
                     onUpdate(() => ({ metrics: next }));
                   }}
-                  className="text-xs uppercase font-mono tracking-wider text-neutral-400 text-center bg-transparent border-0 outline-none w-full"
+                  className="text-[6.5px] sm:text-[10px] md:text-xs uppercase font-mono tracking-wider text-neutral-400 text-center bg-transparent border-0 outline-none w-full"
                 />
               </div>
             ))}
@@ -2225,24 +2478,24 @@ function SlideEditableCanvas({
           ];
 
       return (
-        <div className="space-y-4 text-left flex flex-col justify-center h-full max-w-4xl mx-auto">
+        <div className="space-y-2 sm:space-y-4 text-left flex flex-col justify-center h-full max-w-4xl mx-auto">
           <AutoExpandText
             value={slide.title || ""}
             onChange={(val) => onUpdate(() => ({ title: val }))}
             rows={2}
-            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            className="text-xs sm:text-2xl md:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 leading-tight"
             placeholder="Conclusion & Summary"
           />
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-            {conclusionItems.map((bullet, idx) => (
+          <div className="grid grid-cols-3 gap-1 sm:gap-3.5">
+            {conclusionItems.slice(0, 3).map((bullet, idx) => (
               <div 
-                key={idx}
-                className="p-4 rounded-2xl border shadow-md space-y-2 bg-black/40 flex flex-col justify-between"
+                key={idx} 
+                className="p-1.5 sm:p-4 rounded-xl sm:rounded-2xl border shadow-md space-y-1 sm:space-y-2 bg-black/40 flex flex-col justify-between"
                 style={{ borderColor: colors.border }}
               >
-                <div className="flex items-center gap-2 pb-1 border-b border-white/[0.06]">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-orange-400">Takeaway {idx + 1}</span>
+                <div className="flex items-center gap-1 sm:gap-2 pb-0.5 sm:pb-1 border-b border-white/[0.06]">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
+                  <span className="text-[7px] sm:text-[10px] font-mono font-bold uppercase tracking-wider text-orange-400">Takeaway {idx + 1}</span>
                 </div>
                 <AutoExpandText
                   value={bullet}
@@ -2252,7 +2505,7 @@ function SlideEditableCanvas({
                     onUpdate(() => ({ bullets: next }));
                   }}
                   rows={3}
-                  className="text-xs text-neutral-200 leading-relaxed hover:bg-white/[0.02] rounded p-0.5"
+                  className="text-[7px] sm:text-xs text-neutral-200 leading-tight sm:leading-relaxed hover:bg-white/[0.02] rounded p-0.5"
                 />
               </div>
             ))}
@@ -2270,8 +2523,7 @@ function SlideEditableCanvas({
         ? slide.bullets.slice(0, Math.ceil(slide.bullets.length / 2))
         : [
             slide.left_text || "Baseline Approach: Manual coordination with linear scaling overhead.",
-            "Latency Overhead: Sequential processing creates bottlenecks under high load.",
-            "Resource Consumption: Higher compute footprint with fragmented data stores."
+            "Latency Overhead: Sequential processing creates bottlenecks under high load."
           ];
 
       const rightItems = (slide.columns?.right && slide.columns.right.length > 0)
@@ -2282,30 +2534,29 @@ function SlideEditableCanvas({
         ? slide.bullets.slice(Math.ceil(slide.bullets.length / 2))
         : [
             slide.right_text || "Modern Architecture: Event-driven orchestration with autonomous workers.",
-            "Sub-Millisecond Response: Distributed vector indexing accelerates retrieval 4.2x.",
-            "Automated Telemetry: Self-healing error loops prevent context pollution."
+            "Sub-Millisecond Response: Distributed vector indexing accelerates retrieval 4.2x."
           ];
 
       return (
-        <div className="space-y-4 text-left flex flex-col justify-center h-full">
+        <div className="space-y-1.5 sm:space-y-4 text-left flex flex-col justify-center h-full">
           <AutoExpandText
             value={slide.title || ""}
             onChange={(val) => onUpdate(() => ({ title: val }))}
             rows={2}
-            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            className="text-xs sm:text-2xl md:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 leading-tight"
             placeholder="Comparative Analysis Headline"
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-4">
             {/* Left Column Card */}
-            <div className="p-4 rounded-2xl border bg-black/40 space-y-3" style={{ borderColor: colors.border }}>
-              <div className="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
-                <span className="w-2 h-2 rounded-full bg-neutral-400" />
-                <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">Option A / Baseline</span>
+            <div className="p-1.5 sm:p-4 rounded-xl sm:rounded-2xl border bg-black/40 space-y-1.5 sm:space-y-3" style={{ borderColor: colors.border }}>
+              <div className="flex items-center gap-1.5 pb-1 sm:pb-2 border-b border-white/[0.06]">
+                <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
+                <span className="text-[7.5px] sm:text-xs font-bold uppercase tracking-wider text-neutral-300">Option A / Baseline</span>
               </div>
-              <div className="space-y-2.5">
+              <div className="space-y-1 sm:space-y-2.5">
                 {leftItems.map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-xs text-neutral-300">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 bg-neutral-500" />
+                  <div key={idx} className="flex items-start gap-1 sm:gap-2 text-[7px] sm:text-xs text-neutral-300">
+                    <span className="w-1 h-1 rounded-full shrink-0 mt-1 bg-neutral-500" />
                     <AutoExpandText
                       value={item}
                       onChange={(val) => {
@@ -2314,7 +2565,7 @@ function SlideEditableCanvas({
                         onUpdate(() => ({ columns: { left: next, right: rightItems } }));
                       }}
                       rows={2}
-                      className="leading-relaxed text-neutral-300 text-xs hover:bg-white/[0.02] rounded p-0.5"
+                      className="leading-tight sm:leading-relaxed text-neutral-300 text-[7px] sm:text-xs hover:bg-white/[0.02] rounded p-0.5"
                     />
                   </div>
                 ))}
@@ -2322,15 +2573,15 @@ function SlideEditableCanvas({
             </div>
 
             {/* Right Column Card */}
-            <div className="p-4 rounded-2xl border bg-orange-500/5 space-y-3" style={{ borderColor: colors.primary }}>
-              <div className="flex items-center gap-2 pb-2 border-b border-orange-500/20">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
-                <span className="text-xs font-bold uppercase tracking-wider text-orange-400">Option B / Modern</span>
+            <div className="p-1.5 sm:p-4 rounded-xl sm:rounded-2xl border bg-orange-500/5 space-y-1.5 sm:space-y-3" style={{ borderColor: colors.primary }}>
+              <div className="flex items-center gap-1.5 pb-1 sm:pb-2 border-b border-orange-500/20">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.primary }} />
+                <span className="text-[7.5px] sm:text-xs font-bold uppercase tracking-wider text-orange-400">Option B / Modern</span>
               </div>
-              <div className="space-y-2.5">
+              <div className="space-y-1 sm:space-y-2.5">
                 {rightItems.map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-xs text-neutral-200">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.primary }} />
+                  <div key={idx} className="flex items-start gap-1 sm:gap-2 text-[7px] sm:text-xs text-neutral-200">
+                    <span className="w-1 h-1 rounded-full shrink-0 mt-1" style={{ backgroundColor: colors.primary }} />
                     <AutoExpandText
                       value={item}
                       onChange={(val) => {
@@ -2339,7 +2590,7 @@ function SlideEditableCanvas({
                         onUpdate(() => ({ columns: { left: leftItems, right: next } }));
                       }}
                       rows={2}
-                      className="leading-relaxed text-neutral-100 text-xs hover:bg-white/[0.02] rounded p-0.5"
+                      className="leading-tight sm:leading-relaxed text-neutral-100 text-[7px] sm:text-xs hover:bg-white/[0.02] rounded p-0.5"
                     />
                   </div>
                 ))}
@@ -2355,19 +2606,19 @@ function SlideEditableCanvas({
       const cons = (slide.cons && slide.cons.length > 0) ? slide.cons : (slide.bullets?.slice(2) || ["Initial Migration Complexity", "Legacy System Compatibility"]);
 
       return (
-        <div className="space-y-4 text-left flex flex-col justify-center h-full">
+        <div className="space-y-1.5 sm:space-y-4 text-left flex flex-col justify-center h-full">
           <AutoExpandText
             value={slide.title || ""}
             onChange={(val) => onUpdate(() => ({ title: val }))}
             rows={2}
-            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            className="text-xs sm:text-2xl md:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 leading-tight"
             placeholder="Pros & Cons Headline"
           />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/10 space-y-2.5">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block pb-1 border-b border-emerald-500/20">Key Advantages</span>
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-4">
+            <div className="p-1.5 sm:p-4 rounded-xl sm:rounded-2xl border border-emerald-500/30 bg-emerald-950/10 space-y-1 sm:space-y-2.5">
+              <span className="text-[7.5px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider block pb-0.5 sm:pb-1 border-b border-emerald-500/20">Key Advantages</span>
               {pros.map((p, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-xs text-neutral-200">
+                <div key={idx} className="flex items-start gap-1 sm:gap-2 text-[7px] sm:text-xs text-neutral-200">
                   <span className="text-emerald-400 font-bold">✓</span>
                   <AutoExpandText
                     value={p}
@@ -2377,15 +2628,15 @@ function SlideEditableCanvas({
                       onUpdate(() => ({ pros: next }));
                     }}
                     rows={2}
-                    className="leading-snug text-neutral-200 text-xs"
+                    className="leading-tight sm:leading-snug text-neutral-200 text-[7px] sm:text-xs"
                   />
                 </div>
               ))}
             </div>
-            <div className="p-4 rounded-2xl border border-rose-500/30 bg-rose-950/10 space-y-2.5">
-              <span className="text-xs font-bold text-rose-400 uppercase tracking-wider block pb-1 border-b border-rose-500/20">Considerations & Risks</span>
+            <div className="p-1.5 sm:p-4 rounded-xl sm:rounded-2xl border border-rose-500/30 bg-rose-950/10 space-y-1 sm:space-y-2.5">
+              <span className="text-[7.5px] sm:text-xs font-bold text-rose-400 uppercase tracking-wider block pb-0.5 sm:pb-1 border-b border-rose-500/20">Considerations & Risks</span>
               {cons.map((c, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-xs text-neutral-200">
+                <div key={idx} className="flex items-start gap-1 sm:gap-2 text-[7px] sm:text-xs text-neutral-200">
                   <span className="text-rose-400 font-bold">✗</span>
                   <AutoExpandText
                     value={c}
@@ -2395,7 +2646,7 @@ function SlideEditableCanvas({
                       onUpdate(() => ({ cons: next }));
                     }}
                     rows={2}
-                    className="leading-snug text-neutral-200 text-xs"
+                    className="leading-tight sm:leading-snug text-neutral-200 text-[7px] sm:text-xs"
                   />
                 </div>
               ))}
@@ -2411,24 +2662,24 @@ function SlideEditableCanvas({
         : (slide.steps && slide.steps.length > 0)
         ? slide.steps.map((st, i) => ({ year: `Stage ${i + 1}`, description: typeof st === "string" ? st : (st as any).title || "Execution Step" }))
         : [
-            { year: "Phase 1", description: "Architecture Discovery & Data Schema Definition" },
-            { year: "Phase 2", description: "Pilot Deployment with Telemetry Monitoring" },
-            { year: "Phase 3", description: "Global Rollout & Performance Optimization" }
+            { year: "Phase 1", description: "Architecture Discovery & Data Schema" },
+            { year: "Phase 2", description: "Pilot Deployment with Monitoring" },
+            { year: "Phase 3", description: "Global Rollout & Optimization" }
           ];
 
       return (
-        <div className="space-y-5 text-left flex flex-col justify-center h-full">
+        <div className="space-y-1.5 sm:space-y-5 text-left flex flex-col justify-center h-full">
           <AutoExpandText
             value={slide.title || ""}
             onChange={(val) => onUpdate(() => ({ title: val }))}
             rows={2}
-            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            className="text-xs sm:text-2xl md:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 leading-tight"
             placeholder="Roadmap Timeline Headline"
           />
-          <div className="grid grid-cols-3 gap-3">
-            {events.map((ev, idx) => (
-              <div key={idx} className="p-4 rounded-2xl border bg-black/40 space-y-2 relative" style={{ borderColor: colors.border }}>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold inline-block" style={{ backgroundColor: colors.primary, color: '#000' }}>
+          <div className="grid grid-cols-3 gap-1 sm:gap-3">
+            {events.slice(0, 3).map((ev, idx) => (
+              <div key={idx} className="p-1.5 sm:p-4 rounded-xl sm:rounded-2xl border bg-black/40 space-y-1 sm:space-y-2 relative" style={{ borderColor: colors.border }}>
+                <span className="px-1 sm:px-2 py-0.5 rounded-md text-[6.5px] sm:text-[10px] font-mono font-bold inline-block" style={{ backgroundColor: colors.primary, color: '#000' }}>
                   {ev.year}
                 </span>
                 <AutoExpandText
@@ -2439,7 +2690,7 @@ function SlideEditableCanvas({
                     onUpdate(() => ({ events: next }));
                   }}
                   rows={3}
-                  className="text-xs text-neutral-200 leading-relaxed"
+                  className="text-[7px] sm:text-xs text-neutral-200 leading-tight sm:leading-relaxed"
                 />
               </div>
             ))}
@@ -2450,17 +2701,17 @@ function SlideEditableCanvas({
 
     case "quote": {
       return (
-        <div className="text-center space-y-4 max-w-2xl mx-auto py-2 flex flex-col items-center justify-center h-full">
-          <span className="text-4xl text-orange-400 font-serif leading-none">“</span>
+        <div className="text-center space-y-1.5 sm:space-y-4 max-w-2xl mx-auto py-1 sm:py-2 flex flex-col items-center justify-center h-full">
+          <span className="text-2xl sm:text-4xl text-orange-400 font-serif leading-none">“</span>
           <AutoExpandText
             value={slide.quote_text || slide.title || "Innovation distinguishes between a leader and a follower."}
             onChange={(val) => onUpdate(() => ({ quote_text: val }))}
             rows={3}
-            className="text-center text-lg sm:text-xl font-medium italic text-neutral-200 leading-relaxed"
+            className="text-center text-xs sm:text-lg md:text-xl font-medium italic text-neutral-200 leading-tight sm:leading-relaxed"
           />
           <div className="space-y-0.5">
-            <p className="text-xs font-bold text-white uppercase tracking-wider">{slide.author || "Executive Leadership"}</p>
-            {slide.role && <p className="text-[10px] text-neutral-400 font-mono">{slide.role}</p>}
+            <p className="text-[9px] sm:text-xs font-bold text-white uppercase tracking-wider">{slide.author || "Executive Leadership"}</p>
+            {slide.role && <p className="text-[7px] sm:text-[10px] text-neutral-400 font-mono">{slide.role}</p>}
           </div>
         </div>
       );
@@ -2472,17 +2723,17 @@ function SlideEditableCanvas({
         : [slide.image_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800"];
 
       return (
-        <div className="space-y-4 text-left flex flex-col justify-center h-full">
+        <div className="space-y-1.5 sm:space-y-4 text-left flex flex-col justify-center h-full">
           <AutoExpandText
             value={slide.title || ""}
             onChange={(val) => onUpdate(() => ({ title: val }))}
             rows={2}
-            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            className="text-xs sm:text-2xl md:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 leading-tight"
             placeholder="Visual Showcase Headline"
           />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-1 sm:gap-3">
             {images.slice(0, 3).map((img, idx) => (
-              <div key={idx} className="relative aspect-[16/10] rounded-2xl overflow-hidden border shadow-md" style={{ borderColor: colors.border }}>
+              <div key={idx} className="relative aspect-[16/10] rounded-lg sm:rounded-2xl overflow-hidden border shadow-md" style={{ borderColor: colors.border }}>
                 <img 
                   src={img} 
                   alt="" 
@@ -2506,25 +2757,24 @@ function SlideEditableCanvas({
             "Dynamic Routing: Socratic classification prevents token exhaustion.",
             "Continuous Feedback: Automated active recall tests reinforce retention."
           ];
-      const isDense = bulletsList.length > 4;
 
       return (
-        <div className="space-y-3 text-left flex flex-col justify-center h-full">
+        <div className="space-y-1.5 sm:space-y-3 text-left flex flex-col justify-center h-full">
           <AutoExpandText
             value={slide.title || ""}
             onChange={(val) => onUpdate(() => ({ title: val }))}
             rows={2}
-            className="text-2xl sm:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-1 leading-tight"
+            className="text-xs sm:text-2xl md:text-3xl font-black tracking-tight text-white hover:bg-white/[0.03] rounded-xl p-0.5 sm:p-1 leading-tight"
             placeholder="Slide Topic Headline"
           />
-          <div className={cn("grid gap-2.5", isDense ? "grid-cols-2 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar" : "grid-cols-2")}>
-            {bulletsList.map((bullet, idx) => (
+          <div className="grid grid-cols-2 gap-1 sm:gap-2.5">
+            {bulletsList.slice(0, 4).map((bullet, idx) => (
               <div 
                 key={idx}
-                className="p-3.5 rounded-2xl border shadow-md space-y-1 bg-black/40 flex items-start gap-2.5"
+                className="p-1.5 sm:p-3.5 rounded-xl sm:rounded-2xl border shadow-md space-y-0.5 sm:space-y-1 bg-black/40 flex items-start gap-1.5 sm:gap-2.5"
                 style={{ borderColor: colors.border }}
               >
-                <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colors.primary }} />
+                <span className="w-1 h-1 sm:w-2 sm:h-2 rounded-full shrink-0 mt-1 sm:mt-1.5" style={{ backgroundColor: colors.primary }} />
                 <AutoExpandText
                   value={bullet}
                   onChange={(val) => {
@@ -2533,7 +2783,7 @@ function SlideEditableCanvas({
                     onUpdate(() => ({ bullets: next }));
                   }}
                   rows={2}
-                  className="text-xs sm:text-sm text-neutral-200 leading-relaxed hover:bg-white/[0.02] rounded p-0.5"
+                  className="text-[7.5px] sm:text-xs md:text-sm text-neutral-200 leading-tight sm:leading-relaxed hover:bg-white/[0.02] rounded p-0.5"
                 />
               </div>
             ))}
