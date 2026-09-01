@@ -28,10 +28,10 @@ app.use(cors(
     , credentials: true
   }
 ));
-// LemonSqueezy webhook needs raw body for HMAC-SHA256 signature verification
-// — this must be applied before express.json()
+// Body parsers with 50mb limit to handle rich Excalidraw whiteboards, diagrams and large files
 app.use(
   express.json({
+    limit: "50mb",
     verify: (req, _res, buf) => {
       if (req.originalUrl.startsWith("/api/payment/lemonsqueezy/webhook")) {
         req.rawBody = buf;
@@ -39,6 +39,7 @@ app.use(
     },
   })
 );
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Set X-Robots-Tag header to allow bots/crawlers
 app.use((req, res, next) => {
@@ -67,6 +68,7 @@ app.use("/api/code", require("./routes/codeRoutes"));
 app.use("/api/diagram", require("./routes/diagramRoutes"));
 app.use("/api/writer", require("./routes/writerRoutes"));
 app.use("/api/study", require("./routes/studyRoutes"));
+app.use("/api/whiteboard", require("./routes/whiteboardRoutes"));
 
 // Optional: Add admin route to manually trigger token reset
 app.post("/api/admin/trigger-token-reset", async (req, res) => {

@@ -530,6 +530,8 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
         return <Layers size={13} className="text-blue-400 shrink-0" />;
       case 'diagram':
         return <GitBranch size={13} className="text-emerald-400 shrink-0" />;
+      case 'whiteboard':
+        return <PenTool size={13} className="text-rose-400 shrink-0" />;
       default:
         return <GraduationCap size={13} className="text-cyan-400 shrink-0" />;
     }
@@ -622,6 +624,18 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
                       <span>AI Presentation (PPT)</span>
                     </div>
                     <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">HOT</span>
+                  </Link>
+
+                  <Link
+                    href="/whiteboard"
+                    onClick={onClose}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-[#0f0f0f] border border-white/[0.04] text-neutral-300 hover:text-white"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <PenTool size={15} className="text-violet-400" />
+                      <span>Agentic Whiteboard</span>
+                    </div>
+                    <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">AI</span>
                   </Link>
 
                   <Link
@@ -880,6 +894,7 @@ const MobileDrawer = ({ isOpen, onClose, isLoggedIn, user, onLoginSuccess, authL
 
 const AI_STUDY_SUITE = [
   { title: "YouTube to Notes AI", desc: "Convert video lectures, crash courses & tutorials into notes & flashcards.", href: "/youtube-to-notes", icon: <Youtube size={16} />, badge: "Popular", badgeColor: "text-red-500 bg-red-500/10 border-red-500/20" },
+  { title: "Agentic Whiteboard", desc: "Autonomous AI whiteboard & system diagram designer powered by Excalidraw.", href: "/whiteboard", icon: <PenTool size={16} />, badge: "AI", badgeColor: "text-violet-500 bg-violet-500/10 border-violet-500/20" },
   { title: "AI Slide Deck & PPT Maker", desc: "Transform topics, transcripts, or notes into beautifully structured slide decks.", href: "/presentation-generator", icon: <Layout size={16} />, badge: "Active", badgeColor: "text-orange-500 bg-orange-500/10 border-orange-500/20" },
   { title: "AI Diagram & Flowchart", desc: "Generate concept maps, mind maps & interactive flowcharts from topics.", href: "/ai-diagram", icon: <Workflow size={16} />, badge: "New", badgeColor: "text-cyan-500 bg-cyan-500/10 border-cyan-500/20" },
   { title: "AI Writer & Editor", desc: "Draft essays, research summaries & study guides with academic formatting.", href: "/ai-writer", icon: <PenTool size={16} />, badge: "New", badgeColor: "text-amber-500 bg-amber-500/10 border-amber-500/20" },

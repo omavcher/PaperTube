@@ -110,7 +110,7 @@ export function DesktopSidebar({
   // History / Creations State
   const [creations, setCreations] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyFilter, setHistoryFilter] = useState<'all' | 'notes' | 'ppt' | 'quiz' | 'flashcard' | 'diagram' | 'study'>('all');
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'notes' | 'whiteboard' | 'ppt' | 'quiz' | 'flashcard' | 'diagram' | 'study'>('all');
   const [historySearch, setHistorySearch] = useState('');
   const [historyExpanded, setHistoryExpanded] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -196,6 +196,8 @@ export function DesktopSidebar({
         return <Layers size={13} className="text-blue-400 shrink-0" />;
       case 'diagram':
         return <GitBranch size={13} className="text-emerald-400 shrink-0" />;
+      case 'whiteboard':
+        return <PenTool size={13} className="text-violet-400 shrink-0" />;
       case 'study':
         return <GraduationCap size={13} className="text-cyan-400 shrink-0" />;
       default:
@@ -292,6 +294,15 @@ export function DesktopSidebar({
               variant="card"
             />
             <SidebarCardItem
+              href="/whiteboard"
+              icon={<PenTool size={15} className="text-violet-400" />}
+              label="Agentic Whiteboard"
+              active={pathname.startsWith("/whiteboard")}
+              isExpanded={isExpanded}
+              badge="AI"
+              variant="card"
+            />
+            <SidebarCardItem
               href="/profile"
               icon={<BookOpen size={15} />}
               label="Backpack Library"
@@ -357,6 +368,7 @@ export function DesktopSidebar({
                   {[
                     { id: 'all', label: 'All' },
                     { id: 'notes', label: 'Notes' },
+                    { id: 'whiteboard', label: 'Board' },
                     { id: 'ppt', label: 'PPT' },
                     { id: 'quiz', label: 'Quiz' },
                     { id: 'flashcard', label: 'Flash' },
@@ -854,6 +866,7 @@ function SidebarCardItem({ href, icon, label, active, isExpanded, rightElement, 
               "text-[8px] font-black uppercase px-1.5 py-0.5 rounded border",
               badge === "CORE" ? "bg-red-500/15 border-red-500/30 text-red-400" :
               badge === "HOT" ? "bg-orange-500/15 border-orange-500/30 text-orange-400" :
+              badge === "AI" ? "bg-violet-500/15 border-violet-500/30 text-violet-400" :
               "bg-neutral-800 border-white/10 text-neutral-300"
             )}>
               {badge}

@@ -35,7 +35,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     "/note/",
     "/flashcards/",
     "/presentation-generator/",
-    "/yt-practice-test"
+    "/yt-practice-test",
+    "/whiteboard/"
   ].some(path => pathname?.startsWith(path));
 
   // Hide Mobile Bottom Dock on tools that require full-screen height
@@ -46,7 +47,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     "/note/",
     "/flashcards/",
     "/presentation-generator/",
-    "/yt-practice-test"
+    "/yt-practice-test",
+    "/whiteboard/"
   ].some(path => pathname?.startsWith(path));
 
 
@@ -251,6 +253,10 @@ function GoogleOneTapLoginWrapper({ onSuccess }: any) {
         console.error("One Tap Login Error:", error);
       }
     },
+    onError: () => {
+      // Gracefully catch Google OAuth origin mismatches on localhost
+    },
+    disabled: typeof window !== "undefined" && window.location.pathname.startsWith("/whiteboard"),
   });
   return null;
 }

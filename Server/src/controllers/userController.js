@@ -6,6 +6,7 @@ const FlashcardSet = require('../models/FlashcardSet');
 const Presentation = require('../models/Presentation');
 const Quiz = require('../models/Quiz');
 const Diagram = require('../models/Diagram');
+const Whiteboard = require('../models/Whiteboard');
 const Homework = require('../models/Homework');
 const MathSolution = require('../models/MathSolution');
 const ExamPlan = require('../models/ExamPlan');
@@ -1430,6 +1431,27 @@ exports.getRecentCreations = async (req, res) => {
       );
     }
 
+    if (filterType === 'all' || filterType === 'whiteboard') {
+      tasks.push(
+        Whiteboard.find({ userId: userId })
+          .sort({ updatedAt: -1 })
+          .limit(limit)
+          .select('_id title slug elementCount createdAt updatedAt')
+          .lean()
+          .then(items => items.map(i => ({
+            id: i._id,
+            type: 'whiteboard',
+            typeLabel: 'Agentic Whiteboard',
+            title: i.title || 'Untitled Whiteboard',
+            slug: i.slug,
+            url: `/whiteboard/${i.slug}`,
+            elementCount: i.elementCount || 0,
+            createdAt: i.updatedAt || i.createdAt
+          })))
+          .catch(() => [])
+      );
+    }
+
     if (filterType === 'all' || filterType === 'study') {
       tasks.push(
         Promise.all([
@@ -1506,6 +1528,9 @@ exports.deleteCreation = async (req, res) => {
       deleted = Boolean(doc);
     } else if (type === 'diagram') {
       const doc = await Diagram.findOneAndDelete({ _id: id, userId: userId });
+      deleted = Boolean(doc);
+    } else if (type === 'whiteboard') {
+      const doc = await Whiteboard.findOneAndDelete({ _id: id, userId: userId });
       deleted = Boolean(doc);
     } else if (type === 'study') {
       await Promise.all([
