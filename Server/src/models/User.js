@@ -3,10 +3,12 @@ const mongoose = require("mongoose");
 const TransactionSchema = new mongoose.Schema({
   paymentId: { type: String, required: true },
   orderId: { type: String, required: true },
+  paypalOrderId: { type: String, default: null },
+  lemonSqueezyOrderId: { type: String, default: null },
   signature: { type: String },
   packageId: { type: String, required: true },
   packageName: { type: String, required: true },
-  packageType: { type: String, enum: ['subscription', 'token'], default: 'token' },
+  packageType: { type: String, enum: ['subscription', 'token'], default: 'subscription' },
   billingPeriod: { type: String, enum: ['monthly', 'yearly'], default: undefined },
   amount: { type: Number, required: true },
   baseAmount: { type: Number },
@@ -117,6 +119,13 @@ followingUsers: [{
       default: 10, // Daily free allocation
     },
     tokenUsageHistory: [TokenUsageSchema],
+    aiCapacity: {
+      usedUnits: { type: Number, default: 0 },
+      allocatedUnits: { type: Number, default: 50 },
+      hardCostUSD: { type: Number, default: 0 },
+      imagesGenerated: { type: Number, default: 0 },
+      lastReset: { type: Date, default: Date.now }
+    },
     lastTokenReset: {
       type: Date,
       default: null
@@ -154,7 +163,16 @@ followingUsers: [{
       lastPaymentId: { type: String },
       autoRenew: { type: Boolean, default: false },
     },
-  
+    connectedIntegrations: [
+      {
+        appId: { type: String, required: true },
+        appName: { type: String, required: true },
+        connectedAccountId: { type: String },
+        accountIdentifier: { type: String },
+        connectedAt: { type: Date, default: Date.now },
+        status: { type: String, default: "ACTIVE" }
+      }
+    ],
   },
   { timestamps: true }
 );

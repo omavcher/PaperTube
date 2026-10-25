@@ -3,6 +3,8 @@ const Note = require("../models/Note");
 const AiChat = require("../models/AiChat");
 const User = require("../models/User");
 const { getUserPlanId, PLAN_QUOTAS, getPeriodStartDate } = require("../middleware/quotaMiddleware");
+const openRouterService = require("../services/openRouterService");
+const capacityService = require("../services/capacityService");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
@@ -478,75 +480,45 @@ ${highlightContext}
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    console.log(`🚀 PaperChat starting stream for Note "${title}" [Mode: ${mode}, Plan: ${userPlan}]`);
-
-    let response = null;
-    let successfulModel = modelCandidates[0];
-
-    for (const model of modelCandidates) {
-      try {
-        console.log(`🤖 PaperChat calling OpenRouter model: ${model}`);
-        response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://paperxify.com",
-            "X-Title": "PaperChat AI Tutor"
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: messages,
-            stream: true,
-            temperature: mode === 'socratic' || mode === 'tutor' ? 0.7 : 0.3
-          })
-        });
-
-        if (response.ok) {
-          successfulModel = model;
-          break;
-        } else {
-          const errText = await response.text().catch(() => '');
-          console.warn(`⚠️ Model ${model} failed HTTP ${response.status}: ${errText}`);
-        }
-      } catch (err) {
-        console.warn(`⚠️ Model ${model} error:`, err.message);
+    // Pre-flight capacity check
+    if (userId) {
+      const capCheck = await capacityService.checkCanExecute(userId, "chat");
+      if (!capCheck.allowed) {
+        res.write(`data: ${JSON.stringify({ error: capCheck.errorPayload.message, code: "QUOTA_EXCEEDED", ...capCheck.errorPayload })}\n\n`);
+        res.end();
+        return;
       }
     }
 
-    if (!response || !response.ok) {
+    console.log(`🚀 PaperChat starting stream for Note "${title}" [Mode: ${mode}, Plan: ${userPlan}]`);
+
+    let fullContent = "";
+    let successfulModel = modelCandidates[0];
+
+    try {
+      const streamRes = await openRouterService.streamChatCompletion({
+        userId,
+        feature: "chat",
+        models: modelCandidates,
+        messages,
+        options: { temperature: mode === 'socratic' || mode === 'tutor' ? 0.7 : 0.3 },
+        metadata: { noteId, mode },
+        onChunk: (delta) => {
+          res.write(`data: ${JSON.stringify({ content: delta })}\n\n`);
+        }
+      });
+      fullContent = streamRes.content;
+      successfulModel = streamRes.model;
+    } catch (streamErr) {
+      if (streamErr.code === "QUOTA_EXCEEDED") {
+        res.write(`data: ${JSON.stringify({ error: streamErr.message, code: "QUOTA_EXCEEDED", ...streamErr.payload })}\n\n`);
+        res.end();
+        return;
+      }
+      console.error("PaperChat stream error:", streamErr.message);
       res.write(`data: ${JSON.stringify({ error: "Unable to reach AI tutor service. Please try again." })}\n\n`);
       res.end();
       return;
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let fullContent = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
-      for (const line of lines) {
-        if (line.includes('[DONE]')) continue;
-
-        try {
-          const jsonStr = line.replace(/^data: /, '');
-          const data = JSON.parse(jsonStr);
-          const content = data.choices?.[0]?.delta?.content || "";
-
-          if (content) {
-            fullContent += content;
-            res.write(`data: ${JSON.stringify({ content })}\n\n`);
-          }
-        } catch (e) {
-          // Ignore partial chunk parse warnings
-        }
-      }
     }
 
     // Save chat interaction to history if database chat exists

@@ -69,6 +69,13 @@ app.use("/api/diagram", require("./routes/diagramRoutes"));
 app.use("/api/writer", require("./routes/writerRoutes"));
 app.use("/api/study", require("./routes/studyRoutes"));
 app.use("/api/whiteboard", require("./routes/whiteboardRoutes"));
+app.use("/api/agent", require("./routes/agentRoutes"));
+app.use("/api/news", require("./routes/newsRoutes"));
+app.use("/api/narration", require("./routes/narrationRoutes"));
+
+// Serve static uploads (local narration audio files)
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
 
 // Optional: Add admin route to manually trigger token reset
 app.post("/api/admin/trigger-token-reset", async (req, res) => {

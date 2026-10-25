@@ -1,0 +1,223 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675" style="background:#06120e;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bioBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#04120c"/>
+      <stop offset="50%" stop-color="#071a12"/>
+      <stop offset="100%" stop-color="#030c08"/>
+    </linearGradient>
+
+    <!-- Thylakoid Membrane Gradient -->
+    <linearGradient id="membraneGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(34, 197, 94, 0.25)"/>
+      <stop offset="50%" stop-color="rgba(16, 185, 129, 0.35)"/>
+      <stop offset="100%" stop-color="rgba(5, 150, 105, 0.25)"/>
+    </linearGradient>
+
+    <!-- Card Gradients -->
+    <linearGradient id="cardBio1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(234, 179, 8, 0.14)"/>
+      <stop offset="100%" stop-color="rgba(161, 98, 7, 0.05)"/>
+    </linearGradient>
+
+    <linearGradient id="cardBio2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(16, 185, 129, 0.15)"/>
+      <stop offset="100%" stop-color="rgba(6, 78, 59, 0.05)"/>
+    </linearGradient>
+
+    <linearGradient id="cardBio3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(59, 130, 246, 0.15)"/>
+      <stop offset="100%" stop-color="rgba(30, 58, 138, 0.05)"/>
+    </linearGradient>
+
+    <marker id="bioArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#34d399"/>
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1200" height="675" fill="url(#bioBg)"/>
+
+  <!-- Top Title Banner -->
+  <g transform="translate(60, 36)">
+    <rect x="0" y="0" width="1080" height="52" rx="16" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)"/>
+    <circle cx="28" cy="26" r="10" fill="#10b981" opacity="0.8"/>
+    <text x="50" y="32" fill="#ffffff" font-size="15" font-weight="700" letter-spacing="0.5">
+      PHOTOSYNTHESIS: THYLAKOID LIGHT-DEPENDENT REACTIONS (प्रकाश-अभिक्रिया)
+    </text>
+    <text x="1050" y="32" fill="#34d399" font-size="12" font-weight="600" text-anchor="end">
+      CHLOROPLAST ULTRASTRUCTURE
+    </text>
+  </g>
+
+  <!-- Stroma & Lumen Region Labels -->
+  <g transform="translate(80, 94)">
+    <rect x="0" y="0" width="1040" height="20" rx="4" fill="rgba(16, 185, 129, 0.08)"/>
+    <text x="15" y="14" fill="#a7f3d0" font-size="10" font-weight="700" letter-spacing="1">
+      ▲ CHLOROPLAST STROMA (स्ट्रोमा • pH ~ 8.0 • Low H+ Concentration)
+    </text>
+    <text x="1025" y="14" fill="#6ee7b7" font-size="10" font-weight="600" text-anchor="end">
+      NADP+ &amp; ADP Pool
+    </text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- COLUMN 1: PHOTOSYSTEM II & PHOTOLYSIS (Step a1) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g id="bio-a1" transform="translate(80, 125)">
+    <!-- Column Container Box -->
+    <rect x="0" y="0" width="310" height="490" rx="20" fill="url(#cardBio1)" stroke="rgba(250, 204, 21, 0.4)" stroke-width="1.5"/>
+    <rect x="16" y="16" width="278" height="34" rx="10" fill="rgba(234, 179, 8, 0.2)" stroke="rgba(234, 179, 8, 0.4)"/>
+    <text x="32" y="38" fill="#fef08a" font-size="11" font-weight="800" letter-spacing="0.5">STEP 1: PS II &amp; PHOTOLYSIS</text>
+
+    <!-- Sub-Component 1: Sunlight & P680 -->
+    <g transform="translate(20, 68)">
+      <rect width="270" height="106" rx="14" fill="#181508" stroke="rgba(250, 204, 21, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(234, 179, 8, 0.2)"/>
+      <text x="37" y="45" fill="#facc15" font-size="22" text-anchor="middle">☀️</text>
+      <text x="72" y="36" fill="#ffffff" font-size="14" font-weight="700">Photosystem II (P680)</text>
+      <text x="72" y="54" fill="#fde047" font-size="11">Chlorophyll Reaction Center</text>
+      <text x="72" y="72" fill="#94a3b8" font-size="10">Light Absorption: λ = 680 nm</text>
+      <rect x="72" y="80" width="180" height="16" rx="4" fill="rgba(234,179,8,0.1)"/>
+      <text x="78" y="92" fill="#fef08a" font-size="9" font-family="monospace">सौर फोटॉन ऊर्जा (Photon Energy)</text>
+    </g>
+
+    <!-- Sub-Component 2: Water Splitting OEC -->
+    <g transform="translate(20, 190)">
+      <rect width="270" height="136" rx="14" fill="#0f1f1a" stroke="rgba(52, 211, 153, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(52, 211, 153, 0.2)"/>
+      <text x="37" y="45" fill="#34d399" font-size="20" text-anchor="middle">💧</text>
+      <text x="72" y="36" fill="#ffffff" font-size="13" font-weight="700">Water Photolysis (जल-अपघटन)</text>
+      <text x="72" y="53" fill="#a7f3d0" font-size="11">Oxygen Evolving Complex (Mn4CaO5)</text>
+
+      <!-- Equation Badge -->
+      <rect x="14" y="76" width="242" height="42" rx="8" fill="rgba(0,0,0,0.5)" stroke="rgba(52,211,153,0.3)"/>
+      <text x="135" y="102" fill="#6ee7b7" font-size="13" font-weight="800" font-family="monospace" text-anchor="middle">
+        2H₂O ➔ O₂↑ + 4H⁺ + 4e⁻
+      </text>
+    </g>
+
+    <!-- Reaction Summary Pill -->
+    <rect x="20" y="340" width="270" height="130" rx="12" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="35" y="365" fill="#fde047" font-size="11" font-weight="700">उत्पाद / Output Products:</text>
+    <text x="35" y="388" fill="#ffffff" font-size="12" font-weight="600">• O₂ Gas: Released to Atmosphere</text>
+    <text x="35" y="410" fill="#93c5fd" font-size="11">• 4e⁻: Replaces P680 excited electrons</text>
+    <text x="35" y="430" fill="#34d399" font-size="11">• 4H⁺: Enriches Lumen proton pool</text>
+    <text x="35" y="455" fill="#a7f3d0" font-size="10" font-weight="700">✓ प्राथमिक प्रकाश अवशोषण (Primary Excitation)</text>
+  </g>
+
+  <!-- Flow 1 -> 2 -->
+  <g transform="translate(390, 360)">
+    <path d="M 5 0 L 45 0" stroke="#34d399" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#bioArrow)"/>
+    <rect x="8" y="-22" width="36" height="16" rx="4" fill="#064e3b"/>
+    <text x="26" y="-10" fill="#a7f3d0" font-size="9" font-family="monospace" text-anchor="middle">4e⁻</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- COLUMN 2: ELECTRON TRANSPORT CHAIN & PSI (Step a2) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g id="bio-a2" transform="translate(445, 125)">
+    <!-- Column Container Box -->
+    <rect x="0" y="0" width="310" height="490" rx="20" fill="url(#cardBio2)" stroke="rgba(52, 211, 153, 0.4)" stroke-width="1.5"/>
+    <rect x="16" y="16" width="278" height="34" rx="10" fill="rgba(16, 185, 129, 0.2)" stroke="rgba(16, 185, 129, 0.4)"/>
+    <text x="32" y="38" fill="#a7f3d0" font-size="11" font-weight="800" letter-spacing="0.5">STEP 2: ETC &amp; PHOTOSYSTEM I</text>
+
+    <!-- Sub-Component 1: Cytochrome b6f & PQ -->
+    <g transform="translate(20, 68)">
+      <rect width="270" height="106" rx="14" fill="#091f17" stroke="rgba(52, 211, 153, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(16, 185, 129, 0.2)"/>
+      <text x="37" y="45" fill="#34d399" font-size="20" text-anchor="middle">🔄</text>
+      <text x="72" y="36" fill="#ffffff" font-size="13" font-weight="700">Plastoquinone &amp; Cyt b₆f</text>
+      <text x="72" y="53" fill="#34d399" font-size="11">Active Proton Pump (H⁺ Pumping)</text>
+      <text x="72" y="70" fill="#94a3b8" font-size="10">Pumps H⁺ from Stroma to Lumen</text>
+      <rect x="72" y="78" width="180" height="18" rx="4" fill="rgba(52,211,153,0.1)"/>
+      <text x="78" y="91" fill="#a7f3d0" font-size="9" font-family="monospace">विद्युत-रासायनिक प्रवणता (Gradient)</text>
+    </g>
+
+    <!-- Sub-Component 2: Photosystem I & NADPH -->
+    <g transform="translate(20, 190)">
+      <rect width="270" height="136" rx="14" fill="#091f17" stroke="rgba(52, 211, 153, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(16, 185, 129, 0.2)"/>
+      <text x="37" y="45" fill="#34d399" font-size="20" text-anchor="middle">🔋</text>
+      <text x="72" y="36" fill="#ffffff" font-size="13" font-weight="700">Photosystem I (P700) &amp; FNR</text>
+      <text x="72" y="53" fill="#6ee7b7" font-size="11">Ferredoxin-NADP⁺ Reductase</text>
+
+      <!-- Equation Badge -->
+      <rect x="14" y="76" width="242" height="42" rx="8" fill="rgba(0,0,0,0.5)" stroke="rgba(16,185,129,0.3)"/>
+      <text x="135" y="102" fill="#34d399" font-size="12" font-weight="800" font-family="monospace" text-anchor="middle">
+        NADP⁺ + H⁺ + 2e⁻ ➔ NADPH
+      </text>
+    </g>
+
+    <!-- Carrier Stat Pill -->
+    <rect x="20" y="340" width="270" height="130" rx="12" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="35" y="365" fill="#34d399" font-size="11" font-weight="700">इलेक्ट्रॉन वाहक / Carriers:</text>
+    <text x="35" y="388" fill="#ffffff" font-size="11">• Plastoquinone (PQ) &amp; Plastocyanin (PC)</text>
+    <text x="35" y="408" fill="#e9d5ff" font-size="11">• Ferredoxin (Fd) mobile protein</text>
+    <text x="35" y="428" fill="#6ee7b7" font-size="11">• NADPH carries reducing power</text>
+    <text x="35" y="455" fill="#34d399" font-size="10" font-weight="700">✓ उच्च ऊर्जा वाहक निर्माण (Energy Loaded)</text>
+  </g>
+
+  <!-- Flow 2 -> 3 -->
+  <g transform="translate(755, 360)">
+    <path d="M 5 0 L 45 0" stroke="#60a5fa" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#bioArrow)"/>
+    <rect x="8" y="-22" width="36" height="16" rx="4" fill="#1e3a8a"/>
+    <text x="26" y="-10" fill="#93c5fd" font-size="9" font-family="monospace" text-anchor="middle">ΔpH</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- COLUMN 3: ATP SYNTHASE & CHEMIOSMOSIS (Step a3) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g id="bio-a3" transform="translate(810, 125)">
+    <!-- Column Container Box -->
+    <rect x="0" y="0" width="310" height="490" rx="20" fill="url(#cardBio3)" stroke="rgba(96, 165, 250, 0.4)" stroke-width="1.5"/>
+    <rect x="16" y="16" width="278" height="34" rx="10" fill="rgba(59, 130, 246, 0.2)" stroke="rgba(59, 130, 246, 0.4)"/>
+    <text x="32" y="38" fill="#93c5fd" font-size="11" font-weight="800" letter-spacing="0.5">STEP 3: ATP SYNTHASE MOTOR</text>
+
+    <!-- Sub-Component 1: ATP Synthase Engine -->
+    <g transform="translate(20, 68)">
+      <rect width="270" height="116" rx="14" fill="#0b172a" stroke="rgba(96, 165, 250, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(59, 130, 246, 0.2)"/>
+      <text x="37" y="47" fill="#60a5fa" font-size="22" text-anchor="middle">⚙️</text>
+      <text x="72" y="36" fill="#ffffff" font-size="13" font-weight="700">ATP Synthase Complex</text>
+      <text x="72" y="53" fill="#60a5fa" font-size="11">Rotary Molecular Motor (F₀F₁)</text>
+      <text x="72" y="70" fill="#94a3b8" font-size="10">Driven by Proton Motive Force (PMF)</text>
+      <rect x="72" y="80" width="180" height="18" rx="4" fill="rgba(59,130,246,0.1)"/>
+      <text x="78" y="93" fill="#93c5fd" font-size="9" font-family="monospace">रासायनिक परासरण (Chemiosmosis)</text>
+    </g>
+
+    <!-- Sub-Component 2: Phosphorylation Reaction -->
+    <g transform="translate(20, 200)">
+      <rect width="270" height="126" rx="14" fill="#0b172a" stroke="rgba(96, 165, 250, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(59, 130, 246, 0.2)"/>
+      <text x="37" y="46" fill="#facc15" font-size="20" text-anchor="middle">✨</text>
+      <text x="72" y="36" fill="#ffffff" font-size="13" font-weight="700">Photophosphorylation</text>
+      <text x="72" y="53" fill="#93c5fd" font-size="11">ADP to ATP Phosphorylation</text>
+
+      <!-- Equation Badge -->
+      <rect x="14" y="68" width="242" height="44" rx="8" fill="rgba(0,0,0,0.5)" stroke="rgba(96,165,250,0.3)"/>
+      <text x="135" y="95" fill="#93c5fd" font-size="13" font-weight="800" font-family="monospace" text-anchor="middle">
+        ADP + Pᵢ ➔ ATP (ऊर्जा)
+      </text>
+    </g>
+
+    <!-- Chemiosmosis Summary Pill -->
+    <rect x="20" y="340" width="270" height="130" rx="12" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="35" y="365" fill="#93c5fd" font-size="11" font-weight="700">अंतिम उत्पाद / Final Energy Yield:</text>
+    <text x="35" y="388" fill="#ffffff" font-size="11">• ATP: Powers Calvin Cycle in Stroma</text>
+    <text x="35" y="408" fill="#fde047" font-size="11">• NADPH: High-energy reducing electrons</text>
+    <text x="35" y="428" fill="#a7f3d0" font-size="11">• Direct synthesis of Glucose precursor</text>
+    <text x="35" y="455" fill="#60a5fa" font-size="10" font-weight="700">✓ केल्विन चक्र हेतु तैयार (Calvin Cycle Ready)</text>
+  </g>
+
+  <!-- Bottom Lumen Banner -->
+  <g transform="translate(80, 624)">
+    <rect x="0" y="0" width="1040" height="20" rx="4" fill="rgba(59, 130, 246, 0.08)"/>
+    <text x="15" y="14" fill="#93c5fd" font-size="10" font-weight="700" letter-spacing="1">
+      ▼ THYLAKOID LUMEN (थाइलाकोइड ल्यूमेन • pH ~ 5.0 • High H+ Accumulation)
+    </text>
+    <text x="1025" y="14" fill="#60a5fa" font-size="10" font-weight="600" text-anchor="end">
+      Proton Motive Force Driving ATP Synthase
+    </text>
+  </g>
+</svg>

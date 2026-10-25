@@ -12,7 +12,7 @@ const ToolsGlimpse       = dynamic(() => import("@/components/ToolsGlimpse"),   
 const PricingShowcase    = dynamic(() => import("@/components/PricingShowcase"),    { ssr: false });
 const TestimonialsCarousel = dynamic(() => import("@/components/TestimonialsCarousel").then(mod => mod.TestimonialsCarousel), { ssr: false });
 const FAQAccordion       = dynamic(() => import("@/components/FAQAccordion").then(mod => mod.FAQAccordion), { ssr: false });
-const Footer             = dynamic(() => import("@/components/Footer"),             { ssr: false });
+import Footer from "@/components/Footer";
 
 // Hook: returns true once the element enters the viewport
 function useInView(ref: React.RefObject<HTMLDivElement | null>, rootMargin = "400px") {
@@ -31,10 +31,27 @@ function useInView(ref: React.RefObject<HTMLDivElement | null>, rootMargin = "40
 
 export default function HomeClient({ region }: { region?: string }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    setIsAuthenticated(!!token);
+    const syncAuth = () => {
+      const token = localStorage.getItem("authToken");
+      const userData = localStorage.getItem("user");
+      setIsAuthenticated(!!token);
+      if (userData) {
+        try {
+          setUser(JSON.parse(userData));
+        } catch {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+    };
+
+    syncAuth();
+    window.addEventListener("auth-change", syncAuth);
+    return () => window.removeEventListener("auth-change", syncAuth);
   }, []);
 
   // Sentinel refs — one per section. Component renders once sentinel enters viewport.
@@ -43,21 +60,19 @@ export default function HomeClient({ region }: { region?: string }) {
   const pricingRef      = useRef<HTMLDivElement>(null);
   const testimonialsRef = useRef<HTMLDivElement>(null);
   const faqRef          = useRef<HTMLDivElement>(null);
-  const footerRef       = useRef<HTMLDivElement>(null);
 
   const showLeaderboard  = useInView(leaderboardRef,  "400px");
   const showTools        = useInView(toolsRef,        "400px");
   const showPricing      = useInView(pricingRef,      "400px");
   const showTestimonials = useInView(testimonialsRef, "400px");
   const showFaq          = useInView(faqRef,          "400px");
-  const showFooter       = useInView(footerRef,       "400px");
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-start py-2 bg-black text-white w-full max-w-full overflow-x-hidden">
       <main className="flex flex-1 flex-col items-center justify-center w-full max-w-full overflow-x-hidden">
         
         {/* Above fold — always eager */}
-        <HomePortal region={region} />
+        <HomePortal region={region} user={user} />
 
         {/* Dynamic Leaderboard & Streak Strip */}
         <div ref={leaderboardRef} className="w-full perf-section">
@@ -86,9 +101,9 @@ export default function HomeClient({ region }: { region?: string }) {
 
       </main>
 
-      {/* Footer */}
-      <div ref={footerRef} className="w-full">
-        {showFooter && <Footer />}
+      {/* Footer (SSR-rendered for search engines & instant navigation) */}
+      <div className="w-full">
+        <Footer />
       </div>
     </div>
   );

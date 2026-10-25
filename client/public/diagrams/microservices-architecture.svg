@@ -1,0 +1,223 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675" style="background:#090912;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <!-- Background Grid Pattern -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255, 255, 255, 0.04)" stroke-width="1"/>
+    </pattern>
+
+    <!-- Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a14"/>
+      <stop offset="50%" stop-color="#0f0f1f"/>
+      <stop offset="100%" stop-color="#06060c"/>
+    </linearGradient>
+
+    <linearGradient id="cardGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(59, 130, 246, 0.12)"/>
+      <stop offset="100%" stop-color="rgba(30, 58, 138, 0.05)"/>
+    </linearGradient>
+
+    <linearGradient id="cardGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(139, 92, 246, 0.14)"/>
+      <stop offset="100%" stop-color="rgba(88, 28, 135, 0.05)"/>
+    </linearGradient>
+
+    <linearGradient id="cardGrad3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(16, 185, 129, 0.12)"/>
+      <stop offset="100%" stop-color="rgba(6, 78, 59, 0.05)"/>
+    </linearGradient>
+
+    <!-- Arrow Marker -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#818cf8"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#34d399"/>
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1200" height="675" fill="url(#bgGrad)"/>
+  <rect width="1200" height="675" fill="url(#grid)"/>
+
+  <!-- Top Title Banner -->
+  <g transform="translate(60, 42)">
+    <rect x="0" y="0" width="1080" height="52" rx="16" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)"/>
+    <circle cx="28" cy="26" r="10" fill="#6366f1" opacity="0.8"/>
+    <text x="50" y="32" fill="#ffffff" font-size="16" font-weight="700" letter-spacing="0.5">
+      MICROSERVICES EVENT-DRIVEN SYSTEM ARCHITECTURE
+    </text>
+    <text x="1050" y="32" fill="#818cf8" font-size="12" font-weight="600" text-anchor="end">
+      STEP-BY-STEP DATA FLOW
+    </text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- COLUMN 1: CLIENT REQUEST LAYER (Step a1) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g id="col-a1" transform="translate(80, 115)">
+    <!-- Column Container Box -->
+    <rect x="0" y="0" width="310" height="490" rx="20" fill="url(#cardGrad1)" stroke="rgba(96, 165, 250, 0.4)" stroke-width="1.5"/>
+    <rect x="16" y="16" width="278" height="34" rx="10" fill="rgba(59, 130, 246, 0.2)" stroke="rgba(59, 130, 246, 0.4)"/>
+    <text x="32" y="38" fill="#93c5fd" font-size="12" font-weight="800" letter-spacing="1">STEP 1: CLIENT &amp; EDGE TIER</text>
+
+    <!-- Sub-Component 1: Web App Client -->
+    <g transform="translate(20, 68)">
+      <rect width="270" height="78" rx="14" fill="#0d1424" stroke="rgba(96, 165, 250, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(59, 130, 246, 0.15)"/>
+      <text x="37" y="44" fill="#60a5fa" font-size="20" text-anchor="middle">💻</text>
+      <text x="72" y="38" fill="#ffffff" font-size="14" font-weight="700">Next.js Web Client</text>
+      <text x="72" y="55" fill="#94a3b8" font-size="11">React SPA / SSR Hydration</text>
+    </g>
+
+    <!-- Sub-Component 2: Mobile App Client -->
+    <g transform="translate(20, 160)">
+      <rect width="270" height="78" rx="14" fill="#0d1424" stroke="rgba(96, 165, 250, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(59, 130, 246, 0.15)"/>
+      <text x="37" y="44" fill="#60a5fa" font-size="20" text-anchor="middle">📱</text>
+      <text x="72" y="38" fill="#ffffff" font-size="14" font-weight="700">Mobile Applications</text>
+      <text x="72" y="55" fill="#94a3b8" font-size="11">iOS &amp; Android Native Clients</text>
+    </g>
+
+    <!-- Sub-Component 3: Edge CDN & SSL -->
+    <g transform="translate(20, 252)">
+      <rect width="270" height="110" rx="14" fill="#0d1424" stroke="rgba(96, 165, 250, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="18" width="46" height="46" rx="10" fill="rgba(59, 130, 246, 0.15)"/>
+      <text x="37" y="46" fill="#60a5fa" font-size="20" text-anchor="middle">🛡️</text>
+      <text x="72" y="38" fill="#ffffff" font-size="14" font-weight="700">Cloudflare Edge CDN</text>
+      <text x="72" y="55" fill="#94a3b8" font-size="11">SSL Termination &amp; DDoS Shield</text>
+      <rect x="72" y="68" width="180" height="24" rx="6" fill="rgba(96,165,250,0.1)"/>
+      <text x="80" y="84" fill="#93c5fd" font-size="10" font-family="monospace">Global Anycast Network</text>
+    </g>
+
+    <!-- Edge Stat Pill -->
+    <rect x="20" y="380" width="270" height="92" rx="12" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="35" y="405" fill="#94a3b8" font-size="11" font-weight="600">Protocol: HTTPS / WebSocket</text>
+    <text x="35" y="425" fill="#64748b" font-size="10">Latency: &lt; 15ms Edge to PoP</text>
+    <text x="35" y="445" fill="#38bdf8" font-size="10" font-weight="700">✓ Rate Limiter Token Bucket Active</text>
+  </g>
+
+  <!-- Arrow a1 -> a2 -->
+  <g transform="translate(390, 360)">
+    <path d="M 5 0 L 45 0" stroke="#818cf8" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arrow)"/>
+    <rect x="8" y="-22" width="36" height="16" rx="4" fill="#1e1b4b"/>
+    <text x="26" y="-10" fill="#a5b4fc" font-size="9" font-family="monospace" text-anchor="middle">JSON</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- COLUMN 2: API GATEWAY & AUTHENTICATION (Step a2) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g id="col-a2" transform="translate(445, 115)">
+    <!-- Column Container Box -->
+    <rect x="0" y="0" width="310" height="490" rx="20" fill="url(#cardGrad2)" stroke="rgba(168, 85, 247, 0.4)" stroke-width="1.5"/>
+    <rect x="16" y="16" width="278" height="34" rx="10" fill="rgba(168, 85, 247, 0.2)" stroke="rgba(168, 85, 247, 0.4)"/>
+    <text x="32" y="38" fill="#d8b4fe" font-size="12" font-weight="800" letter-spacing="1">STEP 2: GATEWAY &amp; ROUTING</text>
+
+    <!-- Sub-Component 1: API Gateway -->
+    <g transform="translate(20, 68)">
+      <rect width="270" height="96" rx="14" fill="#150f24" stroke="rgba(168, 85, 247, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(168, 85, 247, 0.2)"/>
+      <text x="37" y="45" fill="#c084fc" font-size="20" text-anchor="middle">⚡</text>
+      <text x="72" y="38" fill="#ffffff" font-size="14" font-weight="700">Central API Gateway</text>
+      <text x="72" y="55" fill="#c084fc" font-size="11">Reverse Proxy &amp; Load Balancer</text>
+      <text x="72" y="74" fill="#94a3b8" font-size="10">Validates JWT Auth Tokens</text>
+    </g>
+
+    <!-- Sub-Component 2: Microservice Cluster -->
+    <g transform="translate(20, 180)">
+      <rect width="270" height="182" rx="14" fill="#150f24" stroke="rgba(168, 85, 247, 0.3)" stroke-width="1.2"/>
+      <text x="18" y="25" fill="#e9d5ff" font-size="12" font-weight="700">Target Microservices</text>
+
+      <!-- Service 1 -->
+      <g transform="translate(14, 36)">
+        <rect width="242" height="38" rx="8" fill="rgba(255,255,255,0.04)" stroke="rgba(168,85,247,0.2)"/>
+        <circle cx="20" cy="19" r="5" fill="#a855f7"/>
+        <text x="34" y="23" fill="#ffffff" font-size="12" font-weight="600">Order Service</text>
+        <text x="228" y="23" fill="#a855f7" font-size="10" font-family="monospace" text-anchor="end">POST /orders</text>
+      </g>
+
+      <!-- Service 2 -->
+      <g transform="translate(14, 82)">
+        <rect width="242" height="38" rx="8" fill="rgba(255,255,255,0.04)" stroke="rgba(168,85,247,0.2)"/>
+        <circle cx="20" cy="19" r="5" fill="#3b82f6"/>
+        <text x="34" y="23" fill="#ffffff" font-size="12" font-weight="600">Auth Service</text>
+        <text x="228" y="23" fill="#60a5fa" font-size="10" font-family="monospace" text-anchor="end">POST /verify</text>
+      </g>
+
+      <!-- Service 3 -->
+      <g transform="translate(14, 128)">
+        <rect width="242" height="38" rx="8" fill="rgba(255,255,255,0.04)" stroke="rgba(168,85,247,0.2)"/>
+        <circle cx="20" cy="19" r="5" fill="#10b981"/>
+        <text x="34" y="23" fill="#ffffff" font-size="12" font-weight="600">User Profile Service</text>
+        <text x="228" y="23" fill="#34d399" font-size="10" font-family="monospace" text-anchor="end">GET /profile</text>
+      </g>
+    </g>
+
+    <!-- Gateway Stat Pill -->
+    <rect x="20" y="380" width="270" height="92" rx="12" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="35" y="405" fill="#94a3b8" font-size="11" font-weight="600">Round-Robin Health Checks</text>
+    <text x="35" y="425" fill="#64748b" font-size="10">Zero-Trust Internal Network Mesh</text>
+    <text x="35" y="445" fill="#c084fc" font-size="10" font-weight="700">✓ HMAC Signature Verified</text>
+  </g>
+
+  <!-- Arrow a2 -> a3 -->
+  <g transform="translate(755, 360)">
+    <path d="M 5 0 L 45 0" stroke="#34d399" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arrowGreen)"/>
+    <rect x="6" y="-22" width="40" height="16" rx="4" fill="#064e3b"/>
+    <text x="26" y="-10" fill="#a7f3d0" font-size="9" font-family="monospace" text-anchor="middle">EVENTS</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- COLUMN 3: EVENT STREAM & STORAGE CLUSTER (Step a3) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g id="col-a3" transform="translate(810, 115)">
+    <!-- Column Container Box -->
+    <rect x="0" y="0" width="310" height="490" rx="20" fill="url(#cardGrad3)" stroke="rgba(52, 211, 153, 0.4)" stroke-width="1.5"/>
+    <rect x="16" y="16" width="278" height="34" rx="10" fill="rgba(52, 211, 153, 0.2)" stroke="rgba(52, 211, 153, 0.4)"/>
+    <text x="32" y="38" fill="#a7f3d0" font-size="12" font-weight="800" letter-spacing="1">STEP 3: KAFKA &amp; PERSISTENCE</text>
+
+    <!-- Sub-Component 1: Kafka Cluster -->
+    <g transform="translate(20, 68)">
+      <rect width="270" height="106" rx="14" fill="#081e18" stroke="rgba(52, 211, 153, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="16" width="46" height="46" rx="10" fill="rgba(52, 211, 153, 0.15)"/>
+      <text x="37" y="45" fill="#34d399" font-size="20" text-anchor="middle">📬</text>
+      <text x="72" y="38" fill="#ffffff" font-size="14" font-weight="700">Apache Kafka Cluster</text>
+      <text x="72" y="55" fill="#34d399" font-size="11">Distributed Event Queue</text>
+      <text x="72" y="72" fill="#94a3b8" font-size="10">Topic: orders.created (Partitioned)</text>
+      <rect x="72" y="80" width="180" height="16" rx="4" fill="rgba(52, 211, 153, 0.1)"/>
+      <text x="78" y="92" fill="#6ee7b7" font-size="9" font-family="monospace">Replication Factor: 3 • ISR Active</text>
+    </g>
+
+    <!-- Sub-Component 2: Database Cylinder -->
+    <g transform="translate(20, 190)">
+      <rect width="270" height="98" rx="14" fill="#081e18" stroke="rgba(52, 211, 153, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="18" width="46" height="46" rx="10" fill="rgba(52, 211, 153, 0.15)"/>
+      <text x="37" y="47" fill="#34d399" font-size="20" text-anchor="middle">🗄️</text>
+      <text x="72" y="38" fill="#ffffff" font-size="14" font-weight="700">PostgreSQL Primary DB</text>
+      <text x="72" y="55" fill="#94a3b8" font-size="11">ACID Relational Storage</text>
+      <text x="72" y="73" fill="#6ee7b7" font-size="10">Wal-G Continuous Archival</text>
+    </g>
+
+    <!-- Sub-Component 3: Redis Cache -->
+    <g transform="translate(20, 302)">
+      <rect width="270" height="66" rx="14" fill="#081e18" stroke="rgba(52, 211, 153, 0.3)" stroke-width="1.2"/>
+      <rect x="14" y="12" width="42" height="42" rx="10" fill="rgba(239, 68, 68, 0.15)"/>
+      <text x="35" y="38" fill="#f87171" font-size="18" text-anchor="middle">⚡</text>
+      <text x="68" y="33" fill="#ffffff" font-size="13" font-weight="700">Redis In-Memory Cache</text>
+      <text x="68" y="48" fill="#94a3b8" font-size="10">Sub-millisecond Session Store</text>
+    </g>
+
+    <!-- Storage Stat Pill -->
+    <rect x="20" y="380" width="270" height="92" rx="12" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="35" y="405" fill="#94a3b8" font-size="11" font-weight="600">Eventual Consistency Ensured</text>
+    <text x="35" y="425" fill="#64748b" font-size="10">Dead-Letter Queue (DLQ) Fallback</text>
+    <text x="35" y="445" fill="#34d399" font-size="10" font-weight="700">✓ Immutable Audit Logs Stored</text>
+  </g>
+
+  <!-- Bottom Brand Watermark -->
+  <g transform="translate(60, 630)">
+    <text x="0" y="20" fill="#475569" font-size="11" font-weight="500">
+      Paperxify System Design Engine • Sarvam Bulbul V3 Synchronized Manifest (16:9 4K Vector Canvas)
+    </text>
+  </g>
+</svg>

@@ -12,6 +12,7 @@ const MathSolution = require('../models/MathSolution');
 const ExamPlan = require('../models/ExamPlan');
 const LanguageLesson = require('../models/LanguageLesson');
 const Report = require("../models/Report");
+const AgentSession = require('../models/AgentSession');
 /**
  * Get user public profile
  * GET /api/users/:username/profile
@@ -1323,6 +1324,29 @@ exports.getRecentCreations = async (req, res) => {
 
     const tasks = [];
 
+    if (filterType === 'all' || filterType === 'agent') {
+      tasks.push(
+        AgentSession.find({ userId: userId })
+          .sort({ updatedAt: -1 })
+          .limit(limit)
+          .select('_id title slug model capability status createdAt updatedAt')
+          .lean()
+          .then(items => items.map(i => ({
+            id: i._id,
+            type: 'agent',
+            typeLabel: 'Agent Studio',
+            title: i.title || 'Autonomous Agent Session',
+            slug: i.slug,
+            url: `/agent/${i.slug}`,
+            model: i.model,
+            capability: i.capability,
+            status: i.status,
+            createdAt: i.updatedAt || i.createdAt
+          })))
+          .catch(() => [])
+      );
+    }
+
     if (filterType === 'all' || filterType === 'notes') {
       tasks.push(
         Note.find({ owner: userId })
@@ -1540,6 +1564,16 @@ exports.deleteCreation = async (req, res) => {
         LanguageLesson.findOneAndDelete({ _id: id, owner: userId })
       ]);
       deleted = true;
+    } else if (type === 'agent') {
+      const isMongoId = typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id);
+      const doc = await AgentSession.findOneAndDelete({
+        $or: [
+          ...(isMongoId ? [{ _id: id }] : []),
+          { slug: id }
+        ],
+        userId: userId
+      });
+      deleted = Boolean(doc);
     }
 
     return res.status(200).json({
@@ -1580,6 +1614,51 @@ exports.getQuotaStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch quota status",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get real-time percentage-based capacity status for active user
+ * GET /api/users/capacity
+ */
+exports.getUserCapacity = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      // Graceful fallback for unauthenticated guests / local dev testing
+      return res.status(200).json({
+        success: true,
+        data: {
+          percentage: 0,
+          remainingPercentage: 100,
+          status: "optimal",
+          resetsAt: "Tonight at 00:00 UTC",
+          planId: "free",
+          planName: "Free Plan",
+          period: "daily",
+          maxVideoMinutes: 60,
+          maxImages: 2,
+          imagesGenerated: 0,
+          isExceeded: false,
+          isGuest: true
+        }
+      });
+    }
+
+    const capacityService = require("../services/capacityService");
+    const capacityData = await capacityService.getUserCapacity(userId);
+
+    return res.status(200).json({
+      success: true,
+      data: capacityData,
+    });
+  } catch (error) {
+    console.error("❌ Get User Capacity Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user capacity",
       error: error.message,
     });
   }

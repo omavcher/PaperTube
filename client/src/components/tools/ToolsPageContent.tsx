@@ -28,34 +28,34 @@ import { IconCalculatorFilled } from "@tabler/icons-react";
 
 // --- Tool Data ---
 const pdfTools = [
-  { id: "merge-pdf", title: "MERGE PDF", description: "Combine multiple PDFs.", icon: <Merge />, category: "Organize PDF", path: "/tools/merge", color: "text-red-400", isNew: true },
-  { id: "split-pdf", title: "SPLIT PDF", description: "Extract or split pages.", icon: <Split />, category: "Organize PDF", path: "/tools/split", color: "text-green-400", isNew: false },
-  { id: "json-formatter", title: "JSON FIX", description: "Beautify & validate JSON.", icon: <BinaryIcon />, category: "Engineering Tools", path: "/tools/json-formatter", color: "text-blue-400", isNew: true },
-  { id: "matrix-calculator", title: "MATRIX LAB", description: "Up to 5x5 operations.", icon: <InspectionPanel />, category: "Engineering Tools", path: "/tools/matrix-calculator", color: "text-orange-400", isNew: false },
-  { id: "logic-gate-lab", title: "LOGIC GATE", description: "Boolean simulation.", icon: <Zap />, category: "Engineering Tools", path: "/tools/logic-gate-lab", color: "text-yellow-400", isNew: false },
-  { id: "youtube-thumbnail", title: "YT THUMB DOWNLOADER", description: "Download YT Thumbnails.", icon: <ImageIcon />, category: "Engineering Tools", path: "/tools/youtube-thumbnail", color: "text-red-500", isNew: true },
-  { id: "base-converter", title: "BASE CONV", description: "Binary to Hex/Dec.", icon: <Terminal />, category: "Engineering Tools", path: "/tools/base-converter", color: "text-slate-400", isNew: false },
-  { id: "syllabus-tracker", title: "SYLLABUS", description: "Track exam milestones.", icon: <TableRowsSplitIcon />, category: "Workflows", path: "/tools/syllabus-tracker", color: "text-cyan-400", isNew: true },
-  { id: "code-to-image", title: "CODE SNAP", description: "Snippets to images.", icon: <FileCode />, category: "Engineering Tools", path: "/tools/code-to-image", color: "text-red-500", isNew: false },
-  { id: "sql-architect", title: "SQL ARCH", description: "Visualize DB queries.", icon: <Database />, category: "Engineering Tools", path: "/tools/sql-architect", color: "text-blue-500", isNew: false },
-  { id: "git-forge", title: "GIT FORGE", description: "Blueprint git flows.", icon: <GitCompare />, category: "Workflows", path: "/tools/git-forge", color: "text-orange-500", isNew: false },
-  { id: "image-converter", title: "IMAGE CONV", description: "PNG/JPG/WEBP conv.", icon: <ArrowRightLeft />, category: "Engineering Tools", path: "/tools/image-converter", color: "text-orange-500", isNew: false },
-  { id: "typing-speed-test", title: "VELOCITY", description: "Precision WPM test.", icon: <Keyboard />, category: "Engineering Tools", path: "/tools/typing-test", color: "text-red-500", isNew: false },
-  { id: "ai-metadata-remover", title: "AI METADATA REMOVER", description: "Strip AI signatures from images.", icon: <Trash2 />, category: "Engineering Tools", path: "/tools/ai-metadata-remover", color: "text-red-500", isNew: true },
-  { id: "github-wrapped", title: "WRAPPED", description: "Visual GitHub impact.", icon: <Github />, category: "Career", path: "/tools/github-wrapped", color: "text-white", isNew: true },
-  { id: "password-generator", title: "KEY GEN", description: "Secure random secrets.", icon: <KeyRoundIcon />, category: "Engineering Tools", path: "/tools/password-generator", color: "text-violet-400", isNew: true },
-  { id: "markdown-editor", title: "MD EDITOR", description: "Real-time syntax preview.", icon: <FileText />, category: "Workflows", path: "/tools/markdown-editor", color: "text-violet-400", isNew: true },
-  { id: "generate-qr", title: "QR FORGE", description: "Text to 2D barcode synthesis.", icon: <QrCode />, category: "Workflows", path: "/tools/generate-qr", color: "text-violet-400", isNew: true },
-  { id: "fake-internship-letter-generator", title: "INTERNSHIP GEN", description: "Generate realistic offer letters.", icon: <FileSignature />, category: "Career", path: "/tools/fake-internship-letter-generator", color: "text-yellow-400", isNew: true },
-  { id: "emi-calculator", title: "EMI CALC", description: "Plan loan repayments.", icon: <IconCalculatorFilled />, category: "Engineering Tools", path: "/tools/emi-calculator", color: "text-green-400", isNew: true },
-  { id: "html-preview", title: "HTML EDITOR", description: "Live HTML/CSS/JS playground.", icon: <Globe />, category: "Engineering Tools", path: "/tools/html-preview", color: "text-emerald-400", isNew: true },
+  { id: "merge-pdf", title: "Merge PDF", description: "Combine multiple PDF documents seamlessly in browser.", icon: <Merge />, category: "Organize PDF", path: "/tools/merge", color: "text-red-400", isNew: true },
+  { id: "split-pdf", title: "Split PDF", description: "Extract specific pages or separate documents instantly.", icon: <Split />, category: "Organize PDF", path: "/tools/split", color: "text-green-400", isNew: false },
+  { id: "json-formatter", title: "JSON Formatter & Validator", description: "Beautify, validate, and inspect JSON trees with syntax error checking.", icon: <BinaryIcon />, category: "Engineering Tools", path: "/tools/json-formatter", color: "text-blue-400", isNew: true },
+  { id: "matrix-calculator", title: "Matrix Operations Lab", description: "Linear algebra matrix calculator supporting operations up to 5x5.", icon: <InspectionPanel />, category: "Engineering Tools", path: "/tools/matrix-calculator", color: "text-orange-400", isNew: false },
+  { id: "logic-gate-lab", title: "Logic Gate Simulator", description: "Interactive Boolean digital logic circuit simulation and truth tables.", icon: <Zap />, category: "Engineering Tools", path: "/tools/logic-gate-lab", color: "text-yellow-400", isNew: false },
+  { id: "youtube-thumbnail", title: "YT Thumbnail Grabber", description: "Download ultra-HD YouTube video thumbnails in all available resolutions.", icon: <ImageIcon />, category: "Engineering Tools", path: "/tools/youtube-thumbnail", color: "text-red-500", isNew: true },
+  { id: "base-converter", title: "Base Number Converter", description: "Convert numbers across Binary, Hexadecimal, Octal, and Decimal systems.", icon: <Terminal />, category: "Engineering Tools", path: "/tools/base-converter", color: "text-slate-400", isNew: false },
+  { id: "syllabus-tracker", title: "Syllabus Tracker", description: "Track exam syllabus milestones, study schedules, and subject progress.", icon: <TableRowsSplitIcon />, category: "Workflows", path: "/tools/syllabus-tracker", color: "text-cyan-400", isNew: true },
+  { id: "code-to-image", title: "Code to Image (Carbon Snap)", description: "Convert code snippets into aesthetic, shareable high-res screenshots.", icon: <FileCode />, category: "Engineering Tools", path: "/tools/code-to-image", color: "text-red-500", isNew: false },
+  { id: "sql-architect", title: "SQL Query Architect", description: "Visualize SQL database queries, table relationships, and schema models.", icon: <Database />, category: "Engineering Tools", path: "/tools/sql-architect", color: "text-blue-500", isNew: false },
+  { id: "git-forge", title: "Git Forge Workflow", description: "Interactive blueprint for understanding branching, rebasing, and merges.", icon: <GitCompare />, category: "Workflows", path: "/tools/git-forge", color: "text-orange-500", isNew: false },
+  { id: "image-converter", title: "Image Format Converter", description: "Client-side image converter for WebP, PNG, and JPG formats.", icon: <ArrowRightLeft />, category: "Engineering Tools", path: "/tools/image-converter", color: "text-orange-500", isNew: false },
+  { id: "typing-speed-test", title: "Typing Velocity Test", description: "Measure real-time typing speed (WPM), accuracy percentage, and errors.", icon: <Keyboard />, category: "Engineering Tools", path: "/tools/typing-test", color: "text-red-500", isNew: false },
+  { id: "ai-metadata-remover", title: "AI Metadata Remover", description: "Strip hidden AI watermarks and EXIF privacy signatures from images.", icon: <Trash2 />, category: "Engineering Tools", path: "/tools/ai-metadata-remover", color: "text-red-500", isNew: true },
+  { id: "github-wrapped", title: "GitHub Year in Review", description: "Generate a visual impact card and summary of your GitHub commits.", icon: <Github />, category: "Career", path: "/tools/github-wrapped", color: "text-white", isNew: true },
+  { id: "password-generator", title: "Secure Password Generator", description: "Generate cryptographically secure random secrets and custom passwords.", icon: <KeyRoundIcon />, category: "Engineering Tools", path: "/tools/password-generator", color: "text-violet-400", isNew: true },
+  { id: "markdown-editor", title: "Live Markdown Editor", description: "Real-time Markdown editor with live preview, syntax highlights, and export.", icon: <FileText />, category: "Workflows", path: "/tools/markdown-editor", color: "text-violet-400", isNew: true },
+  { id: "generate-qr", title: "QR Code Forge", description: "Synthesize customized, high-resolution 2D QR barcodes from links/text.", icon: <QrCode />, category: "Workflows", path: "/tools/generate-qr", color: "text-violet-400", isNew: true },
+  { id: "fake-internship-letter-generator", title: "Internship Letter Studio", description: "Draft realistic internship offer and completion letter templates.", icon: <FileSignature />, category: "Career", path: "/tools/fake-internship-letter-generator", color: "text-yellow-400", isNew: true },
+  { id: "emi-calculator", title: "Loan EMI Calculator", description: "Calculate monthly EMI installments, total interest, and amortization plans.", icon: <IconCalculatorFilled />, category: "Engineering Tools", path: "/tools/emi-calculator", color: "text-green-400", isNew: true },
+  { id: "html-preview", title: "HTML / JS Live Sandbox", description: "Browser code playground for live HTML, CSS, and JavaScript prototyping.", icon: <Globe />, category: "Engineering Tools", path: "/tools/html-preview", color: "text-emerald-400", isNew: true },
 ];
 
 const categories = [
   { id: "all", name: "All Matrix" },
   { id: "Workflows", name: "Workflows" },
   { id: "Organize PDF", name: "PDF Suite" },
-  { id: "Engineering Tools", name: "Lab" },
+  { id: "Engineering Tools", name: "Lab & Code" },
 ];
 
 export default function ToolsPageContent() {
@@ -97,7 +97,10 @@ export default function ToolsPageContent() {
 
   const filteredTools = useMemo(() => {
     return pdfTools.filter(tool => {
-      const matchesSearch = tool.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const query = searchQuery.toLowerCase().trim();
+      const matchesSearch = !query || 
+        tool.title.toLowerCase().includes(query) || 
+        tool.description.toLowerCase().includes(query);
       const matchesCategory = selectedCategory === "all" || tool.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });

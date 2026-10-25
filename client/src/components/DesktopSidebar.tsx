@@ -2,53 +2,43 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { 
-  Home, 
-  Sparkles, 
-  BookOpen, 
-  History, 
-  Heart, 
-  LayoutGrid, 
-  Code2, 
-  FileText, 
-  GraduationCap, 
-  Settings, 
-  Trophy, 
-  MessageSquare, 
-  Gift, 
-  Users, 
-  Zap, 
-  ChevronRight, 
-  Menu as MenuIcon, 
-  Crown, 
-  PanelLeftClose, 
-  PanelLeftOpen, 
-  LogOut, 
-  User as UserIcon,
-  Presentation,
-  GitBranch,
-  PenTool,
-  Youtube,
-  HelpCircle,
-  Layers,
-  Calculator,
-  Calendar,
-  Languages,
-  ShieldAlert,
-  FileSearch,
-  Newspaper,
-  Search,
-  Trash2,
-  Clock,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  ArrowUpRight
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  IconBrandTabler,
+  IconRobot,
+  IconBrandYoutube,
+  IconPresentation,
+  IconPencil,
+  IconBookmark,
+  IconSchool,
+  IconFileText,
+  IconCode,
+  IconTrophy,
+  IconSettings,
+  IconHistory,
+  IconChevronDown,
+  IconRefresh,
+  IconArrowLeft,
+  IconUser,
+  IconUserBolt,
+  IconLogout,
+  IconSparkles,
+  IconCrown,
+  IconTrash,
+  IconSearch,
+  IconLayoutGrid,
+  IconClock,
+  IconArrowUpRight,
+  IconChevronRight,
+  IconCalculator,
+  IconCalendar,
+  IconHelpCircle,
+  IconLayersLinked,
+  IconLanguage
+} from "@tabler/icons-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { Sidebar, SidebarBody, SidebarLink, Links } from "@/components/ui/sidebar";
 import api from "@/config/api";
 import { toast } from "sonner";
 
@@ -61,13 +51,6 @@ interface DesktopSidebarProps {
   onLogout: () => void;
   onOpenLogin: () => void;
 }
-
-const springTransition = {
-  type: "spring" as const,
-  stiffness: 340,
-  damping: 32,
-  mass: 0.8
-};
 
 function formatRelativeTime(dateString?: string) {
   if (!dateString) return "";
@@ -100,57 +83,145 @@ export function DesktopSidebar({
   onOpenLogin
 }: DesktopSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
 
-  // Dynamic User details & plan status from backend data
+  // Hover preview when collapsed (Aceternity UI behavior)
+  const [isHovered, setIsHovered] = useState(false);
+  const [justCollapsed, setJustCollapsed] = useState(false);
+  const isOpen = isExpanded || (isHovered && !justCollapsed);
+
+  const handleCollapse = () => {
+    setJustCollapsed(true);
+    setIsHovered(false);
+    onToggle();
+  };
+
+  const handleExpand = () => {
+    setJustCollapsed(false);
+    if (!isExpanded) {
+      onToggle();
+    }
+  };
+
+  // Dynamic User details & plan status
   const userName = isLoggedIn ? (user?.name || "User") : "Guest User";
   const userAvatar = user?.picture || "/avatar.png";
-  const isPro = Boolean(user?.membership?.isActive || tokenInfo?.isSubscribed);
+  const isPro = Boolean(
+    user?.membership?.isActive || 
+    tokenInfo?.isSubscribed || 
+    user?.membership?.planId === "pro" || 
+    user?.membership?.planId === "power"
+  );
   const planName = user?.membership?.planName || tokenInfo?.planName || (isPro ? "Pro Scholar" : "Free Plan");
 
   // History / Creations State
   const [creations, setCreations] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyFilter, setHistoryFilter] = useState<'all' | 'notes' | 'whiteboard' | 'ppt' | 'quiz' | 'flashcard' | 'diagram' | 'study'>('all');
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'workspace' | 'notes' | 'ppt' | 'whiteboard' | 'quiz'>('all');
   const [historySearch, setHistorySearch] = useState('');
-  const [historyExpanded, setHistoryExpanded] = useState(true);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Accordion state for secondary tool suites
+  const [activeSuite, setActiveSuite] = useState<'study' | 'writer' | 'dev' | null>(() => {
+    if (pathname.startsWith('/ai-study')) return 'study';
+    if (pathname.startsWith('/ai-writer') || pathname.startsWith('/ai-diagram')) return 'writer';
+    if (pathname.startsWith('/tools') || pathname === '/leaderboard' || pathname.startsWith('/blog')) return 'dev';
+    return null;
+  });
+
+  useEffect(() => {
+    if (pathname.startsWith('/ai-study')) setActiveSuite('study');
+    else if (pathname.startsWith('/ai-writer') || pathname.startsWith('/ai-diagram')) setActiveSuite('writer');
+    else if (pathname.startsWith('/tools') || pathname === '/leaderboard' || pathname.startsWith('/blog')) setActiveSuite('dev');
+  }, [pathname]);
 
   // Fetch creations from backend or local storage
   const fetchCreations = useCallback(async () => {
+    let localAgentSessions: any[] = [];
+    try {
+      const stored = localStorage.getItem("paperxify_agent_sessions_list");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        localAgentSessions = (Array.isArray(parsed) ? parsed : []).map((s: any) => ({
+          id: s.slug,
+          _id: s.slug,
+          type: 'workspace',
+          typeLabel: 'AI Workspace',
+          title: s.title || 'Workspace Session',
+          slug: s.slug,
+          url: `/workspace/${s.slug}`,
+          createdAt: s.updatedAt || new Date().toISOString()
+        }));
+      }
+    } catch {}
+
     if (isLoggedIn) {
       try {
         setHistoryLoading(true);
         const token = localStorage.getItem("authToken");
-        const res = await api.get(`/users/creations/recent?limit=25&type=${historyFilter}&search=${encodeURIComponent(historySearch)}`, {
+        const res = await api.get(`/users/creations/recent?limit=30&type=${historyFilter === 'workspace' ? 'agent' : historyFilter}&search=${encodeURIComponent(historySearch)}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (res.data.success) {
-          setCreations(res.data.data || []);
+        const serverCreations = res.data.success ? (res.data.data || []) : [];
+
+        const seenKeys = new Set<string>();
+        const merged: any[] = [];
+
+        for (const item of localAgentSessions) {
+          const key = item.slug || item.id || item._id;
+          if (key && !seenKeys.has(key)) {
+            seenKeys.add(key);
+            merged.push(item);
+          }
         }
-      } catch (err) {
-        console.error("Failed to load user creations:", err);
+
+        for (const item of serverCreations) {
+          const key = item.slug || item.id || item._id;
+          if (key && !seenKeys.has(key)) {
+            seenKeys.add(key);
+            merged.push({
+              ...item,
+              type: item.type === 'agent' ? 'workspace' : item.type
+            });
+          }
+        }
+
+        let filtered = merged;
+        if (historyFilter !== 'all') {
+          filtered = filtered.filter((i: any) => i.type === historyFilter);
+        }
+        if (historySearch) {
+          filtered = filtered.filter((i: any) => i.title?.toLowerCase().includes(historySearch.toLowerCase()));
+        }
+
+        filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setCreations(filtered.slice(0, 30));
+      } catch {
+        let filtered = localAgentSessions;
+        if (historyFilter !== 'all') {
+          filtered = filtered.filter((i: any) => i.type === historyFilter);
+        }
+        setCreations(filtered);
       } finally {
         setHistoryLoading(false);
       }
     } else {
-      // Guest local fallback
       try {
         const local = localStorage.getItem("paperxify_local_history");
-        if (local) {
-          const parsed = JSON.parse(local);
-          let filtered = parsed;
-          if (historyFilter !== 'all') {
-            filtered = filtered.filter((i: any) => i.type === historyFilter);
-          }
-          if (historySearch) {
-            filtered = filtered.filter((i: any) => i.title?.toLowerCase().includes(historySearch.toLowerCase()));
-          }
-          setCreations(filtered.slice(0, 15));
-        } else {
-          setCreations([]);
+        const parsed = local ? JSON.parse(local) : [];
+        const merged = [...localAgentSessions, ...(Array.isArray(parsed) ? parsed : [])];
+        let filtered = merged;
+        if (historyFilter !== 'all') {
+          filtered = filtered.filter((i: any) => i.type === historyFilter);
         }
+        if (historySearch) {
+          filtered = filtered.filter((i: any) => i.title?.toLowerCase().includes(historySearch.toLowerCase()));
+        }
+        filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setCreations(filtered.slice(0, 20));
       } catch {
-        setCreations([]);
+        setCreations(localAgentSessions);
       }
     }
   }, [isLoggedIn, historyFilter, historySearch]);
@@ -162,19 +233,30 @@ export function DesktopSidebar({
     return () => window.removeEventListener("creation-saved", handleCreationSaved);
   }, [fetchCreations]);
 
-  // Delete creation handler
   const handleDeleteCreation = async (type: string, id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     try {
       setDeletingId(id);
+
+      if (type === 'workspace' || type === 'agent') {
+        try {
+          const stored = localStorage.getItem("paperxify_agent_sessions_list");
+          if (stored) {
+            const list = JSON.parse(stored).filter((s: any) => s.slug !== id);
+            localStorage.setItem("paperxify_agent_sessions_list", JSON.stringify(list));
+          }
+          localStorage.removeItem(`paperxify_agent_chat_${id}`);
+        } catch {}
+      }
+
       if (isLoggedIn) {
         const token = localStorage.getItem("authToken");
-        await api.delete(`/users/creations/${type}/${id}`, {
+        await api.delete(`/users/creations/${type === 'workspace' ? 'agent' : type}/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }
-      setCreations(prev => prev.filter(item => item.id !== id && item._id !== id));
+      setCreations(prev => prev.filter(item => item.id !== id && item._id !== id && item.slug !== id));
       toast.success("Removed from history");
     } catch {
       toast.error("Failed to delete creation");
@@ -185,747 +267,432 @@ export function DesktopSidebar({
 
   const getCreationIcon = (type: string) => {
     switch (type) {
+      case 'workspace':
+      case 'agent':
+        return <IconRobot size={14} className="text-red-400 shrink-0" />;
       case 'notes':
-        return <Youtube size={13} className="text-red-500 shrink-0" />;
+        return <IconBrandYoutube size={14} className="text-red-500 shrink-0" />;
       case 'presentation':
       case 'ppt':
-        return <Presentation size={13} className="text-orange-400 shrink-0" />;
+        return <IconPresentation size={14} className="text-orange-400 shrink-0" />;
       case 'quiz':
-        return <HelpCircle size={13} className="text-purple-400 shrink-0" />;
-      case 'flashcard':
-        return <Layers size={13} className="text-blue-400 shrink-0" />;
-      case 'diagram':
-        return <GitBranch size={13} className="text-emerald-400 shrink-0" />;
+        return <IconHelpCircle size={14} className="text-purple-400 shrink-0" />;
       case 'whiteboard':
-        return <PenTool size={13} className="text-violet-400 shrink-0" />;
+        return <IconPencil size={14} className="text-violet-400 shrink-0" />;
       case 'study':
-        return <GraduationCap size={13} className="text-cyan-400 shrink-0" />;
+        return <IconSchool size={14} className="text-cyan-400 shrink-0" />;
       default:
-        return <Sparkles size={13} className="text-amber-400 shrink-0" />;
+        return <IconSparkles size={14} className="text-amber-400 shrink-0" />;
     }
   };
 
+  const coreLinks: Links[] = [
+    {
+      label: "Dashboard",
+      href: "/",
+      icon: <IconBrandTabler className={cn("h-5 w-5 shrink-0 transition-colors", pathname === "/" || pathname === "/dashboard" ? "text-red-500" : "text-neutral-400")} />,
+      active: pathname === "/" || pathname === "/dashboard",
+    },
+    {
+      label: "AI Workspace",
+      href: "/workspace",
+      icon: <IconRobot className={cn("h-5 w-5 shrink-0 transition-colors", pathname.startsWith("/workspace") ? "text-red-500" : "text-red-400")} />,
+      badge: "STUDIO",
+      badgeVariant: "red",
+      active: pathname.startsWith("/workspace"),
+    },
+    {
+      label: "YouTube to Notes",
+      href: "/youtube-to-notes",
+      icon: <IconBrandYoutube className={cn("h-5 w-5 shrink-0 transition-colors", pathname === "/youtube-to-notes" ? "text-red-500" : "text-red-400")} />,
+      badge: "HOT",
+      badgeVariant: "red",
+      active: pathname === "/youtube-to-notes",
+    },
+    {
+      label: "AI Presentation (PPT)",
+      href: "/presentation-generator",
+      icon: <IconPresentation className={cn("h-5 w-5 shrink-0 transition-colors", pathname === "/presentation-generator" ? "text-orange-400" : "text-neutral-400")} />,
+      active: pathname === "/presentation-generator",
+    },
+    {
+      label: "Whiteboard Studio",
+      href: "/whiteboard",
+      icon: <IconPencil className={cn("h-5 w-5 shrink-0 transition-colors", pathname.startsWith("/whiteboard") ? "text-violet-400" : "text-neutral-400")} />,
+      badge: "AI",
+      badgeVariant: "violet",
+      active: pathname.startsWith("/whiteboard"),
+    },
+    {
+      label: "Profile",
+      href: "/profile",
+      icon: <IconUser className={cn("h-5 w-5 shrink-0 transition-colors", pathname === "/profile" ? "text-white" : "text-neutral-400")} />,
+      active: pathname === "/profile",
+    },
+  ];
+
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: isExpanded ? 260 : 64 }}
-      transition={springTransition}
-      className="hidden lg:flex flex-col fixed inset-y-0 left-0 z-[110] bg-[#070707] border-r border-white/[0.08] font-sans select-none shadow-[4px_0_24px_rgba(0,0,0,0.8)] overflow-hidden"
+    <div
+      onMouseEnter={() => {
+        if (!justCollapsed) setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setJustCollapsed(false);
+      }}
+      className="hidden lg:block fixed inset-y-0 left-0 z-[110]"
     >
-      {/* ──── TOP HEADER: LOGO & COLLAPSE TOGGLE ──── */}
-      <div className={cn(
-        "h-14 flex items-center border-b border-white/[0.06] shrink-0",
-        isExpanded ? "justify-between px-3.5" : "justify-center px-2"
-      )}>
-        {isExpanded ? (
-          <>
-            <Link href="/" className="flex items-center gap-1.5 group min-w-0">
-              <span className="text-[15px] font-black italic tracking-tight uppercase text-white whitespace-nowrap">
-                Paper<span className="text-[#ef4444]">xify</span>
-              </span>
-              <span className="text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 shrink-0">
-                AI
-              </span>
-            </Link>
-
-            <button
-              onClick={onToggle}
-              title="Collapse sidebar"
-              className="w-7 h-7 rounded-md text-neutral-400 hover:text-white hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer shrink-0"
-            >
-              <PanelLeftClose size={16} />
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={onToggle}
-            title="Expand sidebar"
-            className="w-8 h-8 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <PanelLeftOpen size={17} />
-          </button>
-        )}
-      </div>
-
-      {/* ──── SCROLLABLE NAVIGATION LIST ──── */}
-      <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4 no-scrollbar">
-        
-        {/* ─── 1. CORE WORKSPACE ─── */}
-        <div>
-          <AnimatePresence initial={false}>
-            {isExpanded && (
-              <motion.p 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.15 }}
-                className="text-[9.5px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5 whitespace-nowrap overflow-hidden"
-              >
-                CORE WORKSPACE
-              </motion.p>
-            )}
-          </AnimatePresence>
-          <div className="space-y-1">
-            <SidebarCardItem
-              href="/"
-              icon={<Home size={15} />}
-              label="Dashboard"
-              active={pathname === "/" || pathname === "/dashboard"}
-              isExpanded={isExpanded}
-              rightElement={<MenuIcon size={12} className="text-red-500/80" />}
-              variant="active-dashboard"
-            />
-            <SidebarCardItem
-              href="/youtube-to-notes"
-              icon={<Youtube size={15} className="text-red-500" />}
-              label="YouTube to Notes"
-              active={pathname === "/youtube-to-notes"}
-              isExpanded={isExpanded}
-              badge="CORE"
-              variant="study-suite"
-            />
-            <SidebarCardItem
-              href="/presentation-generator"
-              icon={<Presentation size={15} className="text-orange-400" />}
-              label="AI Presentation (PPT)"
-              active={pathname === "/presentation-generator"}
-              isExpanded={isExpanded}
-              badge="HOT"
-              variant="card"
-            />
-            <SidebarCardItem
-              href="/whiteboard"
-              icon={<PenTool size={15} className="text-violet-400" />}
-              label="Agentic Whiteboard"
-              active={pathname.startsWith("/whiteboard")}
-              isExpanded={isExpanded}
-              badge="AI"
-              variant="card"
-            />
-            <SidebarCardItem
-              href="/profile"
-              icon={<BookOpen size={15} />}
-              label="Backpack Library"
-              active={pathname === "/profile"}
-              isExpanded={isExpanded}
-              rightElement={<ChevronRight size={13} className="text-neutral-500" />}
-              variant="card"
-            />
-          </div>
-        </div>
-
-        {/* ─── 2. RECENT CREATIONS & HISTORY ─── */}
-        <div>
-          <div className={cn("flex items-center justify-between px-2.5 mb-1.5", !isExpanded && "justify-center px-0")}>
-            {isExpanded ? (
-              <>
-                <button
-                  onClick={() => setHistoryExpanded(!historyExpanded)}
-                  className="flex items-center gap-1.5 text-[9.5px] font-bold text-neutral-400 hover:text-white uppercase tracking-widest transition-colors cursor-pointer"
-                >
-                  <History size={11} className="text-red-500" />
-                  <span>RECENT CREATIONS ({creations.length})</span>
-                  {historyExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-                </button>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={fetchCreations}
-                    title="Refresh history"
-                    className="p-1 rounded text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-                  >
-                    <RefreshCw size={11} className={cn(historyLoading && "animate-spin text-red-400")} />
-                  </button>
-                </div>
-              </>
+      <Sidebar open={isOpen} setOpen={setIsHovered} animate={true}>
+        <SidebarBody className="justify-between gap-3 h-screen p-2.5 bg-[#070709]/95 backdrop-blur-2xl border-r border-white/[0.08] shadow-[4px_0_30px_rgba(0,0,0,0.85)]">
+          
+          {/* ──── TOP AREA: LOGO & SCROLLABLE LINKS ──── */}
+          <div className="flex flex-col flex-1 overflow-x-hidden overflow-y-auto no-scrollbar space-y-4">
+            
+            {/* 1. Aceternity Logo / LogoIcon */}
+            {isOpen ? (
+              <PaperxifyLogo onToggle={handleCollapse} />
             ) : (
-              <button
-                onClick={onToggle}
-                title="Expand to view Recent History"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-              >
-                <History size={15} className="text-red-400" />
-              </button>
+              <PaperxifyLogoIcon onToggle={handleExpand} />
             )}
-          </div>
 
-          {isExpanded && historyExpanded && (
-            <div className="space-y-1.5 pt-0.5">
-              {/* Search & Filter pills */}
-              <div className="space-y-1.5 px-0.5">
-                <div className="relative">
-                  <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" />
-                  <input
-                    type="text"
-                    value={historySearch}
-                    onChange={(e) => setHistorySearch(e.target.value)}
-                    placeholder="Search creations..."
-                    className="w-full bg-[#0e0e0e] border border-white/[0.06] focus:border-white/20 rounded-lg pl-7 pr-2 py-1 text-[11px] text-white placeholder-neutral-500 focus:outline-none transition-colors"
-                  />
-                </div>
-
-                {/* Filter Pills */}
-                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 text-[9.5px]">
-                  {[
-                    { id: 'all', label: 'All' },
-                    { id: 'notes', label: 'Notes' },
-                    { id: 'whiteboard', label: 'Board' },
-                    { id: 'ppt', label: 'PPT' },
-                    { id: 'quiz', label: 'Quiz' },
-                    { id: 'flashcard', label: 'Flash' },
-                    { id: 'diagram', label: 'Diagram' },
-                    { id: 'study', label: 'Study' },
-                  ].map((f) => (
-                    <button
-                      key={f.id}
-                      onClick={() => setHistoryFilter(f.id as any)}
-                      className={cn(
-                        "px-2 py-0.5 rounded-md font-semibold whitespace-nowrap transition-all cursor-pointer",
-                        historyFilter === f.id
-                          ? "bg-red-500/15 border border-red-500/30 text-red-400"
-                          : "bg-white/[0.03] hover:bg-white/[0.07] text-neutral-400 hover:text-white"
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+            {/* 2. Main Workspace Links */}
+            <div className="space-y-0.5">
+              {isOpen && (
+                <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5 whitespace-pre">
+                  Workspace & Studio
+                </p>
+              )}
+              <div className="flex flex-col gap-0.5">
+                {coreLinks.map((link, idx) => (
+                  <SidebarLink key={idx} link={link} />
+                ))}
               </div>
+            </div>
 
-              {/* Items List */}
-              <div className="space-y-0.5 max-h-56 overflow-y-auto no-scrollbar pr-0.5">
-                {historyLoading ? (
-                  <div className="flex items-center justify-center py-4 text-neutral-500 text-xs gap-2">
-                    <Loader2 size={13} className="animate-spin text-red-400" />
-                    <span>Loading history...</span>
-                  </div>
-                ) : creations.length === 0 ? (
-                  <div className="p-3 text-center bg-[#0d0d0d] border border-white/[0.04] rounded-xl text-[11px] text-neutral-500">
-                    <p>No creations found</p>
-                    <Link href="/youtube-to-notes" className="text-[10px] text-red-400 hover:underline mt-1 inline-block">
-                      Generate your first note →
-                    </Link>
-                  </div>
-                ) : (
-                  creations.map((item) => (
-                    <Link
-                      key={item.id || item._id}
-                      href={item.url || `/notes/${item.slug}`}
-                      className="group flex items-center justify-between p-1.5 rounded-lg bg-[#0e0e0e]/80 hover:bg-[#151515] border border-white/[0.04] hover:border-white/10 transition-all text-xs"
+            {/* 3. Recent Sessions History */}
+            <div className="pt-2 border-t border-white/[0.05]">
+              <div className={cn("flex items-center justify-between px-2 mb-1", !isOpen && "justify-center px-0")}>
+                {isOpen ? (
+                  <>
+                    <button
+                      onClick={() => setHistoryExpanded(!historyExpanded)}
+                      className="flex items-center gap-1.5 text-[9px] font-bold text-neutral-400 hover:text-white uppercase tracking-widest transition-colors cursor-pointer"
                     >
-                      <div className="flex items-center gap-2 min-w-0 pr-1">
-                        <div className="p-1 rounded bg-black/40 border border-white/[0.06] shrink-0">
-                          {getCreationIcon(item.type)}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[11.5px] font-medium text-neutral-200 group-hover:text-white truncate leading-tight">
-                            {item.title}
-                          </p>
-                          <div className="flex items-center gap-1.5 text-[9.5px] text-neutral-500 mt-0.5">
-                            <span>{item.typeLabel || item.type}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-0.5">
-                              <Clock size={8.5} />
-                              {formatRelativeTime(item.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => handleDeleteCreation(item.type, item.id || item._id, e)}
-                          title="Delete"
-                          disabled={deletingId === (item.id || item._id)}
-                          className="p-1 rounded hover:bg-red-500/20 text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                        <div className="p-1 text-neutral-400 group-hover:text-white">
-                          <ArrowUpRight size={11} />
-                        </div>
-                      </div>
-                    </Link>
-                  ))
+                      <IconHistory size={12} className="text-red-500" />
+                      <span>Recent Sessions ({creations.length})</span>
+                      <IconChevronDown size={11} className={cn("transition-transform duration-200", historyExpanded && "rotate-180")} />
+                    </button>
+                    <button
+                      onClick={fetchCreations}
+                      title="Refresh recent sessions"
+                      className="p-1 rounded text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                    >
+                      <IconRefresh size={11} className={cn(historyLoading && "animate-spin text-red-400")} />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex justify-center w-full">
+                    <button
+                      onClick={handleExpand}
+                      title={`Recent Sessions (${creations.length})`}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer mx-auto"
+                    >
+                      <IconHistory size={18} className="text-red-400" />
+                    </button>
+                  </div>
                 )}
               </div>
 
-              {/* View all button */}
-              {creations.length > 0 && (
-                <Link
-                  href="/profile"
-                  className="w-full flex items-center justify-center gap-1 py-1 text-[10.5px] font-medium text-neutral-400 hover:text-white transition-colors"
+              {isOpen && historyExpanded && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-1.5 pt-1"
                 >
-                  <span>View All in Backpack Library</span>
-                  <ChevronRight size={11} />
-                </Link>
+                  {/* Search Input */}
+                  <div className="relative px-1">
+                    <IconSearch size={12} className="absolute left-3 top-2.5 text-neutral-500" />
+                    <input
+                      type="text"
+                      placeholder="Search sessions..."
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                      className="w-full bg-[#0e0e12] border border-white/[0.06] rounded-lg pl-7 pr-2 py-1.5 text-[11px] text-neutral-300 placeholder:text-neutral-500 focus:outline-none focus:border-red-500/40 transition-colors"
+                    />
+                  </div>
+
+                  {/* List of Sessions */}
+                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                    {historyLoading && creations.length === 0 ? (
+                      <div className="py-4 text-center text-xs text-neutral-500">Loading...</div>
+                    ) : creations.length === 0 ? (
+                      <div className="py-3 px-2 text-center rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                        <p className="text-[11px] text-neutral-400">No sessions yet</p>
+                        <Link
+                          href="/workspace"
+                          className="text-[10px] text-red-400 hover:underline mt-1 block"
+                        >
+                          Start your first session →
+                        </Link>
+                      </div>
+                    ) : (
+                      creations.map((item) => (
+                        <Link
+                          key={item.id || item._id}
+                          href={item.url || `/notes/${item.slug}`}
+                          className="group flex items-center justify-between p-1.5 rounded-lg bg-[#0e0e12]/80 hover:bg-[#16161d] border border-white/[0.04] hover:border-white/10 transition-all text-xs"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 pr-1">
+                            <div className="p-1 rounded bg-black/40 border border-white/[0.06] shrink-0">
+                              {getCreationIcon(item.type)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-medium text-neutral-200 group-hover:text-white truncate leading-tight">
+                                {item.title}
+                              </p>
+                              <div className="flex items-center gap-1.5 text-[9px] text-neutral-500 mt-0.5">
+                                <span className="capitalize">{item.typeLabel || item.type}</span>
+                                <span>•</span>
+                                <span className="flex items-center gap-0.5">
+                                  <IconClock size={8} />
+                                  {formatRelativeTime(item.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => handleDeleteCreation(item.type, item.id || item._id, e)}
+                              title="Delete"
+                              disabled={deletingId === (item.id || item._id)}
+                              className="p-1 rounded hover:bg-red-500/20 text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
+                            >
+                              <IconTrash size={12} />
+                            </button>
+                            <div className="p-1 text-neutral-400 group-hover:text-white">
+                              <IconArrowUpRight size={12} />
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* ─── 2. AI STUDY ROOM ─── */}
-        <div>
-          <AnimatePresence initial={false}>
-            {isExpanded && (
-              <motion.p 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.15 }}
-                className="text-[9.5px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5 whitespace-nowrap overflow-hidden"
-              >
-                AI STUDY ROOM
-              </motion.p>
-            )}
-          </AnimatePresence>
-          <div className="space-y-0.5">
-            <SidebarListItem
-              href="/ai-study/homework-helper"
-              icon={<GraduationCap size={15} />}
-              label="Homework Helper"
-              active={pathname === "/ai-study/homework-helper"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/ai-study/math-solver"
-              icon={<Calculator size={15} />}
-              label="AI Math Solver"
-              active={pathname === "/ai-study/math-solver"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/ai-study/exam-planner"
-              icon={<Calendar size={15} />}
-              label="Exam Prep Planner"
-              active={pathname === "/ai-study/exam-planner"}
-              badge="NEW"
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/ai-study/language-tutor"
-              icon={<Languages size={15} />}
-              label="AI Language Tutor"
-              active={pathname === "/ai-study/language-tutor"}
-              badge="AUDIO"
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/youtube-to-quiz"
-              icon={<HelpCircle size={15} />}
-              label="YouTube to Quiz"
-              active={pathname === "/youtube-to-quiz"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/youtube-to-flashcards"
-              icon={<Layers size={15} />}
-              label="AI Flashcards"
-              active={pathname === "/youtube-to-flashcards"}
-              isExpanded={isExpanded}
-            />
-          </div>
-        </div>
-
-        {/* ─── 3. AI WRITER & DIAGRAMS ─── */}
-        <div>
-          <AnimatePresence initial={false}>
-            {isExpanded && (
-              <motion.p 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.15 }}
-                className="text-[9.5px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5 whitespace-nowrap overflow-hidden"
-              >
-                WRITER & DIAGRAMS
-              </motion.p>
-            )}
-          </AnimatePresence>
-          <div className="space-y-0.5">
-            <SidebarListItem
-              href="/ai-writer/ai-detector"
-              icon={<ShieldAlert size={15} />}
-              label="AI Detector & Certs"
-              active={pathname === "/ai-writer/ai-detector"}
-              badge="VERIFIED"
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/ai-writer/ai-humanizer"
-              icon={<Sparkles size={15} />}
-              label="AI Humanizer"
-              active={pathname === "/ai-writer/ai-humanizer"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/ai-writer/essay-writer"
-              icon={<FileText size={15} />}
-              label="AI Essay Writer"
-              active={pathname === "/ai-writer/essay-writer"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/ai-writer/plagiarism"
-              icon={<FileSearch size={15} />}
-              label="Plagiarism Checker"
-              active={pathname === "/ai-writer/plagiarism"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/ai-diagram"
-              icon={<GitBranch size={15} />}
-              label="AI Mind Maps & Charts"
-              active={pathname.startsWith("/ai-diagram")}
-              isExpanded={isExpanded}
-            />
-          </div>
-        </div>
-
-        {/* ─── 4. DEV TOOLS & COMMUNITY ─── */}
-        <div>
-          <AnimatePresence initial={false}>
-            {isExpanded && (
-              <motion.p 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.15 }}
-                className="text-[9.5px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1.5 whitespace-nowrap overflow-hidden"
-              >
-                DEV UTILITIES & COMMUNITY
-              </motion.p>
-            )}
-          </AnimatePresence>
-          <div className="space-y-0.5">
-            <SidebarListItem
-              href="/tools"
-              icon={<LayoutGrid size={15} />}
-              label="All 25+ Developer Tools"
-              active={pathname === "/tools"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/tools/code-to-image"
-              icon={<Code2 size={15} />}
-              label="Code to Image"
-              active={pathname === "/tools/code-to-image"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/leaderboard"
-              icon={<Trophy size={15} />}
-              label="Global Leaderboard"
-              active={pathname === "/leaderboard"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/success-stories"
-              icon={<MessageSquare size={15} />}
-              label="Success Stories"
-              active={pathname === "/success-stories"}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/blog"
-              icon={<Newspaper size={15} />}
-              label="Blog & Tutorials"
-              active={pathname.startsWith("/blog")}
-              isExpanded={isExpanded}
-            />
-            <SidebarListItem
-              href="/pricing"
-              icon={<Zap size={15} />}
-              label="Pricing & Plans"
-              active={pathname === "/pricing"}
-              isExpanded={isExpanded}
-            />
-          </div>
-        </div>
-
-        {/* ─── 4. UPGRADE TO PRO SCHOLAR CARD ─── */}
-        <AnimatePresence mode="wait">
-          {isExpanded ? (
-            <motion.div
-              key="upgrade-expanded"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.18 }}
-              className="bg-gradient-to-b from-[#180a0c] to-[#0c0506] border border-red-500/30 hover:border-red-500/50 rounded-2xl p-3.5 shadow-[0_0_20px_rgba(239,68,68,0.12)] relative overflow-hidden transition-all group"
-            >
-              {/* Subtle top-right sparkle */}
-              <Sparkles size={12} className="absolute top-2.5 right-2.5 text-red-500/40 pointer-events-none" />
-
-              <div className="flex items-start gap-2.5 mb-2.5">
-                {/* Crown Avatar Icon */}
-                <div className="w-8 h-8 rounded-full bg-red-950/80 border border-red-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-[0_0_12px_rgba(239,68,68,0.3)]">
-                  <Crown size={15} className="fill-amber-400/20" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-white tracking-tight">
-                      Upgrade to <span className="text-red-500">Pro Scholar</span>
-                    </h4>
-                    <ChevronRight size={12} className="text-neutral-500 group-hover:text-red-400 transition-colors" />
-                  </div>
-                  <p className="text-[10px] text-neutral-400 mt-0.5 leading-snug">
-                    Unlock 120 Pro notes, slide decks, quizzes & priority AI!
-                  </p>
-                </div>
+            {/* 4. AI Suites & Matrix */}
+            <div className="pt-2 border-t border-white/[0.05] space-y-1">
+              {isOpen && (
+                <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest px-2.5 mb-1 whitespace-pre">
+                  AI Suites & Tools
+                </p>
+              )}
+              <div className="flex flex-col gap-0.5">
+                <SidebarLink
+                  link={{
+                    label: "AI Study Room",
+                    href: "/ai-study",
+                    icon: <IconSchool className={cn("h-5 w-5 shrink-0 transition-colors", pathname.startsWith("/ai-study") ? "text-cyan-400" : "text-neutral-400")} />,
+                    active: pathname.startsWith("/ai-study"),
+                  }}
+                />
+                <SidebarLink
+                  link={{
+                    label: "Writer & Research",
+                    href: "/ai-writer",
+                    icon: <IconFileText className={cn("h-5 w-5 shrink-0 transition-colors", pathname.startsWith("/ai-writer") ? "text-amber-400" : "text-neutral-400")} />,
+                    active: pathname.startsWith("/ai-writer"),
+                  }}
+                />
+                <SidebarLink
+                  link={{
+                    label: "Dev Lab & Matrix",
+                    href: "/tools",
+                    icon: <IconCode className={cn("h-5 w-5 shrink-0 transition-colors", pathname.startsWith("/tools") ? "text-blue-400" : "text-neutral-400")} />,
+                    active: pathname.startsWith("/tools"),
+                  }}
+                />
               </div>
+            </div>
 
-              {/* Upgrade Button */}
-              <Link
-                href="/pricing"
-                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_20px_rgba(239,68,68,0.6)] transition-all transform active:scale-[0.98] cursor-pointer"
-              >
-                <Zap size={13} className="fill-white" />
-                <span>Upgrade Plan</span>
-              </Link>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="upgrade-collapsed"
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ duration: 0.18 }}
-              className="pt-1 flex justify-center"
-            >
-              <Link
-                href="/pricing"
-                title="Upgrade to Pro Scholar"
-                className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white flex items-center justify-center shadow-[0_0_12px_rgba(239,68,68,0.4)] transition-all hover:scale-105"
-              >
-                <Crown size={14} className="fill-amber-300" />
-              </Link>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
 
-      </div>
-
-      {/* ──── 5. BOTTOM USER PROFILE & PLAN BAR ──── */}
-      <div className="p-2.5 border-t border-white/[0.07] bg-[#090909] shrink-0">
-        {isExpanded ? (
-          isLoggedIn ? (
-            /* Logged-In User Profile & Plan Status */
-            <div className="bg-[#0e0e0e] border border-white/[0.06] rounded-2xl p-2.5 space-y-2">
-              <div 
-                onClick={() => {
-                  window.location.href = "/profile";
-                }} 
-                className="flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-full border border-neutral-700 overflow-hidden bg-neutral-800 shrink-0 group-hover:border-red-500 transition-colors">
-                    <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate leading-tight group-hover:text-red-400 transition-colors">
-                      {userName}
-                    </p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Crown size={10} className={cn(isPro ? "text-red-500 fill-red-500/20" : "text-neutral-500")} />
-                      <span className={cn("text-[10px] font-semibold leading-none", isPro ? "text-red-500" : "text-neutral-400")}>
-                        {planName}
-                      </span>
-                    </div>
-                  </div>
+          {/* ──── BOTTOM AREA: USER HUD & ACETERNITY USER PROFILE ──── */}
+          <div className="pt-2 border-t border-white/[0.06] space-y-2">
+            
+            {/* Pro Upgrade Card (shown when open and not pro) */}
+            {!isPro && isOpen && (
+              <div className="p-2.5 rounded-xl bg-gradient-to-r from-red-600/15 via-rose-600/10 to-transparent border border-red-500/20">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                    <IconCrown size={13} className="text-amber-400" /> Upgrade to Pro
+                  </span>
                 </div>
-                <ChevronRight size={13} className="text-neutral-500 group-hover:text-white transition-colors shrink-0" />
-              </div>
-
-              {/* Plan Status Bar */}
-              <div className="pt-1 border-t border-white/[0.04] flex items-center justify-between">
-                <div className="flex items-center gap-1 text-[10px] font-medium text-neutral-400">
-                  <span className={cn("w-1.5 h-1.5 rounded-full", isPro ? "bg-emerald-400" : "bg-neutral-500")} />
-                  <span>{isPro ? "Full Scholar Suite" : "Standard Tier"}</span>
-                </div>
+                <p className="text-[9.5px] text-neutral-400 mb-2 leading-relaxed">
+                  Unlock Claude 3.5, GPT-4o, and unlimited workspace sessions.
+                </p>
                 <Link
                   href="/pricing"
-                  className={cn(
-                    "text-[9.5px] font-bold px-2 py-0.5 rounded-md transition-all shrink-0 cursor-pointer",
-                    isPro 
-                      ? "text-neutral-300 bg-white/[0.05] hover:bg-white/[0.1] border border-white/10" 
-                      : "text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30"
-                  )}
+                  className="block text-center py-1 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-[10px] shadow-[0_0_10px_rgba(239,68,68,0.35)] transition-all"
                 >
-                  {isPro ? "Manage" : "Upgrade →"}
+                  Upgrade Plan
                 </Link>
               </div>
-            </div>
-          ) : (
-            /* Guest / Not Logged In State */
-            <div className="bg-[#0e0e0e] border border-white/[0.06] rounded-2xl p-3 space-y-2.5 text-center">
-              <div className="flex items-center gap-2.5 text-left">
-                <div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-neutral-400 shrink-0">
-                  <UserIcon size={15} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-white leading-tight">Welcome to Paperxify</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5 truncate">Sign in to save study notes</p>
-                </div>
-              </div>
-
-              <button
-                onClick={onOpenLogin}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#ef4444] hover:bg-[#dc2626] text-white font-medium text-xs shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer"
-              >
-                <UserIcon size={12} />
-                <span>Sign In / Register</span>
-              </button>
-            </div>
-          )
-        ) : (
-          /* Collapsed View */
-          <div className="flex justify-center">
-            {isLoggedIn ? (
-              <button 
-                onClick={() => {
-                  window.location.href = "/profile";
-                }}
-                title={`${userName} (${planName})`}
-                className="cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-full border border-red-500/40 overflow-hidden bg-neutral-800 hover:border-red-500 transition-colors">
-                  <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
-                </div>
-              </button>
-            ) : (
-              <button 
-                onClick={onOpenLogin}
-                title="Sign In / Register"
-                className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/[0.1] hover:border-red-500/50 hover:bg-red-500/10 flex items-center justify-center text-neutral-300 hover:text-white transition-all cursor-pointer"
-              >
-                <UserIcon size={15} />
-              </button>
             )}
+
+            {/* User Profile Item */}
+            {isLoggedIn ? (
+              isOpen ? (
+                <div className="flex items-center justify-between">
+                  <SidebarLink
+                    link={{
+                      label: userName,
+                      href: "/profile",
+                      icon: (
+                        <div className="relative shrink-0">
+                          <div className={cn(
+                            "h-7 w-7 rounded-full overflow-hidden bg-neutral-800 flex items-center justify-center font-bold text-white text-xs border shadow-sm",
+                            isPro ? "border-amber-400" : "border-neutral-700"
+                          )}>
+                            {user?.picture ? (
+                              <img src={user.picture} alt={userName} className="w-full h-full object-cover" />
+                            ) : (
+                              <span>{(userName?.[0] || "U").toUpperCase()}</span>
+                            )}
+                          </div>
+                          {isPro && (
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-black absolute -bottom-0.5 -right-0.5" />
+                          )}
+                        </div>
+                      ),
+                    }}
+                    className="flex-1"
+                  />
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Link
+                      href="/profile"
+                      title="Profile"
+                      className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                    >
+                      <IconSettings size={15} />
+                    </Link>
+                    <button
+                      onClick={onLogout}
+                      title="Log Out"
+                      className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                    >
+                      <IconLogout size={15} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-center w-full py-0.5">
+                  <Link
+                    href="/profile"
+                    title={`${userName} (${planName})`}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/[0.06] transition-all mx-auto"
+                  >
+                    <div className="relative shrink-0">
+                      <div className={cn(
+                        "h-8 w-8 rounded-full overflow-hidden bg-neutral-800 flex items-center justify-center font-bold text-white text-xs border shadow-sm",
+                        isPro ? "border-amber-400" : "border-neutral-700"
+                      )}>
+                        {user?.picture ? (
+                          <img src={user.picture} alt={userName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{(userName?.[0] || "U").toUpperCase()}</span>
+                        )}
+                      </div>
+                      {isPro && (
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-black absolute -bottom-0.5 -right-0.5" />
+                      )}
+                    </div>
+                  </Link>
+                </div>
+              )
+            ) : (
+              isOpen ? (
+                <SidebarLink
+                  link={{
+                    label: "Sign In / Register",
+                    href: "#",
+                    icon: <IconUserBolt className="h-5 w-5 shrink-0 text-red-400" />,
+                  }}
+                  onClick={onOpenLogin}
+                />
+              ) : (
+                <div className="flex justify-center w-full py-0.5">
+                  <button
+                    onClick={onOpenLogin}
+                    title="Sign In / Register"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-red-400 hover:text-white hover:bg-white/[0.06] transition-all mx-auto cursor-pointer"
+                  >
+                    <IconUserBolt size={20} />
+                  </button>
+                </div>
+              )
+            )}
+
           </div>
-        )}
-      </div>
 
-    </motion.aside>
+        </SidebarBody>
+      </Sidebar>
+    </div>
   );
 }
 
-// ──── HELPER: CARD ITEM (MENU SECTION) ────
-interface SidebarCardItemProps {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  isExpanded: boolean;
-  rightElement?: React.ReactNode;
-  badge?: string;
-  variant?: "active-dashboard" | "study-suite" | "card";
-}
-
-function SidebarCardItem({ href, icon, label, active, isExpanded, rightElement, badge, variant = "card" }: SidebarCardItemProps) {
-  let containerStyle = "bg-[#0f0f0f] border border-white/[0.04] text-neutral-300 hover:text-white hover:bg-white/[0.04]";
-
-  if (variant === "active-dashboard" || (active && variant !== "study-suite")) {
-    containerStyle = "bg-red-950/20 border border-red-500/40 text-red-400 shadow-[inset_0_0_12px_rgba(239,68,68,0.08)] font-semibold";
-  } else if (variant === "study-suite") {
-    containerStyle = "bg-[#111111] border-l-2 border-red-500 text-white font-medium";
-  }
-
+// ──── ACETERNITY LOGO (EXPANDED) ────
+export const PaperxifyLogo = ({ onToggle }: { onToggle: () => void }) => {
   return (
-    <Link
-      href={href}
-      title={!isExpanded ? label : undefined}
-      className={cn(
-        "flex items-center justify-between rounded-xl transition-all duration-200 group overflow-hidden",
-        isExpanded ? "px-3 py-2 text-xs" : "justify-center p-2 text-xs",
-        containerStyle
-      )}
-    >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="shrink-0 transition-transform group-hover:scale-105">
-          {icon}
+    <div className="flex items-center justify-between w-full py-1">
+      <Link
+        href="/"
+        className="relative z-20 flex items-center gap-2 text-sm font-normal text-white group"
+      >
+        <div className="h-6 w-6 shrink-0 rounded-lg bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center shadow-[0_0_12px_rgba(239,68,68,0.4)]">
+          <span className="font-black text-xs italic tracking-tighter text-white">Px</span>
         </div>
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.span
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -6 }}
-              transition={{ duration: 0.15 }}
-              className="truncate leading-tight whitespace-nowrap"
-            >
-              {label}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center gap-1.5"
+        >
+          <span className="text-[15px] font-black italic tracking-tight uppercase text-white whitespace-pre">
+            PAPER<span className="text-[#ef4444]">XIFY</span>
+          </span>
+          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+            AI
+          </span>
+        </motion.div>
+      </Link>
 
-      {isExpanded && (
-        <div className="shrink-0 pl-1 flex items-center gap-1">
-          {badge && (
-            <span className={cn(
-              "text-[8px] font-black uppercase px-1.5 py-0.5 rounded border",
-              badge === "CORE" ? "bg-red-500/15 border-red-500/30 text-red-400" :
-              badge === "HOT" ? "bg-orange-500/15 border-orange-500/30 text-orange-400" :
-              badge === "AI" ? "bg-violet-500/15 border-violet-500/30 text-violet-400" :
-              "bg-neutral-800 border-white/10 text-neutral-300"
-            )}>
-              {badge}
-            </span>
-          )}
-          {rightElement}
-        </div>
-      )}
-    </Link>
+      <button
+        onClick={onToggle}
+        title="Collapse sidebar"
+        className="w-7 h-7 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+      >
+        <IconArrowLeft size={16} />
+      </button>
+    </div>
   );
-}
+};
 
-// ──── HELPER: LIST ITEM (TOOLS & COMMUNITY SECTION) ────
-interface SidebarListItemProps {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  badge?: string;
-  active?: boolean;
-  isExpanded: boolean;
-}
-
-function SidebarListItem({ href, icon, label, badge, active, isExpanded }: SidebarListItemProps) {
+// ──── ACETERNITY LOGO ICON (COLLAPSED) ────
+export const PaperxifyLogoIcon = ({ onToggle }: { onToggle: () => void }) => {
   return (
-    <Link
-      href={href}
-      title={!isExpanded ? label : undefined}
-      className={cn(
-        "flex items-center justify-between rounded-lg transition-all duration-200 group overflow-hidden",
-        isExpanded ? "px-2.5 py-1.5 text-xs" : "justify-center p-2 text-xs",
-        active
-          ? "bg-red-500/10 text-red-400 font-semibold"
-          : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
-      )}
-    >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="shrink-0 transition-colors group-hover:text-white">
-          {icon}
-        </div>
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.span
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -6 }}
-              transition={{ duration: 0.15 }}
-              className="truncate leading-tight whitespace-nowrap"
-            >
-              {label}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {isExpanded && badge && (
-        <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/30 text-red-400 shrink-0">
-          {badge}
-        </span>
-      )}
-    </Link>
+    <div className="flex justify-center w-full py-1">
+      <button
+        onClick={onToggle}
+        title="Expand sidebar"
+        className="relative z-20 h-8 w-8 shrink-0 rounded-xl bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:scale-105 transition-transform cursor-pointer"
+      >
+        <span className="font-black text-xs italic tracking-tighter text-white">Px</span>
+      </button>
+    </div>
   );
-}
+};

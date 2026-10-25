@@ -3,6 +3,7 @@ const axios = require("axios");
 const crypto = require("crypto");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
+const PaypalOrder = require("../models/PaypalOrder");
 const emailService = require("../utils/emailService");
 
 // ─── Plan config ──────────────────────────────────────────────────────────────
@@ -29,22 +30,35 @@ const LS_VARIANTS = () => ({
 //  SHARED HELPER — activate membership + save transaction
 // ─────────────────────────────────────────────────────────────────────────────
 async function activateMembership({ userId, planId, billingPeriod, amountUSD, paymentMethod, gatewayOrderId, gatewayPaymentId, userEmail, userName }) {
-  const plan = PLANS[planId];
-  if (!plan) throw new Error(`Unknown planId: ${planId}`);
-  const periodConfig = plan[billingPeriod];
-  const durationDays = periodConfig.durationDays;
-  const planName     = plan.name;
+  const normPlanId = (planId || "pro").toLowerCase();
+  const plan = PLANS[normPlanId] || PLANS.pro;
+  const normBilling = (billingPeriod || "monthly").toLowerCase();
+  const periodConfig = plan[normBilling] || plan.monthly;
+  const durationDays = periodConfig.durationDays || 30;
+  const planName     = plan.name || "Pro";
 
-  const user = await User.findById(userId);
-  if (!user) throw new Error(`User not found: ${userId}`);
+  let user = null;
+  if (userId) {
+    user = await User.findById(userId);
+  }
+  if (!user && userEmail) {
+    user = await User.findOne({ email: userEmail.toLowerCase().trim() });
+  }
+  if (!user) {
+    throw new Error(`User not found for subscription activation: ${userId || userEmail}`);
+  }
 
-  // Idempotency — skip if already processed with same gateway order id
+  // Idempotency — check if already processed with same gateway order id or payment id
   const alreadyDone = (user.transactions || []).some(
-    (t) => (t.paypalOrderId === gatewayOrderId || t.lemonSqueezyOrderId === gatewayOrderId) && t.status === "success"
+    (t) => (t.orderId === gatewayOrderId || t.paypalOrderId === gatewayOrderId || t.lemonSqueezyOrderId === gatewayOrderId || t.paymentId === gatewayPaymentId) && t.status === "success"
   );
   if (alreadyDone) {
-    console.log(`⚠️  Order ${gatewayOrderId} already processed — skipping.`);
-    return null;
+    console.log(`ℹ️  Order ${gatewayOrderId} already processed for ${user.email} — verifying active status.`);
+    if (!user.membership?.isActive) {
+      user.membership.isActive = true;
+      await user.save();
+    }
+    return user.transactions.find(t => t.orderId === gatewayOrderId || t.paypalOrderId === gatewayOrderId) || null;
   }
 
   // ── Update membership ──────────────────────────────────────────────────────
@@ -58,14 +72,26 @@ async function activateMembership({ userId, planId, billingPeriod, amountUSD, pa
 
   user.membership = {
     isActive:      true,
-    planId,
+    planId:        normPlanId,
     planName,
-    billingPeriod,
+    billingPeriod: normBilling,
     startedAt:     user.membership?.startedAt || now,
     expiresAt,
     lastPaymentId: gatewayPaymentId || gatewayOrderId,
     autoRenew:     false,
   };
+
+  const isPower = normPlanId.includes("power");
+  const allocatedUnits = isPower ? 4500 : 1500;
+  user.aiCapacity = {
+    usedUnits: 0,
+    allocatedUnits,
+    hardCostUSD: 0,
+    imagesGenerated: 0,
+    lastReset: now,
+  };
+  user.tokens = allocatedUnits;
+  user.rank = isPower ? "power" : "pro";
 
   // ── Build transaction record ───────────────────────────────────────────────
   const transactionRecord = {
@@ -74,12 +100,12 @@ async function activateMembership({ userId, planId, billingPeriod, amountUSD, pa
     orderId:             gatewayOrderId,
     paypalOrderId:       paymentMethod === "paypal"        ? gatewayOrderId : null,
     lemonSqueezyOrderId: paymentMethod === "lemonsqueezy"  ? gatewayOrderId : null,
-    packageId:           planId,
-    packageName:         `${planName} (${billingPeriod})`,
+    packageId:           normPlanId,
+    packageName:         `${planName} (${normBilling})`,
     packageType:         "subscription",
-    billingPeriod,
-    amount:              amountUSD,
-    baseAmount:          amountUSD,
+    billingPeriod:       normBilling,
+    amount:              amountUSD || periodConfig.priceUSD,
+    baseAmount:          amountUSD || periodConfig.priceUSD,
     discountAmount:      0,
     gstAmount:           0,
     status:              "success",
@@ -95,9 +121,9 @@ async function activateMembership({ userId, planId, billingPeriod, amountUSD, pa
   await Transaction.create(transactionRecord).catch((e) =>
     console.warn("Transaction standalone save warn:", e.message)
   );
-  await user.save();
+  await user.save({ validateModifiedOnly: true });
 
-  console.log(`✅ Membership activated for ${user.email}: ${planName} until ${expiresAt.toISOString()}`);
+  console.log(`✅ Membership ACTIVATED for ${user.email}: ${planName} (${normBilling}) until ${expiresAt.toISOString()}`);
 
   // ── Fire confirmation email (non-blocking) ─────────────────────────────────
   setImmediate(async () => {
@@ -153,7 +179,23 @@ async function getPaypalAccessToken() {
   return { token: response.data.access_token, baseUrl };
 }
 
-// ── Create PayPal Order (used by JS SDK on frontend — no redirect needed) ────
+// ── PayPal Public Config (so frontend loads matching client ID and mode) ────
+exports.getPaypalConfig = async (req, res) => {
+  try {
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const mode     = process.env.PAYPAL_MODE || "sandbox";
+    res.json({
+      success: true,
+      clientId: clientId || null,
+      mode,
+      currency: "USD",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ── Create PayPal Order (used by JS SDK on frontend — includes return_url for mobile) ────
 exports.createPaypalOrder = async (req, res) => {
   try {
     const { planId, billingPeriod = "monthly" } = req.body;
@@ -161,39 +203,50 @@ exports.createPaypalOrder = async (req, res) => {
     if (!planId) {
       return res.status(400).json({ success: false, message: "Missing planId" });
     }
-    const plan = PLANS[planId];
+    const normPlanId = planId.toLowerCase();
+    const plan = PLANS[normPlanId];
     if (!plan) return res.status(400).json({ success: false, message: "Invalid plan ID" });
 
-    const periodConfig = plan[billingPeriod];
+    const normBilling  = (billingPeriod || "monthly").toLowerCase();
+    const periodConfig = plan[normBilling] || plan.monthly;
     const priceUSD     = periodConfig.priceUSD;
     const user         = req.user;
 
     const { token, baseUrl } = await getPaypalAccessToken();
 
+    const clientBaseUrl = process.env.CLIENT_URL || "https://paperxify.com";
+
+    // Compact fallback custom_id (< 256 char limit)
+    const compactCustomId = JSON.stringify({
+      userId:        user._id.toString(),
+      planId:        normPlanId,
+      billingPeriod: normBilling,
+    });
+
     const orderPayload = {
       intent: "CAPTURE",
       purchase_units: [
         {
-          reference_id: `${planId}-${billingPeriod}-${user._id}`,
-          description:  `PaperXify ${plan.name} — ${billingPeriod === "monthly" ? "Monthly" : "Yearly (One-Time)"}`,
+          reference_id: `${normPlanId}___${normBilling}___${user._id}`,
+          description:  `PaperXify ${plan.name} — ${normBilling === "monthly" ? "Monthly" : "Yearly"}`,
           amount: {
             currency_code: "USD",
             value:         priceUSD.toFixed(2),
           },
-          custom_id: JSON.stringify({
-            userId:        user._id.toString(),
-            userEmail:     user.email,
-            userName:      user.name || user.username || "",
-            planId,
-            billingPeriod,
-            durationDays:  String(periodConfig.durationDays),
-            planName:      plan.name,
-            amountUSD:     String(priceUSD),
-          }),
+          custom_id: compactCustomId,
         },
       ],
-      // Minimal order payload — no application_context redirect URLs.
-      // The PayPal JS SDK popup handles approval; capture is done via onApprove.
+      payment_source: {
+        paypal: {
+          experience_context: {
+            brand_name: "PaperXify",
+            landing_page: "NO_PREFERENCE",
+            user_action: "PAY_NOW",
+            return_url: `${clientBaseUrl}/payment/paypal/return`,
+            cancel_url: `${clientBaseUrl}/pricing?canceled=true`,
+          },
+        },
+      },
     };
 
     const orderRes = await axios.post(`${baseUrl}/v2/checkout/orders`, orderPayload, {
@@ -204,9 +257,25 @@ exports.createPaypalOrder = async (req, res) => {
     });
 
     const order = orderRes.data;
-    console.log("✅ PayPal order created:", { orderId: order.id, userId: user._id, planId, billingPeriod });
 
-    // Return just the orderId — the JS SDK uses it to open the payment popup
+    // Source of truth for capture lives in OUR DB, not round-tripped through PayPal
+    await PaypalOrder.findOneAndUpdate(
+      { orderId: order.id },
+      {
+        orderId:       order.id,
+        userId:        user._id,
+        planId:        normPlanId,
+        billingPeriod: normBilling,
+        amountUSD:     priceUSD,
+        userEmail:     user.email,
+        userName:      user.name || user.username || "",
+        status:        "created",
+      },
+      { upsert: true, new: true }
+    );
+
+    console.log("✅ PayPal order created and saved to DB:", { orderId: order.id, userId: user._id, planId: normPlanId, billingPeriod: normBilling });
+
     res.json({ success: true, orderId: order.id });
   } catch (error) {
     console.error("❌ PayPal create order error:", error?.response?.data || error.message);
@@ -217,64 +286,369 @@ exports.createPaypalOrder = async (req, res) => {
   }
 };
 
-// ── Capture PayPal Order (called from frontend after user approves) ────────────
+// ── Capture PayPal Order (called from frontend onApprove or redirect return page) ────────────
 exports.capturePaypalOrder = async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, planId: bodyPlanId, billingPeriod: bodyBillingPeriod } = req.body;
     if (!orderId) return res.status(400).json({ success: false, message: "Missing orderId" });
+
+    // 1. Pull trusted metadata from OUR DB first — not from PayPal custom_id
+    let pending = await PaypalOrder.findOne({ orderId });
+
+    // True idempotency — governed by OUR status, never short-circuiting before activation
+    if (pending && pending.status === "activated") {
+      const activeUser = await User.findById(pending.userId).select("-password -__v -googleAccessToken -googleId -followerUsers");
+      return res.json({
+        success: true,
+        message: "Subscription already active.",
+        orderId,
+        captureId: pending.captureId || orderId,
+        user: activeUser,
+        membership: activeUser?.membership,
+      });
+    }
 
     const { token, baseUrl } = await getPaypalAccessToken();
 
-    // Fetch order details to extract metadata
-    const orderRes = await axios.get(`${baseUrl}/v2/checkout/orders/${orderId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const order = orderRes.data;
-
-    if (order.status === "COMPLETED") {
-      return res.json({ success: true, message: "Order already captured" });
+    // 2. Fetch current order details from PayPal
+    let order = null;
+    try {
+      const orderRes = await axios.get(`${baseUrl}/v2/checkout/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      order = orderRes.data;
+    } catch (fetchErr) {
+      console.error("❌ PayPal get order error:", fetchErr?.response?.data || fetchErr.message);
+      return res.status(404).json({ success: false, message: getDetailedPaypalError(fetchErr) });
     }
 
-    // Capture
-    const captureRes = await axios.post(
-      `${baseUrl}/v2/checkout/orders/${orderId}/capture`,
-      {},
-      { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
-    );
-    const captured = captureRes.data;
+    // If no PaypalOrder existed yet (legacy order or direct checkout), reconstruct and save to DB
+    if (!pending) {
+      const getUnit = order?.purchase_units?.[0];
+      let meta = {};
+      if (getUnit?.custom_id) {
+        try { meta = JSON.parse(getUnit.custom_id); } catch {}
+      }
+      if (!meta.userId && getUnit?.reference_id) {
+        const parts = getUnit.reference_id.split("___");
+        if (parts.length >= 3) {
+          meta.planId = parts[0];
+          meta.billingPeriod = parts[1];
+          meta.userId = parts[2];
+        }
+      }
 
-    if (captured.status !== "COMPLETED") {
-      return res.status(400).json({ success: false, message: "Payment not completed" });
+      const targetUserId = req.user?._id || meta.userId;
+      let matchedUser = null;
+      if (targetUserId) {
+        matchedUser = await User.findById(targetUserId);
+      }
+      if (!matchedUser && (meta.userEmail || order.payer?.email_address)) {
+        matchedUser = await User.findOne({
+          email: (meta.userEmail || order.payer?.email_address).toLowerCase().trim()
+        });
+      }
+
+      if (!matchedUser) {
+        return res.status(400).json({ success: false, message: "Could not identify user account for this PayPal order." });
+      }
+
+      const planId = (meta.planId || bodyPlanId || "pro").toLowerCase();
+      const billingPeriod = (meta.billingPeriod || bodyBillingPeriod || "monthly").toLowerCase();
+      const planConfig = PLANS[planId] || PLANS.pro;
+      const periodConf = planConfig[billingPeriod] || planConfig.monthly;
+      const amountUSD = parseFloat(meta.amountUSD) || parseFloat(getUnit?.amount?.value) || periodConf.priceUSD;
+
+      pending = await PaypalOrder.findOneAndUpdate(
+        { orderId },
+        {
+          orderId,
+          userId: matchedUser._id,
+          planId,
+          billingPeriod,
+          amountUSD,
+          userEmail: matchedUser.email,
+          userName: matchedUser.name || matchedUser.username || "",
+          status: "created",
+        },
+        { upsert: true, new: true }
+      );
     }
 
-    // Extract custom_id metadata
-    const unit      = captured.purchase_units?.[0];
-    const customId  = unit?.custom_id || unit?.reference_id;
-    let meta = {};
-    try { meta = JSON.parse(customId); } catch { /* ignore */ }
+    let captureId = pending.captureId || orderId;
+    let isCompleted = order?.status === "COMPLETED";
 
-    const captureId = unit?.payments?.captures?.[0]?.id || orderId;
+    // 3. If not already completed, capture it now via PayPal API
+    if (!isCompleted) {
+      try {
+        const captureRes = await axios.post(
+          `${baseUrl}/v2/checkout/orders/${orderId}/capture`,
+          {},
+          { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+        );
+        const captured = captureRes.data;
+        if (captured.status === "COMPLETED") {
+          isCompleted = true;
+          const capUnit = captured.purchase_units?.[0];
+          captureId = capUnit?.payments?.captures?.[0]?.id || orderId;
+        } else {
+          pending.status = "failed";
+          pending.lastError = `PayPal status: ${captured.status}`;
+          await pending.save();
+          return res.status(400).json({ success: false, message: `PayPal payment status: ${captured.status}` });
+        }
+      } catch (capErr) {
+        const errDetail = capErr?.response?.data;
+        const isAlreadyCaptured = errDetail?.details?.some((d) => d.issue === "ORDER_ALREADY_CAPTURED");
+        if (isAlreadyCaptured) {
+          console.log(`ℹ️ Order ${orderId} was already captured on PayPal.`);
+          isCompleted = true;
+        } else {
+          pending.lastError = getDetailedPaypalError(capErr);
+          await pending.save();
+          console.error("❌ PayPal capture call error:", errDetail || capErr.message);
+          return res.status(400).json({ success: false, message: getDetailedPaypalError(capErr) });
+        }
+      }
+    }
 
-    await activateMembership({
-      userId:         meta.userId,
-      planId:         meta.planId,
-      billingPeriod:  meta.billingPeriod,
-      amountUSD:      parseFloat(meta.amountUSD) || 0,
-      paymentMethod:  "paypal",
-      gatewayOrderId: orderId,
-      gatewayPaymentId: captureId,
-      userEmail:      meta.userEmail,
-      userName:       meta.userName,
-    });
+    // Mark "captured" in our DB immediately — money is confirmed taken by PayPal!
+    // Every code path below MUST end in activation, never a silent skip.
+    pending.status = "captured";
+    pending.captureId = captureId;
+    pending.updatedAt = new Date();
+    await pending.save();
 
-    console.log("✅ PayPal payment captured:", orderId);
-    res.json({ success: true, orderId, captureId });
+    // 4. Activate membership
+    try {
+      const transaction = await activateMembership({
+        userId:           pending.userId,
+        planId:           pending.planId,
+        billingPeriod:    pending.billingPeriod,
+        amountUSD:        pending.amountUSD,
+        paymentMethod:    "paypal",
+        gatewayOrderId:   orderId,
+        gatewayPaymentId: captureId,
+        userEmail:        pending.userEmail,
+        userName:         pending.userName,
+      });
+
+      // Mark activated in our DB — ONLY done when activateMembership actually succeeds!
+      pending.status = "activated";
+      pending.lastError = null;
+      await pending.save();
+
+      const activeUser = await User.findById(pending.userId).select("-password -__v -googleAccessToken -googleId -followerUsers");
+
+      console.log("✅ PayPal payment captured + activated:", orderId, "for user:", activeUser?.email);
+      return res.json({
+        success: true,
+        message: "Subscription activated successfully!",
+        orderId,
+        captureId,
+        transaction,
+        user: activeUser,
+        membership: activeUser?.membership,
+      });
+    } catch (activationErr) {
+      // Money IS taken. Activation failed. Leave status as "captured" (NOT "activated")
+      // so the next retry will try activateMembership again instead of short-circuiting!
+      pending.lastError = activationErr.message;
+      await pending.save();
+      console.error(`🚨 PAID BUT NOT ACTIVATED — orderId=${orderId} userId=${pending.userId}:`, activationErr.message);
+      return res.status(500).json({
+        success: false,
+        message: "Payment received by PayPal, activating your plan. If not updated shortly, please click Sync PayPal in Profile or contact support with Order ID: " + orderId,
+      });
+    }
   } catch (error) {
     console.error("❌ PayPal capture error:", error?.response?.data || error.message);
     res.status(500).json({
       success: false,
       message: getDetailedPaypalError(error),
     });
+  }
+};
+
+// ── Sync PayPal Order (idempotent manual/auto recovery endpoint) ─────────────
+exports.syncPaypalOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "Missing orderId" });
+    }
+
+    // Check our DB first
+    const pending = await PaypalOrder.findOne({ orderId });
+    if (pending && pending.status === "activated") {
+      const activeUser = await User.findById(pending.userId).select("-password -__v -googleAccessToken -googleId -followerUsers");
+      return res.json({
+        success: true,
+        message: "Subscription is already active.",
+        orderId,
+        user: activeUser,
+        membership: activeUser?.membership,
+      });
+    }
+
+    // Delegate to capturePaypalOrder to verify PayPal status and activate
+    return await exports.capturePaypalOrder(req, res);
+  } catch (error) {
+    console.error("❌ PayPal sync error:", error?.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ── PayPal Webhook (auto-captures and auto-activates if user closes window) ────
+exports.handlePaypalWebhook = async (req, res) => {
+  try {
+    const event = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const eventType = event.event_type;
+    console.log(`📨 PayPal webhook received: ${eventType} (ID: ${event.id})`);
+
+    const { token, baseUrl } = await getPaypalAccessToken();
+
+    if (eventType === "CHECKOUT.ORDER.APPROVED") {
+      const orderResource = event.resource || {};
+      const orderId = orderResource.id;
+      console.log(`⚡ Auto-capturing approved order via webhook: ${orderId}`);
+
+      let pending = await PaypalOrder.findOne({ orderId });
+      if (pending && pending.status === "activated") {
+        console.log(`ℹ️ Webhook: Order ${orderId} already activated in DB.`);
+        return res.status(200).json({ received: true });
+      }
+
+      try {
+        const captureRes = await axios.post(
+          `${baseUrl}/v2/checkout/orders/${orderId}/capture`,
+          {},
+          { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+        );
+        const captured = captureRes.data;
+        const capUnit = captured.purchase_units?.[0];
+        const captureId = capUnit?.payments?.captures?.[0]?.id || orderId;
+
+        if (pending) {
+          pending.status = "captured";
+          pending.captureId = captureId;
+          await pending.save();
+
+          await activateMembership({
+            userId:           pending.userId,
+            planId:           pending.planId,
+            billingPeriod:    pending.billingPeriod,
+            amountUSD:        pending.amountUSD,
+            paymentMethod:    "paypal",
+            gatewayOrderId:   orderId,
+            gatewayPaymentId: captureId,
+            userEmail:        pending.userEmail,
+            userName:         pending.userName,
+          });
+
+          pending.status = "activated";
+          pending.lastError = null;
+          await pending.save();
+          console.log(`✅ Webhook auto-captured and activated membership for order ${orderId}`);
+        } else {
+          // Fallback if order not in DB
+          let meta = {};
+          if (capUnit?.custom_id) {
+            try { meta = JSON.parse(capUnit.custom_id); } catch {}
+          }
+          const userEmail = meta.userEmail || orderResource.payer?.email_address;
+          const userName  = meta.userName  || `${orderResource.payer?.name?.given_name || ""} ${orderResource.payer?.name?.surname || ""}`.trim();
+
+          await activateMembership({
+            userId:           meta.userId,
+            planId:           meta.planId || "pro",
+            billingPeriod:    meta.billingPeriod || "monthly",
+            amountUSD:        parseFloat(meta.amountUSD) || parseFloat(capUnit?.amount?.value) || 0,
+            paymentMethod:    "paypal",
+            gatewayOrderId:   orderId,
+            gatewayPaymentId: captureId,
+            userEmail,
+            userName,
+          });
+        }
+      } catch (capErr) {
+        console.error("❌ Webhook order capture error:", capErr?.response?.data || capErr.message);
+      }
+    } else if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
+      const resource = event.resource || {};
+      const orderId = resource.supplementary_data?.related_ids?.order_id || resource.id;
+      const captureId = resource.id;
+
+      let pending = await PaypalOrder.findOne({ orderId });
+      if (pending && pending.status === "activated") {
+        console.log(`ℹ️ Webhook: Order ${orderId} already activated.`);
+        return res.status(200).json({ received: true });
+      }
+
+      if (pending) {
+        pending.status = "captured";
+        pending.captureId = captureId;
+        await pending.save();
+
+        await activateMembership({
+          userId:           pending.userId,
+          planId:           pending.planId,
+          billingPeriod:    pending.billingPeriod,
+          amountUSD:        pending.amountUSD,
+          paymentMethod:    "paypal",
+          gatewayOrderId:   orderId,
+          gatewayPaymentId: captureId,
+          userEmail:        pending.userEmail,
+          userName:         pending.userName,
+        });
+
+        pending.status = "activated";
+        pending.lastError = null;
+        await pending.save();
+        console.log(`✅ Webhook activated membership via PaypalOrder record: ${orderId}`);
+      } else {
+        let meta = {};
+        if (resource.custom_id) {
+          try { meta = JSON.parse(resource.custom_id); } catch {}
+        }
+        if (!meta.userId && orderId) {
+          try {
+            const orderRes = await axios.get(`${baseUrl}/v2/checkout/orders/${orderId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const unit = orderRes.data?.purchase_units?.[0];
+            if (unit?.custom_id) {
+              try { meta = JSON.parse(unit.custom_id); } catch {}
+            }
+          } catch (fetchErr) {
+            console.warn("Webhook could not fetch order details for capture:", fetchErr.message);
+          }
+        }
+
+        const userEmail = meta.userEmail || resource.payer?.email_address;
+        const userName  = meta.userName;
+
+        if (meta.userId || userEmail) {
+          await activateMembership({
+            userId:           meta.userId,
+            planId:           meta.planId || "pro",
+            billingPeriod:    meta.billingPeriod || "monthly",
+            amountUSD:        parseFloat(meta.amountUSD) || parseFloat(resource.amount?.value) || 0,
+            paymentMethod:    "paypal",
+            gatewayOrderId:   orderId,
+            gatewayPaymentId: captureId,
+            userEmail,
+            userName,
+          });
+          console.log(`✅ PayPal Webhook activated membership for: ${userEmail || meta.userId}`);
+        }
+      }
+    }
+
+    res.status(200).json({ received: true });
+  } catch (err) {
+    console.error("❌ PayPal webhook error:", err.message);
+    res.status(200).json({ received: true, warning: err.message });
   }
 };
 
@@ -503,6 +877,100 @@ exports.getTransactionById = async (req, res) => {
     res.json({ success: true, transaction });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch transaction", error: error.message });
+  }
+};
+
+// ── Manual Sync / Recovery Endpoint for PayPal ──────────────────────────────
+exports.syncPaypalOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "Missing orderId" });
+    }
+
+    const { token, baseUrl } = await getPaypalAccessToken();
+    const orderRes = await axios.get(`${baseUrl}/v2/checkout/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const order = orderRes.data;
+
+    const unit = order?.purchase_units?.[0];
+    let meta = {};
+    if (unit?.custom_id) {
+      try { meta = JSON.parse(unit.custom_id); } catch {}
+    }
+    if (!meta.userId && unit?.reference_id) {
+      const parts = unit.reference_id.split("___");
+      if (parts.length >= 3) {
+        meta.planId = parts[0];
+        meta.billingPeriod = parts[1];
+        meta.userId = parts[2];
+      }
+    }
+
+    let captureId = orderId;
+    let isCompleted = order.status === "COMPLETED";
+
+    if (order.status === "APPROVED") {
+      try {
+        const capRes = await axios.post(
+          `${baseUrl}/v2/checkout/orders/${orderId}/capture`,
+          {},
+          { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+        );
+        if (capRes.data?.status === "COMPLETED") {
+          isCompleted = true;
+          captureId = capRes.data.purchase_units?.[0]?.payments?.captures?.[0]?.id || orderId;
+        }
+      } catch (capErr) {
+        const errDetail = capErr?.response?.data;
+        if (errDetail?.details?.some(d => d.issue === "ORDER_ALREADY_CAPTURED")) {
+          isCompleted = true;
+        } else {
+          return res.status(400).json({ success: false, message: getDetailedPaypalError(capErr) });
+        }
+      }
+    }
+
+    if (isCompleted || order.status === "COMPLETED") {
+      const targetUserId = req.user?._id || meta.userId;
+      const targetUserEmail = req.user?.email || meta.userEmail || order.payer?.email_address;
+      const targetUserName = req.user?.name || meta.userName || `${order.payer?.name?.given_name || ""} ${order.payer?.name?.surname || ""}`.trim();
+      const targetPlanId = meta.planId || "pro";
+      const targetBilling = meta.billingPeriod || "monthly";
+
+      const transaction = await activateMembership({
+        userId: targetUserId,
+        planId: targetPlanId,
+        billingPeriod: targetBilling,
+        amountUSD: parseFloat(meta.amountUSD) || parseFloat(unit?.amount?.value) || 0,
+        paymentMethod: "paypal",
+        gatewayOrderId: orderId,
+        gatewayPaymentId: captureId,
+        userEmail: targetUserEmail,
+        userName: targetUserName,
+      });
+
+      const activeUser = await User.findOne({
+        $or: [
+          ...(targetUserId ? [{ _id: targetUserId }] : []),
+          ...(targetUserEmail ? [{ email: targetUserEmail.toLowerCase().trim() }] : [])
+        ]
+      }).select('-password -__v -googleAccessToken -googleId -followerUsers');
+
+      return res.json({
+        success: true,
+        message: "Subscription synced and activated successfully!",
+        transaction,
+        user: activeUser,
+        membership: activeUser?.membership
+      });
+    }
+
+    res.status(400).json({ success: false, message: `PayPal order status is ${order.status}. Order must be APPROVED or COMPLETED.` });
+  } catch (error) {
+    console.error("❌ Sync PayPal order error:", error?.response?.data || error.message);
+    res.status(500).json({ success: false, message: getDetailedPaypalError(error) });
   }
 };
 

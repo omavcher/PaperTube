@@ -41,87 +41,75 @@ const PLANS: Plan[] = [
     id: "free",
     name: "Free Tier",
     badge: "Forever Free",
-    tagline: "Explore the magic with zero risk.",
+    tagline: "Explore the magic of AI learning with zero risk.",
     usd: { monthly: 0, yearly: 0, yearlyPerMonth: 0, saving: "" },
     inr: { monthly: 0, yearly: 0, yearlyPerMonth: 0, saving: "" },
     cta: "Start for free",
     ctaFree: true,
     highlight: false,
     features: [
-      "5 video notes / day (up to 60 min/video)",
-      "100 PaperChat messages / day",
-      "5 quiz & flashcard sets / day",
-      "3 mind maps & diagrams / day",
-      "2 AI slide decks / day (up to 8 slides)",
-      "10 math & homework solves / day",
-      "1 AI humanizer run / day",
-      "Standard PDF & Markdown export",
+      "Access to Paperxify core study & reasoning engine",
+      "Standard video lecture processing & synthesis",
+      "Interactive PaperChat video tutor assistant",
+      "Smart flashcards, quizzes & step-by-step solver",
+      "Visual concept studio & mind map diagrams",
+      "Standard PDF & Markdown exports",
     ],
   },
   {
     id: "pro",
     name: "Pro Scholar",
     badge: "⭐ Most Popular",
-    tagline: "30 hours of AI study content per month.",
+    tagline: "Extended access to our most capable AI models.",
     usd: { monthly: 9.99, yearly: 79.99, yearlyPerMonth: 6.67, saving: "~33% off" },
     inr: { monthly: 799, yearly: 6999, yearlyPerMonth: 583, saving: "~27% off" },
     cta: "Get Pro Scholar",
     highlight: true,
     features: [
-      "120 AI video notes / month (up to 4 hrs/video)",
-      "2,000 PaperChat messages / month",
-      "30 AI quiz & practice sets / month",
-      "Unlimited flashcard sets",
-      "15 mind maps & diagrams / month",
-      "10 AI slide decks / month (up to 20 slides)",
-      "500 math & study solves / month",
-      "50 AI humanizer & essay scans / month",
-      "Publication-quality PDF (LaTeX + Code)",
-      "Notion + Markdown + Anki export",
-      "Priority cloud processing queue",
+      "Extended access to our fastest, most capable AI models",
+      "Deep marathon lecture processing (up to 4 hours long)",
+      "Autonomous Agentic Workspace with live app actions",
+      "High-resolution Visual Studio concept artwork",
+      "Keynote slide deck generator with speaker notes & PPTX",
+      "Publication-quality PDF (LaTeX + Code) & Notion export",
+      "Priority access during peak hours with zero queue wait",
     ],
   },
   {
     id: "power",
     name: "Power Scholar",
     badge: "👑 Max Output",
-    tagline: "100 hours of AI learning. No compromises.",
+    tagline: "Maximum reasoning capacity for power researchers.",
     usd: { monthly: 19.99, yearly: 149.99, yearlyPerMonth: 10.83, saving: "~37% off" },
     inr: { monthly: 1599, yearly: 12999, yearlyPerMonth: 1083, saving: "~32% off" },
     cta: "Get Power Scholar",
     highlight: false,
     features: [
-      "350 AI video notes / month (up to 8 hrs/video)",
-      "10,000 PaperChat messages / month",
-      "Unlimited quizzes & practice sets",
-      "Unlimited flashcard sets",
-      "Unlimited mind maps & diagrams",
-      "30 AI slide decks / month (up to 40 slides)",
-      "1,500 math & study solves / month",
-      "200 AI humanizer & deep essay runs / month",
-      "Deep textbook-quality LaTeX PDF export",
-      "Instant turbo queue — zero wait time",
-      "All export formats (PDF, DOCX, PPTX, Markdown, HTML)",
+      "Maximum reasoning capacity and output volume",
+      "Full course playlists & mega streams (up to 8 hours long)",
+      "Priority Turbo Agent execution with automated workflows",
+      "Expanded Visual Studio creative suite & studio illustrations",
+      "Unlimited active-recall quizzes, flashcards & mind maps",
+      "Instant Turbo queue — zero wait time anytime",
+      "All export formats (LaTeX PDF, DOCX, PPTX, Anki .apkg)",
     ],
   },
 ];
 
 // ─── Comparison Table ─────────────────────────────────────────────────────────
 const COMPARE_ROWS = [
-  { feature: "AI Video Notes",           free: "5 / day",   pro: "120 / mo",  power: "350 / mo"  },
-  { feature: "Max Video Length",         free: "60 min",    pro: "4 hours",   power: "8 hours"   },
-  { feature: "PaperChat Messages",       free: "100 / day", pro: "2,000 / mo",power: "10,000 / mo"},
-  { feature: "AI Quiz Sets",             free: "5 / day",   pro: "30 / mo",   power: "Unlimited" },
-  { feature: "Flashcard Sets",           free: "5 / day",   pro: "Unlimited", power: "Unlimited" },
-  { feature: "Mind Maps & Diagrams",     free: "3 / day",   pro: "15 / mo",   power: "Unlimited" },
-  { feature: "AI Slide Decks (PPT)",     free: "2 / day",   pro: "10 / mo",   power: "30 / mo"   },
-  { feature: "Math & Study Solves",      free: "10 / day",  pro: "500 / mo",  power: "1,500 / mo"},
-  { feature: "AI Humanizer & Essays",    free: "1 / day",   pro: "50 / mo",   power: "200 / mo"  },
-  { feature: "Max Slides per Deck",      free: "8 slides",  pro: "20 slides", power: "40 slides" },
-  { feature: "LaTeX Publication PDF",    free: false,       pro: true,        power: true        },
-  { feature: "Notion / Anki Export",     free: false,       pro: true,        power: true        },
-  { feature: "DOCX / PPTX / HTML Export",free: false,       pro: false,       power: true        },
-  { feature: "Processing Speed",         free: "Standard", pro: "Priority GPU", power: "Instant Turbo" },
+  { feature: "AI Study Capacity",        free: "Standard Daily", pro: "10x Extended", power: "30x Maximum" },
+  { feature: "Max Lecture Length",       free: "Up to 60 min",   pro: "Up to 4 hours", power: "Up to 8 hours" },
+  { feature: "Autonomous Agent & Tools", free: "Standard Agent", pro: "All 7 Live Apps", power: "Priority Turbo Agent" },
+  { feature: "Visual Studio (AI Images)",free: "Concept Previews",pro: "High-Res Studio", power: "Expanded Creative Suite" },
+  { feature: "PaperChat Video Tutor",    free: "Standard",       pro: "High Volume",  power: "Priority Unlimited" },
+  { feature: "Interactive Slide Decks",  free: "Basic (8 slides)", pro: "Pro (20 slides)", power: "Executive (40 slides)" },
+  { feature: "AI Quizzes & Tests",       free: "Daily practice", pro: "Extended",     power: "Unlimited" },
+  { feature: "Flashcards & Mind Maps",   free: "Standard",       pro: "Unlimited",    power: "Unlimited" },
+  { feature: "LaTeX Publication PDF",    free: false,            pro: true,           power: true },
+  { feature: "Notion & Anki Export",     free: false,            pro: true,           power: true },
+  { feature: "DOCX & PPTX Export",       free: false,            pro: false,          power: true },
+  { feature: "Processing Queue Speed",   free: "Standard",       pro: "Priority GPU", power: "Instant Turbo" },
 ];
 
 const FAQS = [
@@ -160,7 +148,7 @@ export default function PricingPage() {
   const [pendingPlan, setPendingPlan] = useState<Plan | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingCheckoutPlan, setPendingCheckoutPlan] = useState<Plan | null>(null);
-  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -245,8 +233,25 @@ export default function PricingPage() {
     finally { setIsProcessing(false); setSelectedId(null); }
   };
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map((faq) => ({
+      "@type": "Question",
+      "name": faq.q,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.a,
+      },
+    })),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       <AuthLoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
@@ -305,6 +310,24 @@ export default function PricingPage() {
                   {p === "yearly" && <span className={cn("px-1.5 py-0.5 rounded-full text-[8.5px] font-bold uppercase", billing === "yearly" ? "bg-black/30 text-white" : "bg-red-500/15 text-red-400 border border-red-500/20")}>Save up to {maxSaving}%</span>}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Trust & Guarantee Banner */}
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-2 px-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-neutral-300 mb-8 max-w-2xl mx-auto text-center shadow-sm">
+            <div className="flex items-center gap-1.5 font-medium text-neutral-200">
+              <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+              <span>7-Day Money-Back Guarantee</span>
+            </div>
+            <span className="text-neutral-700 hidden sm:inline">•</span>
+            <div className="flex items-center gap-1.5 font-medium text-neutral-200">
+              <Zap size={14} className="text-amber-400 shrink-0" />
+              <span>Cancel Anytime in 1-Click</span>
+            </div>
+            <span className="text-neutral-700 hidden sm:inline">•</span>
+            <div className="flex items-center gap-1.5 font-medium text-neutral-200">
+              <Lock size={14} className="text-blue-400 shrink-0" />
+              <span>No Card Needed for Free Tier</span>
             </div>
           </div>
 

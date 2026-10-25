@@ -64,12 +64,22 @@ const nextConfig: NextConfig = {
   // Avoid full-page reload on 404 (use soft navigation)
   skipTrailingSlashRedirect: true,
 
-  // Redirect old Sentinel tool URL to AI Metadata Remover
+  // Redirect old Sentinel tool URL to AI Metadata Remover & legacy /agent to /workspace
   async redirects() {
     return [
       {
         source: "/tools/sentinel",
         destination: "/tools/ai-metadata-remover",
+        permanent: true,
+      },
+      {
+        source: "/agent",
+        destination: "/workspace",
+        permanent: true,
+      },
+      {
+        source: "/agent/:slug*",
+        destination: "/workspace/:slug*",
         permanent: true,
       },
     ];

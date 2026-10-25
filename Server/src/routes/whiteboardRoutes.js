@@ -31,8 +31,10 @@ router.post("/save", optionalAuth, whiteboardController.saveWhiteboard);
 // 🔹 Get logged-in user's whiteboards list
 router.get("/user", authMiddleware, whiteboardController.getUserWhiteboards);
 
+const { enforceQuota } = require("../middleware/quotaMiddleware");
+
 // 🔹 AI Agent diagram generation
-router.post("/ai-generate", optionalAuth, whiteboardController.generateWhiteboardAI);
+router.post("/ai-generate", optionalAuth, enforceQuota("whiteboard"), whiteboardController.generateWhiteboardAI);
 
 // 🔹 Duplicate a whiteboard
 router.post("/duplicate/:id", optionalAuth, whiteboardController.duplicateWhiteboard);

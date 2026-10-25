@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Briefcase, BookOpen, Zap, Users, Crown, Check, ArrowRight, Mail, 
   ShieldCheck, RefreshCw, Award, Globe, ChevronDown, Instagram, Youtube, 
-  Twitter, Linkedin
+  Twitter, Linkedin, Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,37 @@ export default function Footer() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [openMobileSec, setOpenMobileSec] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isSubscribedUser, setIsSubscribedUser] = useState(false);
+
+  useEffect(() => {
+    const checkUserSubscription = () => {
+      const userData = localStorage.getItem("user");
+      if (userData) {
+        try {
+          const parsed = JSON.parse(userData);
+          setCurrentUser(parsed);
+          const isSub = Boolean(
+            parsed?.membership?.isActive ||
+            (parsed?.membership?.planId && parsed?.membership?.planId !== "free") ||
+            parsed?.isPro ||
+            (parsed?.plan && parsed?.plan !== "free")
+          );
+          setIsSubscribedUser(isSub);
+        } catch {
+          setCurrentUser(null);
+          setIsSubscribedUser(false);
+        }
+      } else {
+        setCurrentUser(null);
+        setIsSubscribedUser(false);
+      }
+    };
+
+    checkUserSubscription();
+    window.addEventListener("auth-change", checkUserSubscription);
+    return () => window.removeEventListener("auth-change", checkUserSubscription);
+  }, []);
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,16 +104,22 @@ export default function Footer() {
                 </div>
               ) : (
                 <form onSubmit={handleSubscribe} className="flex items-center gap-2 mt-3">
+                  <label htmlFor="footer-newsletter-email" className="sr-only">
+                    Email address for product updates
+                  </label>
                   <input
+                    id="footer-newsletter-email"
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
+                    aria-label="Email address for product updates"
                     className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-white/20 text-xs px-3 py-2 rounded-xl text-white placeholder-neutral-500 focus:outline-none min-w-0 transition-colors"
                   />
                   <button
                     type="submit"
+                    aria-label="Subscribe to newsletter"
                     className="bg-[#ef4444] hover:bg-[#dc2626] text-white font-medium text-xs px-3.5 py-2 rounded-xl flex items-center gap-1 shrink-0 transition-all cursor-pointer active:scale-98"
                   >
                     <span>Join</span>
@@ -161,10 +198,11 @@ export default function Footer() {
                 </h4>
                 <ul className="space-y-2 text-xs">
                   <li><Link href="/blog" className="hover:text-white transition-colors">Blog & Guides</Link></li>
+                  <li><Link href="/notegpt-alternative" className="hover:text-white transition-colors">NoteGPT Alternative</Link></li>
+                  <li><Link href="/eightify-alternative" className="hover:text-white transition-colors">Eightify Alternative</Link></li>
+                  <li><Link href="/youtube-video-summarizer" className="hover:text-white transition-colors">YouTube Video Summarizer</Link></li>
                   <li><Link href="/contact" className="hover:text-white transition-colors">Help Center</Link></li>
                   <li><Link href="/success-stories" className="hover:text-white transition-colors">Success Stories</Link></li>
-                  <li><a href="https://youtube.com/@Paperxify" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">YouTube Tutorials</a></li>
-                  <li><Link href="/dashboard" className="hover:text-white transition-colors">Backpack Library</Link></li>
                 </ul>
               </div>
 
@@ -229,7 +267,7 @@ export default function Footer() {
                 {openMobileSec === "platform" && (
                   <ul className="py-2 space-y-2 text-xs pl-6 text-neutral-300">
                     <li><Link href="/ai-study">AI Study Suite</Link></li>
-                    <li><Link href="/dashboard">Backpack Library</Link></li>
+                    <li><Link href="/profile">Profile</Link></li>
                     <li><Link href="/tools">All Utilities</Link></li>
                     <li><Link href="/youtube-to-notes">Notes Generator</Link></li>
                   </ul>
@@ -251,6 +289,8 @@ export default function Footer() {
                 {openMobileSec === "resources" && (
                   <ul className="py-2 space-y-2 text-xs pl-6 text-neutral-300">
                     <li><Link href="/blog">Blog & Guides</Link></li>
+                    <li><Link href="/notegpt-alternative">NoteGPT Alternative</Link></li>
+                    <li><Link href="/eightify-alternative">Eightify Alternative</Link></li>
                     <li><Link href="/contact">Help Center</Link></li>
                     <li><Link href="/success-stories">Success Stories</Link></li>
                   </ul>
@@ -281,42 +321,87 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* ── COL 3: PAPERXIFY PRO CARD ── */}
+          {/* ── COL 3: PAPERXIFY PRO / MEMBER CARD ── */}
           <div className="lg:col-span-3">
-            <div className="rounded-2xl bg-[#09090c] border border-white/[0.08] hover:border-white/[0.14] p-5 shadow-sm transition-all">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-neutral-200 shrink-0">
-                  <Crown size={17} />
+            {isSubscribedUser ? (
+              /* When user is already subscribed */
+              <div className="rounded-2xl bg-[#09090c] border border-emerald-500/25 hover:border-emerald-500/40 p-5 shadow-sm transition-all relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 blur-2xl pointer-events-none rounded-full" />
+                
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                    <Crown size={17} />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                      Active Member
+                    </span>
+                    <h4 className="text-sm font-bold text-white mt-1">
+                      {currentUser?.membership?.planName || "Scholar Member"}
+                    </h4>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider">Upgrade Tier</p>
-                  <h4 className="text-sm font-bold text-white">Paperxify <span className="text-[#ef4444]">Pro</span></h4>
-                </div>
-              </div>
 
-              <div className="space-y-2 text-xs text-neutral-300 my-3">
-                <div className="flex items-center gap-2">
-                  <Check size={12} className="text-red-400 shrink-0" />
-                  <span>Full access to all 20+ study tools</span>
+                <div className="space-y-2 text-xs text-neutral-300 my-3">
+                  <div className="flex items-center gap-2">
+                    <Check size={12} className="text-emerald-400 shrink-0" />
+                    <span>Unlimited AI summaries &amp; flashcards</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={12} className="text-emerald-400 shrink-0" />
+                    <span>Priority GPU cloud processing</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={12} className="text-emerald-400 shrink-0" />
+                    <span>LaTeX + PPT + Notion exports</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Check size={12} className="text-red-400 shrink-0" />
-                  <span>LaTeX formulas & PPT export</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check size={12} className="text-red-400 shrink-0" />
-                  <span>Priority GPU cloud processing</span>
-                </div>
-              </div>
 
-              <Link
-                href="/pricing"
-                className="w-full bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white font-medium text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all mt-4"
-              >
-                <span>Upgrade to Pro</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
+                <Link
+                  href="/profile"
+                  className="w-full bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-semibold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all mt-4"
+                >
+                  <span>Manage Subscription</span>
+                  <ArrowRight size={12} />
+                </Link>
+              </div>
+            ) : (
+              /* Non-subscribed / Guest user */
+              <div className="rounded-2xl bg-[#09090c] border border-white/[0.08] hover:border-white/[0.14] p-5 shadow-sm transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-neutral-200 shrink-0">
+                    <Crown size={17} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider">Upgrade Tier</p>
+                    <h4 className="text-sm font-bold text-white">Paperxify <span className="text-[#ef4444]">Pro</span></h4>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs text-neutral-300 my-3">
+                  <div className="flex items-center gap-2">
+                    <Check size={12} className="text-red-400 shrink-0" />
+                    <span>Full access to all 20+ study tools</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={12} className="text-red-400 shrink-0" />
+                    <span>LaTeX formulas &amp; PPT export</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={12} className="text-red-400 shrink-0" />
+                    <span>Priority GPU cloud processing</span>
+                  </div>
+                </div>
+
+                <Link
+                  href="/pricing"
+                  className="w-full bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white font-medium text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all mt-4"
+                >
+                  <span>Upgrade to Pro</span>
+                  <ArrowRight size={12} />
+                </Link>
+              </div>
+            )}
           </div>
 
         </div>

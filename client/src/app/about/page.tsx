@@ -11,6 +11,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import Footer from "@/components/Footer";
+import { SITE_METRICS } from "@/config/siteMetrics";
 
 export default function FounderPage() {
   return (
@@ -107,7 +108,7 @@ export default function FounderPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-24">
            <StatCard label="Experience" value="3+ Years" icon={<Award className="text-yellow-500" />} />
            <StatCard label="Projects Shipped" value="10+" icon={<Zap className="text-red-500" />} />
-           <StatCard label="Users Served" value="320k+" icon={<Globe className="text-blue-500" />} />
+           <StatCard label="Users Served" value={SITE_METRICS.usersServed} icon={<Globe className="text-blue-500" />} />
            <StatCard label="Tech Stack" value="MERN + AI" icon={<Cpu className="text-emerald-500" />} />
         </div>
 

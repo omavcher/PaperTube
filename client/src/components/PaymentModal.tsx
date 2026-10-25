@@ -31,74 +31,196 @@ export function PayPalSDKButton({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sdkReady, setSdkReady] = useState(false);
+  const [activeClientId, setActiveClientId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
 
   useEffect(() => {
-    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
-    if (!clientId || clientId === "YOUR_PAYPAL_CLIENT_ID") {
-      onError("PayPal not configured.");
-      return;
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  }, [onSuccess, onError]);
+
+  // Fetch PayPal configuration dynamically from backend or fallback to env
+  useEffect(() => {
+    let isMounted = true;
+    async function loadConfig() {
+      try {
+        const res = await api.get("/payment/paypal/config");
+        if (res.data?.success && res.data?.clientId) {
+          if (isMounted) setActiveClientId(res.data.clientId);
+          return;
+        }
+      } catch {
+        // Fallback to client-side env
+      }
+      const envId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+      if (isMounted && envId && envId !== "YOUR_PAYPAL_CLIENT_ID") {
+        setActiveClientId(envId);
+      }
     }
-    const scriptId = "paypal-sdk-script";
+    loadConfig();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Load PayPal SDK Script dynamically
+  useEffect(() => {
+    if (!activeClientId) return;
+
+    const scriptId = `paypal-sdk-script-${activeClientId}`;
     if (document.getElementById(scriptId)) {
       if ((window as any).paypal) setSdkReady(true);
       return;
     }
+
+    // Remove any older paypal SDK script to avoid conflict
+    const existing = document.querySelector("script[src*='paypal.com/sdk/js']");
+    if (existing) existing.remove();
+
     const s = document.createElement("script");
     s.id = scriptId;
-    s.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture`;
+    s.src = `https://www.paypal.com/sdk/js?client-id=${activeClientId}&currency=USD&intent=capture&components=buttons`;
     s.async = true;
     s.onload = () => setSdkReady(true);
-    s.onerror = () => onError("PayPal failed to load.");
+    s.onerror = () => {
+      console.error("PayPal SDK script failed to load.");
+      onErrorRef.current("PayPal failed to load. Please check your internet connection.");
+    };
     document.body.appendChild(s);
-  }, [onError]);
+  }, [activeClientId]);
 
+  // Render PayPal Buttons
   useEffect(() => {
     if (!sdkReady || !containerRef.current || !(window as any).paypal) return;
+
     containerRef.current.innerHTML = "";
-    (window as any).paypal
-      .Buttons({
-        style: { layout: "vertical", color: "blue", shape: "pill", label: "pay", height: 44 },
-        createOrder: async () => {
-          trackDbActivity(`/pricing/payment-start-paypal/${plan.id}/${billing}`);
-          const token = localStorage.getItem("authToken");
-          const res = await api.post(
-            "/payment/paypal/create-order",
-            { planId: plan.id, billingPeriod: billing },
-            { headers: { Auth: token } }
-          );
-          if (!res.data.success) throw new Error(res.data.message);
-          return res.data.orderId;
-        },
-        onApprove: async (data: any) => {
-          try {
+    try {
+      (window as any).paypal
+        .Buttons({
+          style: { layout: "vertical", color: "blue", shape: "pill", label: "pay", height: 44 },
+          createOrder: async () => {
+            trackDbActivity(`/pricing/payment-start-paypal/${plan.id}/${billing}`);
             const token = localStorage.getItem("authToken");
             const res = await api.post(
-              "/payment/paypal/capture-order",
-              { orderId: data.orderID },
-              { headers: { Auth: token } }
+              "/payment/paypal/create-order",
+              { planId: plan.id, billingPeriod: billing },
+              { headers: { Auth: token, Authorization: token ? `Bearer ${token}` : undefined } }
             );
-            if (res.data.success) onSuccess();
-            else onError("Capture failed — contact support.");
-          } catch (e: any) {
-            onError(e?.response?.data?.message || "Capture failed");
-          }
-        },
-        onError: (e: any) => {
-          console.error("PayPal error:", e);
-          onError("PayPal payment failed.");
-        },
-      })
-      .render(containerRef.current);
-  }, [sdkReady, plan.id, billing, onSuccess, onError]);
+            if (!res.data.success || !res.data.orderId) {
+              throw new Error(res.data?.message || "Failed to create PayPal order");
+            }
 
-  if (!sdkReady) {
+            // Save pending order in localStorage for auto-recovery
+            try {
+              localStorage.setItem("paperxify_pending_paypal_order", JSON.stringify({
+                orderId: res.data.orderId,
+                planId: plan.id,
+                billingPeriod: billing,
+                timestamp: Date.now()
+              }));
+            } catch {}
+
+            return res.data.orderId;
+          },
+          onApprove: async (data: any) => {
+            setIsProcessing(true);
+            const token = localStorage.getItem("authToken");
+            const orderId = data.orderID || data.orderId;
+
+            try {
+              const res = await api.post(
+                "/payment/paypal/capture-order",
+                {
+                  orderId,
+                  planId: plan.id,
+                  billingPeriod: billing
+                },
+                { headers: { Auth: token, Authorization: token ? `Bearer ${token}` : undefined } }
+              );
+
+              if (res.data?.success) {
+                // Clear pending order
+                localStorage.removeItem("paperxify_pending_paypal_order");
+
+                // Immediately update user in localStorage and notify entire app
+                if (res.data.user) {
+                  localStorage.setItem("user", JSON.stringify(res.data.user));
+                }
+                window.dispatchEvent(new Event("auth-change"));
+                window.dispatchEvent(new Event("capacity-updated"));
+
+                toast.success("PayPal subscription activated successfully!");
+                onSuccessRef.current();
+              } else {
+                throw new Error(res.data?.message || "Capture could not be finalized.");
+              }
+            } catch (err: any) {
+              console.warn("Direct capture encountered issue, attempting auto-sync recovery:", err.message);
+
+              // Auto-sync fallback retry
+              try {
+                const syncRes = await api.post(
+                  "/payment/paypal/sync-order",
+                  { orderId },
+                  { headers: { Auth: token, Authorization: token ? `Bearer ${token}` : undefined } }
+                );
+
+                if (syncRes.data?.success) {
+                  localStorage.removeItem("paperxify_pending_paypal_order");
+                  if (syncRes.data.user) {
+                    localStorage.setItem("user", JSON.stringify(syncRes.data.user));
+                  }
+                  window.dispatchEvent(new Event("auth-change"));
+                  window.dispatchEvent(new Event("capacity-updated"));
+
+                  toast.success("Payment verified and subscription activated!");
+                  onSuccessRef.current();
+                  return;
+                }
+              } catch (syncErr: any) {
+                console.error("Auto-sync recovery also failed:", syncErr);
+              }
+
+              const msg = err?.response?.data?.message || err?.message || "PayPal capture failed. If money was deducted, click 'Sync PayPal' in your profile to activate.";
+              onErrorRef.current(msg);
+            } finally {
+              setIsProcessing(false);
+            }
+          },
+          onCancel: () => {
+            setIsProcessing(false);
+            localStorage.removeItem("paperxify_pending_paypal_order");
+          },
+          onError: (e: any) => {
+            console.error("PayPal SDK error:", e);
+            setIsProcessing(false);
+            onErrorRef.current("PayPal checkout encountered an error. Please try again.");
+          },
+        })
+        .render(containerRef.current);
+    } catch (renderErr: any) {
+      console.error("Failed to render PayPal buttons:", renderErr);
+    }
+  }, [sdkReady, plan.id, billing]);
+
+  if (!activeClientId) {
     return (
       <div className="h-11 flex items-center justify-center gap-2 text-neutral-400 text-xs">
-        <Loader2 size={14} className="animate-spin" /> Loading PayPal…
+        <Loader2 size={14} className="animate-spin" /> Initializing PayPal…
       </div>
     );
   }
-  return <div ref={containerRef} id="paypal-button-container" className="w-full" />;
+
+  if (!sdkReady || isProcessing) {
+    return (
+      <div className="h-11 flex items-center justify-center gap-2 text-neutral-400 text-xs">
+        <Loader2 size={14} className="animate-spin text-blue-400" />
+        <span>{isProcessing ? "Confirming payment with PayPal…" : "Loading PayPal…"}</span>
+      </div>
+    );
+  }
+
+  return <div ref={containerRef} id="paypal-button-container" className="w-full min-h-[44px]" />;
 }
 
 // ─── Payment Modal Component ──────────────────────────────────────────────────

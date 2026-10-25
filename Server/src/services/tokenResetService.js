@@ -54,6 +54,28 @@ class TokenResetService {
                   else: "$tokens"
                 }
               },
+              "aiCapacity.usedUnits": {
+                $cond: {
+                  if: { $eq: ["$membership.isActive", true] },
+                  then: { $ifNull: ["$aiCapacity.usedUnits", 0] },
+                  else: 0
+                }
+              },
+              "aiCapacity.hardCostUSD": {
+                $cond: {
+                  if: { $eq: ["$membership.isActive", true] },
+                  then: { $ifNull: ["$aiCapacity.hardCostUSD", 0] },
+                  else: 0
+                }
+              },
+              "aiCapacity.imagesGenerated": {
+                $cond: {
+                  if: { $eq: ["$membership.isActive", true] },
+                  then: { $ifNull: ["$aiCapacity.imagesGenerated", 0] },
+                  else: 0
+                }
+              },
+              "aiCapacity.lastReset": now,
               lastTokenReset: now
             }
           }
@@ -124,6 +146,13 @@ class TokenResetService {
 
         // Grant them today's daily token allocation
         user.tokens = FREE_DAILY_TOKENS;
+        user.aiCapacity = {
+          usedUnits: 0,
+          allocatedUnits: 50,
+          hardCostUSD: 0,
+          imagesGenerated: 0,
+          lastReset: now,
+        };
         user.lastTokenReset = now;
 
         // History entry

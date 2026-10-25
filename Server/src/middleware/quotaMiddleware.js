@@ -10,6 +10,7 @@ const MathSolution = require("../models/MathSolution");
 const ExamPlan = require("../models/ExamPlan");
 const LanguageLesson = require("../models/LanguageLesson");
 const AiChat = require("../models/AiChat");
+const capacityService = require("../services/capacityService");
 
 // ─── Paperxify Pricing v2 — Calibrated for 75%+ Net Profit Margin ────────────
 // Pricing:
@@ -236,6 +237,7 @@ async function getUserQuotaStatus(userId) {
     maxSlides: planConfig.maxSlides,
     paperChatMessages: planConfig.paperChatMessages,
     paperChatUsed,
+    capacity: await capacityService.getUserCapacity(userId),
     features: {
       notes:         buildFeature(notesCount,         planConfig.notes,         "AI Video Notes"),
       presentations: buildFeature(presentationsCount, planConfig.presentations, "AI Slide Decks"),
@@ -248,7 +250,8 @@ async function getUserQuotaStatus(userId) {
 }
 
 /**
- * Express middleware — enforces plan quotas before any AI generation route.
+ * Express middleware — enforces plan quotas before any AI generation route
+ * using the Autonomous Unified Capacity Engine with atomic reservation.
  * Usage: router.post("/generate", enforceQuota("notes"), handler)
  */
 function enforceQuota(featureType) {
@@ -258,63 +261,44 @@ function enforceQuota(featureType) {
       if (!userId) {
         return res.status(401).json({
           success: false,
+          code: "AUTH_REQUIRED",
           message: "Authentication required to generate content",
         });
       }
 
-      const user = await User.findById(userId).select("membership name email");
-      if (!user) {
-        return res.status(404).json({ success: false, message: "User not found" });
+      // Atomic reservation — checks bounds, calculates capacity, and reserves units in 1 DB operation
+      const reservation = await capacityService.reserveCapacity(userId, featureType, req.body || {});
+      if (!reservation.success) {
+        return res.status(403).json(reservation.errorPayload);
       }
 
-      const planId = getUserPlanId(user);
-      const planConfig = PLAN_QUOTAS[planId] || PLAN_QUOTAS.free;
-      const limit = planConfig[featureType];
-
-      // Skip quota check for unlimited features
-      if (limit === undefined || limit === null || limit >= 999999) {
-        req.quota = { planId, planName: planConfig.name, unlimited: true };
-        return next();
-      }
-
-      const startDate = getPeriodStartDate(planId, user.membership);
-      const usedCount = await getFeatureUsageCount(userId, featureType, startDate, limit);
-
-      if (usedCount >= limit) {
-        const isFree = planId === "free";
-        const periodWord = isFree ? "today" : "this month";
-        const upgradeTarget = isFree
-          ? "Pro Scholar ($9.99/mo) for 120 monthly notes, 10 PPTs, 30 quizzes & more"
-          : "Power Scholar ($19.99/mo) for 350 monthly notes, unlimited quizzes & 8-hour videos";
-
-        return res.status(403).json({
-          success: false,
-          code: "QUOTA_EXCEEDED",
-          message: `You've used all ${limit} ${featureType} for ${periodWord} on the ${planConfig.name} plan. Upgrade to ${upgradeTarget}.`,
-          feature: featureType,
-          used: usedCount,
-          limit,
-          plan: planConfig.name,
-          planId,
-          period: planConfig.period,
-          upgradeUrl: "/pricing",
-        });
-      }
-
-      // Attach quota info to request for downstream logging
+      // Attach reservation to request
+      req.capacityReservation = reservation;
       req.quota = {
-        planId,
-        planName: planConfig.name,
-        used: usedCount,
-        limit,
-        remaining: limit - usedCount - 1,
+        planId: reservation.planId,
+        planName: reservation.planName,
+        reservedUnits: reservation.reservedUnits,
         unlimited: false,
       };
+
+      // Auto-refund reservation if the response finishes with an HTTP error
+      let refunded = false;
+      res.on("finish", () => {
+        if (!refunded && res.statusCode >= 400 && reservation.reservedUnits > 0) {
+          refunded = true;
+          capacityService.releaseCapacity(
+            userId,
+            featureType,
+            reservation.reservedUnits,
+            reservation.isImageAction
+          ).catch(() => {});
+        }
+      });
 
       next();
     } catch (error) {
       console.error(`[QuotaMiddleware] Quota check failed for ${featureType}:`, error.message);
-      // Fail open on unexpected internal error — do not block user generation
+      // Fail open on unexpected internal error so users aren't stranded
       next();
     }
   };
@@ -369,4 +353,5 @@ module.exports = {
   getUserQuotaStatus,
   enforceQuota,
   enforceVideoLength,
+  getUserCapacity: capacityService.getUserCapacity,
 };

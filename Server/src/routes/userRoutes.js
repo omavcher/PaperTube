@@ -1,7 +1,28 @@
 const express = require("express");
 const router = express.Router();
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 const authMiddleware = require("../middleware/authMiddleware");
 const userController = require("../controllers/userController");
+
+// Optional auth: decodes user if token provided, continues as guest if not
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.header('Auth') || req.header('Authorization');
+    if (!authHeader) return next();
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+    if (!token || token === 'null' || token === 'undefined') return next();
+    const decoded = jwt.verify(token, process.env.SESSION_SECRET);
+    if (decoded?.id) {
+      const user = await User.findById(decoded.id).select('-__v');
+      if (user) req.user = user;
+    }
+    next();
+  } catch {
+    next();
+  }
+};
+
 // Public routes
 // Public routes (no authentication required)
 router.get('/public/profile/:username', userController.getPublicProfile);
@@ -27,6 +48,7 @@ router.get('/suggested', authMiddleware, userController.getSuggestedUsers);
 router.post('/:userId/report', authMiddleware, userController.reportUser);
 router.post('/update-streak', authMiddleware, userController.updateStreak);
 router.get('/tokens',authMiddleware, userController.getTokenBalance);
+router.get('/capacity', optionalAuth, userController.getUserCapacity);
 router.get('/quota-status', authMiddleware, userController.getQuotaStatus);
 router.get('/creations/recent', authMiddleware, userController.getRecentCreations);
 router.delete('/creations/:type/:id', authMiddleware, userController.deleteCreation);

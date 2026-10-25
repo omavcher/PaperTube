@@ -1,9 +1,10 @@
 "use client";
 import React, { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
-import { Lock, Mail, User, Loader2, ShieldCheck, AlertCircle, Eye, EyeOff, ArrowRight, Sparkles } from "lucide-react";
+import { Lock, Mail, User, Loader2, ShieldCheck, AlertCircle, Eye, EyeOff, ArrowRight, Sparkles, Check } from "lucide-react";
 import { useGoogleLogin } from "@react-oauth/google";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -259,18 +260,18 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
   /* ─────────────────────────────────────────────────
      Reusable input class
   ───────────────────────────────────────────────── */
-  const inputCls = "w-full py-3 bg-neutral-900 border border-white/[0.08] hover:border-white/[0.16] focus:border-red-500/60 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-red-500/20 transition-all placeholder:text-neutral-600 text-white";
+  const inputCls = "w-full py-3 bg-[#0d0d14] border border-white/[0.09] hover:border-white/[0.18] focus:border-red-500/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all placeholder:text-neutral-500 text-white shadow-inner";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[96vw] max-w-[420px] lg:max-w-[860px] bg-neutral-950 border border-white/[0.06] text-white shadow-[0_40px_100px_rgba(0,0,0,0.8),0_0_60px_rgba(220,38,38,0.07)] p-0 gap-0 rounded-2xl overflow-hidden">
+      <DialogContent className="w-[96vw] max-w-[420px] lg:max-w-[880px] bg-[#09090e] border border-white/[0.09] text-white shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_60px_rgba(220,38,38,0.1)] p-0 gap-0 rounded-2xl overflow-hidden backdrop-blur-2xl">
 
         <div className="flex flex-col lg:flex-row">
 
           {/* ═══════════════════════════════════════════
               LEFT PANEL – Branding (desktop only)
           ═══════════════════════════════════════════ */}
-          <div className="hidden lg:flex lg:w-[42%] relative flex-col justify-between p-10 bg-gradient-to-br from-neutral-900 via-[#0c0c0c] to-black border-r border-white/[0.05] overflow-hidden min-h-[580px]">
+          <div className="hidden lg:flex lg:w-[42%] relative flex-col justify-between p-10 bg-gradient-to-br from-[#101016] via-[#09090d] to-black border-r border-white/[0.07] overflow-hidden min-h-[580px]">
 
             {/* Glow blobs */}
             <motion.div
@@ -285,23 +286,21 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
             />
             {/* Grid texture */}
             <div
-              className="absolute inset-0 pointer-events-none opacity-[0.025]"
+              className="absolute inset-0 pointer-events-none opacity-[0.035]"
               style={{
                 backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
-                backgroundSize: "32px 32px",
+                backgroundSize: "28px 28px",
               }}
             />
 
             {/* Top: Logo + animated headline */}
             <div className="relative z-10">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-8 bg-red-500/10 border border-red-500/20 rounded-full">
-                <Sparkles className="w-3 h-3 text-red-400 animate-pulse" />
-                <span className="text-[10px] font-bold text-red-400 uppercase tracking-[0.12em]">100K+ Learners</span>
-              </div>
-
-              <div className="mb-5">
-                <span className="text-4xl font-black italic tracking-tighter text-white leading-none">
-                  Paper<span className="text-red-500 drop-shadow-[0_0_14px_rgba(239,68,68,0.65)]">xify</span>
+              <div className="flex items-center gap-2 mb-8">
+                <span className="text-3xl font-black italic tracking-tighter uppercase text-white leading-none">
+                  PAPER<span className="text-red-500 drop-shadow-[0_0_16px_rgba(239,68,68,0.7)]">XIFY</span>
+                </span>
+                <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 shadow-sm">
+                  AI
                 </span>
               </div>
 
@@ -313,15 +312,15 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <h2 className="text-2xl font-bold text-white leading-snug mb-3">
-                    {view === "signin" && <>Welcome back,<br />scholar.</>}
-                    {view === "signup" && <>Start learning<br />smarter today.</>}
-                    {view === "signup-otp" && <>One last<br />step!</>}
-                    {view === "forgot" && <>Reset your<br />password.</>}
-                    {view === "forgot-otp" && <>Almost<br />done!</>}
+                  <h2 className="text-2xl font-black tracking-tight text-white leading-snug mb-3">
+                    {view === "signin" && <>Welcome back,<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-rose-300 to-white">scholar.</span></>}
+                    {view === "signup" && <>Start learning<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-rose-300 to-white">smarter today.</span></>}
+                    {view === "signup-otp" && <>One last<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-rose-300 to-white">step!</span></>}
+                    {view === "forgot" && <>Reset your<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-rose-300 to-white">password.</span></>}
+                    {view === "forgot-otp" && <>Almost<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-rose-300 to-white">done!</span></>}
                   </h2>
-                  <p className="text-sm text-neutral-400 leading-relaxed max-w-[200px]">
-                    {view === "signin" && "Your AI notes, flashcards, and study guides are waiting."}
+                  <p className="text-xs sm:text-[13px] text-neutral-400 leading-relaxed max-w-[260px]">
+                    {view === "signin" && "Your AI notes, flashcards, and study guides are ready."}
                     {view === "signup" && "Turn any YouTube video into structured AI notes — instantly."}
                     {view === "signup-otp" && "We just emailed you a 6-digit code. Check your inbox."}
                     {view === "forgot" && "We'll send a secure code to reset your password."}
@@ -339,31 +338,46 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
                 "10 free tokens every single day",
                 "No credit card required",
               ].map((feat, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
-                    <span className="text-red-400 text-[9px] font-black">✓</span>
+                <div key={i} className="flex items-center gap-3 group">
+                  <div className="w-5 h-5 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                    <Check size={11} strokeWidth={3} />
                   </div>
                   <span className="text-[13px] text-neutral-300 font-medium leading-snug">{feat}</span>
                 </div>
               ))}
             </div>
 
-            {/* Bottom: Social proof */}
-            <div className="relative z-10">
-              <div className="flex -space-x-2.5 mb-3">
-                {["🎓", "📚", "🧠", "⚡", "🎯"].map((emoji, i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-full bg-neutral-800 border-2 border-[#0c0c0c] flex items-center justify-center text-sm shadow-md"
-                  >
-                    {emoji}
+            {/* Bottom: Modern Social proof */}
+            <div className="relative z-10 pt-4 border-t border-white/[0.08]">
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-2">
+                  {[
+                    { initial: "O", bg: "from-blue-500 to-cyan-400" },
+                    { initial: "V", bg: "from-red-500 to-rose-400" },
+                    { initial: "A", bg: "from-amber-500 to-orange-400" },
+                    { initial: "S", bg: "from-purple-500 to-indigo-400" },
+                  ].map((u, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "w-7 h-7 rounded-full border-2 border-[#09090d] flex items-center justify-center text-[10px] font-bold text-white shadow-md bg-gradient-to-tr",
+                        u.bg
+                      )}
+                    >
+                      {u.initial}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                    <span>Active Study Platform</span>
                   </div>
-                ))}
+                  <p className="text-[11px] text-neutral-500">
+                    Trusted by students from <span className="text-neutral-300 font-medium">150+ countries</span>
+                  </p>
+                </div>
               </div>
-              <p className="text-[11px] text-neutral-500 leading-relaxed">
-                Trusted by students from{" "}
-                <span className="text-neutral-300 font-semibold">150+ countries</span>
-              </p>
             </div>
           </div>
 
@@ -373,13 +387,14 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
           <div className="flex-1 flex flex-col overflow-y-auto max-h-[92vh] scrollbar-none">
 
             {/* Mobile logo header */}
-            <div className="lg:hidden flex items-center justify-between px-6 pt-6 pb-1">
-              <span className="text-xl font-black italic tracking-tighter text-white">
-                Paper<span className="text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.55)]">xify</span>
-              </span>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 border border-red-500/20 rounded-full">
-                <Sparkles className="w-3 h-3 text-red-400" />
-                <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest">Free Plan</span>
+            <div className="lg:hidden flex items-center justify-between px-6 pt-6 pb-2 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-black italic tracking-tighter uppercase text-white">
+                  PAPER<span className="text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]">XIFY</span>
+                </span>
+                <span className="text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                  AI
+                </span>
               </div>
             </div>
 
@@ -452,7 +467,7 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
                           type="button"
                           onClick={() => googleLogin()}
                           disabled={formLoading}
-                          className="h-11 flex items-center justify-center gap-2.5 px-4 bg-white hover:bg-neutral-100 text-neutral-900 rounded-xl transition-all duration-200 font-semibold text-sm shadow active:scale-[0.97] disabled:opacity-50"
+                          className="h-11 flex items-center justify-center gap-2.5 px-4 bg-white hover:bg-neutral-100 text-neutral-900 rounded-xl transition-all duration-200 font-semibold text-xs sm:text-sm shadow-md active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                         >
                           <FcGoogle className="text-lg shrink-0" />
                           <span>Google</span>
@@ -461,7 +476,7 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
                           type="button"
                           onClick={handleGithubLogin}
                           disabled={formLoading}
-                          className="h-11 flex items-center justify-center gap-2.5 px-4 bg-neutral-800 hover:bg-neutral-700 border border-white/10 rounded-xl transition-all duration-200 font-semibold text-sm text-white active:scale-[0.97] disabled:opacity-50"
+                          className="h-11 flex items-center justify-center gap-2.5 px-4 bg-[#14141c] hover:bg-[#1c1c27] border border-white/[0.1] hover:border-white/20 rounded-xl transition-all duration-200 font-semibold text-xs sm:text-sm text-white shadow-sm active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                         >
                           <FaGithub className="text-lg shrink-0" />
                           <span>GitHub</span>
@@ -469,9 +484,9 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
                       </div>
 
                       <div className="flex items-center gap-3 mb-5">
-                        <div className="h-px bg-white/[0.07] flex-1" />
-                        <span className="text-[10px] text-neutral-600 font-semibold uppercase tracking-widest whitespace-nowrap">or with email</span>
-                        <div className="h-px bg-white/[0.07] flex-1" />
+                        <div className="h-px bg-white/[0.08] flex-1" />
+                        <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-widest whitespace-nowrap">or with email</span>
+                        <div className="h-px bg-white/[0.08] flex-1" />
                       </div>
                     </>
                   )}
@@ -631,7 +646,7 @@ export function LoginDialog({ isOpen, onClose, onSuccess, loading = false }: Log
                     {/* Submit button */}
                     <button
                       type="submit" disabled={formLoading}
-                      className="w-full h-12 mt-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 text-sm"
+                      className="w-full h-12 mt-1 bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_4px_24px_rgba(239,68,68,0.35)] hover:shadow-[0_6px_30px_rgba(239,68,68,0.5)] text-sm cursor-pointer"
                     >
                       {formLoading ? (
                         <><Loader2 className="h-4 w-4 animate-spin" /><span>Please wait...</span></>

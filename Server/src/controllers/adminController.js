@@ -19,6 +19,7 @@ const Essay = require("../models/Essay");
 const AiChat = require("../models/AiChat");
 const PracticeTest = require("../models/PracticeTest");
 const Folder = require("../models/Folder");
+const AiUsageLog = require("../models/AiUsageLog");
 
 
 exports.getDiagnostics = async (req, res) => {
@@ -1840,10 +1841,71 @@ exports.getAiModelsAnalytics = async (req, res) => {
       }
     ];
 
+    // 3. Aggregate AI financial & token telemetry from AiUsageLog
+    const usageTotals = await AiUsageLog.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalTokens: { $sum: "$totalTokens" },
+          promptTokens: { $sum: "$promptTokens" },
+          completionTokens: { $sum: "$completionTokens" },
+          totalCostUSD: { $sum: "$costUSD" },
+          totalCalls: { $sum: 1 },
+          imageCalls: { $sum: { $cond: [{ $eq: ["$type", "image"] }, 1, 0] } },
+          imageCostUSD: { $sum: { $cond: [{ $eq: ["$type", "image"] }, "$costUSD", 0] } },
+          textCostUSD: { $sum: { $cond: [{ $eq: ["$type", "text"] }, "$costUSD", 0] } }
+        }
+      }
+    ]);
+
+    const featureStats = await AiUsageLog.aggregate([
+      {
+        $group: {
+          _id: "$feature",
+          totalCalls: { $sum: 1 },
+          totalTokens: { $sum: "$totalTokens" },
+          totalCostUSD: { $sum: "$costUSD" }
+        }
+      },
+      { $sort: { totalCostUSD: -1 } }
+    ]);
+
+    const revenueAgg = await Transaction.aggregate([
+      { $match: { status: "success" } },
+      { $group: { _id: null, totalRevenueUSD: { $sum: "$amount" } } }
+    ]);
+
+    const totalRevenueUSD = revenueAgg[0]?.totalRevenueUSD || 0;
+    const totals = usageTotals[0] || {
+      totalTokens: 0, promptTokens: 0, completionTokens: 0, totalCostUSD: 0, totalCalls: 0, imageCalls: 0, imageCostUSD: 0, textCostUSD: 0
+    };
+
+    const profitMarginPct = totalRevenueUSD > 0
+      ? Math.max(0, Math.round(((totalRevenueUSD - totals.totalCostUSD) / totalRevenueUSD) * 1000) / 10)
+      : 75.0;
+
     res.status(200).json({
       success: true,
       models: modelsData,
-      dailyTrend
+      dailyTrend,
+      telemetry: {
+        totalTokens: totals.totalTokens,
+        promptTokens: totals.promptTokens,
+        completionTokens: totals.completionTokens,
+        totalCostUSD: Math.round(totals.totalCostUSD * 10000) / 10000,
+        textCostUSD: Math.round(totals.textCostUSD * 10000) / 10000,
+        imageCostUSD: Math.round(totals.imageCostUSD * 10000) / 10000,
+        totalCalls: totals.totalCalls,
+        imageCalls: totals.imageCalls,
+        totalRevenueUSD,
+        profitMarginPct,
+        featureBreakdown: featureStats.map(f => ({
+          feature: f._id,
+          calls: f.totalCalls,
+          tokens: f.totalTokens,
+          costUSD: Math.round(f.totalCostUSD * 10000) / 10000
+        }))
+      }
     });
   } catch (error) {
     console.error("❌ getAiModelsAnalytics Error:", error);

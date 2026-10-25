@@ -317,19 +317,32 @@ export default function BlogClient({ post }: { post: BlogPost }) {
                   case "paragraph":
                     return <p key={uniqueKey} className="text-base md:text-lg whitespace-pre-line leading-8">{block.text}</p>;
                   
-                  case "heading":
+                  case "heading": {
+                    const cleanHeadingText = (block.text || "").replace(/^#+\s*/, "").trim();
+                    const headingId = block.id || cleanHeadingText.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+                    
+                    if (block.level === 3) {
+                      return (
+                        <h3 
+                          key={uniqueKey} 
+                          id={headingId} 
+                          className="text-xl md:text-2xl font-bold text-white mt-8 mb-4 scroll-mt-32 flex items-center gap-2"
+                        >
+                          <span className="text-red-500 font-mono text-base">##</span> {cleanHeadingText}
+                        </h3>
+                      );
+                    }
+
                     return (
                       <h2 
                         key={uniqueKey} 
-                        id={block.id || block.text?.toLowerCase().replace(/\s+/g, '-')} 
-                        className={cn(
-                          "text-2xl md:text-3xl font-black text-white mt-12 mb-6 scroll-mt-32 flex items-center gap-3",
-                          block.level === 3 && "text-xl md:text-2xl mt-8"
-                        )}
+                        id={headingId} 
+                        className="text-2xl md:text-3xl font-black text-white mt-12 mb-6 scroll-mt-32 flex items-center gap-3"
                       >
-                        <span className="text-red-600">#</span> {block.text}
+                        <span className="text-red-600 font-mono text-lg">#</span> {cleanHeadingText}
                       </h2>
                     );
+                  }
 
                   case "quote":
                     return (
@@ -345,8 +358,9 @@ export default function BlogClient({ post }: { post: BlogPost }) {
                       <figure key={uniqueKey} className="my-8">
                         <img 
                           src={block.src} 
-                          alt="Content" 
+                          alt={block.caption || post.title || "Paperxify educational article illustration"} 
                           className="w-full rounded-2xl border border-white/10 shadow-lg" 
+                          loading="lazy"
                         />
                         {block.caption && (
                           <figcaption className="text-center text-xs text-neutral-500 mt-3 font-medium italic">

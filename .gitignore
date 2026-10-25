@@ -26,3 +26,8 @@ build/
 # Puppeteer bundled Chrome (downloaded at deploy time, not committed)
 Server/.cache/
 .cache/
+
+# Scratch & TypeScript build info
+*.tsbuildinfo
+scratch/
+Server/scratch/

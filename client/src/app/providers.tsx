@@ -10,8 +10,10 @@ import { Toaster, toast } from "sonner";
 import UserTracker from "@/components/UserTracker";
 import { cn } from "@/lib/utils";
 import { LoginDialog } from "@/components/LoginDialog";
+import { StudentQuotaModal } from "@/components/StudentQuotaModal";
 import { trackSignup } from "@/utils/analytics";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
+import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -27,7 +29,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const isGoogleConfigured = !!(clientId && clientId !== "YOUR_GOOGLE_CLIENT_ID" && clientId !== "");
   const disableOneTap = process.env.NEXT_PUBLIC_DISABLE_GOOGLE_ONE_TAP === "true";
 
-  // --- GRANULAR VISIBILITY MAP ---
   // Hide Desktop Nav on high-focus tools or admin pages
   const hideDesktopNav = [
     "/admin", 
@@ -36,7 +37,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     "/flashcards/",
     "/presentation-generator/",
     "/yt-practice-test",
-    "/whiteboard/"
+    "/whiteboard/",
+    "/workspace",
+    "/agent"
   ].some(path => pathname?.startsWith(path));
 
   // Hide Mobile Bottom Dock on tools that require full-screen height
@@ -48,7 +51,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     "/flashcards/",
     "/presentation-generator/",
     "/yt-practice-test",
-    "/whiteboard/"
+    "/whiteboard/",
+    "/workspace",
+    "/agent"
   ].some(path => pathname?.startsWith(path));
 
 
@@ -189,15 +194,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
       {mounted && isGoogleConfigured && !disableOneTap && <GoogleOneTapLoginWrapper onSuccess={handleLoginSuccess} />}
 
       <LoginDialog isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onSuccess={handleLoginSuccess} />
+      <StudentQuotaModal />
+      <GlobalSearchModal />
 
       {/* Desktop Sidebar (Collapsible like ChatGPT) */}
       {!hideDesktopNav && (
         <DesktopSidebar
-          isExpanded={sidebarExpanded}
+          isExpanded={mounted ? sidebarExpanded : true}
           onToggle={toggleSidebar}
-          isLoggedIn={isLoggedIn}
-          user={user}
-          tokenInfo={tokenInfo}
+          isLoggedIn={mounted ? isLoggedIn : false}
+          user={mounted ? user : null}
+          tokenInfo={mounted ? tokenInfo : null}
           onLogout={handleLogout}
           onOpenLogin={() => setIsLoginOpen(true)}
         />
@@ -205,23 +212,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
       {/* Top Navbar */}
       <Navbar
-        isLoggedIn={isLoggedIn}
-        user={user}
+        isLoggedIn={mounted ? isLoggedIn : false}
+        user={mounted ? user : null}
         onLoginSuccess={handleLoginSuccess}
         authLoading={authLoading}
         hideDesktop={hideDesktopNav}
         hideMobile={hideMobileNav}
-        sidebarExpanded={sidebarExpanded}
+        sidebarExpanded={mounted ? sidebarExpanded : true}
         onToggleSidebar={toggleSidebar}
       />
 
       {/* Main Content Wrapper with Adaptive Margin & Padding */}
-      <main className={cn(
-        "flex-1 transition-all duration-300",
-        !hideDesktopNav ? (sidebarExpanded ? "lg:pl-[248px]" : "lg:pl-[64px]") : "pl-0",
-        !hideDesktopNav ? "lg:mt-20" : "mt-0",
-        !hideMobileNav ? "pb-20 lg:pb-0" : "pb-0"
-      )}>
+      <main 
+        suppressHydrationWarning
+        className={cn(
+          "flex-1 transition-all duration-300",
+          !hideDesktopNav ? ((mounted ? sidebarExpanded : true) ? "lg:pl-[248px]" : "lg:pl-[64px]") : "pl-0",
+          !hideDesktopNav ? "lg:mt-20" : "mt-0",
+          !hideMobileNav ? "pb-20 lg:pb-0" : "pb-0"
+        )}
+      >
         {children}
       </main>
 

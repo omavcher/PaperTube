@@ -71,7 +71,7 @@ export default function YouTubeToNotesSeoPage({ region }: YouTubeToNotesSeoPageP
               <span className="text-red-500 text-lg font-black">🏆</span>
               <div>
                 <p className="text-white text-xs font-bold uppercase tracking-wider">#1 AI Notes Maker</p>
-                <p className="text-neutral-500 text-[10px]">500,000+ students trust Paperxify</p>
+                <p className="text-neutral-500 text-[10px]">300,000+ students trust Paperxify</p>
               </div>
             </div>
             <div className="w-px h-8 bg-white/10 hidden md:block" />

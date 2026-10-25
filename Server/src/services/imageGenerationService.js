@@ -4,6 +4,7 @@
 
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
+const capacityService = require('./capacityService');
 
 // ------------------------------------------------------------------
 // Configuration
@@ -27,11 +28,11 @@ const R2_CDN_BASE = 'https://cdn.pro.paperxify.com';
 const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY;
 
-// Image limits per tier
+// Calibrated image limits per tier to protect 75% profit margin
 const IMAGE_LIMITS = {
   free: 2,
-  premium: 6,
-  power: 15,
+  premium: 4,
+  power: 8,
 };
 
 // ------------------------------------------------------------------
@@ -271,8 +272,17 @@ async function generateAndUploadImage(title) {
 //
 // Returns array of { title, img_url } with verified CDN URLs
 // ------------------------------------------------------------------
-async function generateStudyImages(figures, tier = 'free') {
+async function generateStudyImages(figures, tier = 'free', userId = null) {
   if (!figures || figures.length === 0) return [];
+
+  // Pre-flight check if user has capacity
+  if (userId && userId !== 'guest') {
+    const check = await capacityService.checkCanExecute(userId, 'image_gen');
+    if (!check.allowed) {
+      console.warn(`⚠️ [ImageGeneration] Capacity limit reached for user ${userId}, skipping image generation.`);
+      return [];
+    }
+  }
 
   const maxImages = IMAGE_LIMITS[tier] || IMAGE_LIMITS.free;
   const limitedFigures = figures.slice(0, maxImages);
@@ -285,6 +295,18 @@ async function generateStudyImages(figures, tier = 'free') {
   for (const title of limitedFigures) {
     const result = await generateAndUploadImage(title);
     results.push(result);
+
+    if (result.img_url && userId && userId !== 'guest') {
+      await capacityService.recordUsage({
+        userId,
+        feature: 'notes_engine',
+        model: 'flux.2-klein-4b',
+        type: 'image',
+        costUSD: 0.025,
+        status: 'success',
+        metadata: { title },
+      }).catch(e => console.warn('Study image log warn:', e.message));
+    }
 
     // Polite delay between generation requests
     if (limitedFigures.indexOf(title) < limitedFigures.length - 1) {

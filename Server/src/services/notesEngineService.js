@@ -4,6 +4,7 @@
 
 const { getVerifiedSearchImage, getVerifiedImagesForFigures } = require('./imageSearchService');
 const { generateStudyImages } = require('./imageGenerationService');
+const capacityService = require('./capacityService');
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
@@ -114,6 +115,21 @@ async function callOpenRouterWithFallback(models, messages, options = {}) {
       }
 
       console.log(`✅ Success with model: ${model} (${usage.total_tokens || 'N/A'} tokens, OpenRouter exact cost: $${callCost.toFixed(6)})`);
+
+      if (options.userId && options.userId !== "guest") {
+        await capacityService.recordUsage({
+          userId: options.userId,
+          feature: "notes_engine",
+          model,
+          type: "text",
+          promptTokens: usage.prompt_tokens || 0,
+          completionTokens: usage.completion_tokens || 0,
+          totalTokens: usage.total_tokens || 0,
+          costUSD: callCost,
+          status: "success",
+          metadata: { jobId: options.jobId }
+        }).catch(e => console.warn("Notes usage log warn:", e.message));
+      }
 
       return {
         content,
@@ -455,7 +471,8 @@ async function synthesizePaperxifyNote({
   duration,
   knowledgeIR,
   userPlan = 'free',
-  detailLevel = 'Standard Notes'
+  detailLevel = 'Standard Notes',
+  userId = null
 }) {
   const planConfig = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
   const models = MODEL_ROUTING[planConfig.modelTier] || MODEL_ROUTING.synthesis_free;
@@ -471,7 +488,7 @@ async function synthesizePaperxifyNote({
   if (planConfig.maxAiImages > 0 && verifiedSearchImages.length < 2 && visualCandidates.length > 0) {
     const missing = visualCandidates.filter(fig => !verifiedSearchImages.some(v => v.title === fig));
     if (missing.length > 0) {
-      aiImages = await generateStudyImages(missing.slice(0, planConfig.maxAiImages), userPlan === 'power' ? 'premium' : 'free');
+      aiImages = await generateStudyImages(missing.slice(0, planConfig.maxAiImages), userPlan === 'power' ? 'premium' : 'free', userId);
     }
   }
 

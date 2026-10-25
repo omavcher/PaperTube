@@ -1,18 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   LayoutDashboard, Users, CreditCard, 
   Cpu, LogOut, ShieldAlert, 
   Terminal, Activity, BarChart3, ChevronRight, 
-  Menu, X, Sparkles, Bug, FileText, Share2, Search,
+  Menu, X, Sparkles, Bug, FileText, Search,
   Home, Bell, UserCircle, Moon,
-  List,
-  Fence,
-  Gamepad2Icon,
-  File,
-  ChartBarBig,
-  TicketPercent
+  List, Fence, Gamepad2Icon, File,
+  ChartBarBig, TicketPercent, Command,
+  Radio, Globe2, Layers, Compass, ArrowUpRight,
+  RefreshCw, CheckCircle2, ShieldCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -20,21 +18,82 @@ import Link from "next/link";
 import { usePathname, useRouter, notFound } from "next/navigation";
 import { toast } from "sonner";
 import { FcComments, FcFeedback } from "react-icons/fc";
-import { Icon2fa, IconAnalyze, IconBrandStorybook, IconReport } from "@tabler/icons-react";
+import { Icon2fa, IconAnalyze, IconBrandStorybook, IconReport, IconSeo } from "@tabler/icons-react";
+
+interface NavItem {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  badge?: string;
+  badgeColor?: string;
+}
+
+interface NavGroup {
+  group: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    group: "Core Control",
+    items: [
+      { href: "/admin", icon: LayoutDashboard, label: "Overview" },
+      { href: "/admin/users", icon: Users, label: "User Directory", badge: "Live" },
+      { href: "/admin/transactions", icon: CreditCard, label: "Transactions", badge: "Stripe/PayPal" },
+      { href: "/admin/promo", icon: TicketPercent, label: "Promo Codes" },
+    ]
+  },
+  {
+    group: "Content Studio",
+    items: [
+      { href: "/admin/content-analytics", icon: IconAnalyze, label: "Content Analytics" },
+      { href: "/admin/success-stories", icon: IconBrandStorybook, label: "Success Stories" },
+      { href: "/admin/blog", icon: File, label: "Blog Console" },
+    ]
+  },
+  {
+    group: "AI & Intelligence",
+    items: [
+      { href: "/admin/content", icon: FileText, label: "Content Vault" },
+      { href: "/admin/reports", icon: IconReport, label: "Reports Deck" },
+      { href: "/admin/ai-models", icon: Cpu, label: "AI Models" },
+      { href: "/admin/bugs", icon: Bug, label: "Bug Tracker" },
+      { href: "/admin/support", icon: Terminal, label: "Support Console" },
+    ]
+  },
+  {
+    group: "Analytics & Growth",
+    items: [
+      { href: "/admin/tools-analytics", icon: ChartBarBig, label: "Tools Stats" },
+      { href: "/admin/analytics", icon: BarChart3, label: "Platform Analytics" },
+      { href: "/admin/feedback", icon: Fence, label: "Feedback & Reviews" },
+      { href: "/admin/seo", icon: IconSeo, label: "SEO Console" },
+    ]
+  },
+  {
+    group: "Dev Utilities",
+    items: [
+      { href: "/admin/faker", icon: Gamepad2Icon, label: "Mock Data Engine" },
+    ]
+  }
+];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [navSearch, setNavSearch] = useState("");
+  const [latency, setLatency] = useState(14);
+  const [systemTime, setSystemTime] = useState("");
   const pathname = usePathname();
   const router = useRouter();
 
-  // Check if mobile - Moved to top level
+  // Responsive check
   const checkMobile = useCallback(() => {
-    const mobile = window.innerWidth < 768;
+    const mobile = window.innerWidth < 1024;
     setIsMobile(mobile);
-    if (window.innerWidth >= 768) {
+    if (window.innerWidth >= 1024) {
       setIsSidebarOpen(true);
     } else {
       setIsSidebarOpen(false);
@@ -64,46 +123,57 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  // Check mobile on mount and resize
+  // Mobile resize listener
   useEffect(() => {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, [checkMobile]);
 
-  // Close sidebar on mobile when clicking outside
+  // Dynamic latency ping simulator & clock
   useEffect(() => {
-    if (isMobile && isSidebarOpen) {
-      const handleClickOutside = (e: MouseEvent) => {
-        const sidebar = document.getElementById('admin-sidebar');
-        const menuButton = document.getElementById('mobile-menu-button');
-        
-        if (sidebar && !sidebar.contains(e.target as Node) && 
-            menuButton && !menuButton.contains(e.target as Node)) {
-          setIsSidebarOpen(false);
-        }
-      };
+    const timer = setInterval(() => {
+      setLatency(Math.floor(12 + Math.random() * 8));
+      const now = new Date();
+      setSystemTime(now.toLocaleTimeString("en-US", { hour12: false }));
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isMobile, isSidebarOpen]);
-
-  // Close sidebar on route change on mobile
+  // Close sidebar on mobile route change
   useEffect(() => {
     if (isMobile) {
       setIsSidebarOpen(false);
     }
   }, [pathname, isMobile]);
 
+  // Filtered Nav Items
+  const filteredNavGroups = useMemo(() => {
+    if (!navSearch.trim()) return NAV_GROUPS;
+    const query = navSearch.toLowerCase();
+    return NAV_GROUPS.map(group => ({
+      ...group,
+      items: group.items.filter(item => 
+        item.label.toLowerCase().includes(query) || 
+        item.href.toLowerCase().includes(query)
+      )
+    })).filter(group => group.items.length > 0);
+  }, [navSearch]);
+
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-[#020202] text-neutral-200 flex items-center justify-center font-sans">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
-          <span className="text-[10px] font-mono tracking-[0.35em] text-neutral-500 uppercase">
-            Resolving node...
-          </span>
+      <div className="min-h-screen bg-[#07070a] text-neutral-200 flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative h-10 w-10">
+            <div className="absolute inset-0 rounded-full border-2 border-red-500/20 border-t-red-500 animate-spin" />
+            <div className="absolute inset-1.5 rounded-full border-2 border-purple-500/20 border-b-purple-500 animate-spin" style={{ animationDuration: "0.7s" }} />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-ping" />
+            <span className="text-[11px] font-mono tracking-[0.2em] text-neutral-400 uppercase font-semibold">
+              Authenticating Admin...
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -114,351 +184,304 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return null;
   }
 
-  // Render the main layout
   return (
-    <div className="min-h-screen bg-[#020202] text-neutral-200 flex flex-col md:flex-row overflow-hidden font-sans select-none antialiased">
-      {/* High-tech ambient background glow */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.02]">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0c_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0c_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+    <div className="min-h-screen bg-[#07070a] text-neutral-100 flex flex-col lg:flex-row overflow-hidden font-sans antialiased selection:bg-red-500/20 selection:text-red-200">
+      {/* Background Ambience / Mesh Grids */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.08),rgba(255,255,255,0))]" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px] opacity-40" />
       </div>
-      <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-red-900/10 rounded-full blur-[120px] pointer-events-none z-0" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-900/5 rounded-full blur-[120px] pointer-events-none z-0" />
 
-      {/* Mobile Header */}
-      <header className="md:hidden sticky top-0 z-50 border-b border-neutral-800/40 bg-neutral-950/70 backdrop-blur-md px-4 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* Mobile Top Header */}
+      <header className="lg:hidden sticky top-0 z-50 border-b border-white/[0.08] bg-[#07070a]/90 backdrop-blur-xl px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <button
             id="mobile-menu-button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-white/5 rounded-lg text-neutral-400 transition-colors border border-transparent hover:border-neutral-800"
+            className="p-2 hover:bg-white/[0.06] rounded-xl text-neutral-400 hover:text-white transition-all border border-white/[0.06] active:scale-95"
+            aria-label="Toggle navigation menu"
           >
             {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
           <div className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)] animate-pulse" />
-            <span className="text-[11px] font-mono tracking-[0.25em] uppercase text-red-500 font-bold">Admin_OS</span>
+            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-mono font-bold tracking-[0.2em] uppercase text-neutral-200">
+              Paperxify Admin
+            </span>
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <span className="text-[9px] font-mono text-neutral-500 tracking-tight">PING: 14ms</span>
-          <div className="h-7 w-7 rounded-lg border border-red-500/20 overflow-hidden relative p-[1px] bg-neutral-950">
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{latency}ms</span>
+          </div>
+          <div className="h-7 w-7 rounded-lg border border-red-500/30 overflow-hidden relative p-[1px] bg-neutral-900 shadow-md">
             <img 
               src="https://lh3.googleusercontent.com/a/ACg8ocI9Nfqu4mJ19RkFL1qfLd9nurbxz9pXNE0WJpBgHYexk30uZ-4X=s96-c" 
-              alt="admin" 
-              className="object-cover h-full w-full rounded-md grayscale"
+              alt="Admin Avatar" 
+              className="object-cover h-full w-full rounded-[6px]"
             />
           </div>
         </div>
       </header>
 
-      {/* Sidebar - Responsive */}
+      {/* Sidebar Desktop & Mobile Drawer */}
       <aside 
         id="admin-sidebar"
         className={cn(
-          "fixed md:relative z-40 md:z-0 border-r border-neutral-900 bg-neutral-950/80 md:bg-neutral-950/40 backdrop-blur-md transition-all duration-300 flex flex-col h-full",
+          "fixed lg:relative z-40 border-r border-white/[0.08] bg-[#0a0a0f]/95 lg:bg-[#08080c]/80 backdrop-blur-2xl transition-all duration-300 flex flex-col h-full",
           isSidebarOpen 
-            ? "translate-x-0 md:translate-x-0 w-64 md:w-68" 
-            : "-translate-x-full md:translate-x-0 md:w-20"
+            ? "translate-x-0 w-72" 
+            : "-translate-x-full lg:translate-x-0 lg:w-[76px]"
         )}
         style={{
-          height: isMobile ? 'calc(100dvh - 49px)' : '100vh',
-          top: isMobile ? '49px' : '0',
+          height: isMobile ? 'calc(100dvh - 53px)' : '100vh',
+          top: isMobile ? '53px' : '0',
         }}
       >
-        {/* Brand Section */}
-        <div className="p-4 md:p-5 flex items-center justify-between border-b border-neutral-900/60 mb-2">
-          <AnimatePresence>
+        {/* Brand Banner */}
+        <div className="p-4 border-b border-white/[0.08] flex items-center justify-between">
+          <div className={cn("flex items-center gap-3 overflow-hidden transition-all", !isSidebarOpen && "lg:justify-center lg:w-full")}>
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-red-600 via-rose-500 to-purple-600 p-[1px] flex-shrink-0 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+              <div className="h-full w-full bg-[#0a0a0f] rounded-[11px] flex items-center justify-center">
+                <ShieldCheck size={16} className="text-red-400" />
+              </div>
+            </div>
             {isSidebarOpen && (
-              <motion.div 
-                initial={{ opacity: 0, x: -10 }} 
-                animate={{ opacity: 1, x: 0 }} 
-                exit={{ opacity: 0, x: -10 }}
-                className="hidden md:flex items-center gap-2"
-              >
-                <div className="h-1.5 w-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_#ef4444]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.35em] text-neutral-400 font-mono">
-                  Admin_OS <span className="text-[8px] text-neutral-600">v2.1</span>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-mono font-bold tracking-[0.15em] text-white uppercase">
+                    Paperxify
+                  </span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
+                    Admin
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono text-neutral-400 tracking-wider">
+                  Management Console
                 </span>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          </div>
+
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="p-1.5 hover:bg-neutral-900 border border-transparent hover:border-neutral-800 rounded-lg text-neutral-500 hover:text-white transition-colors hidden md:block"
+            className="p-1.5 hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-lg text-neutral-400 hover:text-white transition-all hidden lg:flex items-center justify-center"
+            title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
-            {isSidebarOpen ? <X size={15} /> : <Menu size={15} />}
+            <Menu size={14} />
           </button>
         </div>
 
+        {/* Search / Filter in Sidebar (When expanded) */}
+        {isSidebarOpen && (
+          <div className="px-3 pt-3 pb-1">
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input 
+                type="text"
+                value={navSearch}
+                onChange={(e) => setNavSearch(e.target.value)}
+                placeholder="Jump to module..."
+                className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs font-mono text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-red-500/40 focus:bg-white/[0.05] transition-all"
+              />
+              {navSearch && (
+                <button 
+                  onClick={() => setNavSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Navigation Layers */}
-        <nav className="flex-1 px-3 space-y-4 overflow-y-auto custom-scrollbar pb-24 md:pb-8">
-          {/* Core Systems */}
-          <div>
-            <p className={cn("px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.3em] text-neutral-600 transition-opacity", !isSidebarOpen && "opacity-0 md:h-0 overflow-hidden py-0")}>
-              Core
-            </p>
-            <div className="space-y-1 mt-1">
-              <AdminNavLink 
-                href="/admin" 
-                icon={<LayoutDashboard size={isMobile ? 18 : 16} />} 
-                label="Dashboard" 
-                active={pathname === "/admin"} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-              <AdminNavLink 
-                href="/admin/users" 
-                icon={<Users size={isMobile ? 18 : 16} />} 
-                label="Users" 
-                active={pathname.includes("/users")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-              <AdminNavLink 
-                href="/admin/transactions" 
-                icon={<CreditCard size={isMobile ? 18 : 16} />} 
-                label="Transactions" 
-                active={pathname.includes("/transactions")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-              <AdminNavLink 
-                href="/admin/promo" 
-                icon={<TicketPercent size={isMobile ? 18 : 16} />} 
-                label="Promo Codes" 
-                active={pathname.includes("/promo")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
+        <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto custom-scrollbar">
+          {filteredNavGroups.map((group) => (
+            <div key={group.group} className="space-y-1">
+              {isSidebarOpen ? (
+                <div className="flex items-center justify-between px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-[0.25em] text-neutral-500">
+                  <span>{group.group}</span>
+                  <span className="text-[8px] text-neutral-600 font-mono font-normal">({group.items.length})</span>
+                </div>
+              ) : (
+                <div className="h-px bg-white/[0.06] my-2 mx-2" />
+              )}
+              
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = item.href === "/admin" 
+                    ? pathname === "/admin" 
+                    : pathname.startsWith(item.href);
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all group relative overflow-hidden",
+                        isActive
+                          ? "bg-indigo-500/10 text-white font-medium border border-indigo-500/25 shadow-sm"
+                          : "text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.04] border border-transparent"
+                      )}
+                      title={!isSidebarOpen ? item.label : undefined}
+                    >
+                      {isActive && (
+                        <motion.div 
+                          layoutId="activeIndicator"
+                          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-indigo-500 rounded-r shadow-[0_0_8px_#6366f1]" 
+                        />
+                      )}
+                      
+                      <div className={cn(
+                        "flex items-center justify-center transition-all duration-200 flex-shrink-0",
+                        isActive 
+                          ? "text-indigo-400 scale-110" 
+                          : "text-neutral-400 group-hover:text-neutral-200 group-hover:scale-105"
+                      )}>
+                        <Icon size={16} />
+                      </div>
+
+                      {isSidebarOpen && (
+                        <span className="text-[12px] tracking-tight truncate flex-1">
+                          {item.label}
+                        </span>
+                      )}
+
+                      {isSidebarOpen && item.badge && (
+                        <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-neutral-400 group-hover:text-white border border-white/[0.06] transition-colors">
+                          {item.badge}
+                        </span>
+                      )}
+
+                      {isSidebarOpen && isActive && !item.badge && (
+                        <ChevronRight size={12} className="text-indigo-400/80 ml-auto" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>  
-
-          {/* Content Bank */}
-          <div>
-            <p className={cn("px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.3em] text-neutral-600 transition-opacity", !isSidebarOpen && "opacity-0 md:h-0 overflow-hidden py-0")}>
-              Content Bank
-            </p>
-            <div className="space-y-1 mt-1">
-              <AdminNavLink 
-                href="/admin/content-analytics"
-                icon={<IconAnalyze size={isMobile ? 18 : 16} />}
-                label="Content Analytics"
-                active={pathname.includes("/content-analytics")}
-                expanded={isSidebarOpen}
-                mobile={isMobile}
-              />
-              <AdminNavLink 
-                href="/admin/success-stories" 
-                icon={<IconBrandStorybook size={isMobile ? 18 : 16} />} 
-                label="Stories" 
-                active={pathname.includes("/success-stories")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-              <AdminNavLink 
-                href="/admin/blog" 
-                icon={<File size={isMobile ? 18 : 16} />} 
-                label="Blog Console" 
-                active={pathname.includes("/blog")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-            </div>
-          </div>     
-
-          {/* Intelligence Ops */}
-          <div>
-            <p className={cn("px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.3em] text-neutral-600 transition-opacity", !isSidebarOpen && "opacity-0 md:h-0 overflow-hidden py-0")}>
-              Intelligence
-            </p>
-            <div className="space-y-1 mt-1">
-              <AdminNavLink 
-                href="/admin/content" 
-                icon={<FileText size={isMobile ? 18 : 16} />} 
-                label="Content" 
-                active={pathname.includes("/content")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-              <AdminNavLink 
-                href="/admin/reports" 
-                icon={<IconReport size={isMobile ? 18 : 16} />} 
-                label="Reports" 
-                active={pathname.includes("/reports")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-
-              <AdminNavLink 
-                href="/admin/ai-models" 
-                icon={<Cpu size={isMobile ? 18 : 16} />} 
-                label="AI Models" 
-                active={pathname.includes("/ai-models")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-              <AdminNavLink 
-                href="/admin/bugs" 
-                icon={<Bug size={isMobile ? 18 : 16} />} 
-                label="Bug Reports" 
-                active={pathname.includes("/bugs")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-              <AdminNavLink 
-                href="/admin/support" 
-                icon={<Terminal size={isMobile ? 18 : 16} />} 
-                label="Support" 
-                active={pathname.includes("/support")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-            </div>
-          </div>
-
-          {/* Analytics */}
-          <div>
-            <p className={cn("px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.3em] text-neutral-600 transition-opacity", !isSidebarOpen && "opacity-0 md:h-0 overflow-hidden py-0")}>
-              Analytics
-            </p>
-            <div className="space-y-1 mt-1">
-              <AdminNavLink 
-                href="/admin/tools-analytics" 
-                icon={<ChartBarBig size={isMobile ? 18 : 16} />} 
-                label="Tools Stats" 
-                active={pathname.includes("/tools-analytics")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-              <AdminNavLink 
-                href="/admin/analytics" 
-                icon={<BarChart3 size={isMobile ? 18 : 16} />} 
-                label="Analytics" 
-                active={pathname.includes("/analytics")} 
-                expanded={isSidebarOpen} 
-                mobile={isMobile}
-              />
-              <AdminNavLink
-                href="/admin/feedback"
-                icon={<Fence size={isMobile ? 18 : 16} />}
-                label="Feedback"
-                active={pathname.includes("/feedback")}
-                expanded={isSidebarOpen}
-                mobile={isMobile}
-              />
-
-            </div>
-          </div>
-
+          ))}
         </nav>
 
-        {/* System Exit */}
-        <div className="p-3 border-t border-neutral-900 bg-neutral-950/90 backdrop-blur-md">
+        {/* System Footer Status & Exit */}
+        <div className="p-3 border-t border-white/[0.08] bg-[#07070a]/80 space-y-2">
+          {isSidebarOpen && (
+            <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  API Gateway
+                </span>
+                <span className="text-emerald-400 font-bold">{latency}ms</span>
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono text-neutral-500">
+                <span>MongoDB & Microservices</span>
+                <span className="text-emerald-400">Connected</span>
+              </div>
+            </div>
+          )}
+
           <button 
             onClick={() => router.push("/")} 
-            className="w-full flex items-center gap-3 p-2.5 rounded-xl text-neutral-500 hover:text-red-400 hover:bg-red-500/5 transition-all group border border-transparent hover:border-red-500/10"
+            className={cn(
+              "w-full flex items-center gap-2.5 p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/[0.05] transition-all group border border-transparent hover:border-white/[0.08] text-xs",
+              !isSidebarOpen && "justify-center"
+            )}
+            title="Exit to Client App"
           >
-            <LogOut size={15} className="group-hover:translate-x-0.5 transition-transform" />
+            <LogOut size={15} className="group-hover:-translate-x-0.5 transition-transform text-neutral-400 group-hover:text-white" />
             {isSidebarOpen && (
-              <span className="text-[9px] font-bold uppercase tracking-widest whitespace-nowrap font-mono">
-                Exit Protocol
+              <span className="text-[11px] font-medium tracking-wide truncate">
+                Exit to Website
               </span>
             )}
           </button>
         </div>
       </aside>
 
-      {/* Overlay for mobile sidebar */}
+      {/* Mobile Backdrop */}
       {isMobile && isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-30 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 relative overflow-y-auto custom-scrollbar flex flex-col h-screen">
-        {/* Desktop Header */}
-        <header className="hidden md:flex sticky top-0 z-40 border-b border-neutral-900 bg-neutral-950/30 backdrop-blur-md px-6 py-3.5 items-center justify-between">
+      {/* Main Content Viewport */}
+      <main className="flex-1 relative overflow-y-auto custom-scrollbar flex flex-col h-screen bg-[#07070a]">
+        {/* Desktop Top Command Bar */}
+        <header className="hidden lg:flex sticky top-0 z-30 border-b border-white/[0.08] bg-[#07070a]/80 backdrop-blur-xl px-8 py-3.5 items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" />
-            <div className="flex flex-col">
-              <h2 className="text-[9px] font-mono tracking-[0.3em] uppercase text-neutral-400 font-bold leading-tight">
-                NODE_HANDSHAKE: STABLE
-              </h2>
-              <span className="text-[8px] font-mono text-neutral-600 tracking-tighter mt-0.5">
-                SECURE_GATEWAY // PING: 12ms // STACK_NODE_07
-              </span>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono text-emerald-400 font-medium">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>System: Operational</span>
+            </div>
+            
+            <div className="hidden xl:flex items-center gap-3 text-[10px] font-mono text-neutral-400">
+              <span className="text-neutral-700">|</span>
+              <span>Production Env</span>
+              <span>Time: {systemTime || "Live"}</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-5">
-            <div className="text-right">
-              <p className="text-[10px] font-bold text-white uppercase font-sans tracking-wide">OM Avcher</p>
-              <p className="text-[8px] font-mono text-red-500/80 uppercase tracking-widest mt-0.5">Prime Architect</p>
-            </div>
-            <div className="h-8 w-8 rounded-lg border border-red-500/20 overflow-hidden shadow-lg relative group cursor-pointer p-[1px] bg-neutral-950">
-              <div className="absolute inset-0 bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <img 
-                src="https://lh3.googleusercontent.com/a/ACg8ocI9Nfqu4mJ19RkFL1qfLd9nurbxz9pXNE0WJpBgHYexk30uZ-4X=s96-c" 
-                alt="admin" 
-                className="object-cover h-full w-full rounded grayscale transition-all duration-300"
-              />
+          <div className="flex items-center gap-4">
+            {/* Admin Avatar & Pill */}
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-xs font-bold text-white tracking-wide">Om Avcher</p>
+                <p className="text-[9px] font-mono text-indigo-400 font-medium tracking-wider uppercase">
+                  Administrator
+                </p>
+              </div>
+              <div className="h-9 w-9 rounded-xl border border-zinc-700 overflow-hidden shadow-md relative p-[1px] bg-zinc-800">
+                <img 
+                  src="https://lh3.googleusercontent.com/a/ACg8ocI9Nfqu4mJ19RkFL1qfLd9nurbxz9pXNE0WJpBgHYexk30uZ-4X=s96-c" 
+                  alt="Admin" 
+                  className="object-cover h-full w-full rounded-[10px] grayscale hover:grayscale-0 transition-all duration-300"
+                />
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Breadcrumb for mobile */}
-        {isMobile && (
-          <div className="sticky top-0 z-30 bg-neutral-950/90 backdrop-blur-md px-4 py-2 border-b border-neutral-900 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 font-mono">
-              <Home size={10} className="text-neutral-600" />
-              <span>/</span>
-              <span className="font-semibold text-neutral-300 uppercase tracking-wider">
-                {pathname.split('/').pop() || 'Dashboard'}
-              </span>
-            </div>
-            <span className="text-[9px] font-mono text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-800">
-              {new Date().toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric' 
-              })}
-            </span>
-          </div>
-        )}
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8 z-10">
+        {/* Content Viewport */}
+        <div className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] w-full mx-auto pb-24 lg:pb-10 z-10">
           {children}
         </div>
 
-        {/* Mobile Navigation Bar */}
+        {/* Mobile Floating Bottom Bar */}
         {isMobile && (
-          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-neutral-950/80 backdrop-blur-lg border-t border-neutral-900 py-1.5 px-4">
+          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0f]/90 backdrop-blur-2xl border-t border-white/[0.08] py-2 px-4 shadow-2xl">
             <div className="grid grid-cols-4 gap-1">
               <MobileNavButton 
                 href="/admin"
-                icon={<LayoutDashboard size={16} />}
+                icon={LayoutDashboard}
                 label="Deck"
                 active={pathname === "/admin"}
               />
               <MobileNavButton 
                 href="/admin/users"
-                icon={<Users size={16} />}
+                icon={Users}
                 label="Users"
                 active={pathname.includes("/users")}
               />
               <MobileNavButton 
                 href="/admin/transactions"
-                icon={<CreditCard size={16} />}
+                icon={CreditCard}
                 label="Finance"
                 active={pathname.includes("/transactions")}
               />
               <MobileNavButton 
                 onClick={() => setIsSidebarOpen(true)}
-                icon={<Menu size={16} />}
-                label="More"
+                icon={Menu}
+                label="Modules"
               />
             </div>
           </nav>
@@ -468,77 +491,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 }
 
-function AdminNavLink({ 
-  href, 
-  icon, 
-  label, 
-  active, 
-  expanded, 
-  mobile 
-}: { 
-  href: string; 
-  icon: React.ReactNode; 
-  label: string; 
-  active: boolean; 
-  expanded: boolean; 
-  mobile?: boolean;
-}) {
-  return (
-    <Link 
-      href={href} 
-      className={cn(
-        "flex items-center gap-3 p-2.5 rounded-xl transition-all group relative overflow-hidden border",
-        active 
-          ? "bg-gradient-to-r from-red-500/10 to-red-500/0 text-red-400 border-red-500/25 shadow-[0_0_12px_rgba(239,68,68,0.08)] font-semibold" 
-          : "text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02] border-transparent"
-      )}
-    >
-      {active && (
-        <div className="absolute left-0 top-1/4 bottom-1/4 w-[2px] bg-red-500 rounded-r shadow-[0_0_6px_#ef4444]" />
-      )}
-      
-      <div className={cn(
-        "transition-transform group-hover:scale-105", 
-        active ? "text-red-400" : "text-neutral-400 group-hover:text-neutral-300",
-        mobile ? "text-lg" : "text-sm"
-      )}>
-        {icon}
-      </div>
-      {expanded && (
-        <span className="text-[10px] font-mono tracking-wider font-bold uppercase whitespace-nowrap">
-          {label}
-        </span>
-      )}
-      {active && expanded && (
-        <ChevronRight size={mobile ? 12 : 10} className="ml-auto text-red-500/60 animate-pulse" />
-      )}
-    </Link>
-  );
-}
-
 function MobileNavButton({ 
   href, 
-  icon, 
+  icon: Icon, 
   label, 
   active,
   onClick 
 }: { 
   href?: string; 
-  icon: React.ReactNode; 
+  icon: React.ElementType; 
   label: string; 
   active?: boolean;
   onClick?: () => void;
 }) {
   const content = (
     <div className={cn(
-      "flex flex-col items-center justify-center py-1 rounded-lg transition-all border border-transparent",
+      "flex flex-col items-center justify-center py-1 rounded-xl transition-all border",
       active 
-        ? "text-red-400 bg-red-500/5 border-red-500/10" 
-        : "text-neutral-500 hover:text-neutral-300"
+        ? "text-red-400 bg-red-500/10 border-red-500/20 shadow-[0_0_12px_rgba(239,68,68,0.1)] font-bold" 
+        : "text-neutral-400 hover:text-neutral-200 border-transparent"
     )}>
-      <div className={cn(active && "animate-pulse")}>
-        {icon}
-      </div>
+      <Icon size={16} className={cn(active && "animate-pulse text-red-400")} />
       <span className="text-[9px] font-mono tracking-tight mt-0.5">{label}</span>
     </div>
   );
@@ -556,4 +529,4 @@ function MobileNavButton({
       {content}
     </Link>
   );
-}
+}
