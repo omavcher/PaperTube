@@ -120,7 +120,7 @@ const FAQS = [
   { q: "Do 'Unlimited' features really have no limit?",
     a: "Unlimited flashcards and quizzes in Pro/Power are genuinely unlimited — these are very low AI cost operations. Heavy features like video notes and PPTs have monthly caps to protect our margins and keep prices fair." },
   { q: "What payment methods are supported?",
-    a: "Globally: PayPal (credit/debit cards, PayPal balance) and LemonSqueezy (Visa, Mastercard, Amex). India: UPI (Google Pay, PhonePe, Paytm), RuPay, Netbanking, and domestic cards via Razorpay." },
+    a: "We support PayPal (credit/debit cards, PayPal balance) and LemonSqueezy (Visa, Mastercard, American Express). All global and domestic cards are accepted." },
   { q: "Do you offer student discounts?",
     a: "Students with a verified .edu email receive a 50% discount on Pro Scholar. Sign up with your .edu address to receive the discount automatically." },
   { q: "Is the yearly plan auto-renewing?",
@@ -492,7 +492,7 @@ export default function PricingPage() {
             {[
               { icon: ShieldCheck, text: "256-bit SSL Checkout" },
               { icon: Activity,    text: "99.9% Uptime" },
-              { icon: Lock,        text: "PayPal & Razorpay Secured" },
+              { icon: Lock,        text: "PayPal & Card Secured" },
               { icon: Zap,         text: "Instant Activation" },
               { icon: BadgeCheck,  text: "No Hidden Fees" },
             ].map(({ icon: Icon, text }, i) => (

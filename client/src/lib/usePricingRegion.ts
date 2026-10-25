@@ -42,46 +42,12 @@ function detectRegionFromTimezone(): PricingRegion {
 }
 
 export function usePricingRegion(): PricingRegionResult {
-  const [region, setRegion] = useState<PricingRegion>(detectRegionFromTimezone);
-  const [country, setCountry] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [authoritative, setAuthoritative] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function resolve() {
-      try {
-        // 1. Try server-side IP detection (authoritative)
-        const res = await api.get("/general/pricing-region", { timeout: 4000 });
-        if (!cancelled && res.data?.success) {
-          const serverRegion: PricingRegion = res.data.region === "IN" ? "IN" : "GLOBAL";
-          setRegion(serverRegion);
-          setCountry(res.data.country || null);
-          setAuthoritative(true);
-        } else {
-          throw new Error("Bad response");
-        }
-      } catch {
-        if (!cancelled) {
-          // 2. Fallback: browser timezone (not authoritative)
-          setRegion(detectRegionFromTimezone());
-          setAuthoritative(false);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    resolve();
-    return () => { cancelled = true; };
-  }, []);
-
+  // Temporarily force GLOBAL region on the frontend so both India and Global show the exact same pricing
   return {
-    pricingConfig: getPricingConfig(region),
-    region,
-    country,
-    loading,
-    authoritative,
+    pricingConfig: getPricingConfig("GLOBAL"),
+    region: "GLOBAL",
+    country: "GLOBAL",
+    loading: false,
+    authoritative: true,
   };
 }

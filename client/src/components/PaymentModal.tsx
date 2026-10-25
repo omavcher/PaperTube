@@ -232,8 +232,8 @@ export default function PaymentModal({
   onLemon,
   onPayPalSuccess,
   isLemonLoading,
-  user,
-  region,
+  user: _user,
+  region: _region,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -242,97 +242,11 @@ export default function PaymentModal({
   onLemon: () => void;
   onPayPalSuccess: () => void;
   isLemonLoading: boolean;
-  user: any;
-  region: "IN" | "GLOBAL";
+  user?: any;
+  region?: "IN" | "GLOBAL";
 }) {
-  const isIndia = region === "IN";
-  // Indian users see Razorpay/UPI tab first by default
-  const [tab, setTab] = useState<"global" | "india">(isIndia ? "india" : "global");
-  const [isRzpLoading, setIsRzpLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setTab(region === "IN" ? "india" : "global");
-    }
-  }, [isOpen, region]);
-
-  const handleRazorpay = async () => {
-    if (!plan) return;
-    setIsRzpLoading(true);
-    trackDbActivity(`/pricing/payment-start-razorpay/${plan.id}/${billing}`);
-    try {
-      // Dynamically load Razorpay SDK
-      await new Promise<void>((resolve, reject) => {
-        if ((window as any).Razorpay) {
-          resolve();
-          return;
-        }
-        const s = document.createElement("script");
-        s.src = "https://checkout.razorpay.com/v1/checkout.js";
-        s.onload = () => resolve();
-        s.onerror = reject;
-        document.body.appendChild(s);
-      });
-      const token = localStorage.getItem("authToken");
-      const inrPrice = billing === "monthly" ? plan.inr.monthly : plan.inr.yearly;
-      const res = await api.post(
-        "/payment/create-order",
-        {
-          packageId: plan.id,
-          packageType: "subscription",
-          finalAmount: inrPrice,
-          billingPeriod: billing,
-          packageName: plan.name,
-        },
-        { headers: { Auth: token } }
-      );
-      if (!res.data.success) {
-        toast.error(res.data.message || "Could not create order");
-        setIsRzpLoading(false);
-        return;
-      }
-      const rzp = new (window as any).Razorpay({
-        key: res.data.key,
-        amount: res.data.order.amount,
-        currency: "INR",
-        name: "Paperxify",
-        description: `${plan.name} (${billing})`,
-        order_id: res.data.order.id,
-        prefill: { name: user?.name || "", email: user?.email || "" },
-        theme: { color: "#ef4444" },
-        handler: async (response: any) => {
-          const vRes = await api.post(
-            "/payment/verify",
-            {
-              ...response,
-              packageId: plan.id,
-              packageType: "subscription",
-              finalAmount: inrPrice,
-              billingPeriod: billing,
-              status: "success",
-            },
-            { headers: { Auth: token } }
-          );
-          if (vRes.data.success) {
-            onClose();
-            onPayPalSuccess();
-          } else {
-            toast.error("Verification failed — contact support.");
-          }
-          setIsRzpLoading(false);
-        },
-        modal: { ondismiss: () => setIsRzpLoading(false) },
-      });
-      rzp.open();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || "Razorpay failed");
-      setIsRzpLoading(false);
-    }
-  };
-
   if (!plan) return null;
   const price = billing === "monthly" ? plan.usd.monthly : plan.usd.yearly;
-  const inrPrice = billing === "monthly" ? plan.inr.monthly : plan.inr.yearly;
 
   return (
     <AnimatePresence>
@@ -363,115 +277,33 @@ export default function PaymentModal({
               </span>
               <h3 className="text-xl font-bold text-white mt-1.5">{plan.name}</h3>
               <p className="text-xs text-neutral-400">
-                {tab === "india" ? (
-                  billing === "monthly"
-                    ? `₹${inrPrice.toLocaleString("en-IN")}/month`
-                    : `₹${inrPrice.toLocaleString("en-IN")}/year (₹${plan.inr.yearlyPerMonth}/mo)`
-                ) : (
-                  billing === "monthly"
-                    ? `$${price.toFixed(2)}/month`
-                    : `$${price.toFixed(2)}/year ($${plan.usd.yearlyPerMonth.toFixed(2)}/mo)`
-                )}
+                {billing === "monthly"
+                  ? `$${price.toFixed(2)}/month`
+                  : `$${price.toFixed(2)}/year ($${plan.usd.yearlyPerMonth.toFixed(2)}/mo)`}
               </p>
             </div>
 
-            {/* Tab selector — India users see UPI first */}
-            <div className="flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs mb-4">
-              {isIndia ? (
-                <>
-                  <button
-                    onClick={() => setTab("india")}
-                    className={cn(
-                      "flex-1 py-1.5 rounded-lg text-center cursor-pointer transition-all",
-                      tab === "india" ? "bg-white text-black font-bold" : "text-neutral-400 hover:text-white"
-                    )}
-                  >
-                    🇮🇳 UPI / India (₹{inrPrice.toLocaleString("en-IN")})
-                  </button>
-                  <button
-                    onClick={() => setTab("global")}
-                    className={cn(
-                      "flex-1 py-1.5 rounded-lg text-center cursor-pointer transition-all",
-                      tab === "global" ? "bg-white text-black font-bold" : "text-neutral-400 hover:text-white"
-                    )}
-                  >
-                    💳 PayPal / Card (USD)
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setTab("global")}
-                    className={cn(
-                      "flex-1 py-1.5 rounded-lg text-center cursor-pointer transition-all",
-                      tab === "global" ? "bg-white text-black font-bold" : "text-neutral-400 hover:text-white"
-                    )}
-                  >
-                    💳 PayPal / Card (USD)
-                  </button>
-                  <button
-                    onClick={() => setTab("india")}
-                    className={cn(
-                      "flex-1 py-1.5 rounded-lg text-center cursor-pointer transition-all",
-                      tab === "india" ? "bg-white text-black font-bold" : "text-neutral-400 hover:text-white"
-                    )}
-                  >
-                    🇮🇳 UPI / India (₹{inrPrice.toLocaleString("en-IN")})
-                  </button>
-                </>
-              )}
+            <div className="space-y-3">
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-3">
+                <PayPalSDKButton
+                  plan={plan}
+                  billing={billing}
+                  onSuccess={onPayPalSuccess}
+                  onError={(m) => toast.error(m)}
+                />
+              </div>
+              <button
+                onClick={onLemon}
+                disabled={isLemonLoading}
+                className="w-full h-11 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white font-semibold text-xs transition-all active:scale-98"
+              >
+                {isLemonLoading ? (
+                  <Loader2 size={14} className="animate-spin mx-auto" />
+                ) : (
+                  "Pay with Credit / Debit Card (LemonSqueezy)"
+                )}
+              </button>
             </div>
-
-            {tab === "global" ? (
-              <div className="space-y-3">
-                <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-3">
-                  <PayPalSDKButton
-                    plan={plan}
-                    billing={billing}
-                    onSuccess={onPayPalSuccess}
-                    onError={(m) => toast.error(m)}
-                  />
-                </div>
-                <button
-                  onClick={onLemon}
-                  disabled={isLemonLoading}
-                  className="w-full h-11 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white font-semibold text-xs transition-all active:scale-98"
-                >
-                  {isLemonLoading ? (
-                    <Loader2 size={14} className="animate-spin mx-auto" />
-                  ) : (
-                    "Pay with Credit / Debit Card (LemonSqueezy)"
-                  )}
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-3.5 text-center space-y-3">
-                  <button
-                    onClick={handleRazorpay}
-                    disabled={isRzpLoading}
-                    className="w-full h-11 rounded-full bg-white hover:bg-neutral-100 text-slate-900 font-bold text-xs transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-white/5"
-                  >
-                    {isRzpLoading ? (
-                      <Loader2 size={15} className="animate-spin text-[#072654]" />
-                    ) : (
-                      <>
-                        <span>Pay ₹{inrPrice.toLocaleString("en-IN")} with</span>
-                        <img src="/razorpay-icon.svg" alt="Razorpay" className="h-4 object-contain" />
-                      </>
-                    )}
-                  </button>
-
-                  <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] text-neutral-400 pt-0.5">
-                    <span>⚡ UPI (GPay, PhonePe, Paytm)</span>
-                    <span>•</span>
-                    <span>RuPay</span>
-                    <span>•</span>
-                    <span>Cards & NetBanking</span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             <div className="text-[10px] text-neutral-500 flex items-center justify-center gap-1.5 pt-3 border-t border-white/[0.06] mt-4">
               <ShieldCheck size={11} className="text-emerald-400" /> 256-bit SSL encrypted · Cancel anytime
