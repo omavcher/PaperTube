@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import api from '@/config/api';
 import { THEMES } from '@/config/themes';
+import { MOCK_NOTES } from '@/config/mock-notes';
 import { 
   IconBrandYoutube, 
   IconRobot, 
@@ -324,6 +325,33 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
       setFlashcardCount(hasPremiumAccess ? 10 : 5);
     }
   }, [mode, hasPremiumAccess]);
+
+  // --- Auto-route or prefill from URL parameter (supports sample note linking & direct YouTube URLs) ---
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlParam = params.get("url");
+      if (urlParam) {
+        // Check if this URL corresponds to one of the sample mock notes
+        const matchedMock = Object.entries(MOCK_NOTES).find(([slug, note]) => {
+          if (!note.videoUrl) return false;
+          const cleanParam = urlParam.toLowerCase();
+          const cleanNoteUrl = note.videoUrl.toLowerCase();
+          if (cleanNoteUrl === cleanParam) return true;
+          // Match by 11-char YouTube video ID
+          const matchParam = cleanParam.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([\w-]{11})/);
+          const matchNote = cleanNoteUrl.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([\w-]{11})/);
+          if (matchParam && matchNote && matchParam[1] === matchNote[1]) return true;
+          return false;
+        });
+        if (matchedMock) {
+          router.push(`/notes/${matchedMock[0]}`);
+          return;
+        }
+        setVideoUrl(urlParam);
+      }
+    }
+  }, [router]);
 
   // --- Fetch Token Data ---
   useEffect(() => {
@@ -669,7 +697,7 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
   };
 
   return (
-    <section className="w-full relative flex flex-col items-center justify-start bg-black text-white px-3 sm:px-4 pt-1 sm:pt-8 pb-4 sm:pb-6 font-sans selection:bg-neutral-800 selection:text-white overflow-x-hidden">
+    <section className="w-full relative flex flex-col items-center justify-start bg-black text-white px-3 sm:px-4 pt-20 sm:pt-24 lg:pt-28 pb-10 sm:pb-16 font-sans selection:bg-neutral-800 selection:text-white overflow-x-hidden">
       
       {/* Subtle Background Atmosphere - simplified for desktop perf */}
 
@@ -2010,66 +2038,86 @@ export default function HomeMain({ mode = 'notes' }: { mode?: 'notes' | 'flashca
                 </div>
               </div>
 
-              {/* ─── 4. SAMPLE NOTES SECTION ─── */}
+              {/* ─── 4. SAMPLE NOTES SHOWCASE SECTION ─── */}
               {activeCategory === 'youtube' && outputFormat === 'notes' && (
-                <div className="w-full max-w-4xl mt-4">
-                  <div className="flex items-center justify-between mb-3 px-1">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                      <span className="text-xs font-black uppercase tracking-wider text-neutral-300">SAMPLE NOTES</span>
-                      <span className="text-xs text-neutral-500 hidden sm:inline">&bull; Click any to explore, no sign-in required</span>
+                <div className="w-full max-w-4xl mt-6">
+                  {/* Section Header */}
+                  <div className="flex items-center justify-between mb-3.5 px-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                      </span>
+                      <span className="text-xs font-black uppercase tracking-wider text-white">Sample Study Guides</span>
+                      <span className="text-[11px] text-neutral-400 hidden sm:inline">• Instant exploration, zero sign-in required</span>
                     </div>
-                    <Link href="/notes" className="text-xs font-bold text-red-400 hover:text-red-300 flex items-center gap-1">
-                      <span>View all</span>
-                      <ArrowRight size={12} />
+
+                    <Link 
+                      href="/notes" 
+                      className="text-xs font-semibold text-neutral-300 hover:text-white flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer shadow-sm active:scale-95"
+                    >
+                      <span>Explore all</span>
+                      <ArrowRight size={11} className="text-red-400" />
                     </Link>
                   </div>
 
                   {/* 5 Sample Note Cards */}
                   <div 
-                    className="flex sm:grid sm:grid-cols-5 gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar pb-2"
+                    className="flex lg:grid lg:grid-cols-5 gap-3 overflow-x-auto no-scrollbar pb-2 scroll-fade-x"
                     style={{ scrollbarWidth: 'none' }}
                   >
                     {[
-                      { slug: 'notes-supply-and-demand-g9adizjpds', videoId: 'g9aDizJpd_s', title: 'Supply & Demand', sub: 'CrashCourse', time: '5 min', badge: '📈 Economics', badgeColor: 'bg-amber-500/15 text-amber-400 border-amber-500/25', ctaColor: 'text-amber-400' },
-                      { slug: 'notes-stanford-cs229-ml-jgwo_ugts7i', videoId: 'jGwO_UgTS7I', title: 'Neural Networks', sub: 'Stanford CS229', time: '8 min', badge: '🤖 AI / ML', badgeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/25', ctaColor: 'text-purple-400' },
-                      { slug: 'notes-biology-cell-structure-urujd5nexc8', videoId: 'URUJD5NEXC8', title: 'Cell Structure', sub: 'Biology', time: '6 min', badge: '🔬 Biology', badgeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', ctaColor: 'text-emerald-400' },
-                      { slug: 'notes-something-finally-broke-between-us-and-europe-wydd0rf66de', videoId: 'WYDD0RF66DE', title: 'US-Europe Rift', sub: 'CSIS Analysis', time: '7 min', badge: '🌍 Geography', badgeColor: 'bg-sky-500/15 text-sky-400 border-sky-500/25', ctaColor: 'text-sky-400' },
-                      { slug: 'notes-mit-804-quantum-physics-lz3bpuko5zc', videoId: 'lZ3bPUKo5zc', title: 'Quantum Physics', sub: 'MIT 8.04', time: '9 min', badge: '⚛️ Physics', badgeColor: 'bg-pink-500/15 text-pink-400 border-pink-500/25', ctaColor: 'text-pink-400' },
+                      { slug: 'notes-supply-and-demand-g9adizjpds', videoId: 'g9aDizJpd_s', title: 'Supply & Demand', sub: 'CrashCourse', time: '5 min', badge: '📈 Economics', badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+                      { slug: 'notes-stanford-cs229-ml-jgwo_ugts7i', videoId: 'jGwO_UgTS7I', title: 'Neural Networks', sub: 'Stanford CS229', time: '8 min', badge: '🤖 AI / ML', badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
+                      { slug: 'notes-biology-cell-structure-urujd5nexc8', videoId: 'URUJD5NEXC8', title: 'Cell Structure', sub: 'Biology', time: '6 min', badge: '🔬 Biology', badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
+                      { slug: 'notes-something-finally-broke-between-us-and-europe-wydd0rf66de', videoId: 'WYDD0RF66DE', title: 'US-Europe Rift', sub: 'CSIS Analysis', time: '7 min', badge: '🌍 Geography', badgeColor: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
+                      { slug: 'notes-mit-804-quantum-physics-lz3bpuko5zc', videoId: 'lZ3bPUKo5zc', title: 'Quantum Physics', sub: 'MIT 8.04', time: '9 min', badge: '⚛️ Physics', badgeColor: 'bg-pink-500/15 text-pink-300 border-pink-500/30' },
                     ].map((item) => (
                       <div
                         key={item.slug}
                         onClick={() => router.push(`/notes/${item.slug}`)}
-                        className="group shrink-0 w-[150px] sm:w-auto overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0c0c0e] hover:border-white/20 cursor-pointer transition-all duration-300 flex flex-col justify-between"
+                        className="group relative shrink-0 w-[170px] sm:w-[185px] lg:w-auto overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0d12]/90 hover:bg-[#13131c] hover:border-red-500/40 hover:shadow-[0_12px_30px_-10px_rgba(239,68,68,0.25)] cursor-pointer transition-all duration-300 flex flex-col justify-between active:scale-[0.98]"
                       >
                         {/* Thumbnail Container */}
-                        <div className="relative h-20 sm:h-24 w-full overflow-hidden bg-neutral-900">
+                        <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-950">
                           <img
                             src={`https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`}
                             alt={item.title}
-                            className="w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-500"
+                            className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                          <span className={cn("absolute bottom-1.5 left-1.5 text-[8px] font-black px-1.5 py-0.5 rounded border backdrop-blur-sm tracking-wide", item.badgeColor)}>
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-black/20 to-black/30" />
+                          
+                          {/* Subject Glass Pill */}
+                          <span className={cn("absolute bottom-2 left-2 text-[8.5px] font-bold px-2 py-0.5 rounded-md border backdrop-blur-md bg-black/60 shadow-sm tracking-wide", item.badgeColor)}>
                             {item.badge}
                           </span>
-                          <span className="absolute top-1.5 right-1.5 bg-black/70 backdrop-blur-sm rounded-md p-1">
-                            <IconBrandYoutube size={10} className="text-red-400" />
+
+                          {/* YouTube Badge */}
+                          <span className="absolute top-2 right-2 bg-black/75 backdrop-blur-md rounded-md p-1 border border-white/10 shadow-sm">
+                            <IconBrandYoutube size={11} className="text-red-400" />
                           </span>
+
+                          {/* Hover Play Glow Overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/25 backdrop-blur-[1px]">
+                            <span className="w-7 h-7 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                              <ArrowRight size={12} />
+                            </span>
+                          </div>
                         </div>
 
                         {/* Card Info */}
-                        <div className="p-2.5 flex flex-col gap-1">
-                          <h5 className="text-xs font-bold text-white group-hover:text-red-400 transition-colors truncate">
+                        <div className="p-3 flex flex-col gap-1">
+                          <h5 className="text-[12px] font-bold text-white group-hover:text-red-400 transition-colors line-clamp-1 leading-snug">
                             {item.title}
                           </h5>
                           <p className="text-[10px] text-neutral-400 truncate leading-none">
                             {item.sub}
                           </p>
-                          <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-white/[0.04]">
-                            <span className="text-[9px] text-neutral-500">{item.time}</span>
-                            <span className={cn("text-[9px] font-extrabold flex items-center gap-0.5", item.ctaColor)}>
-                              Open &rarr;
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/[0.05] text-[10px]">
+                            <span className="text-[9.5px] font-mono text-neutral-500">{item.time} study</span>
+                            <span className="font-bold text-neutral-300 group-hover:text-red-400 transition-colors flex items-center gap-1 text-[10px]">
+                              <span>Open</span>
+                              <ArrowRight size={10} className="group-hover:translate-x-0.5 transition-transform" />
                             </span>
                           </div>
                         </div>

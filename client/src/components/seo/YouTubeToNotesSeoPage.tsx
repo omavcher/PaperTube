@@ -49,7 +49,7 @@ export default function YouTubeToNotesSeoPage({ region }: YouTubeToNotesSeoPageP
 
         {/* ─── Above-Fold Value Prop Strip ─── */}
         {/* Answers "why Paperxify" without scrolling — surfaces key differentiators */}
-        <div className="w-full border-t border-white/[0.04] bg-neutral-950/60 backdrop-blur-md">
+        <div className="w-full border-t border-white/[0.04] bg-neutral-950/60 backdrop-blur-md hidden md:block">
           <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-center gap-6 md:gap-10">
             <div className="flex items-center gap-2.5 text-center">
               <span className="text-red-500 text-lg font-black">⚡</span>
@@ -86,7 +86,7 @@ export default function YouTubeToNotesSeoPage({ region }: YouTubeToNotesSeoPageP
         </div>
 
         {/* Quick Summarizer Interlink Callout */}
-        <div className="w-full bg-neutral-900/40 border-y border-white/5 py-2.5 px-4 text-center">
+        <div className="w-full bg-neutral-900/40 border-y border-white/5 py-2.5 px-4 text-center hidden md:block">
           <p className="text-xs text-neutral-400 font-medium">
             Just want the gist first? Try our <Link href="/youtube-video-summarizer" className="text-red-400 font-bold hover:underline">YouTube video summarizer</Link> before generating full study notes.
           </p>

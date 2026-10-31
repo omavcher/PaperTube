@@ -26,6 +26,7 @@ import {
   Eye,
   Edit,
   Lock,
+  LogIn,
   AlertCircle,
   X,
   FileText,
@@ -43,6 +44,7 @@ import {
   Lightbulb,
   Zap,
   ArrowRight,
+
   Check,
   ZoomIn,
   ZoomOut,
@@ -54,7 +56,12 @@ import {
   Target,
   Search,
   Code,
-  Calculator
+  Calculator,
+  Sun,
+  Moon,
+  Layers,
+  Sliders,
+  Type
 } from "lucide-react";
 
 import api from "@/config/api";
@@ -84,6 +91,7 @@ interface ApiMessage {
   videoLink?: string;
   feedback?: "good" | "bad" | null;
   mode?: string;
+  isStreaming?: boolean;
 }
 interface ApiMessagesResponse {
   messages: ApiMessage[];
@@ -849,8 +857,19 @@ const ModeMessageRenderer: React.FC<{
   content: string; 
   mode?: string;
   onActionClick?: (actionPrompt: string) => void;
-}> = ({ content, mode, onActionClick }) => {
-  if (!content) return null;
+  isStreaming?: boolean;
+}> = ({ content, mode, onActionClick, isStreaming }) => {
+  if (!content) {
+    if (isStreaming) {
+      return (
+        <div className="flex items-center gap-2 py-1 text-xs text-neutral-400">
+          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
+          <span>PaperChat is writing...</span>
+        </div>
+      );
+    }
+    return null;
+  }
 
   if (mode === "quiz") {
     return <QuizRenderer content={content} />;
@@ -859,14 +878,19 @@ const ModeMessageRenderer: React.FC<{
   // Extract trailing action tags ```actions [⚡ Explain Simply] [💡 Give Example] ... ```
   let mainContent = content;
   let actionChips: string[] = [];
-  const actionMatch = content.match(/```actions\s*([\s\S]*?)\s*```/i);
+  
+  // Cleanly handle actions block even during streaming (prevent raw code block flash)
+  const actionMatch = content.match(/```actions\s*([\s\S]*?)(?:```|$)/i);
   if (actionMatch) {
-    mainContent = content.replace(actionMatch[0], "").trim();
+    mainContent = content.replace(/```actions[\s\S]*$/i, "").trim();
     const rawChips = actionMatch[1].match(/\[(.*?)\]/g);
     if (rawChips) {
       actionChips = rawChips.map((c) => c.replace(/^\[|\]$/g, "").trim()).filter(Boolean);
     }
   }
+
+  // Prevent in-progress unclosed backticks for actions from rendering as a raw code block
+  mainContent = mainContent.replace(/```(?:actions?)?$/i, "").trim();
 
   // Clean redundant 00:00 timestamps from text
   mainContent = mainContent
@@ -901,7 +925,7 @@ const ModeMessageRenderer: React.FC<{
       <div className="prose prose-invert prose-sm max-w-none chat-prose">
         <ReactMarkdown
           remarkPlugins={[remarkMath]}
-          rehypePlugins={[rehypeKatex]}
+          rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
           components={{
             h3: ({ children, ...props }) => {
               const text = String(children || "");
@@ -1009,10 +1033,15 @@ const ModeMessageRenderer: React.FC<{
         >
           {mainContent}
         </ReactMarkdown>
+
+        {/* Streaming active typing cursor */}
+        {isStreaming && (
+          <span className="inline-block w-1.5 h-3.5 bg-red-500 ml-1 rounded-[1px] animate-pulse align-middle shadow-[0_0_8px_rgba(239,68,68,0.7)]" />
+        )}
       </div>
 
-      {actionChips.length > 0 && onActionClick && (
-        <div className="pt-2 border-t border-white/[0.06] flex items-center gap-1.5 flex-wrap">
+      {!isStreaming && actionChips.length > 0 && onActionClick && (
+        <div className="pt-2.5 mt-2 border-t border-white/[0.06] flex items-center gap-1.5 flex-wrap animate-in fade-in duration-300">
           <span className="text-[9px] font-black uppercase tracking-wider text-neutral-500 mr-0.5">Quick Actions:</span>
           {actionChips.map((chip, i) => (
             <button
@@ -1270,21 +1299,23 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
   );
 };
 
-// --- THEME STUDIO MODAL COMPONENT ---
+// --- THEME STUDIO MODAL COMPONENT (STUDIO-GRADE HUMAN DESIGN) ---
 interface ThemeStudioModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedTheme: NoteTheme;
   onSelectTheme: (t: NoteTheme) => void;
   userPlan?: UserPlan;
+  noteTitle?: string;
+  noteContent?: string;
 }
 
 const THEME_CATEGORIES = [
-  { id: "all", label: "All Themes", icon: "✨" },
-  { id: "light", label: "Light", icon: "☀️" },
-  { id: "professional", label: "Professional", icon: "🏛️" },
-  { id: "colorful", label: "Colorful", icon: "🎨" },
-  { id: "dark", label: "Dark Mode", icon: "🌙" },
+  { id: "all", label: "All", icon: Layers },
+  { id: "professional", label: "Academic", icon: BookOpen },
+  { id: "light", label: "Daylight", icon: Sun },
+  { id: "dark", label: "Dark Mode", icon: Moon },
+  { id: "colorful", label: "Expressive", icon: Sparkles },
 ];
 
 const ThemeStudioModal: React.FC<ThemeStudioModalProps> = ({
@@ -1293,14 +1324,24 @@ const ThemeStudioModal: React.FC<ThemeStudioModalProps> = ({
   selectedTheme,
   onSelectTheme,
   userPlan = "free",
+  noteTitle,
+  noteContent,
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [previewTheme, setPreviewTheme] = useState<NoteTheme>(selectedTheme);
+  const [specimenMode, setSpecimenMode] = useState<"document" | "specimen">("document");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setPreviewTheme(selectedTheme);
+    }
+  }, [isOpen, selectedTheme]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1328,49 +1369,79 @@ const ThemeStudioModal: React.FC<ThemeStudioModalProps> = ({
     return matchesCategory && matchesSearch;
   });
 
+  // Extract clean plain text excerpt without repeating title or headers
+  let cleanExcerpt = noteContent || "";
+  if (noteTitle) {
+    cleanExcerpt = cleanExcerpt.replace(new RegExp(noteTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), "");
+  }
+  cleanExcerpt = cleanExcerpt
+    .replace(/<[^>]*>?/gm, " ")
+    .replace(/#+\s/g, "")
+    .replace(/📌\s*Executive Summary/gi, "")
+    .replace(/Executive Summary/gi, "")
+    .replace(/[*_`$~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleanExcerpt || cleanExcerpt.length < 20) {
+    cleanExcerpt = "This lecture bridges the gap between simple linear models and deep learning. By chaining multiple parameterized layers, networks learn abstract, non-linear representations.";
+  } else {
+    cleanExcerpt = cleanExcerpt.slice(0, 180) + "...";
+  }
+
+  const fontName = previewTheme.font.replace(/'/g, "").split(",")[0].trim();
+
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
       <div className="absolute inset-0" onClick={onClose} />
+
+      {/* Dynamic Font Loader for Live Specimen */}
+      {previewTheme.googleFont && (
+        <link rel="stylesheet" href={previewTheme.googleFont} />
+      )}
+
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ type: "spring", damping: 25, stiffness: 350 }}
-        className="relative w-full max-w-3xl bg-[#09090d]/95 backdrop-blur-2xl border border-white/[0.12] rounded-[2rem] shadow-[0_25px_60px_rgba(0,0,0,0.95)] z-10 max-h-[88vh] flex flex-col overflow-hidden"
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ type: "spring", damping: 28, stiffness: 360 }}
+        className="relative w-full max-w-5xl bg-[#09090d]/95 backdrop-blur-2xl border border-white/[0.12] rounded-[1.75rem] shadow-[0_30px_90px_rgba(0,0,0,0.95)] z-10 h-[90vh] max-h-[820px] flex flex-col overflow-hidden"
       >
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-white/[0.08] bg-[#0d0d12]/80 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shadow-inner">
-                <Palette size={16} />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white tracking-tight">Document Theme Studio</h3>
-                <p className="text-[11px] text-neutral-400">Choose from 26 tailored typography & color systems</p>
-              </div>
+        {/* Studio Top Header */}
+        <div className="p-4 sm:px-6 sm:py-4 border-b border-white/[0.08] bg-[#0c0d12]/90 flex items-center justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0 shadow-inner">
+              <Sliders size={16} />
             </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.1] text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
-            >
-              <X size={15} />
-            </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+                  Typography & Theme Studio
+                </h3>
+                <span className="hidden sm:inline-flex text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-neutral-400">
+                  {THEMES.length} Curations
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-400 truncate">
+                Editorial typographic pairings, calibrated paper hues & reading ergonomics
+              </p>
+            </div>
           </div>
 
-          {/* Search & Category Tabs */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-            {/* Search Input */}
-            <div className="relative flex-1">
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* Minimalist Search */}
+            <div className="relative w-36 sm:w-56">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by theme name, font, or mood..."
-                className="w-full h-8 pl-3 pr-8 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white placeholder:text-neutral-500 focus:border-red-500/50 outline-none transition-all"
+                placeholder="Search style or font..."
+                className="w-full h-8 pl-8 pr-7 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white placeholder:text-neutral-500 focus:border-red-500/50 outline-none transition-all"
               />
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs"
                 >
@@ -1379,142 +1450,375 @@ const ThemeStudioModal: React.FC<ThemeStudioModalProps> = ({
               )}
             </div>
 
-            {/* Category Segmented Filter */}
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar p-0.5 bg-black/40 border border-white/[0.06] rounded-xl">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.1] text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              title="Close (ESC)"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Studio Main Workspace (Split Grid) */}
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+          
+          {/* LEFT PANE: Theme Catalog & Categorization (Col 7) */}
+          <div className="lg:col-span-7 flex flex-col min-h-0 border-b lg:border-b-0 lg:border-r border-white/[0.08]">
+            
+            {/* Category Segmented Controls - Concise Labels that Fit Smoothly */}
+            <div className="p-2.5 sm:px-4 border-b border-white/[0.06] bg-black/20 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-fade-x">
               {THEME_CATEGORIES.map((cat) => {
                 const count =
                   cat.id === "all" ? THEMES.length : THEMES.filter((t) => t.category === cat.id).length;
                 const isActive = activeCategory === cat.id;
+                const IconComponent = cat.icon;
                 return (
                   <button
                     key={cat.id}
+                    type="button"
                     onClick={() => setActiveCategory(cat.id)}
                     className={cn(
-                      "px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1",
+                      "px-2.5 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 border",
                       isActive
-                        ? "bg-white/[0.12] text-white shadow-sm font-bold"
-                        : "text-neutral-400 hover:text-neutral-200"
+                        ? "bg-white/[0.12] border-white/20 text-white shadow-sm font-bold"
+                        : "bg-white/[0.02] border-white/[0.04] text-neutral-400 hover:text-neutral-200 hover:border-white/10"
                     )}
                   >
-                    <span>{cat.icon}</span>
+                    <IconComponent size={12} className={isActive ? "text-red-400" : "text-neutral-400"} />
                     <span>{cat.label}</span>
-                    <span className="text-[9px] opacity-60 ml-0.5">({count})</span>
+                    <span className="text-[9.5px] opacity-60 font-mono">({count})</span>
                   </button>
                 );
               })}
             </div>
+
+            {/* Themes Grid */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 custom-scrollbar">
+              {filteredThemes.length === 0 ? (
+                <div className="text-center py-16">
+                  <p className="text-xs text-neutral-400">No themes found matching "{searchQuery}"</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setActiveCategory("all");
+                    }}
+                    className="mt-3 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs text-white font-semibold transition cursor-pointer"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {filteredThemes.map((t) => {
+                    const isPreviewing = previewTheme.id === t.id;
+                    const isApplied = selectedTheme.id === t.id;
+                    const plan = getThemePlan(t.id);
+                    const cleanFont = t.font.replace(/'/g, "").split(",")[0].trim();
+
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setPreviewTheme(t)}
+                        onDoubleClick={() => {
+                          onSelectTheme(t);
+                          onClose();
+                          toast.success(`Applied ${t.name} Theme`);
+                        }}
+                        className={cn(
+                          "group relative p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 overflow-hidden",
+                          isPreviewing
+                            ? "bg-gradient-to-br from-red-950/30 to-[#121218] border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.2)] ring-1 ring-red-500/40"
+                            : "bg-[#0e0e13]/80 hover:bg-[#14141c] border-white/[0.07] hover:border-white/20 shadow-sm"
+                        )}
+                      >
+                        {/* Header: Theme name in actual font + Badges */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h4
+                              className="text-sm font-bold text-white group-hover:text-red-400 transition-colors truncate"
+                              style={{ fontFamily: t.font }}
+                            >
+                              {t.name}
+                            </h4>
+                            <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 font-mono mt-0.5">
+                              <span className="truncate">{cleanFont}</span>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 flex items-center gap-1">
+                            {isApplied ? (
+                              <span className="flex items-center gap-1 text-[8.5px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/25 px-1.5 py-0.5 rounded-full">
+                                <Check size={9} strokeWidth={3} /> Active
+                              </span>
+                            ) : plan !== "free" ? (
+                              <span
+                                className={cn(
+                                  "text-[8px] font-black uppercase px-1.5 py-0.5 rounded border",
+                                  plan === "power"
+                                    ? "bg-purple-500/15 text-purple-400 border-purple-500/20"
+                                    : "bg-amber-500/15 text-amber-400 border-amber-500/20"
+                                )}
+                              >
+                                {plan}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {/* Palette Swatch Bar */}
+                        <div className="flex items-center gap-2 pt-1 border-t border-white/[0.04]">
+                          <div className="flex items-center -space-x-1 p-1 bg-black/40 rounded-full border border-white/5 shrink-0">
+                            <span
+                              className="w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm"
+                              style={{ backgroundColor: t.bg }}
+                              title="Paper Tone"
+                            />
+                            <span
+                              className="w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm"
+                              style={{ backgroundColor: t.primary }}
+                              title="Heading Ink"
+                            />
+                            <span
+                              className="w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm"
+                              style={{ backgroundColor: t.accent }}
+                              title="Accent Detail"
+                            />
+                            <span
+                              className="w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm"
+                              style={{ backgroundColor: t.cardBg }}
+                              title="Surface Canvas"
+                            />
+                          </div>
+
+                          <p className="text-[10px] text-neutral-400 line-clamp-1 truncate flex-1 leading-snug">
+                            {t.desc || "Refined academic typography"}
+                          </p>
+                        </div>
+
+                        {/* Card Hover Status / Shortcut */}
+                        <div className="flex items-center justify-between text-[9.5px] text-neutral-500 pt-1">
+                          <span className="capitalize">{t.category} Atmosphere</span>
+                          <span className="group-hover:text-red-400 transition-colors">
+                            {isPreviewing ? "● Previewing Live" : "Click to Preview →"}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* RIGHT PANE: Interactive Live Paper Specimen (Col 5) with Proper Padding and Border */}
+          <div className="lg:col-span-5 hidden lg:flex flex-col min-h-0 bg-[#060609] p-5 justify-between overflow-hidden border-l border-white/[0.08]">
+            
+            {/* Specimen Header & Mode Switch */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08]">
+              <div className="flex items-center gap-2 pl-0.5">
+                <div className="w-5 h-5 rounded-md bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 shrink-0">
+                  <Type size={11} />
+                </div>
+                <span className="text-xs font-bold text-white tracking-tight">Live Sheet Specimen</span>
+              </div>
+
+              {/* Mode Pill Toggle */}
+              <div className="flex items-center p-0.5 bg-black/60 border border-white/[0.08] rounded-xl text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setSpecimenMode("document")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer",
+                    specimenMode === "document"
+                      ? "bg-white/[0.12] text-white shadow-sm font-bold"
+                      : "text-neutral-400 hover:text-white"
+                  )}
+                >
+                  My Document
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSpecimenMode("specimen")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer",
+                    specimenMode === "specimen"
+                      ? "bg-white/[0.12] text-white shadow-sm font-bold"
+                      : "text-neutral-400 hover:text-white"
+                  )}
+                >
+                  Editorial Layout
+                </button>
+              </div>
+            </div>
+
+            {/* Floating Paper Canvas with High-Contrast Paper Shadow */}
+            <div className="flex-1 my-3 flex items-center justify-center min-h-0 overflow-y-auto no-scrollbar p-1">
+              <motion.div
+                key={previewTheme.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                className="w-full rounded-2xl border p-5 flex flex-col justify-between transition-colors duration-200 ring-1 ring-white/[0.08]"
+                style={{
+                  backgroundColor: previewTheme.bg,
+                  color: previewTheme.text,
+                  borderColor: previewTheme.border,
+                  fontFamily: previewTheme.font,
+                  minHeight: "330px",
+                  boxShadow: "0 22px 55px -12px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.05)"
+                }}
+              >
+                {/* Document Top Meta */}
+                <div>
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider mb-2.5">
+                    <span
+                      className="px-2 py-0.5 rounded-md border text-[9px] font-mono"
+                      style={{
+                        backgroundColor: previewTheme.cardBg,
+                        color: previewTheme.primary,
+                        borderColor: previewTheme.border,
+                      }}
+                    >
+                      {previewTheme.category === "professional" ? "Academic Thesis" : "Study Guide"}
+                    </span>
+                    <span className="opacity-60 text-[9px]">4 min read · Verified</span>
+                  </div>
+
+                  {/* Title */}
+                  <h3
+                    className="text-base font-extrabold tracking-tight leading-snug mb-2.5 line-clamp-2"
+                    style={{ color: previewTheme.primary }}
+                  >
+                    {specimenMode === "document" && noteTitle
+                      ? noteTitle
+                      : "Neural Networks: From Perceptrons to Deep Learning"}
+                  </h3>
+
+                  {/* Executive Summary Card */}
+                  <div
+                    className="p-3 rounded-xl text-[11px] leading-relaxed mb-3 border"
+                    style={{
+                      backgroundColor: previewTheme.cardBg,
+                      borderColor: previewTheme.border,
+                      color: previewTheme.text,
+                    }}
+                  >
+                    <div
+                      className="font-bold text-[10px] uppercase tracking-wide mb-1"
+                      style={{ color: previewTheme.primary }}
+                    >
+                      Executive Summary
+                    </div>
+                    <p className="opacity-90 line-clamp-3 leading-relaxed">
+                      {cleanExcerpt}
+                    </p>
+                  </div>
+
+                  {/* Subsection & Formula Sample */}
+                  <div className="space-y-1.5 text-xs">
+                    <div
+                      className="font-bold text-[11.5px] flex items-center gap-1.5"
+                      style={{ color: previewTheme.primary }}
+                    >
+                      <span>1. Mathematical Foundations</span>
+                    </div>
+                    <div
+                      className="px-2.5 py-1.5 rounded-lg text-[10.5px] font-mono border"
+                      style={{
+                        backgroundColor: previewTheme.cardBg,
+                        borderColor: previewTheme.border,
+                        color: previewTheme.link || previewTheme.accent,
+                      }}
+                    >
+                      g(z) = 1 / (1 + e^-z)  // Sigmoid transfer
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Sheet Footer */}
+                <div
+                  className="flex items-center justify-between text-[9px] pt-3 mt-3 border-t opacity-65 font-mono"
+                  style={{ borderColor: previewTheme.border }}
+                >
+                  <span>Paperxify Publication Standard</span>
+                  <span>{fontName}</span>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Bottom Typographic Specs */}
+            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-between text-xs shrink-0">
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm"
+                  style={{ backgroundColor: previewTheme.primary }}
+                />
+                <div>
+                  <div className="font-bold text-white text-[11.5px] leading-none">{previewTheme.name}</div>
+                  <div className="text-[9.5px] text-neutral-400 font-mono mt-0.5">{fontName}</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[9.5px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  AAA Contrast
+                </span>
+                <span className="text-[9.5px] text-neutral-400 font-mono">
+                  {previewTheme.category}
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Studio Bottom Action Footer */}
+        <div className="p-3 sm:px-6 sm:py-3.5 border-t border-white/[0.08] bg-[#0c0d12] flex items-center justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="w-5 h-5 rounded-md border flex items-center justify-center shrink-0"
+              style={{ backgroundColor: previewTheme.bg, borderColor: previewTheme.border }}
+            >
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: previewTheme.primary }} />
+            </div>
+            <p className="text-[11px] text-neutral-400 truncate">
+              {selectedTheme.id === previewTheme.id ? (
+                <span>Currently active: <strong className="text-white">{previewTheme.name}</strong></span>
+              ) : (
+                <span>Previewing: <strong className="text-white">{previewTheme.name}</strong> · Click Apply to change</span>
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-xs font-semibold text-neutral-300 hover:text-white transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onSelectTheme(previewTheme);
+                onClose();
+                toast.success(`Applied ${previewTheme.name} Theme`);
+              }}
+              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-[0_4px_18px_rgba(239,68,68,0.35)] transition cursor-pointer active:scale-95"
+            >
+              <Check size={13} strokeWidth={2.5} />
+              <span>Apply Theme</span>
+            </button>
           </div>
         </div>
 
-        {/* Theme Grid */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 custom-scrollbar">
-          {filteredThemes.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-sm font-medium text-neutral-400">No themes found matching "{searchQuery}"</p>
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setActiveCategory("all");
-                }}
-                className="mt-3 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs text-white font-semibold transition"
-              >
-                Reset Filters
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filteredThemes.map((t) => {
-                const isSelected = selectedTheme.id === t.id;
-                const plan = getThemePlan(t.id);
-
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      onSelectTheme(t);
-                      onClose();
-                      toast.success(`Applied ${t.name} Theme`);
-                    }}
-                    className={cn(
-                      "group relative p-3.5 rounded-2xl border transition-all text-left cursor-pointer flex flex-col justify-between gap-3 overflow-hidden",
-                      isSelected
-                        ? "bg-gradient-to-br from-red-950/40 to-[#0e0e14] border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.2)] ring-1 ring-red-500/30"
-                        : "bg-[#0f0f14]/80 hover:bg-[#14141c] border-white/[0.08] hover:border-white/20 shadow-md"
-                    )}
-                  >
-                    {/* Top Row: Mini Paper Canvas + Header info */}
-                    <div className="flex items-start gap-3">
-                      {/* Mini Paper Swatch Preview */}
-                      <div
-                        className="w-14 h-16 rounded-xl border shadow-inner shrink-0 p-1.5 flex flex-col justify-between transition-transform group-hover:scale-105"
-                        style={{ backgroundColor: t.bg, borderColor: t.border }}
-                      >
-                        <div
-                          className="text-[8px] font-black uppercase tracking-tight truncate leading-none"
-                          style={{ color: t.primary }}
-                        >
-                          Heading
-                        </div>
-                        <div className="space-y-0.5">
-                          <div className="h-1 rounded-full opacity-60" style={{ backgroundColor: t.text }} />
-                          <div className="h-1 w-3/4 rounded-full opacity-40" style={{ backgroundColor: t.text }} />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: t.primary }} />
-                          <span className="w-1.5 h-1.5 rounded-full opacity-70" style={{ backgroundColor: t.accent }} />
-                        </div>
-                      </div>
-
-                      {/* Details */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className="text-sm font-bold text-white group-hover:text-red-400 transition-colors truncate">
-                            {t.name}
-                          </h4>
-                          {plan === "free" ? (
-                            <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                              Free
-                            </span>
-                          ) : plan === "power" ? (
-                            <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/20">
-                              Power
-                            </span>
-                          ) : (
-                            <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">
-                              Pro
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-[11px] text-neutral-400 line-clamp-2 mt-1 leading-relaxed">
-                          {t.desc || "Crisp clean textbook styling"}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Bottom Row: Font tag + Selection CTA */}
-                    <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-[10px]">
-                      <span className="font-mono text-neutral-500 truncate max-w-[170px]">
-                        {t.font.replace(/'/g, "").split(",")[0]}
-                      </span>
-
-                      {isSelected ? (
-                        <span className="flex items-center gap-1 font-bold text-red-400">
-                          <Check size={12} strokeWidth={3} />
-                          <span>Active</span>
-                        </span>
-                      ) : (
-                        <span className="text-neutral-400 group-hover:text-white font-medium transition-colors">
-                          Apply Theme →
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
       </motion.div>
     </div>,
     document.body
@@ -1537,6 +1841,7 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [hasPermission, setHasPermission] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Active theme state
   const [selectedTheme, setSelectedTheme] = useState<NoteTheme>(THEMES[0]);
@@ -1600,6 +1905,13 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef<boolean>(true);
+
+  const handleChatScroll = () => {
+    if (!chatScrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatScrollRef.current;
+    shouldAutoScrollRef.current = scrollHeight - scrollTop - clientHeight < 120;
+  };
 
   // PDF Generation State
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -1615,11 +1927,29 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  // Auth Verification Helper
+  const checkAuth = useCallback(() => {
+    if (typeof window === "undefined") return false;
+    const token = getAuthToken();
+    const userStr = localStorage.getItem("user");
+    const logged = !!(token && userStr && token !== "null" && token !== "undefined");
+    setIsLoggedIn(logged);
+    return logged;
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+    const handleStorageChange = () => checkAuth();
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [checkAuth]);
+
   // Fetch Note Data
   const loadNoteData = useCallback(async () => {
     try {
       setLoading(true);
       const authToken = getAuthToken();
+      checkAuth();
 
       // Check User Subscription
       const userStr = localStorage.getItem("user");
@@ -1638,6 +1968,9 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
         } catch (e) {
           console.error("Error parsing user data", e);
         }
+      } else {
+        setIsSubscribed(false);
+        setUserPlan("free");
       }
 
       // Check Mock Notes First
@@ -1716,16 +2049,12 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     loadNoteData();
   }, [loadNoteData]);
 
-  // Auto-scroll chat
+  // Auto-scroll chat without layout thrashing
   useEffect(() => {
     if (activeTab === "chat" || (typeof window !== "undefined" && window.innerWidth >= 1024)) {
-      const timer = setTimeout(() => {
-        if (chatScrollRef.current) {
-          chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-        }
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-      }, 100);
-      return () => clearTimeout(timer);
+      if (shouldAutoScrollRef.current && chatScrollRef.current) {
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      }
     }
   }, [messages, isThinking, activeTab]);
 
@@ -1787,6 +2116,12 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     const textToSend = (customText || input).trim();
     if (!textToSend || isThinking || !canUseModel) return;
 
+    if (!checkAuth()) {
+      setShowLoginDialog(true);
+      toast.info("Please sign in to access PaperChat AI Tutor.");
+      return;
+    }
+
     const currentMode = customMode || selectedMode.id;
     const userMsg: ApiMessage = {
       _id: Date.now().toString(),
@@ -1799,6 +2134,12 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
     setMessages((prev) => [...prev, userMsg]);
     if (!customText) setInput("");
     setIsThinking(true);
+    shouldAutoScrollRef.current = true;
+    setTimeout(() => {
+      if (chatScrollRef.current) {
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      }
+    }, 50);
 
     try {
       const authToken = getAuthToken();
@@ -1824,6 +2165,12 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => null);
+        if (response.status === 401 || errJson?.code === "AUTH_REQUIRED") {
+          setIsLoggedIn(false);
+          setShowLoginDialog(true);
+          toast.error(errJson?.message || "Sign in required to access PaperChat.");
+          return;
+        }
         if (response.status === 403 || errJson?.code === "QUOTA_EXCEEDED") {
           setMessages((prev) => [
             ...prev,
@@ -1844,46 +2191,82 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
       const decoder = new TextDecoder();
 
       const aiMsgId = (Date.now() + 1).toString();
-      const initialAiMsg: ApiMessage = {
-        _id: aiMsgId,
-        role: "assistant",
-        content: "",
-        timestamp: new Date().toISOString(),
-        videoLink: data?.videoUrl,
-        mode: currentMode
-      };
-
-      setMessages((prev) => [...prev, initialAiMsg]);
-      setIsThinking(false);
-
       let accumulatedContent = "";
+      let buffer = "";
+      let hasReceivedFirstToken = false;
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n");
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
+          let newDelta = "";
           for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const dataStr = line.slice(6);
+            const trimmed = line.trim();
+            if (trimmed.startsWith("data: ")) {
+              const dataStr = trimmed.slice(6).trim();
               if (dataStr === "[DONE]") continue;
 
               try {
                 const parsed = JSON.parse(dataStr);
-                if (parsed.content) {
-                  accumulatedContent += parsed.content;
-                  setMessages((prev) =>
-                    prev.map((msg) => (msg._id === aiMsgId ? { ...msg, content: accumulatedContent } : msg))
-                  );
+                if (parsed.error) {
+                  newDelta += `\n\n⚠️ **Notice**: ${parsed.error}`;
+                } else if (parsed.content) {
+                  newDelta += parsed.content;
                 }
               } catch (e) {
                 console.warn("Error parsing chunk", e);
               }
             }
           }
+
+          if (newDelta) {
+            accumulatedContent += newDelta;
+
+            if (!hasReceivedFirstToken) {
+              hasReceivedFirstToken = true;
+              setIsThinking(false);
+              setMessages((prev) => [
+                ...prev,
+                {
+                  _id: aiMsgId,
+                  role: "assistant",
+                  content: accumulatedContent,
+                  timestamp: new Date().toISOString(),
+                  videoLink: data?.videoUrl,
+                  mode: currentMode,
+                  isStreaming: true
+                }
+              ]);
+            } else {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg._id === aiMsgId
+                    ? { ...msg, content: accumulatedContent, isStreaming: true }
+                    : msg
+                )
+              );
+            }
+
+            if (shouldAutoScrollRef.current && chatScrollRef.current) {
+              chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+            }
+          }
+        }
+
+        // Finalize stream
+        setIsThinking(false);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === aiMsgId ? { ...msg, isStreaming: false } : msg
+          )
+        );
+        if (shouldAutoScrollRef.current && chatScrollRef.current) {
+          chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
         }
       }
     } catch (e) {
@@ -1911,6 +2294,11 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkAuth()) {
+      setShowLoginDialog(true);
+      toast.info("Please sign in to access PaperChat AI Tutor.");
+      return;
+    }
     await sendCustomMessage();
   };
 
@@ -2385,7 +2773,14 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
               {/* Model Switcher Button */}
               <div className="relative" ref={modelPickerRef}>
                 <button
-                  onClick={() => setShowModelPicker((p) => !p)}
+                  onClick={() => {
+                    if (!isLoggedIn) {
+                      setShowLoginDialog(true);
+                      toast.info("Please sign in to access PaperChat AI Tutor.");
+                      return;
+                    }
+                    setShowModelPicker((p) => !p);
+                  }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-[11px] font-bold text-neutral-300 hover:text-white transition-all cursor-pointer"
                 >
                   <Sparkles size={11} className="text-red-400" />
@@ -2479,7 +2874,14 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
                 return (
                   <button
                     key={mode.id}
-                    onClick={() => setSelectedMode(mode)}
+                    onClick={() => {
+                      if (!isLoggedIn) {
+                        setShowLoginDialog(true);
+                        toast.info("Please sign in to access PaperChat AI Tutor.");
+                        return;
+                      }
+                      setSelectedMode(mode);
+                    }}
                     className={cn(
                       "flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold shrink-0 transition-all cursor-pointer border",
                       isActive
@@ -2495,146 +2897,216 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
             </div>
           </div>
 
-          {/* Chat Messages Stream */}
-          <div className="relative flex-1 flex flex-col min-h-0">
-            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 lg:pb-4 custom-scrollbar">
-              <div className="space-y-3.5">
-                {messages.map((msg, idx) => (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    key={idx}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    {msg.role === "user" ? (
-                      <div className="max-w-[85%] flex flex-col items-end gap-1">
-                        <div className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-xs leading-relaxed break-words shadow-md">
-                          {msg.content}
-                        </div>
-                        {msg.mode && msg.mode !== "ask" && (
-                          <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-wide pr-1">
-                            {msg.mode} mode
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="max-w-[92%] bg-[#121216] border border-white/[0.08] rounded-2xl rounded-tl-sm p-3.5 text-xs leading-relaxed break-words shadow-sm">
-                        <ModeMessageRenderer 
-                          content={msg.content} 
-                          mode={msg.mode} 
-                          onActionClick={(prompt) => sendCustomMessage(prompt)}
-                        />
+          {/* Chat Messages Stream or Locked Gate */}
+          {!isLoggedIn ? (
+            <div className="relative flex-1 flex flex-col min-h-0 bg-[#09090c]">
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center overflow-y-auto custom-scrollbar">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500/20 to-orange-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mb-3.5 shadow-[0_0_25px_rgba(239,68,68,0.2)]">
+                  <Lock size={24} className="text-red-400" />
+                </div>
 
-                        {msg.videoLink && (
-                          <a
-                            href={msg.videoLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2.5 p-2 rounded-xl bg-black/40 border border-white/5 flex items-center gap-2 hover:bg-black/60 transition-colors text-red-400 text-xs font-semibold"
-                          >
-                            <ExternalLink size={12} />
-                            <span>Jump to Video Chapter</span>
-                          </a>
-                        )}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider mb-2.5">
+                  <Sparkles size={11} /> Authentication Required
+                </span>
 
-                        {/* Bottom Feedback Bar */}
-                        <div className="mt-2.5 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[10px] text-neutral-500">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleFeedback(msg._id, "good")}
-                              className={cn(
-                                "p-1 rounded hover:text-white transition-colors cursor-pointer",
-                                msg.feedback === "good" && "text-emerald-400"
-                              )}
-                              title="Helpful"
-                            >
-                              <ThumbsUp size={11} />
-                            </button>
-                            <button
-                              onClick={() => handleFeedback(msg._id, "bad")}
-                              className={cn(
-                                "p-1 rounded hover:text-white transition-colors cursor-pointer",
-                                msg.feedback === "bad" && "text-red-400"
-                              )}
-                              title="Not helpful"
-                            >
-                              <ThumbsDown size={11} />
-                            </button>
-                          </div>
-                          <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
+                <h3 className="text-base font-bold text-white tracking-tight mb-2">
+                  Sign in to Access PaperChat
+                </h3>
 
-                {isThinking && (
-                  <div className="flex justify-start">
-                    <div className="bg-[#121216] border border-white/[0.08] rounded-2xl rounded-tl-sm p-3 text-xs flex items-center gap-2.5">
-                      <div className="flex gap-1">
-                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" />
-                      </div>
-                      <span className="text-neutral-400 font-medium">{thinkingMessage}</span>
-                    </div>
+                <p className="text-xs text-neutral-400 max-w-xs mb-5 leading-relaxed">
+                  PaperChat AI Tutor provides instant Socratic guidance, formula derivations, active recall quizzes, and lecture timestamps. Sign in for free to start chatting.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setShowLoginDialog(true)}
+                  className="w-full max-w-xs py-2.5 px-4 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(239,68,68,0.35)] transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <LogIn size={14} />
+                  <span>Sign In to Unlock AI Tutor</span>
+                </button>
+
+                <div className="grid grid-cols-2 gap-2 mt-5 w-full max-w-xs text-left">
+                  <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] text-neutral-300 flex items-center gap-1.5">
+                    <Brain size={12} className="text-purple-400 shrink-0" />
+                    <span>Socratic Tutoring</span>
                   </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            </div>
-
-            {/* PaperChat Input Bar */}
-            <div className="p-3 border-t border-white/[0.08] bg-[#0c0c0f] shrink-0 mb-16 lg:mb-0 relative z-20">
-              <div className="bg-[#141418] border border-white/[0.10] rounded-2xl p-2.5 focus-within:border-red-500/50 transition-colors shadow-lg">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage(e);
-                    }
-                  }}
-                  placeholder={canUseModel ? `Ask PaperChat (${selectedMode.label} mode)... (Enter to send)` : `Message limit reached on ${selectedChatModel.name}`}
-                  disabled={!canUseModel}
-                  rows={2}
-                  className="w-full bg-transparent border-0 outline-none text-xs text-white placeholder:text-neutral-500 resize-none custom-scrollbar leading-relaxed"
-                />
-
-                <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
-                  {/* Quick Prompts Dropdown */}
-                  <div
-                    className="flex items-center gap-1.5 overflow-x-auto max-w-[80%] no-scrollbar scrollbar-none"
-                    style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                  >
-                    {QUICK_ACTIONS.slice(0, 3).map((qa, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => sendCustomMessage(qa.label)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-[10px] text-neutral-400 hover:text-white transition-colors cursor-pointer shrink-0"
-                      >
-                        <qa.icon size={10} style={{ color: qa.color }} />
-                        <span className="truncate max-w-[130px]">{qa.label}</span>
-                      </button>
-                    ))}
+                  <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] text-neutral-300 flex items-center gap-1.5">
+                    <Target size={12} className="text-red-400 shrink-0" />
+                    <span>Active Quizzes</span>
                   </div>
-
-                  {/* Send Action */}
-                  <button
-                    type="button"
-                    onClick={handleSendMessage}
-                    disabled={!input.trim() || isThinking || !canUseModel}
-                    className="w-7 h-7 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 disabled:hover:from-red-600 text-white flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-[0.95]"
-                  >
-                    {isThinking ? <Loader2 size={13} className="animate-spin" /> : <Send size={12} />}
-                  </button>
+                  <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] text-neutral-300 flex items-center gap-1.5">
+                    <Calculator size={12} className="text-pink-400 shrink-0" />
+                    <span>Math Derivations</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] text-neutral-300 flex items-center gap-1.5">
+                    <ExternalLink size={12} className="text-blue-400 shrink-0" />
+                    <span>Video Citations</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-          </div>
+              {/* Locked Bottom Input Bar */}
+              <div className="p-3 border-t border-white/[0.08] bg-[#0c0c0f] shrink-0 mb-16 lg:mb-0 relative z-20">
+                <button
+                  type="button"
+                  onClick={() => setShowLoginDialog(true)}
+                  className="w-full py-2.5 px-3.5 rounded-2xl bg-[#141418] border border-white/[0.10] hover:border-red-500/40 text-xs text-neutral-400 hover:text-white flex items-center justify-between transition-colors shadow-lg group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Lock size={12} className="text-red-400" />
+                    <span>Sign in to ask PaperChat questions...</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-red-400 group-hover:underline flex items-center gap-0.5">
+                    Sign In →
+                  </span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="relative flex-1 flex flex-col min-h-0">
+              <div ref={chatScrollRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 lg:pb-4 custom-scrollbar">
+                <div className="space-y-3.5">
+                  {messages.map((msg, idx) => (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      key={msg._id || idx}
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      {msg.role === "user" ? (
+                        <div className="max-w-[85%] flex flex-col items-end gap-1">
+                          <div className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-xs leading-relaxed break-words shadow-md">
+                            {msg.content}
+                          </div>
+                          {msg.mode && msg.mode !== "ask" && (
+                            <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-wide pr-1">
+                              {msg.mode} mode
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="max-w-[92%] bg-[#121216] border border-white/[0.08] rounded-2xl rounded-tl-sm p-3.5 text-xs leading-relaxed break-words shadow-sm">
+                          <ModeMessageRenderer 
+                            content={msg.content} 
+                            mode={msg.mode} 
+                            isStreaming={msg.isStreaming}
+                            onActionClick={(prompt) => sendCustomMessage(prompt)}
+                          />
+
+                          {!msg.isStreaming && msg.videoLink && (
+                            <a
+                              href={msg.videoLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-2.5 p-2 rounded-xl bg-black/40 border border-white/5 flex items-center gap-2 hover:bg-black/60 transition-colors text-red-400 text-xs font-semibold animate-in fade-in duration-300"
+                            >
+                              <ExternalLink size={12} />
+                              <span>Jump to Video Chapter</span>
+                            </a>
+                          )}
+
+                          {/* Bottom Feedback Bar */}
+                          {!msg.isStreaming && (
+                            <div className="mt-2.5 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[10px] text-neutral-500 animate-in fade-in duration-300">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleFeedback(msg._id, "good")}
+                                  className={cn(
+                                    "p-1 rounded hover:text-white transition-colors cursor-pointer",
+                                    msg.feedback === "good" && "text-emerald-400"
+                                  )}
+                                  title="Helpful"
+                                >
+                                  <ThumbsUp size={11} />
+                                </button>
+                                <button
+                                  onClick={() => handleFeedback(msg._id, "bad")}
+                                  className={cn(
+                                    "p-1 rounded hover:text-white transition-colors cursor-pointer",
+                                    msg.feedback === "bad" && "text-red-400"
+                                  )}
+                                  title="Not helpful"
+                                >
+                                  <ThumbsDown size={11} />
+                                </button>
+                              </div>
+                              <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+
+                  {isThinking && (
+                    <div className="flex justify-start">
+                      <div className="bg-[#121216] border border-white/[0.08] rounded-2xl rounded-tl-sm p-3 text-xs flex items-center gap-2.5">
+                        <div className="flex gap-1">
+                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" />
+                        </div>
+                        <span className="text-neutral-400 font-medium">{thinkingMessage}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
+
+              {/* PaperChat Input Bar */}
+              <div className="p-3 border-t border-white/[0.08] bg-[#0c0c0f] shrink-0 mb-16 lg:mb-0 relative z-20">
+                <div className="bg-[#141418] border border-white/[0.10] rounded-2xl p-2.5 focus-within:border-red-500/50 transition-colors shadow-lg">
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
+                    placeholder={canUseModel ? `Ask PaperChat (${selectedMode.label} mode)... (Enter to send)` : `Message limit reached on ${selectedChatModel.name}`}
+                    disabled={!canUseModel}
+                    rows={2}
+                    className="w-full bg-transparent border-0 outline-none text-xs text-white placeholder:text-neutral-500 resize-none custom-scrollbar leading-relaxed"
+                  />
+
+                  <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                    {/* Quick Prompts Dropdown */}
+                    <div
+                      className="flex items-center gap-1.5 overflow-x-auto max-w-[80%] no-scrollbar scrollbar-none"
+                      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                    >
+                      {QUICK_ACTIONS.slice(0, 3).map((qa, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => sendCustomMessage(qa.label)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-[10px] text-neutral-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                        >
+                          <qa.icon size={10} style={{ color: qa.color }} />
+                          <span className="truncate max-w-[130px]">{qa.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Send Action */}
+                    <button
+                      type="button"
+                      onClick={handleSendMessage}
+                      disabled={!input.trim() || isThinking || !canUseModel}
+                      className="w-7 h-7 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 disabled:hover:from-red-600 text-white flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-[0.95]"
+                    >
+                      {isThinking ? <Loader2 size={13} className="animate-spin" /> : <Send size={12} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
 
         </div>
 
@@ -2649,6 +3121,8 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
             selectedTheme={selectedTheme}
             onSelectTheme={setSelectedTheme}
             userPlan={userPlan}
+            noteTitle={data?.title}
+            noteContent={markdownContent}
           />
         )}
       </AnimatePresence>
@@ -2669,6 +3143,17 @@ export default function NotePage({ params }: { params: Promise<{ slug: string }>
           />
         )}
       </AnimatePresence>
+
+      {/* ─── 4.5. LOGIN DIALOG (GLOBAL FOR PAGE & PAPERCHAT) ─── */}
+      <LoginDialog
+        isOpen={showLoginDialog}
+        onClose={() => setShowLoginDialog(false)}
+        onSuccess={() => {
+          setShowLoginDialog(false);
+          checkAuth();
+          loadNoteData();
+        }}
+      />
 
       {/* ─── 5. MOBILE FLOATING GLASS CAPSULE DOCK ─── */}
       <div className="lg:hidden fixed bottom-3 inset-x-0 z-[70] flex justify-center px-4 pointer-events-none">

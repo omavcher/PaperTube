@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Check, ArrowRight, Sparkles, Gift, ShieldCheck, Lock, RefreshCw, Zap, Crown, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePricingRegion } from "@/lib/usePricingRegion";
@@ -36,59 +37,57 @@ const PLANS_DATA: PlanData[] = [
     id: "free",
     name: "Free Tier",
     badge: "Forever Free",
-    tagline: "Explore the magic of AI learning with zero risk.",
+    tagline: "Core AI study tools with zero risk.",
     usd: { monthly: 0, yearly: 0, yearlyPerMonth: 0, saving: "" },
     inr: { monthly: 0, yearly: 0, yearlyPerMonth: 0, saving: "" },
     highlight: false,
     ctaText: "Start for Free",
     ctaHref: "/youtube-to-notes",
     features: [
-      "Access to Paperxify core study & reasoning engine",
-      "Standard video lecture processing & synthesis",
-      "Interactive PaperChat video tutor assistant",
-      "Smart flashcards, quizzes & step-by-step solver",
-      "Visual concept studio & mind map diagrams",
-      "Standard PDF & Markdown exports",
+      "Core study & reasoning engine",
+      "Video lecture notes & synthesis",
+      "Interactive PaperChat AI tutor",
+      "Smart flashcards & quiz solver",
+      "Visual mind maps & diagrams",
+      "Standard PDF & Markdown export",
     ],
   },
   {
     id: "pro",
     name: "Pro Scholar",
-    badge: "⭐ Most Popular",
-    tagline: "Extended access to our most capable AI models.",
+    badge: "⭐ Popular",
+    tagline: "Extended access to top AI models.",
     usd: { monthly: 9.99, yearly: 79.99, yearlyPerMonth: 6.67, saving: "~33% off" },
     inr: { monthly: 799, yearly: 6999, yearlyPerMonth: 583, saving: "~27% off" },
     highlight: true,
     ctaText: "Get Pro Scholar",
     ctaHref: "/pricing",
     features: [
-      "Extended access to our fastest, most capable AI models",
-      "Deep marathon lecture processing (up to 4 hours long)",
-      "Autonomous Agentic Workspace with live app actions",
-      "High-resolution Visual Studio concept artwork",
-      "Keynote slide deck generator with speaker notes & PPTX",
-      "Publication-quality PDF (LaTeX + Code) & Notion export",
-      "Priority access during peak hours with zero queue wait",
+      "Everything in Free included",
+      "Fastest, most capable AI models",
+      "Deep lectures up to 4 hrs long",
+      "Autonomous Agentic Workspace",
+      "Keynote PPTX slides & LaTeX PDF",
+      "Peak priority queue with zero wait",
     ],
   },
   {
     id: "power",
     name: "Power Scholar",
-    badge: "👑 Max Output",
-    tagline: "Maximum reasoning capacity for power researchers.",
+    badge: "👑 Max Power",
+    tagline: "Maximum reasoning capacity & volume.",
     usd: { monthly: 19.99, yearly: 149.99, yearlyPerMonth: 10.83, saving: "~37% off" },
     inr: { monthly: 1599, yearly: 12999, yearlyPerMonth: 1083, saving: "~32% off" },
     highlight: false,
     ctaText: "Get Power Scholar",
     ctaHref: "/pricing",
     features: [
-      "Maximum reasoning capacity and output volume",
-      "Full course playlists & mega streams (up to 8 hours long)",
-      "Priority Turbo Agent execution with automated workflows",
-      "Expanded Visual Studio creative suite & studio illustrations",
-      "Unlimited active-recall quizzes, flashcards & mind maps",
-      "Instant Turbo queue — zero wait time anytime",
-      "All export formats (LaTeX PDF, DOCX, PPTX, Anki .apkg)",
+      "Everything in Pro included",
+      "Maximum reasoning & output volume",
+      "Course playlists up to 8 hrs long",
+      "Priority Turbo Agent workflows",
+      "Unlimited active-recall study suite",
+      "All export formats (LaTeX, DOCX, Anki)",
     ],
   },
 ];
@@ -98,12 +97,45 @@ export default function PricingShowcase({ region }: { region?: string }) {
 
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [mobileActive, setMobileActive] = useState<"free" | "pro" | "power">("pro");
+  const [slideDirection, setSlideDirection] = useState<number>(0);
   const [user, setUser] = useState<any>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<PlanData | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingCheckoutPlan, setPendingCheckoutPlan] = useState<PlanData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const planOrder: ("free" | "pro" | "power")[] = ["free", "pro", "power"];
+
+  const handleMobileTabChange = (newPlan: "free" | "pro" | "power") => {
+    if (newPlan === mobileActive) return;
+    const oldIdx = planOrder.indexOf(mobileActive);
+    const newIdx = planOrder.indexOf(newPlan);
+    setSlideDirection(newIdx > oldIdx ? 1 : -1);
+    setMobileActive(newPlan);
+  };
+
+  const touchStartX = React.useRef<number>(0);
+  const touchStartY = React.useRef<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diffX = touchStartX.current - e.changedTouches[0].clientX;
+    const diffY = touchStartY.current - e.changedTouches[0].clientY;
+    // Only trigger if horizontal swipe is clearly intentional
+    if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+      const currentIdx = planOrder.indexOf(mobileActive);
+      if (diffX > 0 && currentIdx < planOrder.length - 1) {
+        handleMobileTabChange(planOrder[currentIdx + 1]);
+      } else if (diffX < 0 && currentIdx > 0) {
+        handleMobileTabChange(planOrder[currentIdx - 1]);
+      }
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -207,6 +239,230 @@ export default function PricingShowcase({ region }: { region?: string }) {
     }
   };
 
+  const renderPlanCard = (plan: PlanData) => {
+    const dp = getDisplayPrice(plan.id === "free" ? "free" : (plan.id as "pro" | "power"));
+    const isPro = plan.id === "pro";
+
+    return (
+      <div
+        key={plan.id}
+        className={cn(
+          "w-full rounded-[22px] sm:rounded-[24px] p-4 sm:p-4.5 flex flex-col justify-between transition-all duration-300 relative",
+          isPro
+            ? "bg-white text-neutral-900 shadow-[0_20px_50px_-12px_rgba(239,68,68,0.2),0_0_30px_rgba(255,255,255,0.06)] border border-neutral-100 md:scale-[1.02] md:-translate-y-1 z-10"
+            : "bg-[#121215] text-white border border-white/[0.08] hover:border-white/[0.14]"
+        )}
+      >
+        {/* RECOMMENDED floating pill for Pro (Shown on desktop; on mobile the active tab already highlights Pro) */}
+        {isPro && (
+          <div className="hidden md:flex absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#ef4444] text-white text-[9px] font-black uppercase tracking-wider shadow-md items-center gap-1 whitespace-nowrap">
+            <Crown size={9} /> RECOMMENDED
+          </div>
+        )}
+
+        <div>
+          {/* 1. Inset Top Header Box (Matching Reference Image) */}
+          <div
+            className={cn(
+              "rounded-xl p-3 sm:p-3.5 mb-3 transition-colors",
+              isPro
+                ? "bg-neutral-50 border border-neutral-200/80 shadow-sm"
+                : "bg-[#18181d] border border-white/[0.06]"
+            )}
+          >
+            <div className="flex items-center justify-between mb-0.5">
+              <h3
+                className={cn(
+                  "text-base sm:text-lg font-bold tracking-tight",
+                  isPro ? "text-neutral-900" : "text-white"
+                )}
+              >
+                {plan.name}
+              </h3>
+              <span
+                className={cn(
+                  "px-1.5 py-0.5 rounded-md text-[8.5px] font-bold uppercase tracking-wider",
+                  isPro
+                    ? "bg-red-500/10 text-red-600 border border-red-500/20"
+                    : "bg-white/[0.05] text-neutral-400 border border-white/[0.08]"
+                )}
+              >
+                {plan.badge}
+              </span>
+            </div>
+            <p
+              className={cn(
+                "text-[11px] leading-tight truncate",
+                isPro ? "text-neutral-600" : "text-neutral-400"
+              )}
+            >
+              {plan.tagline}
+            </p>
+          </div>
+
+          {/* 2. Price Block (Compact, Crisp Blur Transition) */}
+          <div className="relative mb-3 min-h-[46px] flex flex-col justify-center overflow-hidden">
+            {plan.id === "free" ? (
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span
+                    className={cn(
+                      "text-3xl sm:text-4xl font-black tracking-tight",
+                      isPro ? "text-neutral-900" : "text-white"
+                    )}
+                  >
+                    {dp.bigPrice}
+                  </span>
+                </div>
+                <p
+                  className={cn(
+                    "text-[10px] mt-0.5 leading-tight truncate",
+                    isPro ? "text-neutral-500" : "text-neutral-400"
+                  )}
+                >
+                  {dp.sub}
+                </p>
+              </div>
+            ) : (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={`${plan.id}-${billing}`}
+                  initial={{
+                    opacity: 0,
+                    y: billing === "yearly" ? 8 : -8,
+                    filter: "blur(4px)",
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                    filter: "blur(0px)",
+                  }}
+                  exit={{
+                    opacity: 0,
+                    y: billing === "yearly" ? -8 : 8,
+                    filter: "blur(4px)",
+                  }}
+                  transition={{
+                    duration: 0.16,
+                    ease: [0.2, 0.8, 0.2, 1],
+                  }}
+                  className="w-full"
+                >
+                  <div className="flex items-baseline gap-1 flex-wrap">
+                    <span
+                      className={cn(
+                        "text-3xl sm:text-4xl font-black tracking-tight",
+                        isPro ? "text-neutral-900" : "text-white"
+                      )}
+                    >
+                      {dp.bigPrice}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold",
+                        isPro ? "text-neutral-500" : "text-neutral-400"
+                      )}
+                    >
+                      {dp.bigPeriod}
+                    </span>
+                    {dp.savingBadge && (
+                      <motion.span
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                        className="ml-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
+                      >
+                        {dp.savingBadge}
+                      </motion.span>
+                    )}
+                  </div>
+                  <p
+                    className={cn(
+                      "text-[10px] mt-0.5 leading-tight truncate",
+                      isPro ? "text-neutral-500" : "text-neutral-400"
+                    )}
+                  >
+                    {dp.sub}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            )}
+          </div>
+
+          {/* 3. Full-Width Pill CTA Button */}
+          <div className="mb-3.5">
+            {plan.id === "free" ? (
+              <Link
+                href="/youtube-to-notes"
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-full font-bold text-xs transition-all cursor-pointer active:scale-[0.98] bg-[#222228] hover:bg-[#2c2c34] text-white border border-white/10 shadow-sm"
+              >
+                <span>{plan.ctaText}</span>
+                <ArrowRight size={12} />
+              </Link>
+            ) : (
+              <button
+                onClick={() => handleSelectPlan(plan)}
+                className={cn(
+                  "w-full flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-full font-bold text-xs transition-all cursor-pointer active:scale-[0.98] shadow-md",
+                  isPro
+                    ? "bg-[#ef4444] hover:bg-red-600 text-white shadow-red-500/25 hover:shadow-red-500/35"
+                    : "bg-[#222228] hover:bg-[#2c2c34] text-white border border-white/10"
+                )}
+              >
+                <span>{plan.ctaText}</span>
+                <ArrowRight size={12} />
+              </button>
+            )}
+          </div>
+
+          {/* 4. Dotted Divider */}
+          <div
+            className={cn(
+              "border-t border-dashed my-3",
+              isPro ? "border-neutral-200" : "border-white/10"
+            )}
+          />
+
+          {/* 5. Features Section Header & Circular Checkmarks */}
+          <div>
+            <p
+              className={cn(
+                "text-[9.5px] font-bold uppercase tracking-wider mb-2",
+                isPro ? "text-neutral-500" : "text-neutral-400"
+              )}
+            >
+              {plan.name.toUpperCase()} INCLUDES
+            </p>
+
+            <div className="space-y-1.5">
+              {plan.features.map((f, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex items-center gap-2 text-[11px] sm:text-xs leading-none",
+                    isPro ? "text-neutral-700" : "text-neutral-300"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0",
+                      isPro
+                        ? "bg-neutral-200/80 text-neutral-800"
+                        : "bg-white/[0.08] text-neutral-300"
+                    )}
+                  >
+                    <Check size={8} strokeWidth={3} />
+                  </div>
+                  <span className="truncate">{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <AuthLoginModal
@@ -242,249 +498,245 @@ export default function PricingShowcase({ region }: { region?: string }) {
         }}
       />
 
-      <section className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 font-sans">
+      <section className="w-full max-w-[1140px] mx-auto px-4 sm:px-6 py-4 sm:py-6 lg:py-8 font-sans">
         {/* ── Header ─────────────────────────────────────────────────────────── */}
-        <div className="text-center space-y-2 mb-7">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-            <Sparkles size={11} className="text-red-400" />
+        <div className="text-center space-y-1 mb-3">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[9.5px] font-bold uppercase tracking-wider text-neutral-400">
+            <Sparkles size={10} className="text-red-400" />
             <span>Simple, Transparent Pricing</span>
           </div>
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">
             Choose your <span className="text-[#ef4444]">learning power.</span>
           </h2>
-          <p className="text-xs sm:text-sm text-neutral-400 max-w-xl mx-auto leading-relaxed">
-            Turn lectures, videos and study material into an AI-powered learning system.
-            No hidden caps — real monthly quotas built for serious students.
+          <p className="text-[11px] sm:text-xs text-neutral-400 max-w-md mx-auto leading-normal">
+            Turn lectures and study material into an AI-powered learning system.
           </p>
         </div>
 
-        {/* ── Launch Banner ──────────────────────────────────────────────────── */}
-        <div className="rounded-2xl bg-[#0b0b0e] border border-white/[0.08] p-3.5 sm:p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 shrink-0">
-              <Gift size={16} />
+        {/* ── Launch Banner (Compact High-Converting Ribbon) ─────────────────── */}
+        <div 
+          onClick={() => {
+            if (billing !== "yearly") {
+              setBilling("yearly");
+              toast.success(`Yearly discount applied! You're saving up to ${maxSaving}%.`);
+            }
+          }}
+          className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-red-950/30 via-[#0e0e13]/90 to-[#0c0c10] border border-red-500/25 hover:border-red-500/40 px-3.5 py-2 mb-3.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 transition-all duration-300 shadow-sm cursor-pointer"
+        >
+          {/* Ambient Glow */}
+          <div className="absolute -top-10 -left-10 w-32 h-32 bg-red-500/10 blur-2xl rounded-full pointer-events-none" />
+
+          {/* Left: Offer Details & Icon */}
+          <div className="flex items-center gap-2.5 z-10 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
+              <Gift size={13} className="text-red-400" />
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-white">
-                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
-                  LAUNCH OFFER
-                </span>
-                <span>Get up to</span>
-                <span className="text-red-400 font-bold">{maxSaving}% OFF</span>
-                <span>with yearly billing</span>
-              </div>
-              <p className="text-[11px] text-neutral-400 mt-0.5">Lock in early pricing before window closes.</p>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-[8.5px] font-black uppercase tracking-wider">
+                <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                Launch Offer
+              </span>
+              <span className="text-xs font-bold text-white tracking-tight">
+                Save up to <span className="text-red-400 font-black">{maxSaving}% OFF</span> with yearly billing
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {[{ v: timeLeft.days, l: "D" }, { v: timeLeft.hours, l: "H" }, { v: timeLeft.mins, l: "M" }, { v: timeLeft.secs, l: "S" }].map((item, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <span className="text-neutral-600 font-mono text-xs">:</span>}
-                <div className="flex flex-col items-center w-10 py-1 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                  <span className="text-xs font-bold text-white font-mono leading-none">{pad(item.v)}</span>
-                  <span className="text-[7.5px] uppercase text-neutral-500 mt-0.5">{item.l}</span>
-                </div>
-              </React.Fragment>
-            ))}
+
+          {/* Right: Digital Countdown Ticker & Action Button */}
+          <div className="flex items-center gap-2.5 z-10 shrink-0">
+            {/* Countdown Blocks */}
+            <div className="flex items-center gap-1">
+              {[
+                { v: timeLeft.days, l: "D" },
+                { v: timeLeft.hours, l: "H" },
+                { v: timeLeft.mins, l: "M" },
+                { v: timeLeft.secs, l: "S" },
+              ].map((item, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <span className="text-neutral-600 font-mono text-[10px] font-bold">:</span>}
+                  <div className="flex items-center gap-0.5 py-0.5 px-1.5 rounded-md bg-black/60 border border-white/[0.08]">
+                    <span className="text-[11px] font-bold text-white font-mono leading-none">
+                      {pad(item.v)}
+                    </span>
+                    <span className="text-[7.5px] uppercase text-neutral-400 font-semibold">
+                      {item.l}
+                    </span>
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* Quick Toggle CTA Pill */}
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.06] group-hover:bg-red-500 text-neutral-200 group-hover:text-white text-[11px] font-semibold border border-white/10 group-hover:border-red-400 transition-all shrink-0">
+              <span>{billing === "yearly" ? "Applied" : "Claim"}</span>
+              <ArrowRight size={10} className="group-hover:translate-x-0.5 transition-transform" />
+            </div>
           </div>
         </div>
 
         {/* ── Billing Toggle ─────────────────────────────────────────────────── */}
-        <div className="flex justify-center mb-5">
-          <div className="p-1 rounded-full bg-[#0b0b0e] border border-white/[0.08] flex items-center">
+        <div className="flex justify-center mb-4">
+          <div className="relative p-0.5 rounded-full bg-[#0b0b0e] border border-white/[0.08] flex items-center">
             <button
+              type="button"
               onClick={() => setBilling("monthly")}
               className={cn(
-                "px-5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer",
-                billing === "monthly" ? "bg-white text-black shadow-sm" : "text-neutral-400 hover:text-white"
+                "relative z-10 px-4 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer",
+                billing === "monthly" ? "text-black" : "text-neutral-400 hover:text-white"
               )}
             >
+              {billing === "monthly" && (
+                <motion.div
+                  layoutId="billing-pill-showcase"
+                  className="absolute inset-0 bg-white rounded-full shadow-sm z-[-1]"
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                />
+              )}
               Monthly
             </button>
             <button
+              type="button"
               onClick={() => setBilling("yearly")}
               className={cn(
-                "px-5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                billing === "yearly" ? "bg-[#ef4444] text-white shadow-sm" : "text-neutral-400 hover:text-white"
+                "relative z-10 px-4 py-1 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer",
+                billing === "yearly" ? "text-white" : "text-neutral-400 hover:text-white"
               )}
             >
-              Yearly
+              {billing === "yearly" && (
+                <motion.div
+                  layoutId="billing-pill-showcase"
+                  className="absolute inset-0 bg-[#ef4444] rounded-full shadow-sm z-[-1]"
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                />
+              )}
+              <span>Yearly</span>
               <span
                 className={cn(
-                  "px-1.5 py-0.5 rounded-full text-[8.5px] font-bold uppercase",
+                  "px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase transition-colors",
                   billing === "yearly"
                     ? "bg-black/30 text-white"
                     : "bg-red-500/15 text-red-400 border border-red-500/20"
                 )}
               >
-                Save up to {maxSaving}%
+                Save {maxSaving}%
               </span>
             </button>
           </div>
         </div>
 
-        {/* ── Mobile Segmented Switcher (shows one plan at a time on mobile) ── */}
-        <div className="block lg:hidden mb-4">
-          <div className="grid grid-cols-3 p-1 rounded-xl bg-[#0d0d12] border border-white/[0.08] text-xs">
-            {PLANS_DATA.map((plan) => (
+        {/* ── Mobile Segmented Control (Smooth Apple-Grade Switcher) ──────────── */}
+        <div className="flex md:hidden justify-center mb-3.5">
+          <div className="relative p-1 rounded-2xl bg-[#0e0e13] border border-white/[0.08] grid grid-cols-3 w-full max-w-xs shadow-inner">
+            {PLANS_DATA.map((p) => {
+              const isSelected = mobileActive === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleMobileTabChange(p.id)}
+                  className={cn(
+                    "relative z-10 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer select-none",
+                    isSelected ? "text-white" : "text-neutral-400 hover:text-white"
+                  )}
+                >
+                  {isSelected && (
+                    <motion.div
+                      layoutId="mobile-plan-pill-showcase"
+                      className={cn(
+                        "absolute inset-0 rounded-xl shadow-md z-[-1]",
+                        p.id === "pro"
+                          ? "bg-[#ef4444]"
+                          : "bg-white/[0.14] border border-white/10"
+                      )}
+                      transition={{
+                        type: "spring",
+                        stiffness: 450,
+                        damping: 32,
+                      }}
+                    />
+                  )}
+                  <span>{p.id === "free" ? "Free" : p.id === "pro" ? "⭐ Pro" : "👑 Power"}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Mobile Active Card with Directional Slide & Swipe Gestures ──────── */}
+        <div
+          className="block md:hidden overflow-hidden pt-1 pb-2"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={mobileActive}
+              initial={{
+                opacity: 0,
+                x: slideDirection * 24,
+                filter: "blur(4px)",
+              }}
+              animate={{
+                opacity: 1,
+                x: 0,
+                filter: "blur(0px)",
+              }}
+              exit={{
+                opacity: 0,
+                x: -slideDirection * 24,
+                filter: "blur(4px)",
+              }}
+              transition={{
+                duration: 0.18,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+            >
+              {renderPlanCard(PLANS_DATA.find((p) => p.id === mobileActive) || PLANS_DATA[1])}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Dots Indicator */}
+          <div className="flex items-center justify-center gap-1.5 mt-3 mb-1">
+            {PLANS_DATA.map((p) => (
               <button
-                key={plan.id}
-                onClick={() => setMobileActive(plan.id)}
+                key={p.id}
+                onClick={() => handleMobileTabChange(p.id)}
                 className={cn(
-                  "py-2 rounded-lg text-center transition-all cursor-pointer font-medium truncate px-1",
-                  mobileActive === plan.id
-                    ? plan.highlight
-                      ? "bg-[#ef4444] text-white font-bold shadow-sm"
-                      : "bg-white/[0.08] text-white font-bold"
-                    : plan.highlight
-                    ? "text-red-400 font-semibold"
-                    : "text-neutral-400"
+                  "h-1.5 rounded-full transition-all duration-300 cursor-pointer",
+                  mobileActive === p.id
+                    ? p.id === "pro"
+                      ? "w-6 bg-[#ef4444]"
+                      : "w-5 bg-white"
+                    : "w-1.5 bg-white/20 hover:bg-white/40"
                 )}
-              >
-                {plan.id === "free" ? "Free" : plan.id === "pro" ? "⭐ Pro" : "👑 Power"}
-              </button>
+                aria-label={`Go to ${p.name}`}
+              />
             ))}
           </div>
         </div>
 
-        {/* ── Pricing Cards ──────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch">
-          {PLANS_DATA.map((plan) => {
-            const isMobileVisible = mobileActive === plan.id;
-            const dp = getDisplayPrice(plan.id === "free" ? "free" : (plan.id as "pro" | "power"));
-
-            return (
-              <div
-                key={plan.id}
-                className={cn(
-                  "rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-300 relative",
-                  // On mobile only show the selected plan
-                  !isMobileVisible && "hidden lg:flex",
-                  plan.highlight
-                    ? [
-                        "bg-[#0d0c10] border-2 border-red-500/60",
-                        "shadow-[0_0_40px_rgba(239,68,68,0.18)]",
-                        "ring-1 ring-red-500/30",
-                        "lg:scale-[1.03] lg:-translate-y-1",
-                      ].join(" ")
-                    : "bg-[#09090c] border border-white/[0.08] hover:border-white/[0.16]"
-                )}
-              >
-                {/* RECOMMENDED pill */}
-                {plan.highlight && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#ef4444] text-white text-[9px] font-extrabold uppercase tracking-widest shadow-md flex items-center gap-1 whitespace-nowrap">
-                    <Crown size={9} /> RECOMMENDED
-                  </div>
-                )}
-
-                <div>
-                  {/* Plan name & badge */}
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-[17px] font-bold text-white tracking-tight">{plan.name}</h3>
-                    <span
-                      className={cn(
-                        "px-2 py-0.5 rounded-md text-[8.5px] font-bold uppercase tracking-wider",
-                        plan.highlight
-                          ? "bg-red-500/15 text-red-400 border border-red-500/30"
-                          : "bg-white/[0.04] text-neutral-400 border border-white/[0.06]"
-                      )}
-                    >
-                      {plan.badge}
-                    </span>
-                  </div>
-                  <p className="text-xs text-neutral-400 mb-4">{plan.tagline}</p>
-
-                  {/* Price block — single unambiguous number */}
-                  <div className="mb-5 pb-4 border-b border-white/[0.06]">
-                    <div className="flex items-end gap-2">
-                      <div className="flex items-baseline gap-0.5">
-                        <span className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                          {dp.bigPrice}
-                        </span>
-                        {plan.id !== "free" && (
-                          <span className="text-xs text-neutral-400 font-medium ml-1">{dp.bigPeriod}</span>
-                        )}
-                      </div>
-                      {dp.savingBadge && (
-                        <span className="mb-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                          {dp.savingBadge}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-neutral-400 mt-1.5 leading-snug">{dp.sub}</p>
-                  </div>
-
-                  {/* Feature list */}
-                  <div className="space-y-2">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-2">
-                      {plan.id === "free"
-                        ? "What's included"
-                        : "Everything in " + (plan.id === "pro" ? "Free, plus" : "Pro, plus")}
-                    </p>
-                    {plan.features.map((f, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs text-neutral-200">
-                        <div
-                          className={cn(
-                            "w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                            plan.highlight
-                              ? "bg-red-500/15 text-red-400 border border-red-500/30"
-                              : "bg-white/[0.06] text-neutral-300"
-                          )}
-                        >
-                          <Check size={9} strokeWidth={3} />
-                        </div>
-                        <span className="leading-snug">{f}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* CTA */}
-                <div className="pt-5 mt-5 border-t border-white/[0.04]">
-                  {plan.id === "free" ? (
-                    <Link
-                      href="/youtube-to-notes"
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer active:scale-[0.98] bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.08] text-white"
-                    >
-                      <span>{plan.ctaText}</span>
-                      <ArrowRight size={12} />
-                    </Link>
-                  ) : (
-                    <button
-                      onClick={() => handleSelectPlan(plan)}
-                      className={cn(
-                        "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer active:scale-[0.98]",
-                        plan.highlight
-                          ? "bg-[#ef4444] hover:bg-[#dc2626] text-white shadow-[0_0_18px_rgba(239,68,68,0.35)]"
-                          : "bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.08] text-white"
-                      )}
-                    >
-                      <span>{plan.ctaText}</span>
-                      <ArrowRight size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        {/* ── Desktop & Tablet (>= md): All 3 Cards Side-by-Side ────────────── */}
+        <div className="hidden md:grid md:grid-cols-3 gap-4 lg:gap-5 items-stretch">
+          {PLANS_DATA.map((plan) => renderPlanCard(plan))}
         </div>
 
-        {/* ── Trust Badges ───────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8 pt-6 border-t border-white/[0.06]">
+        {/* ── Trust Badges (Compact) ─────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4 pt-3 border-t border-white/[0.06]">
           {[
             { icon: Lock, title: "256-bit SSL", sub: "Encrypted checkout" },
-            { icon: RefreshCw, title: "Cancel Anytime", sub: "1-click in your profile" },
+            { icon: RefreshCw, title: "Cancel Anytime", sub: "1-click in profile" },
             { icon: ShieldCheck, title: "7-Day Guarantee", sub: "Full money back" },
-            { icon: Zap, title: "Instant Activation", sub: "Zero wait time" },
+            { icon: Zap, title: "Instant Access", sub: "Zero wait time" },
           ].map(({ icon: Icon, title, sub }, i) => (
             <div
               key={i}
-              className="flex items-center gap-2.5 p-3 rounded-xl bg-[#09090c] border border-white/[0.06]"
+              className="flex items-center gap-2 p-2 rounded-lg bg-[#09090c] border border-white/[0.06]"
             >
-              <Icon size={14} className="text-neutral-400 shrink-0" />
-              <div className="leading-tight min-w-0">
-                <p className="text-xs font-semibold text-white truncate">{title}</p>
-                <p className="text-[10px] text-neutral-400 truncate">{sub}</p>
+              <Icon size={12} className="text-neutral-400 shrink-0" />
+              <div className="leading-none min-w-0">
+                <p className="text-[11px] font-semibold text-white truncate">{title}</p>
+                <p className="text-[9px] text-neutral-400 truncate mt-0.5">{sub}</p>
               </div>
             </div>
           ))}

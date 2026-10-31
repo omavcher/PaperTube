@@ -454,107 +454,195 @@ export const Navbar = ({
       {/* ═══════════════════════════════════════════════════════ */}
       {/* 2. MOBILE TOP BAR (FOR SMALL SCREENS) */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <div className="fixed top-0 inset-x-0 z-[100] lg:hidden h-14 bg-[#070709]/90 backdrop-blur-xl border-b border-white/[0.08] px-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-1.5 group">
-          <span className="text-base font-black italic tracking-tighter uppercase text-white">
-            PAPER<span className="text-[#ef4444]">XIFY</span>
-          </span>
-          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
-            AI
-          </span>
-        </Link>
+      {!hideMobile && (
+        <div className="fixed top-0 inset-x-0 z-[100] lg:hidden h-14 bg-[#070709]/90 backdrop-blur-xl border-b border-white/[0.08] px-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-1.5 group">
+            <span className="text-base font-black italic tracking-tighter uppercase text-white">
+              PAPER<span className="text-[#ef4444]">XIFY</span>
+            </span>
+            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+              AI
+            </span>
+          </Link>
 
-        <div className="flex items-center gap-2">
-          {isLoggedIn && (
-            <Link
-              href="/pricing"
-              className={cn(
-                "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
-                isPro ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" : "bg-white/5 text-neutral-300 border border-white/10"
-              )}
+          <div className="flex items-center gap-2">
+            {isLoggedIn && (
+              <Link
+                href="/pricing"
+                className={cn(
+                  "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                  isPro ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" : "bg-white/5 text-neutral-300 border border-white/10"
+                )}
+              >
+                <Crown size={10} className={isPro ? "text-amber-400" : "text-neutral-400"} />
+                <span>{isPro ? "PRO" : "FREE"}</span>
+              </Link>
+            )}
+
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-neutral-300 hover:text-white"
             >
-              <Crown size={10} className={isPro ? "text-amber-400" : "text-neutral-400"} />
-              <span>{isPro ? "PRO" : "FREE"}</span>
-            </Link>
-          )}
-
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-neutral-300 hover:text-white"
-          >
-            <MenuIcon size={16} />
-          </button>
+              <MenuIcon size={16} />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* 3. MOBILE: BOTTOM DOCK BAR */}
+      {/* 3. MOBILE: BOTTOM DOCK BAR (iOS LIQUID GLASS - HIGH FPS) */}
       {/* ═══════════════════════════════════════════════════════ */}
       {!hideMobile && (
-        <div className="fixed bottom-0 left-0 right-0 z-[120] lg:hidden">
-          <div className="w-full bg-[#08080c]/95 backdrop-blur-2xl border-t border-white/[0.08] h-[72px] pb-safe shadow-[0_-15px_40px_rgba(0,0,0,0.85)]">
-            <div className="grid grid-cols-5 h-full items-center px-1 relative">
+        <div 
+          className="fixed inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[420px] z-[120] lg:hidden pointer-events-none select-none transform-gpu"
+          style={{ 
+            bottom: "max(12px, calc(env(safe-area-inset-bottom, 0px) + 8px))",
+            WebkitTransform: "translate3d(0, 0, 0)"
+          }}
+        >
+          <nav 
+            aria-label="Mobile Navigation Bar"
+            className="pointer-events-auto relative w-full h-[64px] rounded-full px-2 bg-[#0c0c14]/80 backdrop-blur-xl border border-white/[0.14] shadow-[0_12px_32px_rgba(0,0,0,0.65)] transform-gpu"
+          >
+            {/* Top glass specular reflection sheen */}
+            <div className="absolute inset-x-6 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent rounded-full pointer-events-none" />
+            
+            {/* Ambient internal light gradient */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
+
+            <div className="relative z-10 grid grid-cols-5 h-full items-center px-0.5">
               
               {/* 1. Home */}
-              <Link href="/" className="flex flex-col items-center justify-center gap-1 group w-full h-full pt-1">
-                <Home size={19} className={pathname === "/" ? "text-red-500" : "text-neutral-500 group-hover:text-white"} />
-                <span className={cn("text-[9px] font-bold uppercase tracking-wider", pathname === "/" ? "text-white" : "text-neutral-500")}>
+              <Link 
+                href="/" 
+                className="flex flex-col items-center justify-center gap-1 group h-full py-1 text-center touch-manipulation active:scale-95 transition-transform duration-75"
+              >
+                <div className={cn(
+                  "flex items-center justify-center w-9 h-7 rounded-full transition-colors duration-150",
+                  pathname === "/" || pathname === "/dashboard" 
+                    ? "bg-white/[0.12] border border-white/20 text-red-400" 
+                    : "text-neutral-400 group-hover:text-neutral-100"
+                )}>
+                  <Home size={18} strokeWidth={pathname === "/" || pathname === "/dashboard" ? 2.2 : 1.8} />
+                </div>
+                <span className={cn(
+                  "text-[10px] tracking-tight leading-none transition-colors duration-150",
+                  pathname === "/" || pathname === "/dashboard" 
+                    ? "text-white font-semibold" 
+                    : "text-neutral-400 font-medium"
+                )}>
                   Home
                 </span>
               </Link>
 
-              {/* 2. Tools */}
-              <Link href="/tools" className="flex flex-col items-center justify-center gap-1 group w-full h-full pt-1">
-                <LayoutGrid size={19} className={pathname.startsWith("/tools") ? "text-red-500" : "text-neutral-500 group-hover:text-white"} />
-                <span className={cn("text-[9px] font-bold uppercase tracking-wider", pathname.startsWith("/tools") ? "text-white" : "text-neutral-500")}>
-                  Tools
+              {/* 2. AI Workspace (Replaces Tools) */}
+              <Link 
+                href="/workspace" 
+                className="flex flex-col items-center justify-center gap-1 group h-full py-1 text-center touch-manipulation active:scale-95 transition-transform duration-75"
+              >
+                <div className={cn(
+                  "flex items-center justify-center w-9 h-7 rounded-full transition-colors duration-150",
+                  pathname.startsWith("/workspace") 
+                    ? "bg-white/[0.12] border border-white/20 text-red-400" 
+                    : "text-neutral-400 group-hover:text-neutral-100"
+                )}>
+                  <Sparkles size={18} strokeWidth={pathname.startsWith("/workspace") ? 2.2 : 1.8} />
+                </div>
+                <span className={cn(
+                  "text-[9.5px] tracking-tight leading-none text-center truncate max-w-full px-0.5 transition-colors duration-150",
+                  pathname.startsWith("/workspace") 
+                    ? "text-white font-semibold" 
+                    : "text-neutral-400 font-medium"
+                )}>
+                  AI Workspace
                 </span>
               </Link>
               
-              {/* 3. Central AI Action (YouTube to Notes / Workspace) */}
-              <div className="relative flex justify-center -top-4 h-full pointer-events-none">
-                <Link href="/youtube-to-notes" className="group relative pointer-events-auto">
-                  <div className="absolute inset-0 bg-red-600/30 blur-xl rounded-full opacity-60 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="h-14 w-14 bg-gradient-to-tr from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-full flex items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.5)] border-[4px] border-[#08080c] active:scale-95 transition-transform z-10 relative">
-                    <Sparkles size={22} className="text-white fill-white/20" />
-                  </div>
-                </Link>
-              </div>
+              {/* 3. Central AI Action: YouTube to Notes */}
+              <Link 
+                href="/youtube-to-notes" 
+                className="flex flex-col items-center justify-center group h-full py-1 touch-manipulation active:scale-95 transition-transform duration-75"
+              >
+                <div className={cn(
+                  "relative flex items-center justify-center w-11 h-7.5 rounded-full overflow-hidden transition-colors duration-150",
+                  "bg-gradient-to-b from-red-500 via-rose-600 to-red-700 text-white",
+                  "border border-white/25 shadow-[0_2px_10px_rgba(239,68,68,0.4)]",
+                  pathname.startsWith("/youtube-to-notes") && "ring-2 ring-red-400/80 ring-offset-1 ring-offset-neutral-900"
+                )}>
+                  {/* Glossy top highlight cap */}
+                  <div className="absolute inset-x-2 top-0 h-2 bg-gradient-to-b from-white/40 to-transparent rounded-full pointer-events-none" />
+                  <Youtube size={17} className="text-white fill-white relative z-10" />
+                </div>
+                <span className={cn(
+                  "text-[9px] tracking-tight leading-none mt-1 font-semibold transition-colors duration-150",
+                  pathname.startsWith("/youtube-to-notes") ? "text-red-400" : "text-neutral-300"
+                )}>
+                  YT Notes
+                </span>
+              </Link>
 
               {/* 4. Pricing / Plan */}
-              <Link href="/pricing" className="flex flex-col items-center justify-center gap-1 group w-full h-full pt-1">
-                <Zap size={19} className={pathname === "/pricing" ? "text-red-500" : "text-neutral-500 group-hover:text-white"} />
-                <span className={cn("text-[9px] font-bold uppercase tracking-wider", pathname === "/pricing" ? "text-white" : "text-neutral-500")}>
+              <Link 
+                href="/pricing" 
+                className="flex flex-col items-center justify-center gap-1 group h-full py-1 text-center touch-manipulation active:scale-95 transition-transform duration-75"
+              >
+                <div className={cn(
+                  "flex items-center justify-center w-9 h-7 rounded-full transition-colors duration-150",
+                  pathname === "/pricing" 
+                    ? "bg-white/[0.12] border border-white/20 text-red-400" 
+                    : "text-neutral-400 group-hover:text-neutral-100"
+                )}>
+                  <Zap size={18} strokeWidth={pathname === "/pricing" ? 2.2 : 1.8} />
+                </div>
+                <span className={cn(
+                  "text-[10px] tracking-tight leading-none transition-colors duration-150",
+                  pathname === "/pricing" 
+                    ? "text-white font-semibold" 
+                    : "text-neutral-400 font-medium"
+                )}>
                   Pricing
                 </span>
               </Link>
               
               {/* 5. Profile / Drawer */}
               <button 
+                type="button"
                 onClick={() => setMobileOpen(true)} 
-                className="flex flex-col items-center justify-center gap-1 group w-full h-full outline-none pt-1"
+                className="flex flex-col items-center justify-center gap-1 group h-full py-1 text-center outline-none touch-manipulation active:scale-95 transition-transform duration-75"
               >
-                {isLoggedIn ? (
-                  <div className={cn(
-                    "h-6 w-6 rounded-full border-2 overflow-hidden shadow-sm",
-                    isPro ? "border-amber-400" : "border-neutral-700"
-                  )}>
-                    <img 
-                      src={user?.picture || "/avatar.png"} 
-                      alt="Profile" 
-                      className="w-full h-full object-cover" 
-                    />
-                  </div>
-                ) : (
-                  <User size={19} className="text-neutral-500 group-hover:text-white" />
-                )}
-                <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-white">
+                <div className={cn(
+                  "flex items-center justify-center w-9 h-7 rounded-full transition-colors duration-150",
+                  mobileOpen 
+                    ? "bg-white/[0.12] border border-white/20 text-red-400" 
+                    : "text-neutral-400 group-hover:text-neutral-100"
+                )}>
+                  {isLoggedIn ? (
+                    <div className={cn(
+                      "h-5 w-5 rounded-full ring-1.5 overflow-hidden transition-all",
+                      isPro ? "ring-amber-400" : mobileOpen ? "ring-red-400" : "ring-white/30"
+                    )}>
+                      <img 
+                        src={user?.picture || "/avatar.png"} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                  ) : (
+                    <MenuIcon size={18} strokeWidth={mobileOpen ? 2.2 : 1.8} />
+                  )}
+                </div>
+                <span className={cn(
+                  "text-[10px] tracking-tight leading-none transition-colors duration-150",
+                  mobileOpen 
+                    ? "text-white font-semibold" 
+                    : "text-neutral-400 font-medium"
+                )}>
                   Menu
                 </span>
               </button>
 
             </div>
-          </div>
+          </nav>
         </div>
       )}
 

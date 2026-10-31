@@ -1999,7 +1999,7 @@ export function AgentStudioClient() {
   const currentModelInfo = AGENT_MODELS.find(m => m.id === activeModel) || AGENT_MODELS[0];
 
   return (
-    <div className="flex h-screen w-full bg-[#08080b] text-white font-sans overflow-hidden relative">
+    <div className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] flex bg-[#08080b] text-white font-sans overflow-hidden z-20">
       
       {/* ──── CELEBRATORY TOP CONNECTED BANNER NOTIFICATION ──── */}
       <AnimatePresence>
@@ -2069,20 +2069,20 @@ export function AgentStudioClient() {
       </AnimatePresence>
 
       {/* ──── MAIN AGENT CHAT WORKSPACE ──── */}
-      <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-[#08080b]">
+      <div className="flex-1 min-h-0 flex flex-col h-full relative overflow-hidden bg-[#08080b]">
         
-        {/* ──── ULTRA-MINIMAL TOP NAVIGATION BAR (Optimized for Mobile & Desktop) ──── */}
-        <header className="h-12 border-b border-white/[0.06] bg-[#08080b]/90 backdrop-blur-xl px-2.5 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-3 shrink-0 z-30">
+        {/* ──── ULTRA-MINIMAL TOP NAVIGATION BAR (Optimized for Mobile & Desktop like ChatGPT/Claude) ──── */}
+        <header className="min-h-[50px] sm:min-h-[48px] border-b border-white/[0.06] bg-[#08080b]/95 backdrop-blur-xl px-2.5 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-3 shrink-0 z-30 pt-[max(0.25rem,env(safe-area-inset-top,0px))]">
           
           {/* Left: Sidebar Toggle + Return & Session Title */}
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <button
               type="button"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="flex items-center gap-1 p-1.5 sm:px-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] border border-white/[0.06] transition-colors text-xs font-medium cursor-pointer shrink-0"
+              className="flex items-center gap-1 p-2 sm:px-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.08] transition-colors text-xs font-medium cursor-pointer shrink-0 active:scale-95"
               title="Open Chat History & Studios (Sidebar)"
             >
-              <PanelLeft size={15} className="text-neutral-300" />
+              <PanelLeft size={16} className="text-neutral-300" />
               <span className="hidden md:inline text-[11px] font-medium text-neutral-300">History</span>
             </button>
 
@@ -2116,10 +2116,10 @@ export function AgentStudioClient() {
             {/* Tools Button */}
             <button
               onClick={() => setIsIntegrationsOpen(true)}
-              className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-[11.5px] font-medium text-neutral-300 hover:text-white transition-all cursor-pointer"
+              className="flex items-center gap-1 p-2 sm:px-2.5 sm:py-1 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-[11.5px] font-medium text-neutral-300 hover:text-white transition-all cursor-pointer active:scale-95"
               title="Manage Connected Tools"
             >
-              <Zap size={13} className="text-red-400" />
+              <Zap size={14} className="text-red-400" />
               <span className="hidden sm:inline">Tools</span>
             </button>
 
@@ -2149,10 +2149,10 @@ export function AgentStudioClient() {
               <button
                 type="button"
                 onClick={() => setIsMobileHeaderMenuOpen(!isMobileHeaderMenuOpen)}
-                className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-neutral-400 hover:text-white transition-all cursor-pointer"
+                className="p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-neutral-400 hover:text-white transition-all cursor-pointer active:scale-95"
                 title="More Actions"
               >
-                <MoreHorizontal size={14} />
+                <MoreHorizontal size={15} />
               </button>
 
               <AnimatePresence>
@@ -2194,10 +2194,10 @@ export function AgentStudioClient() {
             {/* New Task Button */}
             <button
               onClick={handleStartNewChat}
-              className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 rounded-lg bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 hover:text-white text-[11.5px] font-semibold transition-all cursor-pointer"
+              className="flex items-center gap-1 p-2 sm:px-2.5 sm:py-1 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 hover:text-white text-[11.5px] font-semibold transition-all cursor-pointer active:scale-95"
               title="Start a new task"
             >
-              <Plus size={13} />
+              <Plus size={14} />
               <span className="hidden md:inline">New</span>
             </button>
           </div>
@@ -2205,13 +2205,81 @@ export function AgentStudioClient() {
         </header>
 
         {/* ──── CHAT MESSAGES SCROLL AREA + INTERACTIVE SIDE TURN SCRUBBER ──── */}
-        <div className="flex-1 relative flex overflow-hidden">
+        <div className="flex-1 min-h-0 relative flex overflow-hidden">
           
           <div 
             ref={chatContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 max-w-4xl w-full mx-auto custom-scrollbar"
+            className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-8 space-y-6 sm:space-y-8 max-w-4xl w-full mx-auto custom-scrollbar flex flex-col overscroll-contain"
           >
+
+            {/* ──── EMPTY STATE HERO (Inspired by ChatGPT & Claude Mobile) ──── */}
+            {conversationTurns.length === 0 && (
+              <div className="my-auto py-8 sm:py-12 flex flex-col items-center justify-center text-center px-2 select-none">
+                <div className="relative mb-3 sm:mb-4">
+                  <div className="absolute inset-0 bg-red-600/25 blur-2xl rounded-full" />
+                  <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-red-600 via-rose-600 to-red-500 flex items-center justify-center text-white shadow-[0_4px_24px_rgba(239,68,68,0.4)] border border-white/20">
+                    <Sparkles size={24} className="fill-white/20" />
+                  </div>
+                </div>
+
+                <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-white mb-1">
+                  Paperxify AI Studio
+                </h2>
+                <p className="text-xs sm:text-sm text-neutral-400 max-w-xs sm:max-w-md mb-5 sm:mb-8 leading-relaxed">
+                  Autonomous research, lecture notes, architecture diagrams, slides & code.
+                </p>
+
+                {/* Mobile-Friendly Quick Starter Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 w-full max-w-lg">
+                  {[
+                    {
+                      icon: Youtube,
+                      title: "YouTube to Notes",
+                      desc: "Instant structured LaTeX notes from video URL",
+                      query: "Analyze this YouTube lecture and create complete, structured study notes with key takeaways, formulas, and flashcards: "
+                    },
+                    {
+                      icon: PenTool,
+                      title: "Architecture Diagram",
+                      desc: "Generate interactive Excalidraw system schematics",
+                      query: "Draw an architecture diagram of a scalable modern cloud system using Excalidraw whiteboard"
+                    },
+                    {
+                      icon: Presentation,
+                      title: "Presentation Slides",
+                      desc: "Create formatted slide decks ready to present",
+                      query: "Create a 10-slide presentation deck covering the fundamentals of Artificial Intelligence"
+                    },
+                    {
+                      icon: BrainCircuit,
+                      title: "Deep Academic Research",
+                      desc: "Multi-source synthesis with citations & proofs",
+                      query: "Perform a deep academic research analysis on modern breakthroughs in quantum computing"
+                    }
+                  ].map((card, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => executeAgentTask({ query: card.query })}
+                      className="flex items-start gap-3 p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.07] hover:border-red-500/30 text-left transition-all active:scale-[0.98] group cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-red-400 group-hover:text-red-300 shrink-0 group-hover:scale-105 transition-transform">
+                        <card.icon size={16} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] font-semibold text-white group-hover:text-red-400 transition-colors">
+                          {card.title}
+                        </div>
+                        <div className="text-[11px] text-neutral-400 line-clamp-1 mt-0.5">
+                          {card.desc}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ──── CONVERSATION TURNS (User Prompt + AI Response Pairs) ──── */}
             {conversationTurns.map((turn) => (
@@ -2917,7 +2985,8 @@ export function AgentStudioClient() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 25 }}
-          className="px-3 pb-2.5 pt-1 sm:px-6 sm:pb-3 max-w-4xl w-full mx-auto z-20 shrink-0 bg-transparent"
+          className="px-2.5 pb-2 pt-1 sm:px-6 sm:pb-3 max-w-4xl w-full mx-auto z-20 shrink-0 bg-transparent"
+          style={{ paddingBottom: "max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.375rem))" }}
         >
           <AgentPromptInput
             size="compact"

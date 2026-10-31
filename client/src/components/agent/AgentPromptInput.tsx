@@ -1655,13 +1655,13 @@ export function AgentPromptInput({
                           exit={{ opacity: 0, y: aspectRatioMenuDirection === "down" ? -8 : 8, scale: 0.96 }}
                           transition={{ duration: 0.16, ease: "easeOut" }}
                           className={cn(
-                            "absolute left-0 z-[999] rounded-3xl border border-white/[0.16] shadow-[0_30px_90px_rgba(0,0,0,0.98)] flex overflow-hidden divide-x divide-white/[0.08]",
+                            "absolute left-0 z-[999] rounded-3xl border border-white/[0.16] shadow-[0_30px_90px_rgba(0,0,0,0.98)] flex flex-col sm:flex-row overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-white/[0.08] max-w-[calc(100vw-24px)]",
                             aspectRatioMenuDirection === "down" ? "top-full mt-3" : "bottom-full mb-3"
                           )}
-                          style={{ minWidth: "400px", backgroundColor: "#14141d" }}
+                          style={{ backgroundColor: "#14141d" }}
                         >
                           {/* ──── LEFT PANE: Interactive Spatial Grid & Animated Frame Preview ──── */}
-                          <div className="w-52 bg-[#0e0e16] p-3.5 flex flex-col items-center justify-between select-none relative shrink-0">
+                          <div className="w-full sm:w-52 bg-[#0e0e16] p-3.5 flex flex-col items-center justify-between select-none relative shrink-0">
                             
                             {/* 3x3 Photography Rule-of-Thirds Grid Card */}
                             <div className="relative w-44 h-44 rounded-2xl bg-[#08080d] border border-white/[0.08] flex items-center justify-center overflow-hidden shadow-inner">
@@ -1704,7 +1704,7 @@ export function AgentPromptInput({
 
                           {/* ──── RIGHT PANE: Vertical Curated Aspect Ratio List ──── */}
                           <div 
-                            className="w-48 bg-[#14141d] p-2 flex flex-col space-y-0.5 overflow-y-auto max-h-[270px] custom-scrollbar select-none"
+                            className="w-full sm:w-48 bg-[#14141d] p-2 flex flex-col space-y-0.5 overflow-y-auto max-h-[200px] sm:max-h-[270px] custom-scrollbar select-none"
                             onMouseLeave={() => setHoveredAspectRatio(null)}
                           >
                             {ASPECT_RATIOS.map((opt) => {

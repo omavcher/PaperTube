@@ -67,6 +67,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PointerHighlight } from "@/components/ui/pointer-highlight";
 
 interface WhiteboardItem {
   _id?: string;
@@ -463,28 +464,48 @@ export default function WhiteboardHubPage() {
       {/* ──── MAIN CONTENT ──── */}
       <main className="relative z-10 w-full flex flex-col items-center pt-4 sm:pt-8">
         {/* ──── HERO SECTION ──── */}
-        <section className="w-full max-w-5xl mx-auto px-3.5 sm:px-6 pt-8 sm:pt-12 pb-4 sm:pb-6 text-center space-y-3 sm:space-y-4">
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/25 text-violet-400 text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(139,92,246,0.2)]">
-            <Sparkles size={12} className="text-violet-400 animate-pulse" />
-            <span>AI AGENTIC WHITEBOARD STUDIO</span>
+        <section className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-8 sm:pt-14 pb-4 sm:pb-6 text-center space-y-4">
+          {/* iOS-Style Translucent Pill Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl text-neutral-300 text-xs font-medium shadow-sm transition-all hover:bg-white/[0.06] hover:border-white/15">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-400"></span>
+            </span>
+            <span className="text-neutral-200 font-semibold tracking-wide">Whiteboard Studio</span>
+            <span className="text-neutral-600">•</span>
+            <span className="text-neutral-400">Collaborative AI Canvas</span>
           </div>
 
-          <h1 className="text-2xl xs:text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white uppercase px-1">
-            AGENTIC WHITEBOARD <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400">AI CANVAS</span> & ARCHITECT
+          {/* Minimalist iOS Pointer Highlight Headline with Deliberate 2-Line Symmetry */}
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-[1.22] text-center max-w-4xl mx-auto">
+            <span className="block">The best way to architect</span>
+            <span className="inline-flex items-center justify-center gap-2.5 sm:gap-3.5 mt-1 sm:mt-2">
+              <span>ideas is to</span>
+              <PointerHighlight
+                containerClassName="inline-block"
+                rectangleClassName="border-violet-400/80 rounded-xl bg-violet-500/[0.08] shadow-[0_0_20px_rgba(139,92,246,0.15)]"
+                pointerClassName="text-violet-400"
+              >
+                <span className="relative z-10 px-2.5 sm:px-3 py-0.5 sm:py-1 text-white font-extrabold tracking-tight">
+                  visualize
+                </span>
+              </PointerHighlight>
+            </span>
           </h1>
 
-          <p className="text-neutral-400 text-xs sm:text-sm md:text-base font-normal max-w-2xl mx-auto leading-relaxed px-2">
-            Generate system architectures, logic flowcharts, mind maps, and interactive wireframes from plain text directly onto an infinite collaborative Excalidraw canvas.
+          {/* Minimalist Subtitle */}
+          <p className="text-neutral-400 text-xs sm:text-sm md:text-base font-normal max-w-xl mx-auto leading-relaxed">
+            Turn plain text into production system architectures, logic flowcharts, and mind maps on an infinite collaborative canvas.
           </p>
         </section>
 
         {/* ──── PRIMARY GLASS GENERATOR STUDIO CARD ──── */}
         <section id="search-form" className="w-full max-w-4xl mx-auto px-3 sm:px-6 mb-10 sm:mb-12">
-          <div className="bg-gradient-to-b from-[#13111c] via-[#0d0c13] to-[#0a0a0c] border border-violet-500/30 hover:border-violet-500/50 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.85),0_0_40px_rgba(139,92,246,0.15)] transition-all relative overflow-hidden">
-            {/* Ambient Corner Glow */}
-            <div className="absolute top-0 right-0 w-72 h-72 bg-violet-600/15 blur-[90px] rounded-full pointer-events-none" />
+          <div className="bg-[#0c0d12]/80 border border-white/[0.08] hover:border-white/[0.12] rounded-3xl p-4 sm:p-7 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl relative overflow-hidden transition-all duration-300">
+            {/* Ambient Subtle Glow */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/10 blur-[100px] rounded-full pointer-events-none" />
 
-            {/* Category Selector Tabs */}
+            {/* Category Selector Segmented Tabs */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2.5 mb-3.5 border-b border-white/[0.06]">
               {WHITEBOARD_FORMATS.map((fmt) => {
                 const Icon = fmt.icon;
@@ -495,13 +516,13 @@ export default function WhiteboardHubPage() {
                     type="button"
                     onClick={() => setActiveFormat(fmt.id)}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer shrink-0",
                       isActive
-                        ? "bg-violet-600 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)] border border-violet-400/40"
+                        ? "bg-white text-black shadow-sm font-semibold"
                         : "bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-neutral-400 hover:text-white"
                     )}
                   >
-                    <Icon size={12} className={isActive ? "text-white" : "text-violet-400"} />
+                    <Icon size={12} className={isActive ? "text-black" : "text-neutral-400"} />
                     <span>{fmt.label}</span>
                   </button>
                 );
@@ -521,23 +542,18 @@ export default function WhiteboardHubPage() {
                 }}
                 rows={3}
                 placeholder={`Describe your diagram or architecture in plain English... (e.g. "Scalable E-Commerce Microservices with API Gateway, Auth Service, Redis Cache, Stripe Payments, Kafka, and PostgreSQL")`}
-                className="w-full bg-[#09090b] border border-white/[0.09] focus:border-violet-500/60 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-xs sm:text-sm text-white placeholder-neutral-500 focus:outline-none transition-all resize-none shadow-inner leading-relaxed"
+                className="w-full bg-black/40 border border-white/[0.08] focus:border-white/25 rounded-2xl p-3 sm:p-4 text-xs sm:text-sm text-white placeholder-neutral-500 focus:outline-none transition-all resize-none shadow-inner leading-relaxed"
               />
             </div>
 
             {/* Action Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
-              <div className="hidden sm:flex items-center gap-2 text-xs text-neutral-400">
-                <Sparkles size={12} className="text-violet-400 shrink-0" />
-                <span>Press <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 font-mono text-[10px] text-neutral-300">Ctrl + Enter</kbd> to generate</span>
-              </div>
-
+            <div className="flex items-center justify-end gap-2 pt-1">
               {/* Action Buttons */}
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={handleCreateBlank}
-                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] text-xs font-bold text-white transition-colors cursor-pointer text-center"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-semibold text-neutral-200 hover:text-white transition-all active:scale-[0.98] cursor-pointer text-center"
                 >
                   <Plus size={14} className="text-neutral-400" />
                   <span>Open Blank</span>
@@ -548,10 +564,10 @@ export default function WhiteboardHubPage() {
                   onClick={() => handleGenerateAI()}
                   disabled={generating || !prompt.trim()}
                   className={cn(
-                    "flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all cursor-pointer",
+                    "flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-md",
                     generating || !prompt.trim()
                       ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
-                      : "bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-purple-500 text-white shadow-[0_0_25px_rgba(139,92,246,0.45)] active:scale-95"
+                      : "bg-white hover:bg-neutral-200 text-black active:scale-[0.98] shadow-white/5"
                   )}
                 >
                   {generating ? (
@@ -561,7 +577,7 @@ export default function WhiteboardHubPage() {
                     </>
                   ) : (
                     <>
-                      <Sparkles size={14} className="text-white animate-pulse" />
+                      <Sparkles size={14} className="text-black" />
                       <span>Generate Whiteboard</span>
                     </>
                   )}
@@ -584,7 +600,7 @@ export default function WhiteboardHubPage() {
                       setPrompt(item.prompt);
                       handleGenerateAI(item.prompt);
                     }}
-                    className="px-2.5 py-1 rounded-xl bg-white/[0.03] hover:bg-violet-500/10 border border-white/[0.06] hover:border-violet-500/30 text-[10.5px] font-medium text-neutral-300 hover:text-violet-300 whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                    className="px-3 py-1.5 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/15 text-[11px] font-medium text-neutral-300 hover:text-white whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
                   >
                     <Sparkles size={10} className="text-violet-400" />
                     <span>{item.label}</span>

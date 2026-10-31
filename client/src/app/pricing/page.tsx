@@ -41,57 +41,55 @@ const PLANS: Plan[] = [
     id: "free",
     name: "Free Tier",
     badge: "Forever Free",
-    tagline: "Explore the magic of AI learning with zero risk.",
+    tagline: "Core AI study tools with zero risk.",
     usd: { monthly: 0, yearly: 0, yearlyPerMonth: 0, saving: "" },
     inr: { monthly: 0, yearly: 0, yearlyPerMonth: 0, saving: "" },
     cta: "Start for free",
     ctaFree: true,
     highlight: false,
     features: [
-      "Access to Paperxify core study & reasoning engine",
-      "Standard video lecture processing & synthesis",
-      "Interactive PaperChat video tutor assistant",
-      "Smart flashcards, quizzes & step-by-step solver",
-      "Visual concept studio & mind map diagrams",
-      "Standard PDF & Markdown exports",
+      "Core study & reasoning engine",
+      "Video lecture notes & synthesis",
+      "Interactive PaperChat AI tutor",
+      "Smart flashcards & quiz solver",
+      "Visual mind maps & diagrams",
+      "Standard PDF & Markdown export",
     ],
   },
   {
     id: "pro",
     name: "Pro Scholar",
-    badge: "⭐ Most Popular",
-    tagline: "Extended access to our most capable AI models.",
+    badge: "⭐ Popular",
+    tagline: "Extended access to top AI models.",
     usd: { monthly: 9.99, yearly: 79.99, yearlyPerMonth: 6.67, saving: "~33% off" },
     inr: { monthly: 799, yearly: 6999, yearlyPerMonth: 583, saving: "~27% off" },
     cta: "Get Pro Scholar",
     highlight: true,
     features: [
-      "Extended access to our fastest, most capable AI models",
-      "Deep marathon lecture processing (up to 4 hours long)",
-      "Autonomous Agentic Workspace with live app actions",
-      "High-resolution Visual Studio concept artwork",
-      "Keynote slide deck generator with speaker notes & PPTX",
-      "Publication-quality PDF (LaTeX + Code) & Notion export",
-      "Priority access during peak hours with zero queue wait",
+      "Everything in Free included",
+      "Fastest, most capable AI models",
+      "Deep lectures up to 4 hrs long",
+      "Autonomous Agentic Workspace",
+      "Keynote PPTX slides & LaTeX PDF",
+      "Peak priority queue with zero wait",
     ],
   },
   {
     id: "power",
     name: "Power Scholar",
-    badge: "👑 Max Output",
-    tagline: "Maximum reasoning capacity for power researchers.",
+    badge: "👑 Max Power",
+    tagline: "Maximum reasoning capacity & volume.",
     usd: { monthly: 19.99, yearly: 149.99, yearlyPerMonth: 10.83, saving: "~37% off" },
     inr: { monthly: 1599, yearly: 12999, yearlyPerMonth: 1083, saving: "~32% off" },
     cta: "Get Power Scholar",
     highlight: false,
     features: [
-      "Maximum reasoning capacity and output volume",
-      "Full course playlists & mega streams (up to 8 hours long)",
-      "Priority Turbo Agent execution with automated workflows",
-      "Expanded Visual Studio creative suite & studio illustrations",
-      "Unlimited active-recall quizzes, flashcards & mind maps",
-      "Instant Turbo queue — zero wait time anytime",
-      "All export formats (LaTeX PDF, DOCX, PPTX, Anki .apkg)",
+      "Everything in Pro included",
+      "Maximum reasoning & output volume",
+      "Course playlists up to 8 hrs long",
+      "Priority Turbo Agent workflows",
+      "Unlimited active-recall study suite",
+      "All export formats (LaTeX, DOCX, Anki)",
     ],
   },
 ];
@@ -139,6 +137,7 @@ function CellValue({ val, isPro }: { val: boolean | string; isPro?: boolean }) {
 export default function PricingPage() {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [mobileActive, setMobileActive] = useState<"free" | "pro" | "power">("pro");
+  const [slideDirection, setSlideDirection] = useState<number>(0);
   const { region } = usePricingRegion();
   const isIndia = region === "IN";
   const [user, setUser] = useState<any>(null);
@@ -149,6 +148,37 @@ export default function PricingPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingCheckoutPlan, setPendingCheckoutPlan] = useState<Plan | null>(null);
   const [compareOpen, setCompareOpen] = useState(true);
+
+  const planOrder: ("free" | "pro" | "power")[] = ["free", "pro", "power"];
+
+  const handleMobileTabChange = (newPlan: "free" | "pro" | "power") => {
+    if (newPlan === mobileActive) return;
+    const oldIdx = planOrder.indexOf(mobileActive);
+    const newIdx = planOrder.indexOf(newPlan);
+    setSlideDirection(newIdx > oldIdx ? 1 : -1);
+    setMobileActive(newPlan);
+  };
+
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diffX = touchStartX.current - e.changedTouches[0].clientX;
+    const diffY = touchStartY.current - e.changedTouches[0].clientY;
+    if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+      const currentIdx = planOrder.indexOf(mobileActive);
+      if (diffX > 0 && currentIdx < planOrder.length - 1) {
+        handleMobileTabChange(planOrder[currentIdx + 1]);
+      } else if (diffX < 0 && currentIdx > 0) {
+        handleMobileTabChange(planOrder[currentIdx - 1]);
+      }
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -233,6 +263,237 @@ export default function PricingPage() {
     finally { setIsProcessing(false); setSelectedId(null); }
   };
 
+  const renderPlanCard = (plan: Plan) => {
+    const dp = getDisplayPrice(plan);
+    const isPro = plan.id === "pro";
+
+    return (
+      <div
+        key={plan.id}
+        className={cn(
+          "w-full rounded-[22px] sm:rounded-[24px] p-4 sm:p-4.5 flex flex-col justify-between transition-all duration-300 relative",
+          isPro
+            ? "bg-white text-neutral-900 shadow-[0_20px_50px_-12px_rgba(239,68,68,0.2),0_0_30px_rgba(255,255,255,0.06)] border border-neutral-100 md:scale-[1.02] md:-translate-y-1 z-10"
+            : "bg-[#121215] text-white border border-white/[0.08] hover:border-white/[0.14]"
+        )}
+      >
+        {/* RECOMMENDED floating pill for Pro (Shown on desktop; on mobile the active tab already highlights Pro) */}
+        {isPro && (
+          <div className="hidden md:flex absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#ef4444] text-white text-[9px] font-black uppercase tracking-wider shadow-md items-center gap-1 whitespace-nowrap">
+            <Crown size={9} /> RECOMMENDED
+          </div>
+        )}
+
+        <div>
+          {/* 1. Inset Top Header Box (Matching Reference Image) */}
+          <div
+            className={cn(
+              "rounded-xl p-3 sm:p-3.5 mb-3 transition-colors",
+              isPro
+                ? "bg-neutral-50 border border-neutral-200/80 shadow-sm"
+                : "bg-[#18181d] border border-white/[0.06]"
+            )}
+          >
+            <div className="flex items-center justify-between mb-0.5">
+              <h2
+                className={cn(
+                  "text-base sm:text-lg font-bold tracking-tight",
+                  isPro ? "text-neutral-900" : "text-white"
+                )}
+              >
+                {plan.name}
+              </h2>
+              <span
+                className={cn(
+                  "px-1.5 py-0.5 rounded-md text-[8.5px] font-bold uppercase tracking-wider",
+                  isPro
+                    ? "bg-red-500/10 text-red-600 border border-red-500/20"
+                    : "bg-white/[0.05] text-neutral-400 border border-white/[0.08]"
+                )}
+              >
+                {plan.badge}
+              </span>
+            </div>
+            <p
+              className={cn(
+                "text-[11px] leading-tight truncate",
+                isPro ? "text-neutral-600" : "text-neutral-400"
+              )}
+            >
+              {plan.tagline}
+            </p>
+          </div>
+
+          {/* 2. Price Block (Massive Font + Directional Blur Transition) */}
+          <div className="relative mb-3 min-h-[46px] flex flex-col justify-center overflow-hidden">
+            {plan.id === "free" ? (
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span
+                    className={cn(
+                      "text-3xl sm:text-4xl font-black tracking-tight",
+                      isPro ? "text-neutral-900" : "text-white"
+                    )}
+                  >
+                    {dp.bigPrice}
+                  </span>
+                </div>
+                <p
+                  className={cn(
+                    "text-[10px] mt-0.5 leading-tight truncate",
+                    isPro ? "text-neutral-500" : "text-neutral-400"
+                  )}
+                >
+                  {dp.sub}
+                </p>
+              </div>
+            ) : (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={`${plan.id}-${billing}`}
+                  initial={{
+                    opacity: 0,
+                    y: billing === "yearly" ? 8 : -8,
+                    filter: "blur(4px)",
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                    filter: "blur(0px)",
+                  }}
+                  exit={{
+                    opacity: 0,
+                    y: billing === "yearly" ? -8 : 8,
+                    filter: "blur(4px)",
+                  }}
+                  transition={{
+                    duration: 0.16,
+                    ease: [0.2, 0.8, 0.2, 1],
+                  }}
+                  className="w-full"
+                >
+                  <div className="flex items-baseline gap-1 flex-wrap">
+                    <span
+                      className={cn(
+                        "text-3xl sm:text-4xl font-black tracking-tight",
+                        isPro ? "text-neutral-900" : "text-white"
+                      )}
+                    >
+                      {dp.bigPrice}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold",
+                        isPro ? "text-neutral-500" : "text-neutral-400"
+                      )}
+                    >
+                      {dp.bigPeriod}
+                    </span>
+                    {dp.savingBadge && (
+                      <motion.span
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                        className="ml-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
+                      >
+                        {dp.savingBadge}
+                      </motion.span>
+                    )}
+                  </div>
+                  <p
+                    className={cn(
+                      "text-[10px] mt-0.5 leading-tight truncate",
+                      isPro ? "text-neutral-500" : "text-neutral-400"
+                    )}
+                  >
+                    {dp.sub}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            )}
+          </div>
+
+          {/* 3. Full-Width Pill CTA Button */}
+          <div className="mb-3.5">
+            <button
+              onClick={() => handleSelectPlan(plan)}
+              disabled={isProcessing && selectedId === plan.id}
+              className={cn(
+                "w-full flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-full font-bold text-xs transition-all cursor-pointer active:scale-[0.98] shadow-md",
+                isPro
+                  ? "bg-[#ef4444] hover:bg-red-600 text-white shadow-red-500/25 hover:shadow-red-500/35"
+                  : "bg-[#222228] hover:bg-[#2c2c34] text-white border border-white/10"
+              )}
+            >
+              {isProcessing && selectedId === plan.id ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <>
+                  <span>{plan.cta}</span>
+                  <ArrowRight size={12} />
+                </>
+              )}
+            </button>
+            {plan.id !== "free" && (
+              <p
+                className={cn(
+                  "text-center text-[9px] mt-1.5",
+                  isPro ? "text-neutral-500" : "text-neutral-500"
+                )}
+              >
+                No hidden fees · Cancel anytime
+              </p>
+            )}
+          </div>
+
+          {/* 4. Dotted Divider */}
+          <div
+            className={cn(
+              "border-t border-dashed my-3",
+              isPro ? "border-neutral-200" : "border-white/10"
+            )}
+          />
+
+          {/* 5. Features Section Header & Circular Checkmarks */}
+          <div>
+            <p
+              className={cn(
+                "text-[9.5px] font-bold uppercase tracking-wider mb-2",
+                isPro ? "text-neutral-500" : "text-neutral-400"
+              )}
+            >
+              {plan.name.toUpperCase()} INCLUDES
+            </p>
+
+            <div className="space-y-1.5">
+              {plan.features.map((f, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex items-center gap-2 text-[11px] sm:text-xs leading-none",
+                    isPro ? "text-neutral-700" : "text-neutral-300"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0",
+                      isPro
+                        ? "bg-neutral-200/80 text-neutral-800"
+                        : "bg-white/[0.08] text-neutral-300"
+                    )}
+                  >
+                    <Check size={8} strokeWidth={3} />
+                  </div>
+                  <span className="truncate">{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -282,157 +543,179 @@ export default function PricingPage() {
         {/* Atmospheric glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-[radial-gradient(ellipse_at_top,_rgba(239,68,68,0.12)_0%,_transparent_70%)] pointer-events-none" />
 
-        <div className="relative z-10 max-w-[1160px] mx-auto px-4 sm:px-6 pt-24 pb-24">
+        <div className="relative z-10 max-w-[1140px] mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-16">
 
           {/* Header */}
-          <div className="text-center mb-8 space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-              <Sparkles size={11} className="text-red-400" /> LEARN MORE. REMEMBER MORE.
+          <div className="text-center mb-4 space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[9.5px] font-bold uppercase tracking-wider text-neutral-400">
+              <Sparkles size={10} className="text-red-400" /> LEARN MORE. REMEMBER MORE.
             </div>
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
               Choose your <span className="text-[#ef4444]">learning power.</span>
             </h1>
-            <p className="text-sm text-neutral-400 max-w-lg mx-auto">
-              Turn lectures, videos and study material into an AI-powered learning system.
+            <p className="text-xs text-neutral-400 max-w-md mx-auto">
+              Turn lectures and study material into an AI-powered learning system.
               {isIndia && <span className="text-emerald-400 font-semibold"> ₹ India pricing shown.</span>}
             </p>
           </div>
 
-          {/* Billing toggle */}
-          <div className="flex justify-center mb-6">
-            <div className="p-1 rounded-full bg-[#0d0d11] border border-white/[0.08] flex items-center">
+          {/* Billing toggle with spring pill */}
+          <div className="flex justify-center mb-3.5">
+            <div className="relative p-0.5 rounded-full bg-[#0d0d11] border border-white/[0.08] flex items-center">
               {(["monthly", "yearly"] as BillingPeriod[]).map((p) => (
-                <button key={p} onClick={() => setBilling(p)} className={cn(
-                  "px-5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
-                  billing === p ? (p === "yearly" ? "bg-[#ef4444] text-white shadow-sm" : "bg-white text-black shadow-sm") : "text-neutral-400 hover:text-white"
-                )}>
-                  {p === "monthly" ? "Monthly" : "Yearly"}
-                  {p === "yearly" && <span className={cn("px-1.5 py-0.5 rounded-full text-[8.5px] font-bold uppercase", billing === "yearly" ? "bg-black/30 text-white" : "bg-red-500/15 text-red-400 border border-red-500/20")}>Save up to {maxSaving}%</span>}
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setBilling(p)}
+                  className={cn(
+                    "relative z-10 px-4 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1",
+                    billing === p
+                      ? p === "yearly"
+                        ? "text-white"
+                        : "text-black"
+                      : "text-neutral-400 hover:text-white"
+                  )}
+                >
+                  {billing === p && (
+                    <motion.div
+                      layoutId="billing-pill-pricing-page"
+                      className={cn(
+                        "absolute inset-0 rounded-full shadow-sm z-[-1]",
+                        p === "yearly" ? "bg-[#ef4444]" : "bg-white"
+                      )}
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                  <span>{p === "monthly" ? "Monthly" : "Yearly"}</span>
+                  {p === "yearly" && (
+                    <span
+                      className={cn(
+                        "px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase transition-colors",
+                        billing === "yearly"
+                          ? "bg-black/30 text-white"
+                          : "bg-red-500/15 text-red-400 border border-red-500/20"
+                      )}
+                    >
+                      Save {maxSaving}%
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Trust & Guarantee Banner */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-2 px-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-neutral-300 mb-8 max-w-2xl mx-auto text-center shadow-sm">
-            <div className="flex items-center gap-1.5 font-medium text-neutral-200">
-              <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
-              <span>7-Day Money-Back Guarantee</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 py-1.5 px-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[11px] text-neutral-300 mb-5 max-w-xl mx-auto text-center shadow-sm">
+            <div className="flex items-center gap-1 font-medium text-neutral-200">
+              <ShieldCheck size={12} className="text-emerald-400 shrink-0" />
+              <span>7-Day Guarantee</span>
             </div>
             <span className="text-neutral-700 hidden sm:inline">•</span>
-            <div className="flex items-center gap-1.5 font-medium text-neutral-200">
-              <Zap size={14} className="text-amber-400 shrink-0" />
-              <span>Cancel Anytime in 1-Click</span>
+            <div className="flex items-center gap-1 font-medium text-neutral-200">
+              <Zap size={12} className="text-amber-400 shrink-0" />
+              <span>Cancel Anytime</span>
             </div>
             <span className="text-neutral-700 hidden sm:inline">•</span>
-            <div className="flex items-center gap-1.5 font-medium text-neutral-200">
-              <Lock size={14} className="text-blue-400 shrink-0" />
-              <span>No Card Needed for Free Tier</span>
+            <div className="flex items-center gap-1 font-medium text-neutral-200">
+              <Lock size={12} className="text-blue-400 shrink-0" />
+              <span>No Card Needed for Free</span>
             </div>
           </div>
 
-          {/* Mobile segmented switcher */}
-          <div className="block lg:hidden mb-4">
-            <div className="grid grid-cols-3 p-1 rounded-xl bg-[#0d0d12] border border-white/[0.08] text-xs">
-              {PLANS.map((plan) => (
-                <button key={plan.id} onClick={() => setMobileActive(plan.id)} className={cn(
-                  "py-2 rounded-lg text-center transition-all cursor-pointer font-medium px-1 truncate",
-                  mobileActive === plan.id
-                    ? plan.highlight ? "bg-[#ef4444] text-white font-bold" : "bg-white/[0.08] text-white font-bold"
-                    : plan.highlight ? "text-red-400 font-semibold" : "text-neutral-400"
-                )}>
-                  {plan.id === "free" ? "Free" : plan.id === "pro" ? "⭐ Pro" : "👑 Power"}
-                </button>
+          {/* ── Mobile Segmented Control (Smooth Apple-Grade Switcher) ──────────── */}
+          <div className="flex md:hidden justify-center mb-3.5">
+            <div className="relative p-1 rounded-2xl bg-[#0e0e13] border border-white/[0.08] grid grid-cols-3 w-full max-w-xs shadow-inner">
+              {PLANS.map((p) => {
+                const isSelected = mobileActive === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleMobileTabChange(p.id)}
+                    className={cn(
+                      "relative z-10 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer select-none",
+                      isSelected ? "text-white" : "text-neutral-400 hover:text-white"
+                    )}
+                  >
+                    {isSelected && (
+                      <motion.div
+                        layoutId="mobile-plan-pill-pricing"
+                        className={cn(
+                          "absolute inset-0 rounded-xl shadow-md z-[-1]",
+                          p.id === "pro"
+                            ? "bg-[#ef4444]"
+                            : "bg-white/[0.14] border border-white/10"
+                        )}
+                        transition={{
+                          type: "spring",
+                          stiffness: 450,
+                          damping: 32,
+                        }}
+                      />
+                    )}
+                    <span>{p.id === "free" ? "Free" : p.id === "pro" ? "⭐ Pro" : "👑 Power"}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Mobile Active Card with Directional Slide & Swipe Gestures ──────── */}
+          <div
+            className="block md:hidden overflow-hidden pt-1 pb-2"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={mobileActive}
+                initial={{
+                  opacity: 0,
+                  x: slideDirection * 24,
+                  filter: "blur(4px)",
+                }}
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                  filter: "blur(0px)",
+                }}
+                exit={{
+                  opacity: 0,
+                  x: -slideDirection * 24,
+                  filter: "blur(4px)",
+                }}
+                transition={{
+                  duration: 0.18,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              >
+                {renderPlanCard(PLANS.find((p) => p.id === mobileActive) || PLANS[1])}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Dots Indicator */}
+            <div className="flex items-center justify-center gap-1.5 mt-3 mb-4">
+              {PLANS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => handleMobileTabChange(p.id)}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all duration-300 cursor-pointer",
+                    mobileActive === p.id
+                      ? p.id === "pro"
+                        ? "w-6 bg-[#ef4444]"
+                        : "w-5 bg-white"
+                      : "w-1.5 bg-white/20 hover:bg-white/40"
+                  )}
+                  aria-label={`Go to ${p.name}`}
+                />
               ))}
             </div>
           </div>
 
-          {/* Plan Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch mb-10">
-            {PLANS.map((plan) => {
-              const dp = getDisplayPrice(plan);
-              return (
-                <div
-                  key={plan.id}
-                  className={cn(
-                    "rounded-2xl p-5 sm:p-6 flex flex-col justify-between relative transition-all duration-300",
-                    mobileActive !== plan.id && "hidden lg:flex",
-                    plan.highlight
-                      ? "bg-[#0d0c10] border-2 border-red-500/60 shadow-[0_0_40px_rgba(239,68,68,0.18)] ring-1 ring-red-500/30 lg:scale-[1.04] lg:-translate-y-1"
-                      : "bg-[#09090c] border border-white/[0.08] hover:border-white/[0.15]"
-                  )}
-                >
-                  {plan.highlight && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#ef4444] text-white text-[9px] font-extrabold uppercase tracking-widest shadow-md flex items-center gap-1 whitespace-nowrap">
-                      <Crown size={9} /> RECOMMENDED
-                    </div>
-                  )}
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <h2 className="text-[17px] font-bold text-white">{plan.name}</h2>
-                      <span className={cn("px-2 py-0.5 rounded-md text-[8.5px] font-bold uppercase tracking-wider",
-                        plan.highlight ? "bg-red-500/15 text-red-400 border border-red-500/30" : "bg-white/[0.04] text-neutral-400 border border-white/[0.06]"
-                      )}>{plan.badge}</span>
-                    </div>
-                    <p className="text-xs text-neutral-400 mb-4">{plan.tagline}</p>
-
-                    {/* Price block — single unambiguous number */}
-                    <div className="mb-5 pb-4 border-b border-white/[0.06]">
-                      <div className="flex items-end gap-2">
-                        <div className="flex items-baseline gap-0.5">
-                          <span className="text-3xl sm:text-4xl font-black text-white tracking-tight">{dp.bigPrice}</span>
-                          {plan.id !== "free" && <span className="text-xs text-neutral-400 ml-1">{dp.bigPeriod}</span>}
-                        </div>
-                        {dp.savingBadge && (
-                          <span className="mb-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                            {dp.savingBadge}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-neutral-400 mt-1.5 leading-snug">{dp.sub}</p>
-                    </div>
-
-
-                    {/* Features */}
-                    <div className="space-y-2">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-2">
-                        {plan.id === "free" ? "What's included" : `Everything in ${plan.id === "pro" ? "Free" : "Pro"}, plus`}
-                      </p>
-                      {plan.features.map((f, i) => (
-                        <div key={i} className="flex items-start gap-2 text-xs text-neutral-200">
-                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                            plan.highlight ? "bg-red-500/15 text-red-400 border border-red-500/30" : "bg-white/[0.06] text-neutral-300"
-                          )}><Check size={9} strokeWidth={3} /></div>
-                          <span className="leading-snug">{f}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* CTA */}
-                  <div className="pt-5 mt-5 border-t border-white/[0.04]">
-                    <button
-                      onClick={() => handleSelectPlan(plan)}
-                      disabled={isProcessing && selectedId === plan.id}
-                      className={cn(
-                        "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer active:scale-[0.98]",
-                        plan.highlight
-                          ? "bg-[#ef4444] hover:bg-[#dc2626] text-white shadow-[0_0_18px_rgba(239,68,68,0.35)]"
-                          : "bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.08] text-white"
-                      )}
-                    >
-                      {isProcessing && selectedId === plan.id
-                        ? <Loader2 size={14} className="animate-spin" />
-                        : <><span>{plan.cta}</span><ArrowRight size={12} /></>}
-                    </button>
-                    {plan.id !== "free" && (
-                      <p className="text-center text-[10px] text-neutral-600 mt-2">No hidden fees · Cancel anytime</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          {/* ── Desktop & Tablet (>= md): All 3 Cards Side-by-Side ────────────── */}
+          <div className="hidden md:grid md:grid-cols-3 gap-4 lg:gap-5 items-stretch mb-8">
+            {PLANS.map((plan) => renderPlanCard(plan))}
           </div>
 
           {/* Comparison Table */}

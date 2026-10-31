@@ -11,29 +11,32 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 // OpenRouter model routing matrix by user subscription tier
 const CHAT_MODELS_BY_TIER = {
   free: [
+    'deepseek/deepseek-chat',
+    'openai/gpt-4o-mini',
     'deepseek/deepseek-v4-flash',
     'qwen/qwen3.6-flash',
-    'nvidia/nemotron-3-ultra-550b-a55b:free',
-    'openai/gpt-4o-mini'
+    'meta-llama/llama-3.3-70b-instruct',
+    'mistralai/mistral-small-24b-instruct-2501'
   ],
   pro: [
-      'deepseek/deepseek-v4-flash',
-    'qwen/qwen3.6-flash',
-    'nvidia/nemotron-3-ultra-550b-a55b:free',
-    'openai/gpt-4o-mini'
+    'deepseek/deepseek-chat',
+    'openai/gpt-4o-mini',
+    'deepseek/deepseek-v4-flash',
+    'meta-llama/llama-3.3-70b-instruct',
+    'qwen/qwen3.6-flash'
   ],
   scholar: [
-     'deepseek/deepseek-v4-flash',
-    'qwen/qwen3.6-flash',
-    'nvidia/nemotron-3-ultra-550b-a55b:free',
-    'openai/gpt-4o-mini'
+    'deepseek/deepseek-chat',
+    'openai/gpt-4o-mini',
+    'meta-llama/llama-3.3-70b-instruct',
+    'deepseek/deepseek-v4-flash'
   ],
   power: [
-    'google/gemini-3-pro-preview',
-    'openai/gpt-5-nano',
+    'deepseek/deepseek-chat',
     'openai/gpt-4o',
+    'openai/gpt-4o-mini',
     'anthropic/claude-3.5-sonnet',
-    'deepseek/deepseek-v4-flash'
+    'meta-llama/llama-3.3-70b-instruct'
   ]
 };
 
@@ -120,8 +123,10 @@ function buildGroundedKnowledgeContext(note) {
     `\`\`\`${c.language || 'text'}\n${c.code}\n\`\`\`\nExplanation: ${c.explanation || ''}`
   ).join('\n\n') || 'None';
 
-  // Compact content excerpt for direct citation
-  const noteExcerpt = (note.content || '').substring(0, 3500);
+  // Clean HTML tags and prepare concise note content excerpt for direct citation
+  const rawContent = note.content || '';
+  const cleanContent = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const noteExcerpt = (cleanContent || rawContent).substring(0, 4000);
 
   return {
     videoId,
@@ -206,6 +211,7 @@ exports.handleMessage = async (req, res) => {
 
     // 1. Resolve authentic user & plan tier
     let user = null;
+    let userId = null;
     const authHeader = req.header('Auth') || req.header('Authorization');
     if (authHeader) {
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
@@ -213,10 +219,23 @@ exports.handleMessage = async (req, res) => {
         try {
           const decoded = jwt.verify(token, process.env.SESSION_SECRET);
           user = await User.findById(decoded.id).select('membership name email');
+          if (user) {
+            userId = user._id.toString();
+          }
         } catch (e) {
-          // Token invalid/expired - continue as guest
+          // Token invalid/expired
         }
       }
+    }
+
+    // Require authentication for all PaperChat interactions
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        code: "AUTH_REQUIRED",
+        error: "Authentication required",
+        message: "Sign in required to access PaperChat AI Tutor. Please log in to your account."
+      });
     }
 
     const resolvedPlanId = getUserPlanId(user);
@@ -269,12 +288,18 @@ exports.handleMessage = async (req, res) => {
 
     // Support mock notes and direct note content
     if (!note) {
+      let extractedVideoId = "";
+      if (videoUrl) {
+        const vMatch = videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+        if (vMatch) extractedVideoId = vMatch[1];
+      }
+
       note = {
         _id: noteId,
         title: noteTitle || "Lecture Study Guide",
         content: noteContent || "",
         videoUrl: videoUrl || "https://www.youtube.com",
-        videoId: (videoUrl && videoUrl.match(/(?:youtu\.be\/|v=)([\w-]{11})/)?.[1]) || "",
+        videoId: extractedVideoId,
         chapters: [],
         knowledgeIR: {
           knowledgeGraph: {
@@ -479,14 +504,22 @@ ${highlightContext}
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    if (typeof res.flushHeaders === 'function') {
+      res.flushHeaders();
+    }
 
     // Pre-flight capacity check
     if (userId) {
-      const capCheck = await capacityService.checkCanExecute(userId, "chat");
-      if (!capCheck.allowed) {
-        res.write(`data: ${JSON.stringify({ error: capCheck.errorPayload.message, code: "QUOTA_EXCEEDED", ...capCheck.errorPayload })}\n\n`);
-        res.end();
-        return;
+      try {
+        const capCheck = await capacityService.checkCanExecute(userId, "chat");
+        if (!capCheck.allowed) {
+          res.write(`data: ${JSON.stringify({ error: capCheck.errorPayload?.message || "Quota exceeded", code: "QUOTA_EXCEEDED", ...capCheck.errorPayload })}\n\n`);
+          res.end();
+          return;
+        }
+      } catch (capErr) {
+        console.warn("Capacity check notice:", capErr.message);
       }
     }
 
@@ -497,7 +530,7 @@ ${highlightContext}
 
     try {
       const streamRes = await openRouterService.streamChatCompletion({
-        userId,
+        userId: userId || "guest",
         feature: "chat",
         models: modelCandidates,
         messages,

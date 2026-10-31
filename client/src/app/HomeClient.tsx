@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import HomePortal from "@/components/HomePortal";
+import PricingShowcase from "@/components/PricingShowcase";
 
-// --- Lazy load ALL below-fold sections ---
+// --- Lazy load below-fold dynamic sections ---
 // Defer JS parse & render until sections enter the viewport.
 
 const LeaderboardStreakSection = dynamic(() => import("@/components/LeaderboardStreakSection"), { ssr: false });
 const ToolsGlimpse       = dynamic(() => import("@/components/ToolsGlimpse"),       { ssr: false });
-const PricingShowcase    = dynamic(() => import("@/components/PricingShowcase"),    { ssr: false });
 const TestimonialsCarousel = dynamic(() => import("@/components/TestimonialsCarousel").then(mod => mod.TestimonialsCarousel), { ssr: false });
 const FAQAccordion       = dynamic(() => import("@/components/FAQAccordion").then(mod => mod.FAQAccordion), { ssr: false });
 import Footer from "@/components/Footer";
@@ -57,13 +57,11 @@ export default function HomeClient({ region }: { region?: string }) {
   // Sentinel refs — one per section. Component renders once sentinel enters viewport.
   const leaderboardRef  = useRef<HTMLDivElement>(null);
   const toolsRef        = useRef<HTMLDivElement>(null);
-  const pricingRef      = useRef<HTMLDivElement>(null);
   const testimonialsRef = useRef<HTMLDivElement>(null);
   const faqRef          = useRef<HTMLDivElement>(null);
 
   const showLeaderboard  = useInView(leaderboardRef,  "400px");
   const showTools        = useInView(toolsRef,        "400px");
-  const showPricing      = useInView(pricingRef,      "400px");
   const showTestimonials = useInView(testimonialsRef, "400px");
   const showFaq          = useInView(faqRef,          "400px");
 
@@ -84,10 +82,10 @@ export default function HomeClient({ region }: { region?: string }) {
           {showTools && <ToolsGlimpse />}
         </div>
 
-        {/* Pricing */}
-        <div ref={pricingRef} className="w-full perf-section">
-          {showPricing && <PricingShowcase region={region} />}
-        </div>
+        {/* Pricing Showcase (Eagerly rendered for instant visibility & SSR) */}
+        <section id="pricing" className="w-full">
+          <PricingShowcase region={region} />
+        </section>
 
         {/* Testimonials */}
         <div ref={testimonialsRef} className="w-full max-w-6xl mx-auto px-6 py-16 border-t border-white/[0.04] mt-8">

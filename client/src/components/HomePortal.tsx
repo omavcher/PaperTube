@@ -281,6 +281,7 @@ const PDF_STUDY_GUIDES = [
     channel: "Stanford University • Prof. Andrew Ng",
     tag: "Stanford CS229 • Lecture 10",
     url: "https://youtu.be/jGW0_UgTS7I",
+    slug: "notes-stanford-cs229-ml-jgwo_ugts7i",
     pages: "3 Pages",
     edition: "Minimalist Edition",
     img: "/pdf-preview-1.webp",
@@ -296,6 +297,7 @@ const PDF_STUDY_GUIDES = [
     channel: "MIT OpenCourseWare • Prof. Allan Adams",
     tag: "MIT 8.04 • Lecture 1",
     url: "https://youtu.be/lZ3bPUKo5zc",
+    slug: "notes-mit-804-quantum-physics-lz3bpuko5zc",
     pages: "2 Pages",
     edition: "Atmosphere Edition",
     img: "/pdf-preview-2.webp",
@@ -311,6 +313,7 @@ const PDF_STUDY_GUIDES = [
     channel: "Crash Course • Adriene Hill & Jacob Clifford",
     tag: "Crash Course • Economics #4",
     url: "https://youtu.be/g9aDizJpd_s",
+    slug: "notes-supply-and-demand-g9adizjpds",
     pages: "3 Pages",
     edition: "Kraft Edition",
     img: "/pdf-preview-3.webp",
@@ -326,6 +329,7 @@ const PDF_STUDY_GUIDES = [
     channel: "Bozeman Science • Paul Andersen",
     tag: "AP Biology • Cell Unit",
     url: "https://youtu.be/URUJD5NEXC8",
+    slug: "notes-biology-cell-structure-urujd5nexc8",
     pages: "3 Pages",
     edition: "Atmosphere Edition",
     img: "/pdf-preview-4.webp",
@@ -353,7 +357,7 @@ function HeroInteractiveShowroom({
   anchorRef?: React.RefObject<HTMLDivElement | null>;
   onLoadedChange?: (loaded: boolean) => void;
   isLoaded?: boolean;
-  onSelectGuide?: (url: string) => void;
+  onSelectGuide?: (url: string, slug?: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -773,7 +777,7 @@ function HeroInteractiveShowroom({
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onSelectGuide) {
-                          onSelectGuide(guide.url);
+                          onSelectGuide(guide.url, guide.slug);
                         } else {
                           onAction();
                         }
@@ -838,7 +842,7 @@ function DesktopHeroStudyShowcase({
   selectedPill: string;
   setSelectedPill: (pill: string) => void;
   onAction: () => void;
-  onSelectGuide: (url: string) => void;
+  onSelectGuide: (url: string, slug?: string) => void;
   router: any;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -856,7 +860,7 @@ function DesktopHeroStudyShowcase({
 
   // User's fine-tuned golden settings
   const ARRANGE_END = 0.10;
-  const ROW_OFFSET_Y = 120;
+  const ROW_OFFSET_Y = 0;
   const SWOOP_AMOUNT = 85;
   const STAGE_PADDING_TOP = 80;
   const CONTAINER_VH = 120;
@@ -877,10 +881,10 @@ function DesktopHeroStudyShowcase({
 
   // Fallback vectors (Mac stack anchor is bottom-right of Mac window, row slots are centered)
   const [vectors, setVectors] = useState([
-    { dx: 460, dy: 60, scale: 0.70 },
-    { dx: 230, dy: 60, scale: 0.70 },
-    { dx: 0,   dy: 60, scale: 0.70 },
-    { dx: -230, dy: 60, scale: 0.70 },
+    { dx: 460, dy: -25, scale: 0.70 },
+    { dx: 230, dy: -20, scale: 0.70 },
+    { dx: 0,   dy: -15, scale: 0.70 },
+    { dx: -230, dy: -10, scale: 0.70 },
   ]);
 
   // iOS Smoothstep / Hermite Cubic Easing Function
@@ -954,7 +958,7 @@ function DesktopHeroStudyShowcase({
         const slotCenterY = (slotRect.top + slotRect.height / 2) - currentRowY;
         return {
           dx: (macCenterX - slotCenterX) + fanOffsets[idx].x,
-          dy: (macCenterY - slotCenterY) + fanOffsets[idx].y,
+          dy: (macCenterY - (slotCenterY + (35 + ROW_OFFSET_Y))) + fanOffsets[idx].y,
           scale: Math.min(1, Math.max(0.4, macRect.width / slotRect.width)),
         };
       });
@@ -1194,13 +1198,18 @@ function DesktopHeroStudyShowcase({
               {/* Subtitle Bar matching Reference Image 4 */}
               <motion.div
                 style={{ opacity: subtitleOpacity }}
-                className="flex items-center gap-2 mb-4 font-mono text-xs text-neutral-400 select-none overflow-hidden"
+                className="flex items-center gap-2 mb-4 font-mono text-xs select-none overflow-hidden"
               >
-                <span className="text-neutral-500 shrink-0">That one link →</span>
-                <span className="text-neutral-300 font-medium truncate">
+                <span className="text-neutral-400 font-medium shrink-0">That one link →</span>
+                <span className="text-white font-semibold truncate">
                   Stanford CS229 • MIT 8.04 • Crash Course Economics • AP Biology
                 </span>
-                <span className="text-neutral-500 shrink-0">→ 4 Complete Study Suites · 100% Free</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-neutral-400 font-medium">→</span>
+                  <span className="text-neutral-200 font-medium">4 Complete Study Suites</span>
+                  <span className="text-neutral-500">·</span>
+                  <span className="text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 text-[11px]">100% Free</span>
+                </div>
               </motion.div>
 
               {/* 5-Column Grid Row */}
@@ -1232,7 +1241,7 @@ function DesktopHeroStudyShowcase({
                           transition={{
                             opacity: { duration: 0.35, ease: "easeOut" },
                           }}
-                          onClick={() => onSelectGuide(guide.url)}
+                          onClick={() => onSelectGuide(guide.url, guide.slug)}
                           className="absolute inset-0 aspect-[1/1.4] w-full rounded-2xl overflow-hidden bg-[#121217] border-2 border-white/70 shadow-[0_20px_50px_rgba(0,0,0,0.85)] cursor-pointer hover:border-white transition-all hover:scale-[1.02] transform-gpu"
                         >
                           {/* Retina PDF Cover */}
@@ -1269,12 +1278,16 @@ function DesktopHeroStudyShowcase({
                         className="mt-2.5 px-0.5 text-left"
                       >
                         <h4 
-                          onClick={() => onSelectGuide(guide.url)}
+                          onClick={() => onSelectGuide(guide.url, guide.slug)}
                           className="text-[13px] font-bold text-white leading-snug truncate hover:text-red-400 transition-colors cursor-pointer"
+                          title={guide.title}
                         >
                           {guide.title}
                         </h4>
-                        <p className="text-[11px] text-neutral-400 mt-0.5 truncate">
+                        <p 
+                          className="text-[11.5px] font-medium text-neutral-300 mt-0.5 truncate hover:text-neutral-100 transition-colors"
+                          title={guide.channel}
+                        >
                           {guide.channel}
                         </p>
                       </motion.div>
@@ -1290,7 +1303,7 @@ function DesktopHeroStudyShowcase({
                       scale: plus20Scale,
                     }}
                     transition={{ duration: 0.2 }}
-                    onClick={() => router.push("/youtube-to-notes")}
+                    onClick={() => router.push("/notes")}
                     className="relative aspect-[1/1.4] w-full rounded-2xl overflow-hidden bg-[#0c0c10] border border-white/[0.08] hover:border-white/20 p-5 flex flex-col items-center justify-center text-center transition-all cursor-pointer group shadow-[0_15px_35px_rgba(0,0,0,0.7)] select-none hover:scale-[1.02]"
                   >
                     <span className="font-serif italic text-5xl text-neutral-200 group-hover:scale-110 transition-transform font-light">
@@ -1306,7 +1319,7 @@ function DesktopHeroStudyShowcase({
                   </motion.div>
 
                   {/* Caption spacer to align with other cards */}
-                  <div className="mt-2.5 px-0.5 h-[36px]" />
+                  <div className="mt-2.5 px-0.5 h-[38px]" />
                 </div>
               </div>
             </motion.div>
@@ -1328,7 +1341,7 @@ function MobileHeroStudyShowcase({
   selectedPill: string;
   setSelectedPill: (pill: string) => void;
   onAction: () => void;
-  onSelectGuide: (url: string) => void;
+  onSelectGuide: (url: string, slug?: string) => void;
   router: any;
 }) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -1474,7 +1487,13 @@ export default function HomePortal({ region, user }: HomePortalProps) {
             selectedPill={selectedPill}
             setSelectedPill={setSelectedPill}
             onAction={() => router.push("/youtube-to-notes")}
-            onSelectGuide={(url) => router.push(`/youtube-to-notes?url=${encodeURIComponent(url)}`)}
+            onSelectGuide={(url, slug) => {
+              if (slug) {
+                router.push(`/notes/${slug}`);
+              } else {
+                router.push(`/notes`);
+              }
+            }}
             router={router}
           />
         )}
@@ -1486,7 +1505,13 @@ export default function HomePortal({ region, user }: HomePortalProps) {
             selectedPill={selectedPill}
             setSelectedPill={setSelectedPill}
             onAction={() => router.push("/youtube-to-notes")}
-            onSelectGuide={(url) => router.push(`/youtube-to-notes?url=${encodeURIComponent(url)}`)}
+            onSelectGuide={(url, slug) => {
+              if (slug) {
+                router.push(`/notes/${slug}`);
+              } else {
+                router.push(`/notes`);
+              }
+            }}
             router={router}
           />
         )}

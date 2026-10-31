@@ -61,7 +61,7 @@ export default function Footer() {
   return (
     <footer className="w-full bg-[#050507] border-t border-white/[0.06] text-neutral-400 font-sans relative overflow-hidden">
       
-      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-8 relative z-10">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-28 sm:pb-12 relative z-10">
         
         {/* ─── TOP SECTION: BRAND, LINK COLUMNS, PRO CARD ─── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 mb-10">
