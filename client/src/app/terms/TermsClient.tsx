@@ -38,47 +38,82 @@ const FEATURES = [
 const TERMS_DATA = [
   {
     id: "intro",
-    title: "1. Introduction",
+    title: "1. Business Identity & Acceptance of Terms",
     content: [
-      "Welcome to our platform. By using our website, you agree to these simple rules.",
-      "Our main goal is to help you learn faster using AI tools and educational games.",
-      "If you do not agree with these terms, please do not use our services."
+      "Welcome to Paperxify (the 'Platform'), an AI-powered educational technology Software-as-a-Service (SaaS) platform operated by Om Awchar ('Company', 'we', 'us', or 'our'), located in Maharashtra, India.",
+      "By accessing or using Paperxify, registering an account, or purchasing any subscription, you agree to be bound by these Terms of Service, our Privacy Policy, Cancellation & Refund Policy, and Shipping & Delivery Policy.",
+      "If you do not agree with any part of these terms, please discontinue use of our services immediately."
     ]
   },
   {
     id: "services",
-    title: "2. What We Offer",
+    title: "2. Services & Digital Products Provided",
     content: [
-      "We provide access to over 20+ productivity tools and 10+ educational games.",
-      "Our primary service allows you to paste a YouTube video link and generate summarized notes using AI.",
-      "We constantly update our tools to ensure the best learning experience."
+      "Paperxify provides cloud-based digital study tools, including automated video lecture transcription, AI study notes generation, interactive PaperChat AI tutoring, automated quiz and flashcard creation, and AI presentation slide generation.",
+      "Our services are delivered electronically across free and paid subscription tiers (Pro Scholar and Power Scholar).",
+      "We continually maintain and enhance our AI algorithms to provide accurate educational summaries, though AI output should be used as an academic aid and verified by students for critical academic work."
+    ]
+  },
+  {
+    id: "subscriptions",
+    title: "3. Subscriptions, Pricing & Payment Terms",
+    content: [
+      "Pricing for Paperxify paid tiers (Pro Scholar at ₹799/month or ₹6,999/year; Power Scholar at ₹1,599/month or ₹12,999/year, and corresponding USD tiers for global users) is transparently listed on our Pricing page.",
+      "Payments are securely processed via certified, PCI-DSS and RBI compliant payment gateways (Razorpay, PayPal, LemonSqueezy). We never store your full credit card or banking credentials on our servers.",
+      "Monthly subscriptions automatically renew every 30 days unless cancelled before the renewal date. Annual plans provide 365 days of access.",
+      "Taxes, including 18% GST for Indian customers, are computed and clearly itemized at checkout."
+    ]
+  },
+  {
+    id: "cancellation_refund",
+    title: "4. Cancellation & Refund Policy",
+    content: [
+      "You may cancel your subscription at any time directly through your user Profile dashboard. Access remains active until the end of your prepaid period.",
+      "We provide a 7-day money-back guarantee for initial purchases. Approved refunds are credited to the original payment source (UPI, Card, Bank) within 5 to 7 business working days.",
+      "For complete terms, please review our standalone Cancellation & Refund Policy."
+    ]
+  },
+  {
+    id: "delivery",
+    title: "5. Digital Delivery Policy",
+    content: [
+      "All services and subscription capacities are digital goods and delivered electronically. Upon successful payment verification, your user account is credited immediately (within 0–5 minutes).",
+      "No physical shipping or delivery is required. Invoices and receipts are transmitted electronically via email."
     ]
   },
   {
     id: "account",
-    title: "3. Your Account",
+    title: "6. User Accounts & Fair Usage",
     content: [
-      "You are responsible for keeping your account password safe.",
-      "Please provide accurate information when signing up.",
-      "We may suspend accounts that try to hack or misuse our system."
+      "You are responsible for safeguarding your login credentials and for all activities under your account.",
+      "You agree not to exploit our platform for abusive scraping, automated reverse-engineering, security probing, or violating third-party intellectual property rights.",
+      "We reserve the right to suspend accounts that engage in fraudulent activities, payment chargeback abuse, or malicious system manipulation."
     ]
   },
   {
     id: "ownership",
-    title: "4. Ownership & Content",
+    title: "7. Intellectual Property & Ownership",
     content: [
-      "The notes you generate from YouTube videos are for your personal use.",
-      "We respect copyright laws. Do not use our tools to infringe on video creators' rights.",
-      "You own the content you create, but you grant us permission to process it to provide the service."
+      "You retain full ownership of all original study documents, notes, and materials you upload or generate on the Platform.",
+      "All platform software, branding, UI designs, and proprietary AI algorithms are the exclusive intellectual property of Paperxify and Om Awchar.",
+      "You may export and use your generated study notes for personal educational or professional academic purposes."
     ]
   },
   {
-    id: "privacy",
-    title: "5. Privacy & Security",
+    id: "governing_law",
+    title: "8. Governing Law & Dispute Resolution",
     content: [
-      "We take your data security seriously.",
-      "We do not sell your personal information to third parties.",
-      "Please read our Privacy Policy to understand how we handle your data."
+      "These Terms shall be governed by and construed in accordance with the laws of India.",
+      "Any dispute, controversy, or claim arising out of or relating to your use of Paperxify or payments made on the platform shall be subject to the exclusive jurisdiction of the competent courts in Maharashtra, India."
+    ]
+  },
+  {
+    id: "contact_grievance",
+    title: "9. Grievance Officer & Contact Information",
+    content: [
+      "In accordance with the Information Technology Act 2000 and consumer protection guidelines, if you have any questions, legal concerns, or payment disputes, contact our Grievance Officer:",
+      "Name: Om Awchar | Platform: Paperxify | Operational Address: Maharashtra, India",
+      "Email: support@paperxify.com or omawchar07@gmail.com | Hours: Monday to Saturday, 9:00 AM – 7:00 PM IST"
     ]
   }
 ];

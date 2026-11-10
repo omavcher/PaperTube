@@ -24,8 +24,22 @@ export default function FounderPage() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
       </div>
 
-      <main className="relative z-10 container mx-auto px-6 py-24 md:py-32 max-w-6xl">
+      <main className="relative z-10 container mx-auto px-6 py-20 md:py-28 max-w-6xl">
         
+        {/* --- Company Mission Header --- */}
+        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-bold uppercase tracking-widest text-red-400">
+            <Sparkles size={11} />
+            <span>Company &amp; Platform Profile</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            About Paperxify
+          </h1>
+          <p className="text-neutral-300 text-sm sm:text-base leading-relaxed font-light">
+            Paperxify is an Indian Educational Technology (EdTech) Software-as-a-Service platform operated by Om Awchar in Maharashtra, India. We build cutting-edge AI learning systems that transform complex video lectures, academic papers, and coursework into interactive study materials, smart flashcards, automated quizzes, and slide decks for students and researchers across the globe.
+          </p>
+        </div>
+
         {/* --- Hero Section --- */}
         <div className="flex flex-col md:flex-row gap-16 items-center mb-24">
           

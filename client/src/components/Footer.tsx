@@ -217,6 +217,8 @@ export default function Footer() {
                   <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing & Plans</Link></li>
                   <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
                   <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+                  <li><Link href="/refund-policy" className="hover:text-white transition-colors">Refund & Cancellation</Link></li>
+                  <li><Link href="/shipping-policy" className="hover:text-white transition-colors">Shipping & Delivery</Link></li>
                   <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
                 </ul>
               </div>
@@ -491,12 +493,16 @@ export default function Footer() {
             © {currentYear} Paperxify. All rights reserved.
           </p>
 
-          <div className="order-1 md:order-2 flex flex-wrap items-center justify-center gap-4 text-xs font-medium">
+          <div className="order-1 md:order-2 flex flex-wrap items-center justify-center gap-3.5 text-xs font-medium">
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <span className="text-neutral-700">•</span>
             <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             <span className="text-neutral-700">•</span>
-            <Link href="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link>
+            <Link href="/refund-policy" className="hover:text-white transition-colors">Cancellation &amp; Refund</Link>
+            <span className="text-neutral-700">•</span>
+            <Link href="/shipping-policy" className="hover:text-white transition-colors">Shipping &amp; Delivery</Link>
+            <span className="text-neutral-700">•</span>
+            <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
 
             {/* Language Selector Dropdown */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-medium text-neutral-300 cursor-pointer hover:border-white/20 transition-all ml-2">

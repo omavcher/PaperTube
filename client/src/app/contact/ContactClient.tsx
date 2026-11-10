@@ -114,6 +114,31 @@ export default function ContactClient() {
           ))}
         </div>
 
+        {/* Global & Merchant Registration Info */}
+        <div className="w-full mb-12 p-6 rounded-2xl bg-neutral-900/40 border border-white/5 text-neutral-400 text-xs leading-relaxed space-y-3">
+          <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+            Operational Office &amp; Business Information
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 font-mono text-[11px] text-neutral-300">
+            <div>
+              <span className="text-neutral-500 block">Platform &amp; Entity:</span>
+              <span>Paperxify (Operated by Om Awchar)</span>
+            </div>
+            <div>
+              <span className="text-neutral-500 block">Registered Support Desk:</span>
+              <span>support@paperxify.com / omawchar07@gmail.com</span>
+            </div>
+            <div>
+              <span className="text-neutral-500 block">Operational Location:</span>
+              <span>Maharashtra, India (PIN 444001)</span>
+            </div>
+            <div>
+              <span className="text-neutral-500 block">Operating Hours:</span>
+              <span>Monday – Saturday: 9:00 AM – 7:00 PM IST</span>
+            </div>
+          </div>
+        </div>
+
         {/* Global Info */}
         <motion.div 
           initial={{ opacity: 0 }}
@@ -123,15 +148,15 @@ export default function ContactClient() {
         >
           <div className="flex items-center gap-2">
             <MapPin size={14} />
-            <span>Remote / Global</span>
+            <span>Maharashtra, India</span>
           </div>
           <div className="flex items-center gap-2">
             <Globe size={14} />
-            <span>UTC - UTC+5:30</span>
+            <span>IST (UTC+5:30)</span>
           </div>
           <div className="flex items-center gap-2">
             <MessageSquare size={14} />
-            <span>Reply Time: ~24h</span>
+            <span>Response Time: &lt; 24h</span>
           </div>
         </motion.div>
 

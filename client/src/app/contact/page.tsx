@@ -22,15 +22,15 @@ export default function ContactPage() {
     "@context": "https://schema.org",
     "@type": "ContactPage",
     "name": "Contact Paperxify",
-    "description": "Contact channels for technical support and business inquiries.",
+    "description": "Contact channels for technical support, billing inquiries, and business partnerships.",
     "mainEntity": {
       "@type": "Organization",
       "name": "Paperxify",
       "url": "https://paperxify.com",
+      "email": "support@paperxify.com",
       "contactPoint": [
         {
           "@type": "ContactPoint",
-          "telephone": "+91-0000000000", // Replace if you have one
           "contactType": "customer service",
           "email": "support@paperxify.com",
           "areaServed": "Global",
