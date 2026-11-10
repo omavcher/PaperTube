@@ -138,7 +138,7 @@ export default function PricingPage() {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [mobileActive, setMobileActive] = useState<"free" | "pro" | "power">("pro");
   const [slideDirection, setSlideDirection] = useState<number>(0);
-  const { region } = usePricingRegion();
+  const { region, setRegion } = usePricingRegion();
   const isIndia = region === "IN";
   const [user, setUser] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -559,8 +559,9 @@ export default function PricingPage() {
             </p>
           </div>
 
-          {/* Billing toggle with spring pill */}
-          <div className="flex justify-center mb-3.5">
+          {/* Billing & Currency Toggles */}
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mb-4">
+            {/* Billing toggle with spring pill */}
             <div className="relative p-0.5 rounded-full bg-[#0d0d11] border border-white/[0.08] flex items-center">
               {(["monthly", "yearly"] as BillingPeriod[]).map((p) => (
                 <button
@@ -601,6 +602,40 @@ export default function PricingPage() {
                   )}
                 </button>
               ))}
+            </div>
+
+            {/* Currency Switcher (INR vs USD) */}
+            <div className="relative p-0.5 rounded-full bg-[#0d0d11] border border-white/[0.08] flex items-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setRegion("IN");
+                  toast.success("Switched to India INR (₹) pricing");
+                }}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer",
+                  isIndia
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm"
+                    : "text-neutral-400 hover:text-white"
+                )}
+              >
+                <span>🇮🇳 INR (₹)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRegion("GLOBAL");
+                  toast.success("Switched to Global USD ($) pricing");
+                }}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer",
+                  !isIndia
+                    ? "bg-white/[0.12] text-white border border-white/20 shadow-sm"
+                    : "text-neutral-400 hover:text-white"
+                )}
+              >
+                <span>🌐 USD ($)</span>
+              </button>
             </div>
           </div>
 

@@ -4,18 +4,15 @@
  * usePricingRegion — Server-authoritative region detection for pricing.
  *
  * Resolution order (highest authority first):
- *   1. Server IP-based detection:  GET /api/general/pricing-region
+ *   1. Manual user preference (localStorage: "paperxify_pricing_region")
+ *   2. Server IP-based detection: GET /api/general/pricing-region
  *      → Returns { region: "IN" | "GLOBAL", country: string, currency: string }
- *      → This is the authoritative signal — immune to VPN/timezone manipulation
- *   2. Browser timezone fallback (only used if server call fails in dev/offline)
- *      → Asia/Calcutta or Asia/Kolkata → "IN"
- *
- * The checkout itself always uses the server-side region stored against the user's session —
- * so even if a frontend user somehow changes the displayed currency, the server will
- * charge the correct amount for the correct region at payment time.
+ *   3. Browser timezone / locale fallback (immediate synchronous default):
+ *      → Asia/Calcutta, Asia/Kolkata, or Indian locales → "IN"
+ *      → Otherwise → "GLOBAL"
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getPricingConfig, type PricingConfig, type PricingRegion } from "./pricingConfig";
 import api from "@/config/api";
 
@@ -30,24 +27,125 @@ export interface PricingRegionResult {
   loading: boolean;
   /** Whether region came from authoritative server (true) or timezone fallback (false) */
   authoritative: boolean;
+  /** Manual toggle to switch between IN (INR) and GLOBAL (USD) */
+  setRegion: (region: PricingRegion) => void;
 }
 
-/** Timezone-based fallback — used only when server is unreachable */
-function detectRegionFromTimezone(): PricingRegion {
+/** Timezone & locale-based fallback — used for instant synchronous detection */
+function detectRegionFromBrowser(): PricingRegion {
+  if (typeof window === "undefined") return "IN";
   try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz === "Asia/Calcutta" || tz === "Asia/Kolkata") return "IN";
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    if (
+      tz.includes("Calcutta") ||
+      tz.includes("Kolkata") ||
+      tz.includes("India") ||
+      tz === "Asia/Colombo"
+    ) {
+      return "IN";
+    }
+    const navLangs = navigator.languages || [navigator.language];
+    if (
+      navLangs.some(
+        (l) =>
+          l &&
+          (l.includes("-IN") ||
+            l.startsWith("hi") ||
+            l.startsWith("mr") ||
+            l.startsWith("ta") ||
+            l.startsWith("te"))
+      )
+    ) {
+      return "IN";
+    }
   } catch {}
   return "GLOBAL";
 }
 
+function getInitialRegion(): PricingRegion {
+  if (typeof window === "undefined") return "IN";
+  try {
+    const saved = localStorage.getItem("paperxify_pricing_region");
+    if (saved === "IN" || saved === "GLOBAL") return saved;
+  } catch {}
+  return detectRegionFromBrowser();
+}
+
 export function usePricingRegion(): PricingRegionResult {
-  // Temporarily force GLOBAL region on the frontend so both India and Global show the exact same pricing
+  const [region, setRegionState] = useState<PricingRegion>(getInitialRegion);
+  const [country, setCountry] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [authoritative, setAuthoritative] = useState<boolean>(false);
+
+  const setRegion = useCallback((newRegion: PricingRegion) => {
+    setRegionState(newRegion);
+    try {
+      localStorage.setItem("paperxify_pricing_region", newRegion);
+      window.dispatchEvent(
+        new CustomEvent("paperxify_region_changed", { detail: newRegion })
+      );
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const handleRegionChange = (e: any) => {
+      const updated =
+        e?.detail || localStorage.getItem("paperxify_pricing_region");
+      if (updated === "IN" || updated === "GLOBAL") {
+        setRegionState(updated);
+      }
+    };
+    window.addEventListener("paperxify_region_changed", handleRegionChange);
+    window.addEventListener("storage", handleRegionChange);
+
+    // If user explicitly saved preference, keep it authoritative
+    const savedPref = localStorage.getItem("paperxify_pricing_region");
+    if (savedPref === "IN" || savedPref === "GLOBAL") {
+      setRegionState(savedPref);
+      setCountry(savedPref);
+      setAuthoritative(true);
+      setLoading(false);
+      return () => {
+        window.removeEventListener("paperxify_region_changed", handleRegionChange);
+        window.removeEventListener("storage", handleRegionChange);
+      };
+    }
+
+    // Call server to confirm authoritative GeoIP
+    let isMounted = true;
+    api
+      .get("/general/pricing-region")
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.data?.success && res.data?.region) {
+          const detected = res.data.region === "IN" ? "IN" : "GLOBAL";
+          setRegionState(detected);
+          setCountry(res.data.country || detected);
+          setAuthoritative(true);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setRegionState(detectRegionFromBrowser());
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("paperxify_region_changed", handleRegionChange);
+      window.removeEventListener("storage", handleRegionChange);
+    };
+  }, []);
+
   return {
-    pricingConfig: getPricingConfig("GLOBAL"),
-    region: "GLOBAL",
-    country: "GLOBAL",
-    loading: false,
-    authoritative: true,
+    pricingConfig: getPricingConfig(region),
+    region,
+    country,
+    loading,
+    authoritative,
+    setRegion,
   };
 }
