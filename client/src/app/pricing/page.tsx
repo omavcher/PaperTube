@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   CheckCircle2, X, ArrowRight, Zap, ShieldCheck, Activity,
   Sparkles, Star, Lock, Loader2, ChevronDown,
   BarChart3, Crown, Check, BadgeCheck,
-  Play, FileText, Layers, Brain
+  Play, FileText, Layers, Brain, RotateCcw, Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -138,7 +139,7 @@ export default function PricingPage() {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [mobileActive, setMobileActive] = useState<"free" | "pro" | "power">("pro");
   const [slideDirection, setSlideDirection] = useState<number>(0);
-  const { region, setRegion } = usePricingRegion();
+  const { region } = usePricingRegion();
   const isIndia = region === "IN";
   const [user, setUser] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -559,17 +560,17 @@ export default function PricingPage() {
             </p>
           </div>
 
-          {/* Billing & Currency Toggles */}
-          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mb-4">
+          {/* Billing Toggle (Centered, No Confusing Currency Switcher) */}
+          <div className="flex justify-center mb-4">
             {/* Billing toggle with spring pill */}
-            <div className="relative p-0.5 rounded-full bg-[#0d0d11] border border-white/[0.08] flex items-center">
+            <div className="relative p-0.5 rounded-full bg-[#0d0d11] border border-white/[0.08] flex items-center shadow-inner">
               {(["monthly", "yearly"] as BillingPeriod[]).map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setBilling(p)}
                   className={cn(
-                    "relative z-10 px-4 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1",
+                    "relative z-10 px-5 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5",
                     billing === p
                       ? p === "yearly"
                         ? "text-white"
@@ -591,7 +592,7 @@ export default function PricingPage() {
                   {p === "yearly" && (
                     <span
                       className={cn(
-                        "px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase transition-colors",
+                        "px-1.5 py-0.2 rounded-full text-[8.5px] font-black uppercase transition-colors",
                         billing === "yearly"
                           ? "bg-black/30 text-white"
                           : "bg-red-500/15 text-red-400 border border-red-500/20"
@@ -602,40 +603,6 @@ export default function PricingPage() {
                   )}
                 </button>
               ))}
-            </div>
-
-            {/* Currency Switcher (INR vs USD) */}
-            <div className="relative p-0.5 rounded-full bg-[#0d0d11] border border-white/[0.08] flex items-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setRegion("IN");
-                  toast.success("Switched to India INR (₹) pricing");
-                }}
-                className={cn(
-                  "px-3 py-1 rounded-full text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer",
-                  isIndia
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm"
-                    : "text-neutral-400 hover:text-white"
-                )}
-              >
-                <span>🇮🇳 INR (₹)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setRegion("GLOBAL");
-                  toast.success("Switched to Global USD ($) pricing");
-                }}
-                className={cn(
-                  "px-3 py-1 rounded-full text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer",
-                  !isIndia
-                    ? "bg-white/[0.12] text-white border border-white/20 shadow-sm"
-                    : "text-neutral-400 hover:text-white"
-                )}
-              >
-                <span>🌐 USD ($)</span>
-              </button>
             </div>
           </div>
 
@@ -751,6 +718,72 @@ export default function PricingPage() {
           {/* ── Desktop & Tablet (>= md): All 3 Cards Side-by-Side ────────────── */}
           <div className="hidden md:grid md:grid-cols-3 gap-4 lg:gap-5 items-stretch mb-8">
             {PLANS.map((plan) => renderPlanCard(plan))}
+          </div>
+
+          {/* ── Customer Protection & Mandatory Compliance Links ── */}
+          <div className="rounded-2xl bg-[#0c0c10] border border-white/[0.08] p-5 sm:p-6 mb-10 shadow-sm">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-center md:text-left">
+                <span className="text-[10px] font-black uppercase tracking-wider text-red-400">
+                  Customer Protection &amp; Guarantees
+                </span>
+                <h4 className="text-sm sm:text-base font-bold text-white">
+                  Transparent Policies &amp; Instant Digital Fulfillment
+                </h4>
+                <p className="text-xs text-neutral-400 max-w-xl">
+                  Every paid subscription is protected by our transparent customer-first policies and instant delivery SLA.
+                </p>
+              </div>
+
+              {/* Policy Links Pills */}
+              <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
+                <Link
+                  href="/refund-policy"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-red-500/30 text-xs font-semibold text-neutral-200 hover:text-white transition-all shadow-sm group"
+                >
+                  <RotateCcw size={13} className="text-emerald-400 group-hover:rotate-[-45deg] transition-transform" />
+                  <span>Cancellation &amp; Refund Policy</span>
+                </Link>
+
+                <Link
+                  href="/shipping-policy"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-red-500/30 text-xs font-semibold text-neutral-200 hover:text-white transition-all shadow-sm group"
+                >
+                  <Zap size={13} className="text-amber-400 group-hover:scale-110 transition-transform" />
+                  <span>Shipping &amp; Delivery Policy</span>
+                </Link>
+
+                <Link
+                  href="/terms"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-xs font-semibold text-neutral-200 hover:text-white transition-all shadow-sm"
+                >
+                  <FileText size={13} className="text-blue-400" />
+                  <span>Terms of Service</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Bottom Guarantee Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-white/[0.06] mt-4 text-xs text-neutral-300">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={13} />
+                </div>
+                <span><strong>7-Day Refund:</strong> 100% money-back guarantee, credited in 5-7 business days.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                  <Clock size={13} />
+                </div>
+                <span><strong>Instant Delivery:</strong> Zero wait. Account upgraded within 0-5 minutes electronically.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                  <Lock size={13} />
+                </div>
+                <span><strong>Safe &amp; Encrypted:</strong> 256-bit bank-grade SSL security with zero hidden fees.</span>
+              </div>
+            </div>
           </div>
 
           {/* Comparison Table */}

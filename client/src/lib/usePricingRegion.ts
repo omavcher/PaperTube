@@ -64,11 +64,14 @@ function detectRegionFromBrowser(): PricingRegion {
 
 function getInitialRegion(): PricingRegion {
   if (typeof window === "undefined") return "IN";
+  const browserRegion = detectRegionFromBrowser();
+  // Indian users always get Indian INR pricing directly
+  if (browserRegion === "IN") return "IN";
   try {
     const saved = localStorage.getItem("paperxify_pricing_region");
     if (saved === "IN" || saved === "GLOBAL") return saved;
   } catch {}
-  return detectRegionFromBrowser();
+  return browserRegion;
 }
 
 export function usePricingRegion(): PricingRegionResult {
@@ -97,6 +100,18 @@ export function usePricingRegion(): PricingRegionResult {
     };
     window.addEventListener("paperxify_region_changed", handleRegionChange);
     window.addEventListener("storage", handleRegionChange);
+
+    // If browser is detected in India, enforce IN (Indian INR pricing)
+    if (detectRegionFromBrowser() === "IN") {
+      setRegionState("IN");
+      setCountry("IN");
+      setAuthoritative(true);
+      setLoading(false);
+      return () => {
+        window.removeEventListener("paperxify_region_changed", handleRegionChange);
+        window.removeEventListener("storage", handleRegionChange);
+      };
+    }
 
     // If user explicitly saved preference, keep it authoritative
     const savedPref = localStorage.getItem("paperxify_pricing_region");

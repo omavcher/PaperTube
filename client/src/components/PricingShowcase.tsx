@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Check, ArrowRight, Sparkles, Gift, ShieldCheck, Lock, RefreshCw, Zap, Crown, Loader2 } from "lucide-react";
+import { Check, ArrowRight, Sparkles, Gift, ShieldCheck, Lock, RefreshCw, Zap, Crown, Loader2, RotateCcw, FileText, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -93,7 +93,7 @@ const PLANS_DATA: PlanData[] = [
 ];
 
 export default function PricingShowcase({ region }: { region?: string }) {
-  const { pricingConfig, region: detectedRegion, loading: regionLoading, setRegion } = usePricingRegion();
+  const { pricingConfig, region: detectedRegion, loading: regionLoading } = usePricingRegion();
 
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [mobileActive, setMobileActive] = useState<"free" | "pro" | "power">("pro");
@@ -575,15 +575,15 @@ export default function PricingShowcase({ region }: { region?: string }) {
           </div>
         </div>
 
-        {/* ── Billing & Currency Toggles ───────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mb-4">
+        {/* ── Billing Toggle (Centered, No Confusing Currency Switcher) ───────── */}
+        <div className="flex justify-center mb-4">
           {/* Monthly / Yearly Toggle */}
-          <div className="relative p-0.5 rounded-full bg-[#0b0b0e] border border-white/[0.08] flex items-center">
+          <div className="relative p-0.5 rounded-full bg-[#0b0b0e] border border-white/[0.08] flex items-center shadow-inner">
             <button
               type="button"
               onClick={() => setBilling("monthly")}
               className={cn(
-                "relative z-10 px-4 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer",
+                "relative z-10 px-4 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer",
                 billing === "monthly" ? "text-black" : "text-neutral-400 hover:text-white"
               )}
             >
@@ -600,7 +600,7 @@ export default function PricingShowcase({ region }: { region?: string }) {
               type="button"
               onClick={() => setBilling("yearly")}
               className={cn(
-                "relative z-10 px-4 py-1 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer",
+                "relative z-10 px-4 py-1.5 rounded-full text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer",
                 billing === "yearly" ? "text-white" : "text-neutral-400 hover:text-white"
               )}
             >
@@ -614,7 +614,7 @@ export default function PricingShowcase({ region }: { region?: string }) {
               <span>Yearly</span>
               <span
                 className={cn(
-                  "px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase transition-colors",
+                  "px-1.5 py-0.2 rounded-full text-[8.5px] font-black uppercase transition-colors",
                   billing === "yearly"
                     ? "bg-black/30 text-white"
                     : "bg-red-500/15 text-red-400 border border-red-500/20"
@@ -622,40 +622,6 @@ export default function PricingShowcase({ region }: { region?: string }) {
               >
                 Save {maxSaving}%
               </span>
-            </button>
-          </div>
-
-          {/* Currency Switcher (INR vs USD) */}
-          <div className="relative p-0.5 rounded-full bg-[#0b0b0e] border border-white/[0.08] flex items-center">
-            <button
-              type="button"
-              onClick={() => {
-                setRegion("IN");
-                toast.success("Switched to India INR (₹) pricing");
-              }}
-              className={cn(
-                "px-3 py-1 rounded-full text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer",
-                detectedRegion === "IN"
-                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm"
-                  : "text-neutral-400 hover:text-white"
-              )}
-            >
-              <span>🇮🇳 INR (₹)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setRegion("GLOBAL");
-                toast.success("Switched to Global USD ($) pricing");
-              }}
-              className={cn(
-                "px-3 py-1 rounded-full text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer",
-                detectedRegion === "GLOBAL"
-                  ? "bg-white/[0.12] text-white border border-white/20 shadow-sm"
-                  : "text-neutral-400 hover:text-white"
-              )}
-            >
-              <span>🌐 USD ($)</span>
             </button>
           </div>
         </div>
@@ -775,6 +741,40 @@ export default function PricingShowcase({ region }: { region?: string }) {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* ── Mandatory Customer Protection & Policy Links ───────────────────── */}
+        <div className="mt-3.5 rounded-xl bg-[#09090c] border border-white/[0.08] p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-center sm:text-left">
+            <ShieldCheck size={15} className="text-emerald-400 shrink-0 hidden sm:block" />
+            <p className="text-[11px] text-neutral-400 leading-relaxed">
+              <strong className="text-neutral-200">Customer Protection:</strong> 100% digital SaaS delivery in 0–5 mins · 7-day money-back guarantee (5–7 days refund credit).
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 shrink-0 text-[11px]">
+            <Link
+              href="/refund-policy"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-red-500/30 text-neutral-300 hover:text-white transition-all group"
+            >
+              <RotateCcw size={11} className="text-emerald-400 group-hover:rotate-[-45deg] transition-transform" />
+              <span>Cancellation &amp; Refund Policy</span>
+            </Link>
+            <Link
+              href="/shipping-policy"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-red-500/30 text-neutral-300 hover:text-white transition-all group"
+            >
+              <Zap size={11} className="text-amber-400 group-hover:scale-110 transition-transform" />
+              <span>Shipping &amp; Delivery Policy</span>
+            </Link>
+            <Link
+              href="/terms"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-neutral-300 hover:text-white transition-all"
+            >
+              <FileText size={11} className="text-blue-400" />
+              <span>Terms</span>
+            </Link>
+          </div>
         </div>
       </section>
     </>

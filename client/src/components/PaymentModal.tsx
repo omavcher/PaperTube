@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   X,
   ShieldCheck,
@@ -874,10 +875,37 @@ export default function PaymentModal({
               )}
             </div>
 
-            {/* Bottom Security Footer */}
-            <div className="pt-3 border-t border-white/[0.06] mt-3 flex items-center justify-center gap-2 text-[10px] text-neutral-400">
-              <Lock size={10} className="text-neutral-400" />
-              <span>Payments are encrypted and secured. Zero surprise fees.</span>
+            {/* Bottom Security & Compliance Footer */}
+            <div className="pt-3 border-t border-white/[0.06] mt-3 flex flex-col items-center gap-1.5 text-[10.5px] text-neutral-400">
+              <div className="flex items-center justify-center gap-1.5">
+                <Lock size={11} className="text-emerald-400" />
+                <span>256-Bit SSL Encrypted · Instant 0–5 Min Delivery · 7-Day Refund Guarantee</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-[10px] text-neutral-400">
+                <Link
+                  href="/refund-policy"
+                  target="_blank"
+                  className="hover:text-neutral-200 underline underline-offset-2 transition-colors"
+                >
+                  Cancellation &amp; Refund Policy
+                </Link>
+                <span>·</span>
+                <Link
+                  href="/shipping-policy"
+                  target="_blank"
+                  className="hover:text-neutral-200 underline underline-offset-2 transition-colors"
+                >
+                  Shipping &amp; Delivery Policy
+                </Link>
+                <span>·</span>
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="hover:text-neutral-200 underline underline-offset-2 transition-colors"
+                >
+                  Terms
+                </Link>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -1182,10 +1210,25 @@ export default function PaymentModal({
             )}
           </div>
 
-          {/* Reassurance */}
-          <div className="text-[10px] text-neutral-400 flex items-center justify-center gap-1.5 pt-1">
-            <ShieldCheck size={12} className="text-emerald-400" />
-            <span>256-Bit SSL Encrypted · Cancel anytime</span>
+          {/* Reassurance & Mandatory Compliance Links */}
+          <div className="pt-2 border-t border-white/[0.06] mt-2 flex flex-col items-center gap-1.5 text-[10px] text-neutral-400">
+            <div className="flex items-center justify-center gap-1.5">
+              <ShieldCheck size={12} className="text-emerald-400" />
+              <span>256-Bit SSL Encrypted · Instant SaaS Delivery · 7-Day Refund</span>
+            </div>
+            <div className="flex items-center gap-2 text-[9.5px] text-neutral-400">
+              <Link href="/refund-policy" target="_blank" className="hover:text-neutral-200 underline underline-offset-2">
+                Refund Policy
+              </Link>
+              <span>·</span>
+              <Link href="/shipping-policy" target="_blank" className="hover:text-neutral-200 underline underline-offset-2">
+                Shipping Policy
+              </Link>
+              <span>·</span>
+              <Link href="/terms" target="_blank" className="hover:text-neutral-200 underline underline-offset-2">
+                Terms
+              </Link>
+            </div>
           </div>
         </motion.div>
       </div>
