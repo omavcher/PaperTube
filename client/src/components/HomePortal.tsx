@@ -1521,42 +1521,7 @@ export default function HomePortal({ region, user }: HomePortalProps) {
 
 
 
-      {/* ─────────────────────────────────────────────────────────────
-          3. TRUSTED ORGANIZATIONS SECTION
-      ────────────────────────────────────────────────────────────── */}
-      <section className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 text-center">
-        <h3 className="text-xs sm:text-sm font-medium text-neutral-400 tracking-tight mb-3.5 sm:mb-4">
-          Trusted by Students & Researchers from
-        </h3>
 
-        {/* 6 Partner Cards Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { name: "Google", img: "/homepage_con/google.png", scale: "scale-105", sub: "Research & innovation" },
-            { name: "Microsoft", img: "/homepage_con/microsoft.png", scale: "scale-100", sub: "Global tech & cloud" },
-            { name: "Stanford University", img: "/homepage_con/stainford.png", scale: "scale-100", sub: "Academic excellence" },
-            { name: "MIT", img: "/homepage_con/mit.png", scale: "scale-100", sub: "Engineering & science" },
-            { name: "Harvard University", img: "/homepage_con/havard.png", scale: "scale-100", sub: "Higher education" },
-            { name: "National University of Singapore", img: "/homepage_con/nus.png", scale: "scale-100", sub: "Global research" },
-          ].map((partner, idx) => (
-            <div 
-              key={idx} 
-              className="bg-[#09090c] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl p-3.5 flex flex-col items-center justify-between text-center transition-all duration-200 group overflow-hidden"
-            >
-              <div className="h-8 sm:h-9 w-full flex items-center justify-center overflow-hidden">
-                <img 
-                  src={partner.img} 
-                  alt={partner.name} 
-                  className={cn("h-6 sm:h-7 w-auto max-w-[100px] max-h-7 object-contain opacity-75 group-hover:opacity-100 transition-opacity", partner.scale)}
-                />
-              </div>
-              <p className="text-[10px] text-neutral-500 group-hover:text-neutral-400 font-normal leading-tight mt-2 transition-colors">
-                {partner.sub}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
 
 
       {/* ─────────────────────────────────────────────────────────────
