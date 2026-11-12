@@ -122,7 +122,7 @@ export default function ContactClient() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 font-mono text-[11px] text-neutral-300">
             <div>
               <span className="text-neutral-500 block">Platform &amp; Entity:</span>
-              <span>Paperxify (Operated by Om Awchar)</span>
+              <span>Paperxify (Owned &amp; Operated by Om Eknath Avchar)</span>
             </div>
             <div>
               <span className="text-neutral-500 block">Registered Support Desk:</span>

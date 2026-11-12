@@ -4,7 +4,8 @@ import React from "react";
 import { 
   Github, Twitter, Linkedin, Mail, 
   Terminal, Cpu, Code2, Globe, 
-  ArrowUpRight, Sparkles, Zap, Award
+  ArrowUpRight, Sparkles, Zap, Award,
+  ShieldCheck, CheckCircle2, UserCheck, Building2, ExternalLink
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -28,16 +29,86 @@ export default function FounderPage() {
         
         {/* --- Company Mission Header --- */}
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-bold uppercase tracking-widest text-red-400">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-bold uppercase tracking-widest text-red-400">
             <Sparkles size={11} />
             <span>Company &amp; Platform Profile</span>
           </div>
+
           <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
             About Paperxify
           </h1>
-          <p className="text-neutral-300 text-sm sm:text-base leading-relaxed font-light">
-            Paperxify is an Indian Educational Technology (EdTech) Software-as-a-Service platform operated by Om Awchar in Maharashtra, India. We build cutting-edge AI learning systems that transform complex video lectures, academic papers, and coursework into interactive study materials, smart flashcards, automated quizzes, and slide decks for students and researchers across the globe.
+
+          {/* Prominent Legal Ownership Badge */}
+          <div className="flex justify-center pt-1">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs sm:text-sm font-bold text-emerald-400 shadow-sm">
+              <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
+              <span>Owned By Om Eknath Avchar</span>
+            </div>
+          </div>
+
+          <p className="text-neutral-300 text-sm sm:text-base leading-relaxed font-light pt-2">
+            Paperxify is an Indian Educational Technology (EdTech) Software-as-a-Service platform <strong className="text-white font-semibold">owned and operated by Om Eknath Avchar</strong> in Maharashtra, India. We build cutting-edge AI learning systems that transform complex video lectures, academic papers, and coursework into interactive study materials, smart flashcards, automated quizzes, and slide decks for students and researchers across the globe.
           </p>
+        </div>
+
+        {/* --- Official Business & Legal Ownership Info Card --- */}
+        <div className="rounded-3xl bg-[#0a0a0e] border border-white/[0.08] p-6 sm:p-8 mb-20 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/5 blur-[90px] rounded-full pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/[0.06]">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 mb-1">
+                <Building2 size={12} />
+                <span>Business Identity &amp; Platform Ownership</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white">
+                Official Entity &amp; Merchant Information
+              </h2>
+            </div>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-300 shrink-0">
+              <CheckCircle2 size={14} className="text-emerald-400" />
+              <span>Verified Entity: Owned by Om Eknath Avchar</span>
+            </div>
+          </div>
+
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-1.5">
+              <span className="text-neutral-500 uppercase text-[10px] font-bold tracking-wider block">Proprietor / Legal Owner</span>
+              <p className="text-base font-bold text-white">Om Eknath Avchar</p>
+              <p className="text-neutral-400 text-xs leading-relaxed">
+                Registered platform owner &amp; principal software engineer behind Paperxify.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-1.5">
+              <span className="text-neutral-500 uppercase text-[10px] font-bold tracking-wider block">Platform &amp; Service Nature</span>
+              <p className="text-base font-bold text-white">Paperxify (EdTech SaaS)</p>
+              <p className="text-neutral-400 text-xs leading-relaxed">
+                Cloud-hosted AI lecture synthesis, smart notes, slides, and academic study tooling.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-1.5">
+              <span className="text-neutral-500 uppercase text-[10px] font-bold tracking-wider block">Operational Location &amp; Inquiries</span>
+              <p className="text-base font-bold text-white">Maharashtra, India</p>
+              <p className="text-neutral-400 text-xs leading-relaxed">
+                Direct inquiries: <a href="mailto:support@paperxify.com" className="text-neutral-200 underline">support@paperxify.com</a> or <a href="mailto:omawchar07@gmail.com" className="text-neutral-200 underline">omawchar07@gmail.com</a>
+              </p>
+            </div>
+          </div>
+
+          <div className="relative z-10 flex flex-wrap items-center gap-3 pt-6 mt-6 border-t border-white/[0.06] text-xs">
+            <span className="text-neutral-400">Compliance &amp; Legal Policies:</span>
+            <Link href="/terms" className="text-neutral-300 hover:text-white underline underline-offset-2">Terms of Service</Link>
+            <span className="text-neutral-600">·</span>
+            <Link href="/refund-policy" className="text-neutral-300 hover:text-white underline underline-offset-2">Cancellation &amp; Refund Policy</Link>
+            <span className="text-neutral-600">·</span>
+            <Link href="/shipping-policy" className="text-neutral-300 hover:text-white underline underline-offset-2">Shipping &amp; Delivery Policy</Link>
+            <span className="text-neutral-600">·</span>
+            <Link href="/privacy" className="text-neutral-300 hover:text-white underline underline-offset-2">Privacy Policy</Link>
+            <span className="text-neutral-600">·</span>
+            <Link href="/contact" className="text-neutral-300 hover:text-white underline underline-offset-2">Contact Us</Link>
+          </div>
         </div>
 
         {/* --- Hero Section --- */}
@@ -54,7 +125,7 @@ export default function FounderPage() {
             <div className="relative h-full w-full rounded-[2.5rem] overflow-hidden border border-white/10 bg-neutral-900/50 shadow-2xl group">
               <img 
                 src="/omawchar.webp" 
-                alt="Om Avchar" 
+                alt="Om Eknath Avchar" 
                 className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 grayscale group-hover:grayscale-0" 
               />
               
@@ -80,14 +151,14 @@ export default function FounderPage() {
             >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-6">
                 <Terminal size={12} className="text-red-500" />
-                <span>Solo Architect</span>
+                <span>Founder &amp; Owner</span>
               </div>
               
-              <h1 className="text-5xl md:text-8xl font-black tracking-tight text-white mb-4 leading-[0.9]">
-                Om <span className="text-transparent bg-clip-text bg-gradient-to-br from-neutral-200 to-neutral-600">Avchar.</span>
+              <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white mb-2 leading-[0.95]">
+                Om Eknath <span className="text-transparent bg-clip-text bg-gradient-to-br from-neutral-200 to-neutral-600">Avchar.</span>
               </h1>
               <p className="text-xl md:text-2xl font-medium text-neutral-400">
-                Full Stack Developer & <span className="text-white">AI Engineer</span>
+                Full Stack Developer, AI Engineer &amp; <span className="text-white">Owner of Paperxify</span>
               </p>
             </motion.div>
 
@@ -98,7 +169,7 @@ export default function FounderPage() {
               className="text-neutral-400 leading-relaxed text-sm md:text-base font-light max-w-2xl mx-auto md:mx-0"
             >
               I am a Computer Science Engineer with a passion for building scalable, high-performance systems. 
-              Currently architecting <span className="text-white font-medium">Paperxify</span> to revolutionize how we consume information.
+              As the sole owner and architect behind <span className="text-white font-medium">Paperxify</span>, my goal is to revolutionize how students and educators consume information and master academic concepts.
               <br /><br />
               My philosophy is simple: <span className="text-white italic">Code until it compiles, ship until it scales.</span>
             </motion.p>
@@ -143,7 +214,7 @@ export default function FounderPage() {
                  </p>
                  <div className="pt-4">
                     <img src="/sign.png" alt="Signature" className="h-12" /> 
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 mt-2">Founder Signature</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 mt-2">Founder &amp; Owner Signature (Om Eknath Avchar)</p>
                  </div>
               </div>
 

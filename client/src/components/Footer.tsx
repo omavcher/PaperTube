@@ -150,6 +150,7 @@ export default function Footer() {
 
           </div>
 
+
           {/* ── COL 2 & 3: LINKS GRID (DESKTOP) & ACCORDION (MOBILE) ── */}
           <div className="lg:col-span-5">
             {/* Desktop Links Grid */}
@@ -213,7 +214,7 @@ export default function Footer() {
                   <span>Company</span>
                 </h4>
                 <ul className="space-y-2 text-xs">
-                  <li><Link href="/about" className="hover:text-white transition-colors">About Paperxify</Link></li>
+                  <li><Link href="/about" className="hover:text-white transition-colors">About Us</Link></li>
                   <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing & Plans</Link></li>
                   <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
                   <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
@@ -313,7 +314,7 @@ export default function Footer() {
                 </button>
                 {openMobileSec === "company" && (
                   <ul className="py-2 space-y-2 text-xs pl-6 text-neutral-300">
-                    <li><Link href="/about">About Paperxify</Link></li>
+                    <li><Link href="/about">About Us</Link></li>
                     <li><Link href="/contact">Contact Us</Link></li>
                     <li><Link href="/careers">Careers</Link></li>
                   </ul>
@@ -490,7 +491,7 @@ export default function Footer() {
         {/* ─── BOTTOM LEGAL & LANGUAGE BAR ─── */}
         <div className="pt-6 border-t border-white/[0.06] flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-neutral-400 text-center md:text-left">
           <p className="order-2 md:order-1">
-            © {currentYear} Paperxify. All rights reserved.
+            © {currentYear} Paperxify. All rights reserved. · Owned by Om Eknath Avchar
           </p>
 
           <div className="order-1 md:order-2 flex flex-wrap items-center justify-center gap-3.5 text-xs font-medium">

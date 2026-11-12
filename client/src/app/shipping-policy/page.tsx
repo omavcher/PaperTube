@@ -117,7 +117,7 @@ export default function ShippingPolicyPage() {
             </p>
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 space-y-1 text-xs font-mono">
               <p>Business Name: Paperxify</p>
-              <p>Founder &amp; Operator: Om Awchar</p>
+              <p>Founder &amp; Owner: Om Eknath Avchar</p>
               <p>Support Email: <a href="mailto:support@paperxify.com" className="text-red-400 underline">support@paperxify.com</a> / <a href="mailto:omawchar07@gmail.com" className="text-red-400 underline">omawchar07@gmail.com</a></p>
               <p>Operational Location: Maharashtra, India</p>
               <p>Operating Hours: Monday – Saturday, 9:00 AM – 7:00 PM IST</p>

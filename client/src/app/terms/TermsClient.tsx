@@ -40,7 +40,7 @@ const TERMS_DATA = [
     id: "intro",
     title: "1. Business Identity & Acceptance of Terms",
     content: [
-      "Welcome to Paperxify (the 'Platform'), an AI-powered educational technology Software-as-a-Service (SaaS) platform operated by Om Awchar ('Company', 'we', 'us', or 'our'), located in Maharashtra, India.",
+      "Welcome to Paperxify (the 'Platform'), an AI-powered educational technology Software-as-a-Service (SaaS) platform owned and operated by Om Eknath Avchar ('Company', 'we', 'us', or 'our'), located in Maharashtra, India.",
       "By accessing or using Paperxify, registering an account, or purchasing any subscription, you agree to be bound by these Terms of Service, our Privacy Policy, Cancellation & Refund Policy, and Shipping & Delivery Policy.",
       "If you do not agree with any part of these terms, please discontinue use of our services immediately."
     ]
@@ -95,7 +95,7 @@ const TERMS_DATA = [
     title: "7. Intellectual Property & Ownership",
     content: [
       "You retain full ownership of all original study documents, notes, and materials you upload or generate on the Platform.",
-      "All platform software, branding, UI designs, and proprietary AI algorithms are the exclusive intellectual property of Paperxify and Om Awchar.",
+      "All platform software, branding, UI designs, and proprietary AI algorithms are the exclusive intellectual property of Paperxify and Om Eknath Avchar.",
       "You may export and use your generated study notes for personal educational or professional academic purposes."
     ]
   },
@@ -112,7 +112,7 @@ const TERMS_DATA = [
     title: "9. Grievance Officer & Contact Information",
     content: [
       "In accordance with the Information Technology Act 2000 and consumer protection guidelines, if you have any questions, legal concerns, or payment disputes, contact our Grievance Officer:",
-      "Name: Om Awchar | Platform: Paperxify | Operational Address: Maharashtra, India",
+      "Name: Om Eknath Avchar | Platform: Paperxify | Operational Address: Maharashtra, India",
       "Email: support@paperxify.com or omawchar07@gmail.com | Hours: Monday to Saturday, 9:00 AM – 7:00 PM IST"
     ]
   }
