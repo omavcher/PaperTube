@@ -317,7 +317,7 @@ exports.createPaypalOrder = async (req, res) => {
       couponCode: couponInfo?.couponCode || null,
     });
 
-    res.json({ success: true, orderId: order.id, amountUSD, discountAmount: couponInfo?.discountAmount || 0 });
+    res.json({ success: true, orderId: order.id, amountUSD: priceUSD, discountAmount: couponInfo?.discountAmount || 0 });
   } catch (error) {
     console.error("❌ PayPal create order error:", error?.response?.data || error.message);
     res.status(500).json({
