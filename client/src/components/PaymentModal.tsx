@@ -1,28 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import {
-  X,
-  ShieldCheck,
-  Loader2,
-  Check,
-  Crown,
-  Sparkles,
-  Zap,
-  Clock,
-  Layers,
-  Brain,
-  FileText,
-  ChevronDown,
-  ChevronUp,
-  CreditCard,
-  Lock,
-  ArrowRight,
-  Globe,
-  User,
-  CheckCircle2,
-} from "lucide-react";
+import { X, Loader2, Check, ChevronDown, CreditCard, Lock, Tag, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import api from "@/config/api";
@@ -31,6 +11,15 @@ import { trackDbActivity } from "@/utils/analytics";
 
 export type BillingPeriod = "monthly" | "yearly";
 
+export interface AppliedCoupon {
+  code: string;
+  discountAmount: number;
+  finalAmount: number;
+  planId: "free" | "pro" | "power";
+  billing: BillingPeriod;
+  currency: "INR" | "USD";
+}
+
 export interface PlanPaymentInfo {
   id: "free" | "pro" | "power";
   name: string;
@@ -38,7 +27,41 @@ export interface PlanPaymentInfo {
   inr: { monthly: number; yearly: number; yearlyPerMonth: number; saving?: string };
 }
 
-// ─── Razorpay Script Loader ──────────────────────────────────────────────────
+// ─── Settings ────────────────────────────────────────────────────────────────
+// Razorpay handler is kept, but your old UI never rendered a button for it.
+// Flip to true to show a "Card / NetBanking" button on the India → Card tab.
+const SHOW_RAZORPAY = false;
+
+// All colours live here. Change these to match the rest of your site.
+const ui = {
+  primaryBtn:
+    "h-12 w-full rounded-xl bg-red-500 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
+  secondaryBtn:
+    "h-12 w-full rounded-xl border border-white/15 bg-white/5 text-sm font-medium text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-red-400",
+  focus: "outline-none focus-visible:ring-2 focus-visible:ring-red-400",
+};
+
+// Uppercase, letters/digits/dash/underscore only, max 32 chars
+const cleanCode = (v: string) => v.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 32);
+
+// ─── Shared helpers ──────────────────────────────────────────────────────────
+function broadcastPlanChange() {
+  window.dispatchEvent(new Event("auth-change"));
+  window.dispatchEvent(new Event("capacity-updated"));
+}
+
+function saveMembership(data: any, planId: string) {
+  if (!data?.membership) return;
+  let existing: Record<string, any> = {};
+  try {
+    existing = JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {}
+  localStorage.setItem(
+    "user",
+    JSON.stringify({ ...existing, membership: data.membership, tokens: data.tokens, rank: planId })
+  );
+}
+
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
     if (typeof window === "undefined") return resolve(false);
@@ -60,15 +83,67 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-// ─── PayPal SDK Button ────────────────────────────────────────────────────────
+function loadPaytmScript(mid: string, isStaging: boolean): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") return resolve(false);
+
+    if (typeof (window as any).Paytm?.CheckoutJS?.init === "function") {
+      return resolve(true);
+    }
+
+    const host = isStaging ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
+    const scriptSrc = `${host}/merchantpgpui/checkoutjs/merchants/${mid}.js`;
+
+    const checkReady = () => {
+      if (typeof (window as any).Paytm?.CheckoutJS?.init === "function") {
+        return resolve(true);
+      }
+      if (typeof (window as any).Paytm?.CheckoutJS?.onLoad === "function") {
+        (window as any).Paytm.CheckoutJS.onLoad(() => resolve(true));
+      } else {
+        let attempts = 0;
+        const timer = setInterval(() => {
+          attempts++;
+          if (typeof (window as any).Paytm?.CheckoutJS?.init === "function") {
+            clearInterval(timer);
+            resolve(true);
+          } else if (attempts > 60) {
+            clearInterval(timer);
+            resolve(false);
+          }
+        }, 100);
+      }
+    };
+
+    if (document.querySelector(`script[src="${scriptSrc}"]`)) {
+      checkReady();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = scriptSrc;
+    script.type = "text/javascript";
+    script.crossOrigin = "anonymous";
+    script.onload = checkReady;
+    script.onerror = () => {
+      console.error("Failed to load Paytm CheckoutJS script from:", scriptSrc);
+      resolve(false);
+    };
+    document.body.appendChild(script);
+  });
+}
+
+// ─── PayPal SDK Button ───────────────────────────────────────────────────────
 export function PayPalSDKButton({
   plan,
   billing,
+  couponCode,
   onSuccess,
   onError,
 }: {
   plan: PlanPaymentInfo;
   billing: BillingPeriod;
+  couponCode?: string;
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
@@ -78,11 +153,14 @@ export function PayPalSDKButton({
   const [isProcessing, setIsProcessing] = useState(false);
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
+  // Ref, not a dep: applying a coupon must not re-render the PayPal buttons
+  const couponRef = useRef(couponCode);
 
   useEffect(() => {
     onSuccessRef.current = onSuccess;
     onErrorRef.current = onError;
-  }, [onSuccess, onError]);
+    couponRef.current = couponCode;
+  }, [onSuccess, onError, couponCode]);
 
   useEffect(() => {
     let isMounted = true;
@@ -109,13 +187,15 @@ export function PayPalSDKButton({
     if (!activeClientId) return;
 
     const scriptId = `paypal-sdk-script-${activeClientId}`;
-    if (document.getElementById(scriptId)) {
+    const existingById = document.getElementById(scriptId);
+    if (existingById) {
       if ((window as any).paypal) setSdkReady(true);
+      else existingById.addEventListener("load", () => setSdkReady(true));
       return;
     }
 
-    const existing = document.querySelector("script[src*='paypal.com/sdk/js']");
-    if (existing) existing.remove();
+    const stale = document.querySelector("script[src*='paypal.com/sdk/js']");
+    if (stale) stale.remove();
 
     const s = document.createElement("script");
     s.id = scriptId;
@@ -123,7 +203,7 @@ export function PayPalSDKButton({
     s.async = true;
     s.onload = () => setSdkReady(true);
     s.onerror = () => {
-      onErrorRef.current("PayPal failed to load. Please check your internet connection.");
+      onErrorRef.current("PayPal failed to load. Check your connection and try again.");
     };
     document.body.appendChild(s);
   }, [activeClientId]);
@@ -135,13 +215,13 @@ export function PayPalSDKButton({
     try {
       (window as any).paypal
         .Buttons({
-          style: { layout: "vertical", color: "blue", shape: "pill", label: "pay", height: 40 },
+          style: { layout: "vertical", color: "white", shape: "rect", label: "pay", height: 44 },
           createOrder: async () => {
             trackDbActivity(`/pricing/payment-start-paypal/${plan.id}/${billing}`);
             const token = localStorage.getItem("authToken");
             const res = await api.post(
               "/payment/paypal/create-order",
-              { planId: plan.id, billingPeriod: billing },
+              { planId: plan.id, billingPeriod: billing, couponCode: couponRef.current || undefined },
               { headers: { Auth: token, Authorization: token ? `Bearer ${token}` : undefined } }
             );
             if (!res.data.success || !res.data.orderId) {
@@ -153,61 +233,49 @@ export function PayPalSDKButton({
             setIsProcessing(true);
             const token = localStorage.getItem("authToken");
             const orderId = data.orderID || data.orderId;
+            const headers = { Auth: token, Authorization: token ? `Bearer ${token}` : undefined };
 
             try {
               const res = await api.post(
                 "/payment/paypal/capture-order",
                 { orderId, planId: plan.id, billingPeriod: billing },
-                { headers: { Auth: token, Authorization: token ? `Bearer ${token}` : undefined } }
+                { headers }
               );
 
               if (res.data?.success) {
-                if (res.data.user) {
-                  localStorage.setItem("user", JSON.stringify(res.data.user));
-                }
-                window.dispatchEvent(new Event("auth-change"));
-                window.dispatchEvent(new Event("capacity-updated"));
-                toast.success("PayPal subscription activated successfully!");
+                if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
+                broadcastPlanChange();
+                toast.success("Subscription activated.");
                 onSuccessRef.current();
               } else {
                 throw new Error(res.data?.message || "Capture could not be finalized.");
               }
             } catch (err: any) {
               try {
-                const syncRes = await api.post(
-                  "/payment/paypal/sync-order",
-                  { orderId },
-                  { headers: { Auth: token, Authorization: token ? `Bearer ${token}` : undefined } }
-                );
-
+                const syncRes = await api.post("/payment/paypal/sync-order", { orderId }, { headers });
                 if (syncRes.data?.success) {
-                  if (syncRes.data.user) {
-                    localStorage.setItem("user", JSON.stringify(syncRes.data.user));
-                  }
-                  window.dispatchEvent(new Event("auth-change"));
-                  window.dispatchEvent(new Event("capacity-updated"));
-                  toast.success("Payment verified and subscription activated!");
+                  if (syncRes.data.user) localStorage.setItem("user", JSON.stringify(syncRes.data.user));
+                  broadcastPlanChange();
+                  toast.success("Payment verified. Subscription activated.");
                   onSuccessRef.current();
                   return;
                 }
               } catch {}
 
-              const msg =
+              onErrorRef.current(
                 err?.response?.data?.message ||
-                err?.message ||
-                "PayPal capture failed. If money was deducted, click 'Sync PayPal' in your profile.";
-              onErrorRef.current(msg);
+                  err?.message ||
+                  "PayPal capture failed. If money was deducted, use Sync PayPal in your profile."
+              );
             } finally {
               setIsProcessing(false);
             }
           },
-          onCancel: () => {
-            setIsProcessing(false);
-          },
+          onCancel: () => setIsProcessing(false),
           onError: (e: any) => {
             console.error("PayPal SDK error:", e);
             setIsProcessing(false);
-            onErrorRef.current("PayPal checkout encountered an error. Please try again.");
+            onErrorRef.current("PayPal checkout hit an error. Please try again.");
           },
         })
         .render(containerRef.current);
@@ -216,58 +284,111 @@ export function PayPalSDKButton({
     }
   }, [sdkReady, plan.id, billing]);
 
-  if (!activeClientId) {
-    return (
-      <div className="h-10 flex items-center justify-center gap-2 text-neutral-400 text-xs">
-        <Loader2 size={13} className="animate-spin" /> Initializing PayPal…
-      </div>
-    );
-  }
+  const loading = !activeClientId || !sdkReady || isProcessing;
+  const loadingText = isProcessing
+    ? "Confirming payment with PayPal…"
+    : "Loading PayPal…";
 
-  if (!sdkReady || isProcessing) {
-    return (
-      <div className="h-10 flex items-center justify-center gap-2 text-neutral-400 text-xs">
-        <Loader2 size={13} className="animate-spin text-blue-400" />
-        <span>{isProcessing ? "Confirming payment with PayPal…" : "Loading PayPal…"}</span>
-      </div>
-    );
-  }
-
-  return <div ref={containerRef} id="paypal-button-container" className="w-full min-h-[40px]" />;
+  return (
+    <div className="w-full">
+      {loading && (
+        <div className="flex h-11 items-center justify-center gap-2 text-sm text-neutral-400">
+          <Loader2 size={14} className="animate-spin" />
+          {loadingText}
+        </div>
+      )}
+      {/* Always mounted so the buttons survive a failed or cancelled attempt */}
+      {activeClientId && (
+        <div ref={containerRef} className={cn("min-h-[44px] w-full", loading && "hidden")} />
+      )}
+    </div>
+  );
 }
 
-// ─── Plan Capability Definitions ──────────────────────────────────────────────
-interface FeatureItem {
-  icon: any;
-  title: string;
-  badge?: string;
-}
-
-function getPlanFeatures(planId: "pro" | "power" | "free"): FeatureItem[] {
+// ─── Plan features ───────────────────────────────────────────────────────────
+function getPlanFeatures(planId: PlanPaymentInfo["id"]): string[] {
   if (planId === "power") {
     return [
-      { icon: Clock, title: "Marathon Lectures up to 8 Hours Long", badge: "8 hrs max" },
-      { icon: Sparkles, title: "350 Video Notes / Month (~100 hrs content)", badge: "350 notes" },
-      { icon: Layers, title: "30 Executive Presentation Decks (40 slides)", badge: "PPTX Export" },
-      { icon: Brain, title: "10,000 PaperChat AI Tutor Conversations", badge: "10k chats" },
-      { icon: Zap, title: "Unlimited Flashcards, Quizzes & Mind Maps", badge: "Unlimited" },
-      { icon: FileText, title: "All Exports: DOCX, PPTX, LaTeX PDF, Anki", badge: "All Formats" },
-      { icon: Crown, title: "Instant Turbo Agent Priority GPU Queue", badge: "0 Wait" },
+      "Lectures up to 8 hours long",
+      "350 video notes per month",
+      "30 presentation decks, up to 40 slides",
+      "10,000 PaperChat conversations",
+      "Unlimited flashcards, quizzes and mind maps",
+      "All exports: DOCX, PPTX, LaTeX PDF, Anki",
+      "Priority queue, no waiting",
     ];
   }
-
   return [
-    { icon: Clock, title: "Deep Video Lectures up to 4 Hours Long", badge: "4 hrs max" },
-    { icon: Sparkles, title: "120 Video Notes / Month (~30 hrs study)", badge: "120 notes" },
-    { icon: Layers, title: "10 Presentation Decks (up to 20 slides)", badge: "PPTX Export" },
-    { icon: Brain, title: "2,000 PaperChat AI Tutor Conversations", badge: "2,000 chats" },
-    { icon: Zap, title: "Unlimited Active-Recall Cards & 30 Quiz Sets", badge: "Unlimited" },
-    { icon: FileText, title: "LaTeX Publication PDF, Notion & Anki Decks", badge: "LaTeX & Anki" },
-    { icon: ShieldCheck, title: "Priority Processing Queue with Zero Delay", badge: "Priority" },
+    "Lectures up to 4 hours long",
+    "120 video notes per month",
+    "10 presentation decks, up to 20 slides",
+    "2,000 PaperChat conversations",
+    "Unlimited flashcards and 30 quiz sets",
+    "LaTeX PDF, Notion and Anki exports",
+    "Priority queue, no waiting",
   ];
 }
 
-// ─── Main Payment / Order Summary Modal ──────────────────────────────────────
+// ─── Segmented control (used for billing period and payment method) ──────────
+function Segmented<T extends string>({
+  value,
+  onChange,
+  label,
+  options,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  label: string;
+  options: { value: T; label: string; hint?: string; badge?: string }[];
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="grid auto-cols-fr grid-flow-col gap-1 rounded-xl bg-white/5 p-1"
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "rounded-lg px-3 py-2 text-center text-sm transition-colors",
+              ui.focus,
+              active ? "bg-white text-black" : "text-neutral-300 hover:text-white"
+            )}
+          >
+            <span className="flex items-center justify-center gap-2 font-medium">
+              {o.label}
+              {o.badge && (
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-xs font-medium",
+                    active ? "bg-emerald-100 text-emerald-800" : "bg-emerald-500/15 text-emerald-300"
+                  )}
+                >
+                  {o.badge}
+                </span>
+              )}
+            </span>
+            {o.hint && (
+              <span className={cn("block text-xs", active ? "text-neutral-600" : "text-neutral-400")}>
+                {o.hint}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Payment modal ───────────────────────────────────────────────────────────
+// One layout for every screen size: bottom sheet on phones, centred dialog on desktop.
 export default function PaymentModal({
   isOpen,
   onClose,
@@ -283,59 +404,232 @@ export default function PaymentModal({
   onClose: () => void;
   plan: PlanPaymentInfo | null;
   billing: BillingPeriod;
-  onLemon: () => void;
+  onLemon: (couponCode?: string) => void;
   onPayPalSuccess: () => void;
   isLemonLoading: boolean;
   user?: any;
   region?: "IN" | "GLOBAL";
 }) {
   const [selectedBilling, setSelectedBilling] = useState<BillingPeriod>(billing);
+  const [method, setMethod] = useState<"upi" | "card">("upi");
+  const [featuresOpen, setFeaturesOpen] = useState(false);
   const [isRazorpayLoading, setIsRazorpayLoading] = useState(false);
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<"india" | "global">("india");
-  const [showUpiComingSoon, setShowUpiComingSoon] = useState(false);
-  const [mobileFeaturesOpen, setMobileFeaturesOpen] = useState(false);
+  const [isPaytmLoading, setIsPaytmLoading] = useState(false);
 
-  const handleUpiClick = () => {
-    setShowUpiComingSoon(true);
-    toast.info(
-      "⚡ UPI payments are launching soon! Please use Card / PayPal for instant access, or contact support for manual UPI.",
-      { duration: 4000 }
-    );
-  };
+  const busy = isRazorpayLoading || isPaytmLoading;
+  const currencyCode: "INR" | "USD" = region === "IN" ? "INR" : "USD";
+
+  // ─── Coupon ────────────────────────────────────────────────────────────────
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [shakeKey, setShakeKey] = useState(0);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const couponInputRef = useRef<HTMLInputElement>(null);
+  const couponReqId = useRef(0); // ignores out-of-date responses
+  const appliedRef = useRef<AppliedCoupon | null>(null);
+  const urlCouponTried = useRef(false);
+  // Cache rejected coupon attempts so repeated attempts don't spam network or hit rate limiter
+  const failedCodesRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    appliedRef.current = appliedCoupon;
+  }, [appliedCoupon]);
+
+  const validateCoupon = useCallback(
+    async (rawCode: string, silent = false) => {
+      if (!plan) return;
+      const code = cleanCode(rawCode);
+      if (!code) {
+        setCouponError("Enter a coupon code.");
+        setShakeKey((prev) => prev + 1);
+        return;
+      }
+
+      // 1. If already applied, avoid redundant check
+      if (appliedRef.current && appliedRef.current.code === code) {
+        setCouponError("This coupon is already applied to your order.");
+        setShakeKey((prev) => prev + 1);
+        return;
+      }
+
+      // 2. Client-side rejection cache: immediate shake with cached message, zero network spam
+      const cacheKey = `${code}:${plan.id}:${selectedBilling}:${currencyCode}`;
+      const cachedError = failedCodesRef.current.get(cacheKey);
+      if (cachedError) {
+        setCouponError(cachedError);
+        setShakeKey((prev) => prev + 1);
+        return;
+      }
+
+      const reqId = ++couponReqId.current;
+      setCouponLoading(true);
+      setCouponError("");
+
+      try {
+        const token = localStorage.getItem("authToken");
+        const res = await api.post(
+          "/payment/coupon/validate",
+          { code, planId: plan.id, billingPeriod: selectedBilling, currency: currencyCode },
+          { headers: { Auth: token } }
+        );
+        if (reqId !== couponReqId.current) return;
+
+        const c = res.data?.coupon;
+        if (!res.data?.success || !c) {
+          throw new Error(res.data?.message || "This coupon isn't valid.");
+        }
+
+        const p = region === "IN" ? plan.inr : plan.usd;
+        const base = selectedBilling === "yearly" ? p.yearly : p.monthly;
+        const discount = Math.max(0, Number(c.discountAmount) || 0);
+        const finalAmt = typeof c.finalAmount === "number" ? c.finalAmount : Math.max(0, base - discount);
+
+        failedCodesRef.current.delete(cacheKey);
+
+        setAppliedCoupon({
+          code: c.code || code,
+          discountAmount: discount,
+          finalAmount: finalAmt,
+          planId: plan.id,
+          billing: selectedBilling,
+          currency: currencyCode,
+        });
+        setCouponInput("");
+        setShakeKey(0);
+        if (!silent) trackDbActivity(`/pricing/coupon-applied/${plan.id}/${code}`);
+      } catch (err: any) {
+        if (reqId !== couponReqId.current) return;
+        const errMsg =
+          err?.response?.data?.message || err?.message || "Couldn't check the coupon. Try again.";
+
+        // Remember this failed code to optimize repeated attempts
+        failedCodesRef.current.set(cacheKey, errMsg);
+
+        setCouponError(errMsg);
+        setShakeKey((prev) => prev + 1);
+        if (silent) {
+          // Re-check after a plan or billing change failed: drop it and show why
+          setAppliedCoupon(null);
+          setCouponInput(code);
+          setCouponOpen(true);
+        }
+      } finally {
+        if (reqId === couponReqId.current) setCouponLoading(false);
+      }
+    },
+    [plan, selectedBilling, currencyCode, region]
+  );
+
+  // Clear everything on close; on open, apply ?coupon=CODE from the URL once
+  useEffect(() => {
+    if (!isOpen) {
+      couponReqId.current++;
+      urlCouponTried.current = false;
+      setAppliedCoupon(null);
+      setCouponInput("");
+      setCouponError("");
+      setShakeKey(0);
+      setCouponOpen(false);
+      setCouponLoading(false);
+      return;
+    }
+    if (urlCouponTried.current || !plan) return;
+    urlCouponTried.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = cleanCode(params.get("coupon") || params.get("promo") || "");
+    if (fromUrl) {
+      setCouponInput(fromUrl);
+      setCouponOpen(true);
+      validateCoupon(fromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, plan?.id]);
+
+  // Plan or billing changed while a coupon is applied: re-check it for the new price
+  useEffect(() => {
+    const current = appliedRef.current;
+    if (!isOpen || !current) return;
+    if (
+      current.planId === plan?.id &&
+      current.billing === selectedBilling &&
+      current.currency === currencyCode
+    ) {
+      return;
+    }
+    validateCoupon(current.code, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, plan?.id, selectedBilling, currencyCode]);
 
   useEffect(() => {
     if (billing) setSelectedBilling(billing);
   }, [billing, plan?.id]);
 
-  if (!isOpen || !plan) return null;
+  useEffect(() => {
+    if (isOpen) {
+      setMethod("upi");
+      setFeaturesOpen(false);
+    }
+  }, [isOpen]);
+
+  // Escape closes (unless a payment window is opening) and the page behind stops scrolling
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !busy) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen, busy, onClose]);
+
+  if (!plan) return null;
 
   const isIndia = region === "IN";
-  const currencySymbol = isIndia ? "₹" : "$";
-  const currencyCode = isIndia ? "INR" : "USD";
-
-  const pricingData = isIndia ? plan.inr : plan.usd;
+  const sym = isIndia ? "₹" : "$";
+  const pricing = isIndia ? plan.inr : plan.usd;
   const isYearly = selectedBilling === "yearly";
 
-  const monthlyRate = pricingData.monthly;
-  const yearlyRate = pricingData.yearly;
-  const yearlyPerMonth = pricingData.yearlyPerMonth;
+  const totalAmount = isYearly ? pricing.yearly : pricing.monthly;
+  const fullYearValue = pricing.monthly * 12;
+  const annualSavings = Math.max(0, fullYearValue - pricing.yearly);
+  const savePct = fullYearValue > 0 ? Math.round((annualSavings / fullYearValue) * 100) : 0;
 
-  const totalAmount = isYearly ? yearlyRate : monthlyRate;
-  const fullYearValue = monthlyRate * 12;
-  const annualSavings = isYearly ? Math.max(0, fullYearValue - yearlyRate) : 0;
-  const savingPercentage =
-    isYearly && fullYearValue > 0
-      ? Math.round((annualSavings / fullYearValue) * 100)
-      : plan.id === "power"
-      ? 32
-      : 27;
-
-  const fmt = (num: number) =>
-    isIndia ? num.toLocaleString("en-IN") : num.toFixed(2);
-
+  const fmt = (n: number) => (isIndia ? n.toLocaleString("en-IN") : n.toFixed(2));
   const features = getPlanFeatures(plan.id);
 
-  // ─── Razorpay Handler ───────────────────────────────────────────────────────
+  // A coupon only counts while it matches the selected plan, billing period and currency
+  const activeCoupon =
+    appliedCoupon &&
+    appliedCoupon.planId === plan.id &&
+    appliedCoupon.billing === selectedBilling &&
+    appliedCoupon.currency === currencyCode
+      ? appliedCoupon
+      : null;
+  const payableAmount = activeCoupon ? activeCoupon.finalAmount : totalAmount;
+
+  const openCoupon = () => {
+    setCouponOpen(true);
+    requestAnimationFrame(() => couponInputRef.current?.focus());
+  };
+
+  const removeCoupon = () => {
+    couponReqId.current++;
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponError("");
+    setShakeKey(0);
+    setCouponLoading(false);
+    setCouponOpen(false);
+  };
+
+  // ─── Razorpay ──────────────────────────────────────────────────────────────
   const handleRazorpayPayment = async () => {
     setIsRazorpayLoading(true);
     trackDbActivity(`/pricing/payment-start-razorpay/${plan.id}/${selectedBilling}`);
@@ -343,23 +637,24 @@ export default function PaymentModal({
     try {
       const scriptReady = await loadRazorpayScript();
       if (!scriptReady) {
-        toast.error("Razorpay SDK could not be loaded. Please check your internet connection.");
+        toast.error("Razorpay could not be loaded. Check your connection and try again.");
         setIsRazorpayLoading(false);
         return;
       }
 
       const token = localStorage.getItem("authToken");
-      const orderPayload = {
-        packageId: plan.id,
-        packageType: "subscription",
-        finalAmount: totalAmount,
-        billingPeriod: selectedBilling,
-        packageName: plan.name,
-      };
-
-      const res = await api.post("/payment/create-order", orderPayload, {
-        headers: { Auth: token },
-      });
+      const res = await api.post(
+        "/payment/create-order",
+        {
+          packageId: plan.id,
+          packageType: "subscription",
+          finalAmount: payableAmount,
+          couponCode: activeCoupon?.code,
+          billingPeriod: selectedBilling,
+          packageName: plan.name,
+        },
+        { headers: { Auth: token } }
+      );
 
       if (!res.data?.success || !res.data?.order) {
         throw new Error(res.data?.message || "Failed to create payment order");
@@ -368,52 +663,36 @@ export default function PaymentModal({
       const orderData = res.data.order;
       const keyId = res.data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 
-      const options = {
+      const rzp = new (window as any).Razorpay({
         key: keyId,
         amount: orderData.amount,
         currency: orderData.currency || "INR",
         name: "Paperxify",
-        description: `${plan.name} — ${isYearly ? "Annual Plan (365 Days)" : "Monthly Plan (30 Days)"}`,
+        description: `${plan.name} (${isYearly ? "yearly" : "monthly"})`,
         image: "https://paperxify.com/icons/icon-192x192.png",
         order_id: orderData.id,
-        handler: async function (response: any) {
+        handler: async (response: any) => {
           try {
-            const verifyPayload = {
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-              packageId: plan.id,
-              packageType: "subscription",
-              finalAmount: totalAmount,
-              billingPeriod: selectedBilling,
-              status: "success",
-            };
-
-            const verifyRes = await api.post("/payment/verify", verifyPayload, {
-              headers: { Auth: token },
-            });
+            const verifyRes = await api.post(
+              "/payment/verify",
+              {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                packageId: plan.id,
+                packageType: "subscription",
+                finalAmount: payableAmount,
+                couponCode: activeCoupon?.code,
+                billingPeriod: selectedBilling,
+                status: "success",
+              },
+              { headers: { Auth: token } }
+            );
 
             if (verifyRes.data?.success) {
-              if (verifyRes.data?.data?.membership) {
-                const existing = (() => {
-                  try {
-                    return JSON.parse(localStorage.getItem("user") || "{}");
-                  } catch {
-                    return {};
-                  }
-                })();
-                const updated = {
-                  ...existing,
-                  membership: verifyRes.data.data.membership,
-                  tokens: verifyRes.data.data.tokens,
-                  rank: plan.id,
-                };
-                localStorage.setItem("user", JSON.stringify(updated));
-              }
-
-              window.dispatchEvent(new Event("auth-change"));
-              window.dispatchEvent(new Event("capacity-updated"));
-              toast.success(`🎉 Subscription activated! Welcome to ${plan.name}.`);
+              saveMembership(verifyRes.data?.data, plan.id);
+              broadcastPlanChange();
+              toast.success(`Subscription activated. Welcome to ${plan.name}.`);
               onPayPalSuccess();
             } else {
               toast.error(verifyRes.data?.message || "Payment verification failed.");
@@ -422,7 +701,7 @@ export default function PaymentModal({
             console.error("Verification error:", verErr);
             toast.error(
               verErr?.response?.data?.message ||
-                "Payment received, but verification pending. Please refresh your profile."
+                "Payment received, but verification is pending. Refresh your profile in a minute."
             );
           } finally {
             setIsRazorpayLoading(false);
@@ -433,18 +712,11 @@ export default function PaymentModal({
           email: user?.email || "",
           contact: user?.phoneNumber || "",
         },
-        theme: {
-          color: "#ef4444",
-        },
-        modal: {
-          ondismiss: function () {
-            setIsRazorpayLoading(false);
-          },
-        },
-      };
+        theme: { color: "#ef4444" },
+        modal: { ondismiss: () => setIsRazorpayLoading(false) },
+      });
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on("payment.failed", function (resp: any) {
+      rzp.on("payment.failed", (resp: any) => {
         toast.error(resp.error?.description || "Payment was not completed.");
         setIsRazorpayLoading(false);
       });
@@ -456,782 +728,531 @@ export default function PaymentModal({
     }
   };
 
+  // ─── Paytm (UPI, QR, NetBanking) ───────────────────────────────────────────
+  const handlePaytmPayment = async () => {
+    setIsPaytmLoading(true);
+    trackDbActivity(`/pricing/payment-start-paytm/${plan.id}/${selectedBilling}`);
+
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        toast.error("Sign in to subscribe.");
+        setIsPaytmLoading(false);
+        return;
+      }
+
+      const res = await api.post(
+        "/payment/paytm/initiate",
+        { planId: plan.id, billingPeriod: selectedBilling, couponCode: activeCoupon?.code },
+        { headers: { Auth: token } }
+      );
+
+      if (!res.data?.success) {
+        if (res.data?.isConfigMissing) {
+          toast.error(
+            "Paytm credentials are missing. Set PAYTM_MID and PAYTM_MERCHANT_KEY in Server/src/.env.",
+            { duration: 6000 }
+          );
+        } else {
+          toast.error(res.data?.message || "Failed to start Paytm checkout.");
+        }
+        setIsPaytmLoading(false);
+        return;
+      }
+
+      const { orderId, txnToken, amount, mid, isStaging } = res.data;
+
+      const scriptReady = await loadPaytmScript(mid, isStaging);
+      if (!scriptReady || !(window as any).Paytm?.CheckoutJS) {
+        toast.error("Paytm could not be loaded. Check your connection and try again.");
+        setIsPaytmLoading(false);
+        return;
+      }
+
+      const config = {
+        root: "",
+        flow: "DEFAULT",
+        data: { orderId, token: txnToken, tokenType: "TXN_TOKEN", amount: String(amount) },
+        merchant: {
+          mid,
+          name: "Paperxify",
+          logo: "https://paperxify.com/icons/icon-192x192.png",
+          redirect: false,
+        },
+        handler: {
+          notifyMerchant: (eventName: any) => {
+            if (eventName === "APP_CLOSED") {
+              setIsPaytmLoading(false);
+              toast.info("Payment window closed. You can try again anytime.");
+              api
+                .post(
+                  "/payment/paytm/cancel",
+                  { orderId, reason: "User closed payment window" },
+                  { headers: { Auth: token } }
+                )
+                .catch(() => {});
+            }
+          },
+          transactionStatus: async (paymentStatus: any) => {
+            try {
+              const verifyRes = await api.post(
+                "/payment/paytm/verify",
+                { orderId, response: paymentStatus },
+                { headers: { Auth: token } }
+              );
+
+              if (verifyRes.data?.success) {
+                saveMembership(verifyRes.data?.data, plan.id);
+                broadcastPlanChange();
+                toast.success(`Payment verified. Welcome to ${plan.name}.`);
+                onPayPalSuccess();
+              } else if (verifyRes.data?.isPending) {
+                toast.info(
+                  verifyRes.data?.message ||
+                    "Your bank hasn't confirmed the payment yet. If money was debited, your plan activates shortly.",
+                  { duration: 8000 }
+                );
+              } else if (verifyRes.data?.isCancelled) {
+                toast.info("Payment cancelled. You can try again anytime.");
+              } else {
+                toast.error(verifyRes.data?.message || "Payment could not be verified.");
+              }
+            } catch (verErr: any) {
+              console.error("Paytm verification error:", verErr);
+              const errData = verErr?.response?.data;
+              if (errData?.isCancelled) {
+                toast.info("Payment cancelled.");
+              } else if (errData?.isPending) {
+                toast.info(errData?.message || "Your bank hasn't confirmed the payment yet.", {
+                  duration: 7000,
+                });
+              } else {
+                toast.error(errData?.message || "Payment could not be completed. Please try again.");
+              }
+            } finally {
+              setIsPaytmLoading(false);
+            }
+          },
+        },
+      };
+
+      const CheckoutJS = (window as any).Paytm?.CheckoutJS;
+      const start = async () => {
+        await CheckoutJS.init(config);
+        CheckoutJS.invoke();
+      };
+
+      if (typeof CheckoutJS?.init === "function") {
+        await start();
+      } else if (typeof CheckoutJS?.onLoad === "function") {
+        CheckoutJS.onLoad(async () => {
+          try {
+            await start();
+          } catch (initErr: any) {
+            console.error("Paytm init error:", initErr);
+            toast.error("Couldn't open Paytm. Please try again.");
+            setIsPaytmLoading(false);
+          }
+        });
+      } else {
+        throw new Error("Paytm CheckoutJS is unavailable");
+      }
+    } catch (err: any) {
+      console.error("Paytm checkout error:", err);
+      toast.error(err?.response?.data?.message || err.message || "Failed to start Paytm checkout");
+      setIsPaytmLoading(false);
+    }
+  };
+
+  // ─── Card + PayPal block (shared by India "Card / PayPal" tab and global users) ──
+  const cardAndPaypal = (
+    <div className="space-y-3">
+      {isIndia && SHOW_RAZORPAY && (
+        <>
+          <button
+            type="button"
+            onClick={handleRazorpayPayment}
+            disabled={isRazorpayLoading || couponLoading}
+            className={ui.primaryBtn}
+          >
+            {isRazorpayLoading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <>Pay {sym}{fmt(payableAmount)} with card or NetBanking</>
+            )}
+          </button>
+          <Divider />
+        </>
+      )}
+
+      <div className={cn(couponLoading && "pointer-events-none opacity-50")}>
+        <PayPalSDKButton
+          plan={plan}
+          billing={selectedBilling}
+          couponCode={activeCoupon?.code}
+          onSuccess={onPayPalSuccess}
+          onError={(m) => toast.error(m)}
+        />
+      </div>
+
+      <Divider />
+
+      <button
+        type="button"
+        onClick={() => onLemon(activeCoupon?.code)}
+        disabled={isLemonLoading || couponLoading}
+        className={ui.secondaryBtn}
+      >
+        {isLemonLoading ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <>
+            <CreditCard size={16} />
+            Pay with card
+          </>
+        )}
+      </button>
+    </div>
+  );
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[300] flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/85 backdrop-blur-md"
-        />
+      {isOpen && (
+        <div className="fixed inset-0 z-[300] flex items-end justify-center md:items-center md:p-6">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={() => !busy && onClose()}
+            className="absolute inset-0 bg-black/80"
+          />
 
-        {/* ═════════════════════════════════════════════════════════════════════
-            DESKTOP / LAPTOP MODAL (md: and above)
-            ═════════════════════════════════════════════════════════════════════ */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97, y: 12 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97, y: 12 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="hidden md:flex relative w-full max-w-4xl bg-[#0b0b0f] border border-white/10 rounded-[28px] shadow-[0_30px_90px_-20px_rgba(0,0,0,0.95),0_0_50px_rgba(239,68,68,0.08)] overflow-hidden z-10 text-white max-h-[88vh] my-auto"
-        >
-          {/* Subtle Ambient Background Gradients */}
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-red-600/10 blur-[110px] rounded-full pointer-events-none" />
-          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/10 blur-[110px] rounded-full pointer-events-none" />
-
-          {/* Dedicated Close Button (In clear top-right area, no overlap) */}
-          <button
-            onClick={onClose}
-            className="absolute top-5 right-5 z-30 p-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-neutral-400 hover:text-white transition-all cursor-pointer border border-white/[0.08]"
-            aria-label="Close checkout"
+          {/* Panel: bottom sheet on phones, centred dialog from md up */}
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Subscribe to ${plan.name}`}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="relative max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-white/10 bg-neutral-950 text-white md:max-w-md md:rounded-3xl"
           >
-            <X size={15} />
-          </button>
-
-          {/* ── Left Column: Plan Capabilities & Value Proposition ─────────── */}
-          <div className="w-[44%] bg-[#0e0e13]/90 p-6 lg:p-7 border-r border-white/[0.08] flex flex-col justify-between relative">
-            <div>
-              {/* Badge & Plan Title */}
-              <div className="flex items-center gap-2 mb-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1 shadow-sm">
-                  {plan.id === "power" ? <Crown size={10} /> : <Sparkles size={10} />}
-                  {plan.id === "power" ? "POWER SCHOLAR 👑" : "PRO SCHOLAR ⭐"}
-                </span>
-                <span className="text-[10px] text-neutral-400 font-medium">Instant Activation</span>
+            <div className="p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:p-6">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold">{plan.name}</h2>
+                  {user?.email && (
+                    <p className="mt-0.5 truncate text-sm text-neutral-400">{user.email}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Close"
+                  className={cn(
+                    "-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-white/10 hover:text-white",
+                    ui.focus
+                  )}
+                >
+                  <X size={18} />
+                </button>
               </div>
 
-              <h2 className="text-2xl font-black text-white tracking-tight">
-                {plan.name}
-              </h2>
-              <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                {plan.id === "power"
-                  ? "Maximum academic horsepower for marathon lectures, full playlists, and unlimited recall practice."
-                  : "Complete academic superpower for video lecture synthesis, presentations, and active study mastery."}
-              </p>
-
-              {/* What We Are Providing Section */}
+              {/* Billing period */}
               <div className="mt-5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2.5 flex items-center gap-1.5">
-                  <CheckCircle2 size={12} className="text-emerald-400" /> What You Get In This Plan
-                </div>
-
-                <div className="space-y-1.5">
-                  {features.map((item, idx) => {
-                    const Icon = item.icon;
-                    return (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.025] border border-white/[0.04] hover:border-white/[0.08] transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-5 h-5 rounded-md bg-red-500/10 text-red-400 flex items-center justify-center shrink-0">
-                            <Icon size={11} />
-                          </div>
-                          <span className="text-xs text-neutral-200 font-medium truncate">
-                            {item.title}
-                          </span>
-                        </div>
-                        {item.badge && (
-                          <span className="text-[9px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-md shrink-0">
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Trust Indicators */}
-            <div className="pt-4 border-t border-white/[0.06] mt-4 flex items-center justify-between text-[10.5px] text-neutral-400">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                <ShieldCheck size={13} /> 256-Bit SSL Encrypted
-              </div>
-              <div className="text-neutral-400">Cancel anytime with 1 click</div>
-            </div>
-          </div>
-
-          {/* ── Right Column: Order Summary, Pricing & Checkout ──────────────── */}
-          <div className="w-[56%] p-6 lg:p-7 flex flex-col justify-between bg-[#0b0b0f] pr-12 lg:pr-14">
-            <div>
-              {/* Header with Step and Logged-in User Badge */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-red-400">
-                    SECURE ORDER SUMMARY
-                  </span>
-                </div>
-                <h3 className="text-xl font-black text-white mt-0.5">Complete Your Subscription</h3>
-
-                {user?.email && (
-                  <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-neutral-300">
-                    <User size={11} className="text-neutral-400 shrink-0" />
-                    <span>
-                      Account: <strong className="text-white font-semibold">{user.email}</strong>
-                    </span>
-                  </div>
-                )}
+                <Segmented
+                  label="Billing period"
+                  value={selectedBilling}
+                  onChange={setSelectedBilling}
+                  options={[
+                    {
+                      value: "monthly",
+                      label: "Monthly",
+                      hint: `${sym}${fmt(pricing.monthly)}/mo`,
+                    },
+                    {
+                      value: "yearly",
+                      label: "Yearly",
+                      hint: `${sym}${fmt(pricing.yearlyPerMonth)}/mo`,
+                      badge: savePct > 0 ? `Save ${savePct}%` : undefined,
+                    },
+                  ]}
+                />
               </div>
 
-              {/* Billing Cycle Selector Toggle */}
-              <div className="bg-[#121217] border border-white/[0.08] rounded-2xl p-1 flex items-center gap-1 mb-4 shadow-inner">
-                <button
-                  type="button"
-                  onClick={() => setSelectedBilling("monthly")}
-                  className={cn(
-                    "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center",
-                    selectedBilling === "monthly"
-                      ? "bg-white text-neutral-900 shadow-md scale-[1.01]"
-                      : "text-neutral-400 hover:text-white"
-                  )}
-                >
-                  Monthly Plan
-                  <span className="block text-[10px] font-normal opacity-80 mt-0.5">
-                    {currencySymbol}
-                    {fmt(monthlyRate)} / month
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedBilling("yearly")}
-                  className={cn(
-                    "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer relative text-center",
-                    selectedBilling === "yearly"
-                      ? "bg-white text-neutral-900 shadow-md scale-[1.01]"
-                      : "text-neutral-400 hover:text-white"
-                  )}
-                >
-                  <span className="absolute -top-2.5 right-2 px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-emerald-500 text-black shadow-sm">
-                    SAVE {savingPercentage}%
-                  </span>
-                  Annual Plan
-                  <span className="block text-[10px] font-normal opacity-80 mt-0.5">
-                    {currencySymbol}
-                    {fmt(yearlyPerMonth)} / mo eq.
-                  </span>
-                </button>
-              </div>
-
-              {/* Itemized Order Summary Box (Receipt Style) */}
-              <div className="bg-[#101015] border border-white/[0.08] rounded-2xl p-4 mb-4 space-y-2.5 shadow-sm">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-neutral-400">Plan:</span>
-                  <span className="font-bold text-white">
-                    {plan.name} · {isYearly ? "Annual (365 Days Access)" : "Monthly (30 Days Access)"}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-neutral-400">Standard Price:</span>
-                  <span className="font-semibold text-neutral-300">
-                    {isYearly ? (
-                      <>
-                        <span className="line-through text-neutral-500 mr-1.5">
-                          {currencySymbol}
-                          {fmt(fullYearValue)}
-                        </span>
-                        <span>
-                          {currencySymbol}
-                          {fmt(yearlyRate)}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        {currencySymbol}
-                        {fmt(monthlyRate)}
-                      </>
-                    )}
-                  </span>
-                </div>
-
-                {isYearly && annualSavings > 0 && (
-                  <div className="flex items-center justify-between text-xs text-emerald-400">
-                    <span className="flex items-center gap-1 font-medium">
-                      <Sparkles size={11} /> Annual Savings ({savingPercentage}% OFF):
-                    </span>
-                    <span className="font-bold">
-                      - {currencySymbol}
-                      {fmt(annualSavings)}
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-neutral-400">Taxes & Fees:</span>
-                  <span className="text-[11px] font-semibold text-emerald-400">
-                    {isIndia ? "18% GST Included (Zero Hidden Fees)" : "Taxes Included"}
-                  </span>
-                </div>
-
-                <div className="pt-2.5 border-t border-dashed border-white/[0.1] flex items-baseline justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-white uppercase tracking-wider block">
-                      Total Payable Amount
-                    </span>
-                    <span className="text-[10px] text-neutral-400">
-                      {isYearly ? "One-time annual billing" : "Monthly billing • Cancel anytime"}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-white tracking-tight">
-                      {currencySymbol}
-                      {fmt(totalAmount)}
-                    </span>
-                    <span className="text-[10px] font-bold text-neutral-400 px-1 py-0.5 rounded bg-white/[0.06]">
-                      {currencyCode}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Payment Options Section ─────────────────────────────────── */}
-              {isIndia ? (
+              {/* Total */}
+              <div className="mt-5 flex items-end justify-between gap-3">
                 <div>
-                  {/* Payment Method Tabs for India */}
-                  <div className="flex items-center gap-1.5 mb-2.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedPaymentTab("india");
-                        setShowUpiComingSoon(false);
-                      }}
-                      className={cn(
-                        "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
-                        selectedPaymentTab === "india"
-                          ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                          : "text-neutral-400 hover:text-white bg-white/[0.03]"
-                      )}
-                    >
-                      <span>⚡ UPI & QR Pay</span>
-                      <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                        Coming Soon
+                  <p className="text-3xl font-semibold tracking-tight tabular-nums">
+                    {sym}
+                    {fmt(payableAmount)}
+                    <span className="ml-1.5 text-sm font-normal text-neutral-400">{currencyCode}</span>
+                    {activeCoupon && (
+                      <span className="ml-2 text-base font-normal text-neutral-400 line-through">
+                        {sym}
+                        {fmt(totalAmount)}
                       </span>
-                    </button>
+                    )}
+                  </p>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    {isYearly ? "Billed once a year" : "Billed every month"}
+                    {isIndia ? ", GST included" : ", taxes included"}
+                  </p>
+                </div>
+                {isYearly && annualSavings > 0 && (
+                  <p className="pb-1 text-sm text-emerald-400">
+                    You save {sym}
+                    {fmt(annualSavings)}
+                  </p>
+                )}
+              </div>
+
+              {/* Coupon */}
+              <div className="mt-4">
+                {activeCoupon ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm">
+                    <span className="flex min-w-0 items-center gap-2 text-emerald-300">
+                      <Check size={16} className="shrink-0" />
+                      <span className="truncate">
+                        <span className="font-semibold">{activeCoupon.code}</span> applied, you save {sym}
+                        {fmt(activeCoupon.discountAmount)}
+                      </span>
+                    </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedPaymentTab("global");
-                        setShowUpiComingSoon(false);
-                      }}
+                      onClick={removeCoupon}
                       className={cn(
-                        "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
-                        selectedPaymentTab === "global"
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                          : "text-neutral-400 hover:text-white bg-white/[0.03]"
+                        "shrink-0 rounded-md text-neutral-300 underline underline-offset-2 hover:text-white",
+                        ui.focus
                       )}
                     >
-                      <Globe size={11} />
-                      <span>Card / PayPal (Instant Access)</span>
+                      Remove
                     </button>
                   </div>
-
-                  {selectedPaymentTab === "india" ? (
-                    <div>
-                      {/* UPI Coming Soon Notice Card */}
-                      {showUpiComingSoon && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.96, y: -4 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-white space-y-2 mb-3 shadow-lg"
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
-                              <Sparkles size={14} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wide">
-                                  UPI Payment Coming Soon!
-                                </h4>
-                                <button
-                                  type="button"
-                                  onClick={() => setShowUpiComingSoon(false)}
-                                  className="text-neutral-400 hover:text-white p-0.5 cursor-pointer"
-                                >
-                                  <X size={13} />
-                                </button>
-                              </div>
-                              <p className="text-[11px] text-neutral-300 mt-0.5 leading-relaxed">
-                                Direct UPI (GPay, PhonePe, Paytm, QR) integration is in final testing. For instant activation, you can use Debit/Credit Card or PayPal right now!
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="pt-2 border-t border-amber-500/20 flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedPaymentTab("global");
-                                setShowUpiComingSoon(false);
-                              }}
-                              className="flex-1 py-1.5 px-3 rounded-xl bg-white text-neutral-900 font-bold text-xs hover:bg-neutral-100 transition-colors flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                            >
-                              <CreditCard size={13} />
-                              <span>Pay via Card / PayPal Instead</span>
-                            </button>
-                            <a
-                              href="mailto:omawchar07@gmail.com?subject=Manual%20UPI%20Activation%20Request%20for%20Paperxify"
-                              className="py-1.5 px-3 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-neutral-200 font-medium text-xs transition-colors flex items-center justify-center gap-1 border border-white/10"
-                            >
-                              <span>Manual UPI Help</span>
-                            </a>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Primary UPI Button with Coming Soon Trigger */}
-                      <button
-                        type="button"
-                        onClick={handleUpiClick}
-                        className="w-full relative group overflow-hidden rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-500 hover:from-red-500 hover:to-rose-500 p-3.5 text-white font-bold text-sm shadow-[0_12px_30px_-8px_rgba(239,68,68,0.5)] transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <span>
-                          Pay {currencySymbol}
-                          {fmt(totalAmount)} via UPI (GPay / PhonePe)
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-black/40 text-amber-300 border border-amber-400/40">
-                          Coming Soon
-                        </span>
-                        <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
-                      </button>
-
-                      {/* Payment badges */}
-                      <div className="flex items-center justify-center gap-1.5 text-[9.5px] text-neutral-400 pt-2 flex-wrap">
-                        <span className="font-semibold text-neutral-300">Supported:</span>
-                        <span className="bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06] text-neutral-300">
-                          Google Pay
-                        </span>
-                        <span className="bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06] text-neutral-300">
-                          PhonePe
-                        </span>
-                        <span className="bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06] text-neutral-300">
-                          Paytm
-                        </span>
-                        <span className="bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06] text-neutral-300">
-                          RuPay / Cards
-                        </span>
-                        <span className="bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06] text-neutral-300">
-                          NetBanking
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Global / PayPal in India fallback tab */
-                    <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
-                      <PayPalSDKButton
-                        plan={plan}
-                        billing={selectedBilling}
-                        onSuccess={onPayPalSuccess}
-                        onError={(m) => toast.error(m)}
+                ) : appliedCoupon && couponLoading ? (
+                  <p className="flex items-center gap-2 text-sm text-neutral-400">
+                    <Loader2 size={14} className="animate-spin" />
+                    Updating coupon…
+                  </p>
+                ) : couponOpen ? (
+                  <form
+                    noValidate
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      validateCoupon(couponInput);
+                    }}
+                    className="space-y-2"
+                  >
+                    <motion.div
+                      key={shakeKey}
+                      animate={
+                        shakeKey > 0
+                          ? {
+                              x: [0, -10, 10, -8, 8, -5, 5, -2, 2, 0],
+                            }
+                          : {}
+                      }
+                      transition={{ duration: 0.45, ease: "easeInOut" }}
+                      className="flex gap-2"
+                    >
+                      <label htmlFor="coupon-code" className="sr-only">
+                        Coupon code
+                      </label>
+                      <input
+                        id="coupon-code"
+                        ref={couponInputRef}
+                        value={couponInput}
+                        onChange={(e) => {
+                          setCouponInput(cleanCode(e.target.value));
+                          if (couponError) setCouponError("");
+                        }}
+                        placeholder="Coupon code"
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        enterKeyHint="go"
+                        aria-invalid={!!couponError}
+                        aria-describedby={couponError ? "coupon-error" : undefined}
+                        className={cn(
+                          "h-11 min-w-0 flex-1 rounded-xl border bg-white/5 px-3 text-base uppercase tracking-wide text-white placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 md:text-sm transition-all duration-200",
+                          couponError
+                            ? "border-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.25)] ring-1 ring-red-500/50"
+                            : "border-white/10",
+                          ui.focus
+                        )}
                       />
                       <button
-                        type="button"
-                        onClick={onLemon}
-                        disabled={isLemonLoading}
-                        className="w-full h-10 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white font-medium text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        {isLemonLoading ? (
-                          <Loader2 size={13} className="animate-spin" />
-                        ) : (
-                          <>
-                            <CreditCard size={13} /> Pay with International Card (LemonSqueezy)
-                          </>
+                        type="submit"
+                        disabled={couponLoading || !couponInput}
+                        className={cn(
+                          "flex h-11 shrink-0 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer",
+                          ui.focus
                         )}
+                      >
+                        {couponLoading ? <Loader2 size={16} className="animate-spin" /> : "Apply"}
                       </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Global payment options */
-                <div className="space-y-2">
-                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-2.5">
-                    <PayPalSDKButton
-                      plan={plan}
-                      billing={selectedBilling}
-                      onSuccess={onPayPalSuccess}
-                      onError={(m) => toast.error(m)}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={onLemon}
-                    disabled={isLemonLoading}
-                    className="w-full h-10 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    {isLemonLoading ? (
-                      <Loader2 size={13} className="animate-spin" />
-                    ) : (
-                      <>
-                        <CreditCard size={13} /> Pay with Credit / Debit Card (LemonSqueezy)
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom Security & Compliance Footer */}
-            <div className="pt-3 border-t border-white/[0.06] mt-3 flex flex-col items-center gap-1.5 text-[10.5px] text-neutral-400">
-              <div className="flex items-center justify-center gap-1.5">
-                <Lock size={11} className="text-emerald-400" />
-                <span>256-Bit SSL Encrypted · Instant 0–5 Min Delivery · 7-Day Refund Guarantee</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-[10px] text-neutral-400">
-                <Link
-                  href="/refund-policy"
-                  target="_blank"
-                  className="hover:text-neutral-200 underline underline-offset-2 transition-colors"
-                >
-                  Cancellation &amp; Refund Policy
-                </Link>
-                <span>·</span>
-                <Link
-                  href="/shipping-policy"
-                  target="_blank"
-                  className="hover:text-neutral-200 underline underline-offset-2 transition-colors"
-                >
-                  Shipping &amp; Delivery Policy
-                </Link>
-                <span>·</span>
-                <Link
-                  href="/terms"
-                  target="_blank"
-                  className="hover:text-neutral-200 underline underline-offset-2 transition-colors"
-                >
-                  Terms
-                </Link>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ═════════════════════════════════════════════════════════════════════
-            MOBILE BOTTOM SHEET DRAWER (< md)
-            ═════════════════════════════════════════════════════════════════════ */}
-        <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="md:hidden fixed inset-x-0 bottom-0 max-h-[92vh] bg-[#0c0c10] border-t border-white/10 rounded-t-[28px] shadow-2xl overflow-y-auto z-10 text-white flex flex-col p-4.5"
-        >
-          {/* Top visual drag handle */}
-          <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-3.5 shrink-0" />
-
-          {/* Header */}
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20">
-                  {plan.id === "power" ? "POWER SCHOLAR 👑" : "PRO SCHOLAR ⭐"}
-                </span>
-                <span className="text-[10px] text-neutral-400">Order Summary</span>
-              </div>
-              <h3 className="text-xl font-black text-white mt-1">{plan.name}</h3>
-              {user?.email && (
-                <span className="text-[11px] text-neutral-400 block mt-0.5">
-                  Account: <strong className="text-neutral-200">{user.email}</strong>
-                </span>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full bg-white/[0.08] text-neutral-400 hover:text-white border border-white/10"
-              aria-label="Close"
-            >
-              <X size={15} />
-            </button>
-          </div>
-
-          {/* Billing Cycle Selector Pill */}
-          <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-1 flex items-center gap-1 mb-3.5">
-            <button
-              type="button"
-              onClick={() => setSelectedBilling("monthly")}
-              className={cn(
-                "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center",
-                selectedBilling === "monthly"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-400"
-              )}
-            >
-              Monthly ({currencySymbol}
-              {fmt(monthlyRate)})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedBilling("yearly")}
-              className={cn(
-                "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center relative",
-                selectedBilling === "yearly"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-400"
-              )}
-            >
-              <span className="absolute -top-2 right-1 px-1 py-0.1 rounded text-[7.5px] font-black uppercase bg-emerald-500 text-black">
-                SAVE {savingPercentage}%
-              </span>
-              Annual ({currencySymbol}
-              {fmt(yearlyRate)})
-            </button>
-          </div>
-
-          {/* Collapsible "What's Included" Accordion for mobile */}
-          <div className="mb-3.5 bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setMobileFeaturesOpen(!mobileFeaturesOpen)}
-              className="w-full p-2.5 flex items-center justify-between text-xs font-semibold text-neutral-200"
-            >
-              <span className="flex items-center gap-1.5 text-red-400">
-                <Sparkles size={12} />
-                <span>What&apos;s included in this plan ({features.length} features)</span>
-              </span>
-              {mobileFeaturesOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-
-            {mobileFeaturesOpen && (
-              <div className="px-3 pb-3 space-y-1.5 border-t border-white/[0.04] pt-2">
-                {features.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs py-1">
-                    <span className="text-neutral-300 font-medium">{item.title}</span>
-                    {item.badge && (
-                      <span className="text-[9px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Order Summary Receipt Box */}
-          <div className="bg-[#121217] border border-white/[0.08] rounded-xl p-3.5 mb-3.5 space-y-2 text-xs">
-            <div className="flex justify-between text-neutral-400">
-              <span>Billing Cycle:</span>
-              <span className="text-white font-medium">
-                {isYearly ? "Annual (365 Days Access)" : "Monthly (30 Days Access)"}
-              </span>
-            </div>
-
-            <div className="flex justify-between text-neutral-400">
-              <span>Plan Price:</span>
-              <span className="text-neutral-200">
-                {isYearly && (
-                  <span className="line-through text-neutral-500 mr-1.5">
-                    {currencySymbol}
-                    {fmt(fullYearValue)}
-                  </span>
-                )}
-                {currencySymbol}
-                {fmt(totalAmount)}
-              </span>
-            </div>
-
-            {isYearly && annualSavings > 0 && (
-              <div className="flex justify-between text-emerald-400 font-medium">
-                <span>Annual Discount ({savingPercentage}% OFF):</span>
-                <span className="font-bold">
-                  - {currencySymbol}
-                  {fmt(annualSavings)}
-                </span>
-              </div>
-            )}
-
-            <div className="flex justify-between text-neutral-400">
-              <span>Taxes:</span>
-              <span className="text-emerald-400 font-medium">
-                {isIndia ? "18% GST (Included)" : "Included"}
-              </span>
-            </div>
-
-            <div className="pt-2 border-t border-dashed border-white/[0.1] flex justify-between items-baseline">
-              <span className="font-bold text-white uppercase text-[11px] tracking-wider">
-                Total Payable:
-              </span>
-              <div className="text-right flex items-baseline gap-1">
-                <span className="text-xl font-black text-white">
-                  {currencySymbol}
-                  {fmt(totalAmount)}
-                </span>
-                <span className="text-[10px] text-neutral-400 font-normal">
-                  {currencyCode}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile Payment Actions */}
-          <div className="space-y-2 pb-2">
-            {isIndia ? (
-              <>
-                {/* Mobile Tabs */}
-                <div className="flex items-center gap-1.5 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedPaymentTab("india");
-                      setShowUpiComingSoon(false);
-                    }}
-                    className={cn(
-                      "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1",
-                      selectedPaymentTab === "india"
-                        ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                        : "text-neutral-400 bg-white/[0.03]"
-                    )}
-                  >
-                    <span>⚡ UPI</span>
-                    <span className="text-[7.5px] uppercase font-black px-1 rounded bg-amber-500/20 text-amber-300">
-                      Soon
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedPaymentTab("global");
-                      setShowUpiComingSoon(false);
-                    }}
-                    className={cn(
-                      "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1",
-                      selectedPaymentTab === "global"
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                        : "text-neutral-400 bg-white/[0.03]"
-                    )}
-                  >
-                    <Globe size={11} />
-                    <span>Card / PayPal</span>
-                  </button>
-                </div>
-
-                {selectedPaymentTab === "india" ? (
-                  <>
-                    {/* Mobile UPI Coming Soon Card */}
-                    {showUpiComingSoon && (
-                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-white space-y-2 mb-2">
-                        <div className="flex items-start gap-2">
-                          <Sparkles size={14} className="text-amber-300 shrink-0 mt-0.5" />
-                          <div className="flex-1 text-xs">
-                            <span className="font-bold text-amber-300 block">
-                              UPI Payments Coming Soon!
-                            </span>
-                            <span className="text-[11px] text-neutral-300 mt-0.5 block leading-tight">
-                              Direct UPI is in final review. For instant access right now, please use Card / PayPal below.
-                            </span>
-                          </div>
-                        </div>
-                        <div className="pt-1.5 border-t border-amber-500/20 flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedPaymentTab("global");
-                              setShowUpiComingSoon(false);
-                            }}
-                            className="flex-1 py-1.5 px-2 rounded-lg bg-white text-neutral-900 font-bold text-[11px] flex items-center justify-center gap-1"
-                          >
-                            <CreditCard size={11} />
-                            <span>Pay via Card / PayPal</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={handleUpiClick}
-                      className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold text-sm shadow-lg flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer"
-                    >
-                      <span>
-                        Pay {currencySymbol}
-                        {fmt(totalAmount)} via UPI
-                      </span>
-                      <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-black/40 text-amber-300 border border-amber-400/40">
-                        Coming Soon
-                      </span>
-                      <ArrowRight size={14} />
-                    </button>
-
-                    <div className="text-center text-[10px] text-neutral-400">
-                      Google Pay · PhonePe · Paytm · RuPay · NetBanking
-                    </div>
-                  </>
-                ) : (
-                  <div className="space-y-2 pt-1">
-                    <PayPalSDKButton
-                      plan={plan}
-                      billing={selectedBilling}
-                      onSuccess={onPayPalSuccess}
-                      onError={(m) => toast.error(m)}
-                    />
-                    <button
-                      type="button"
-                      onClick={onLemon}
-                      disabled={isLemonLoading}
-                      className="w-full py-2.5 rounded-xl bg-white/[0.06] text-white text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      {isLemonLoading ? (
-                        <Loader2 size={13} className="animate-spin" />
-                      ) : (
-                        <>
-                          <CreditCard size={13} />
-                          <span>Pay with Credit / Debit Card (LemonSqueezy)</span>
-                        </>
+                    </motion.div>
+                    <AnimatePresence mode="wait">
+                      {couponError && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                          transition={{ duration: 0.2 }}
+                          id="coupon-error"
+                          role="alert"
+                          className="flex items-center gap-2 text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl"
+                        >
+                          <AlertCircle size={14} className="shrink-0 text-red-400" />
+                          <span>{couponError}</span>
+                        </motion.div>
                       )}
-                    </button>
-                  </div>
+                    </AnimatePresence>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={openCoupon}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-md text-sm text-neutral-300 transition-colors hover:text-white",
+                      ui.focus
+                    )}
+                  >
+                    <Tag size={14} />
+                    Have a coupon code?
+                  </button>
                 )}
-              </>
-            ) : (
-              <>
-                <PayPalSDKButton
-                  plan={plan}
-                  billing={selectedBilling}
-                  onSuccess={onPayPalSuccess}
-                  onError={(m) => toast.error(m)}
-                />
+              </div>
+
+              {/* What's included */}
+              <div className="mt-5 border-t border-white/10 pt-4">
                 <button
                   type="button"
-                  onClick={onLemon}
-                  disabled={isLemonLoading}
-                  className="w-full py-2.5 rounded-xl bg-white/[0.06] text-white text-xs font-semibold"
-                >
-                  {isLemonLoading ? (
-                    <Loader2 size={14} className="animate-spin mx-auto" />
-                  ) : (
-                    "Credit / Debit Card (LemonSqueezy)"
+                  onClick={() => setFeaturesOpen((v) => !v)}
+                  aria-expanded={featuresOpen}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md text-sm text-neutral-300 transition-colors hover:text-white",
+                    ui.focus
                   )}
+                >
+                  Included in this plan
+                  <ChevronDown
+                    size={16}
+                    className={cn("transition-transform", featuresOpen && "rotate-180")}
+                  />
                 </button>
-              </>
-            )}
-          </div>
 
-          {/* Reassurance & Mandatory Compliance Links */}
-          <div className="pt-2 border-t border-white/[0.06] mt-2 flex flex-col items-center gap-1.5 text-[10px] text-neutral-400">
-            <div className="flex items-center justify-center gap-1.5">
-              <ShieldCheck size={12} className="text-emerald-400" />
-              <span>256-Bit SSL Encrypted · Instant SaaS Delivery · 7-Day Refund</span>
+                {featuresOpen && (
+                  <ul className="mt-3 space-y-2">
+                    {features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-neutral-300">
+                        <Check size={16} className="mt-0.5 shrink-0 text-emerald-400" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Payment */}
+              <div className="mt-5 border-t border-white/10 pt-5">
+                {isIndia ? (
+                  <div className="space-y-4">
+                    <Segmented
+                      label="Payment method"
+                      value={method}
+                      onChange={setMethod}
+                      options={[
+                        { value: "upi", label: "UPI" },
+                        { value: "card", label: "Card / PayPal" },
+                      ]}
+                    />
+
+                    {method === "upi" ? (
+                      <div>
+                        <button
+                          type="button"
+                          onClick={handlePaytmPayment}
+                          disabled={isPaytmLoading || couponLoading}
+                          className={ui.primaryBtn}
+                        >
+                          {isPaytmLoading ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              Opening Paytm…
+                            </>
+                          ) : (
+                            <div className="flex items-center justify-center gap-2.5">
+                              <img
+                                src="/icons8-paytm-48.png"
+                                alt="Paytm"
+                                className="w-5 h-5 object-contain"
+                              />
+                              <span>Pay {sym}{fmt(payableAmount)} with UPI</span>
+                            </div>
+                          )}
+                        </button>
+                        <p className="mt-2 text-center text-xs text-neutral-400">
+                          Works with GPay, PhonePe, Paytm, BHIM and any UPI app or QR.
+                        </p>
+                      </div>
+                    ) : (
+                      cardAndPaypal
+                    )}
+                  </div>
+                ) : (
+                  cardAndPaypal
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-5 space-y-2 text-center text-xs text-neutral-400">
+                <p className="flex items-center justify-center gap-1.5">
+                  <Lock size={12} />
+                  Secure payment. 7-day refund. Cancel anytime from your profile.
+                </p>
+                <div className="flex items-center justify-center gap-4">
+                  <Link
+                    href="/refund-policy"
+                    target="_blank"
+                    className="underline underline-offset-2 hover:text-white"
+                  >
+                    Refund policy
+                  </Link>
+                  <Link
+                    href="/shipping-policy"
+                    target="_blank"
+                    className="underline underline-offset-2 hover:text-white"
+                  >
+                    Shipping policy
+                  </Link>
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="underline underline-offset-2 hover:text-white"
+                  >
+                    Terms
+                  </Link>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-[9.5px] text-neutral-400">
-              <Link href="/refund-policy" target="_blank" className="hover:text-neutral-200 underline underline-offset-2">
-                Refund Policy
-              </Link>
-              <span>·</span>
-              <Link href="/shipping-policy" target="_blank" className="hover:text-neutral-200 underline underline-offset-2">
-                Shipping Policy
-              </Link>
-              <span>·</span>
-              <Link href="/terms" target="_blank" className="hover:text-neutral-200 underline underline-offset-2">
-                Terms
-              </Link>
-            </div>
-          </div>
-        </motion.div>
-      </div>
+          </motion.div>
+        </div>
+      )}
     </AnimatePresence>
+  );
+}
+
+function Divider() {
+  return (
+    <div className="flex items-center gap-3 text-xs text-neutral-400">
+      <span className="h-px flex-1 bg-white/10" />
+      or
+      <span className="h-px flex-1 bg-white/10" />
+    </div>
   );
 }

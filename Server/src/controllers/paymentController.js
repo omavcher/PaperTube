@@ -1,24 +1,24 @@
-// controllers/paymentController.js — PayPal + LemonSqueezy
+// controllers/paymentController.js — PayPal + LemonSqueezy + Paytm
 const axios = require("axios");
 const crypto = require("crypto");
+const PaytmChecksum = require("paytmchecksum");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const PaypalOrder = require("../models/PaypalOrder");
+const PaytmOrder = require("../models/PaytmOrder");
 const emailService = require("../utils/emailService");
+const { evaluateCoupon, recordRedemption } = require("../coupon");
+const { PLANS, getPlanPrice } = require("../pricing");
 
-// ─── Plan config ──────────────────────────────────────────────────────────────
-const PLANS = {
-  pro: {
-    name: "Pro",
-    monthly: { priceUSD: 9, durationDays: 30 },
-    yearly:  { priceUSD: 72, durationDays: 365 },
-  },
-  power: {
-    name: "Power",
-    monthly: { priceUSD: 19, durationDays: 30 },
-    yearly:  { priceUSD: 144, durationDays: 365 },
-  },
-};
+// ─── Paytm Host Config ────────────────────────────────────────────────────────
+function getPaytmHost() {
+  const env = (process.env.PAYTM_ENVIRONMENT || "staging").toLowerCase();
+  const isStaging = env === "staging" || env === "sandbox" || env === "test";
+  return {
+    host: isStaging ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in",
+    isStaging,
+  };
+}
 
 // ─── LemonSqueezy variant map (from env) ─────────────────────────────────────
 const LS_VARIANTS = () => ({
@@ -29,7 +29,7 @@ const LS_VARIANTS = () => ({
 // ─────────────────────────────────────────────────────────────────────────────
 //  SHARED HELPER — activate membership + save transaction
 // ─────────────────────────────────────────────────────────────────────────────
-async function activateMembership({ userId, planId, billingPeriod, amountUSD, paymentMethod, gatewayOrderId, gatewayPaymentId, userEmail, userName }) {
+async function activateMembership({ userId, planId, billingPeriod, amountUSD, amountINR, paymentMethod, gatewayOrderId, gatewayPaymentId, userEmail, userName }) {
   const normPlanId = (planId || "pro").toLowerCase();
   const plan = PLANS[normPlanId] || PLANS.pro;
   const normBilling = (billingPeriod || "monthly").toLowerCase();
@@ -50,7 +50,7 @@ async function activateMembership({ userId, planId, billingPeriod, amountUSD, pa
 
   // Idempotency — check if already processed with same gateway order id or payment id
   const alreadyDone = (user.transactions || []).some(
-    (t) => (t.orderId === gatewayOrderId || t.paypalOrderId === gatewayOrderId || t.lemonSqueezyOrderId === gatewayOrderId || t.paymentId === gatewayPaymentId) && t.status === "success"
+    (t) => (t.orderId === gatewayOrderId || t.paypalOrderId === gatewayOrderId || t.lemonSqueezyOrderId === gatewayOrderId || t.paytmOrderId === gatewayOrderId || t.paymentId === gatewayPaymentId) && t.status === "success"
   );
   if (alreadyDone) {
     console.log(`ℹ️  Order ${gatewayOrderId} already processed for ${user.email} — verifying active status.`);
@@ -58,7 +58,7 @@ async function activateMembership({ userId, planId, billingPeriod, amountUSD, pa
       user.membership.isActive = true;
       await user.save();
     }
-    return user.transactions.find(t => t.orderId === gatewayOrderId || t.paypalOrderId === gatewayOrderId) || null;
+    return user.transactions.find(t => t.orderId === gatewayOrderId || t.paypalOrderId === gatewayOrderId || t.paytmOrderId === gatewayOrderId) || null;
   }
 
   // ── Update membership ──────────────────────────────────────────────────────
@@ -94,18 +94,22 @@ async function activateMembership({ userId, planId, billingPeriod, amountUSD, pa
   user.rank = isPower ? "power" : "pro";
 
   // ── Build transaction record ───────────────────────────────────────────────
+  const isINR = paymentMethod === "paytm" || paymentMethod === "upi" || paymentMethod === "razorpay";
+  const displayAmount = isINR ? (amountINR || periodConfig.priceINR) : (amountUSD || periodConfig.priceUSD);
+
   const transactionRecord = {
     userId:              user._id,
     paymentId:           gatewayPaymentId || gatewayOrderId,
     orderId:             gatewayOrderId,
     paypalOrderId:       paymentMethod === "paypal"        ? gatewayOrderId : null,
     lemonSqueezyOrderId: paymentMethod === "lemonsqueezy"  ? gatewayOrderId : null,
+    paytmOrderId:        (paymentMethod === "paytm" || paymentMethod === "upi") ? gatewayOrderId : null,
     packageId:           normPlanId,
     packageName:         `${planName} (${normBilling})`,
     packageType:         "subscription",
     billingPeriod:       normBilling,
-    amount:              amountUSD || periodConfig.priceUSD,
-    baseAmount:          amountUSD || periodConfig.priceUSD,
+    amount:              displayAmount,
+    baseAmount:          displayAmount,
     discountAmount:      0,
     gstAmount:           0,
     status:              "success",
@@ -198,7 +202,7 @@ exports.getPaypalConfig = async (req, res) => {
 // ── Create PayPal Order (used by JS SDK on frontend — includes return_url for mobile) ────
 exports.createPaypalOrder = async (req, res) => {
   try {
-    const { planId, billingPeriod = "monthly" } = req.body;
+    const { planId, billingPeriod = "monthly", couponCode } = req.body;
 
     if (!planId) {
       return res.status(400).json({ success: false, message: "Missing planId" });
@@ -209,8 +213,34 @@ exports.createPaypalOrder = async (req, res) => {
 
     const normBilling  = (billingPeriod || "monthly").toLowerCase();
     const periodConfig = plan[normBilling] || plan.monthly;
-    const priceUSD     = periodConfig.priceUSD;
     const user         = req.user;
+
+    const baseAmount = periodConfig.priceUSD;
+    let priceUSD = baseAmount;
+    let couponInfo = null;
+
+    if (couponCode) {
+      const evalResult = await evaluateCoupon({
+        code: couponCode,
+        userId: user._id,
+        planId: normPlanId,
+        billingPeriod: normBilling,
+        currency: "USD",
+        baseAmount,
+      });
+
+      if (!evalResult.ok) {
+        return res.status(400).json({ success: false, message: evalResult.message });
+      }
+
+      priceUSD = evalResult.finalAmount;
+      couponInfo = {
+        couponId: evalResult.coupon._id,
+        couponCode: evalResult.coupon.code,
+        discountAmount: evalResult.discountAmount,
+        baseAmount: evalResult.baseAmount,
+      };
+    }
 
     const { token, baseUrl } = await getPaypalAccessToken();
 
@@ -228,10 +258,10 @@ exports.createPaypalOrder = async (req, res) => {
       purchase_units: [
         {
           reference_id: `${normPlanId}___${normBilling}___${user._id}`,
-          description:  `PaperXify ${plan.name} — ${normBilling === "monthly" ? "Monthly" : "Yearly"}`,
+          description:  `PaperXify ${plan.name} — ${normBilling === "monthly" ? "Monthly" : "Yearly"}${couponInfo ? ` (Discounted: -$${couponInfo.discountAmount})` : ""}`,
           amount: {
             currency_code: "USD",
-            value:         priceUSD.toFixed(2),
+            value:         Number(priceUSD).toFixed(2),
           },
           custom_id: compactCustomId,
         },
@@ -262,21 +292,32 @@ exports.createPaypalOrder = async (req, res) => {
     await PaypalOrder.findOneAndUpdate(
       { orderId: order.id },
       {
-        orderId:       order.id,
-        userId:        user._id,
-        planId:        normPlanId,
-        billingPeriod: normBilling,
-        amountUSD:     priceUSD,
-        userEmail:     user.email,
-        userName:      user.name || user.username || "",
-        status:        "created",
+        orderId:        order.id,
+        userId:         user._id,
+        planId:         normPlanId,
+        billingPeriod:  normBilling,
+        amountUSD:      priceUSD,
+        baseAmount:     couponInfo ? couponInfo.baseAmount : priceUSD,
+        couponId:       couponInfo ? couponInfo.couponId : null,
+        couponCode:     couponInfo ? couponInfo.couponCode : null,
+        discountAmount: couponInfo ? couponInfo.discountAmount : 0,
+        userEmail:      user.email,
+        userName:       user.name || user.username || "",
+        status:         "created",
       },
       { upsert: true, new: true }
     );
 
-    console.log("✅ PayPal order created and saved to DB:", { orderId: order.id, userId: user._id, planId: normPlanId, billingPeriod: normBilling });
+    console.log("✅ PayPal order created and saved to DB:", {
+      orderId: order.id,
+      userId: user._id,
+      planId: normPlanId,
+      billingPeriod: normBilling,
+      amountUSD: priceUSD,
+      couponCode: couponInfo?.couponCode || null,
+    });
 
-    res.json({ success: true, orderId: order.id });
+    res.json({ success: true, orderId: order.id, amountUSD, discountAmount: couponInfo?.discountAmount || 0 });
   } catch (error) {
     console.error("❌ PayPal create order error:", error?.response?.data || error.message);
     res.status(500).json({
@@ -437,6 +478,17 @@ exports.capturePaypalOrder = async (req, res) => {
       pending.status = "activated";
       pending.lastError = null;
       await pending.save();
+
+      // Record coupon redemption if a coupon was used
+      if (pending.couponId) {
+        await recordRedemption({
+          couponId: pending.couponId,
+          userId: pending.userId,
+          orderId: pending.orderId,
+          discountAmount: pending.discountAmount,
+          currency: "USD",
+        });
+      }
 
       const activeUser = await User.findById(pending.userId).select("-password -__v -googleAccessToken -googleId -followerUsers");
 
@@ -659,7 +711,7 @@ exports.handlePaypalWebhook = async (req, res) => {
 // ── Create LemonSqueezy Checkout ──────────────────────────────────────────────
 exports.createLemonSqueezyCheckout = async (req, res) => {
   try {
-    const { planId, billingPeriod = "monthly", successUrl, cancelUrl } = req.body;
+    const { planId, billingPeriod = "monthly", successUrl, cancelUrl, couponCode } = req.body;
 
     if (!planId || !successUrl || !cancelUrl) {
       return res.status(400).json({ success: false, message: "Missing required fields" });
@@ -681,6 +733,26 @@ exports.createLemonSqueezyCheckout = async (req, res) => {
     const user         = req.user;
     const periodConfig = plan[billingPeriod];
 
+    const checkoutData = {
+      email:  user.email,
+      name:   user.name || user.username || "",
+      custom: {
+        userId:        user._id.toString(),
+        userEmail:     user.email,
+        userName:      user.name || user.username || "",
+        planId,
+        billingPeriod,
+        durationDays:  String(periodConfig.durationDays),
+        planName:      plan.name,
+        amountUSD:     String(periodConfig.priceUSD),
+        couponCode:    couponCode || "",
+      },
+    };
+
+    if (couponCode) {
+      checkoutData.discount_code = String(couponCode).trim().toUpperCase();
+    }
+
     const payload = {
       data: {
         type: "checkouts",
@@ -689,20 +761,7 @@ exports.createLemonSqueezyCheckout = async (req, res) => {
             dark: true,
             logo: true,
           },
-          checkout_data: {
-            email:  user.email,
-            name:   user.name || user.username || "",
-            custom: {
-              userId:        user._id.toString(),
-              userEmail:     user.email,
-              userName:      user.name || user.username || "",
-              planId,
-              billingPeriod,
-              durationDays:  String(periodConfig.durationDays),
-              planName:      plan.name,
-              amountUSD:     String(periodConfig.priceUSD),
-            },
-          },
+          checkout_data: checkoutData,
           product_options: {
             redirect_url:  successUrl,
           },
@@ -1163,4 +1222,999 @@ exports.verifyPayment = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  PAYTM (UPI & All-in-One Gateway)
+// ═════════════════════════════════════════════════════════════════════════════
+
+exports.getPaytmConfig = async (req, res) => {
+  try {
+    const { host, isStaging } = getPaytmHost();
+    const mid = process.env.PAYTM_MID || null;
+    const isConfigured = Boolean(
+      mid &&
+      !mid.includes("YOUR_") &&
+      process.env.PAYTM_MERCHANT_KEY &&
+      !process.env.PAYTM_MERCHANT_KEY.includes("YOUR_")
+    );
+
+    res.json({
+      success: true,
+      mid: isConfigured ? mid : null,
+      environment: isStaging ? "staging" : "production",
+      isStaging,
+      isConfigured,
+      scriptUrl: mid
+        ? `${host}/merchantpgpui/checkoutjs/merchants/${mid}.js`
+        : null,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.initiatePaytmTransaction = async (req, res) => {
+  try {
+    const { planId = "pro", billingPeriod = "monthly", couponCode } = req.body;
+    const normPlanId = (planId || "pro").toLowerCase();
+    const normBilling = (billingPeriod || "yearly").toLowerCase() === "yearly" ? "yearly" : "monthly";
+
+    const mid = process.env.PAYTM_MID;
+    const merchantKey = process.env.PAYTM_MERCHANT_KEY;
+    const { host, isStaging } = getPaytmHost();
+    const websiteName = isStaging ? "WEBSTAGING" : (process.env.PAYTM_WEBSITE || "DEFAULT");
+
+    if (!mid || !merchantKey || mid.includes("YOUR_") || merchantKey.includes("YOUR_")) {
+      return res.status(400).json({
+        success: false,
+        isConfigMissing: true,
+        message: "Paytm Merchant credentials not configured. Please set PAYTM_MID and PAYTM_MERCHANT_KEY in Server/src/.env.",
+      });
+    }
+
+    const plan = PLANS[normPlanId] || PLANS.pro;
+    const periodConfig = plan[normBilling] || plan.monthly;
+    const baseAmount = periodConfig.priceINR;
+    let amountINR = baseAmount;
+    let couponInfo = null;
+
+    if (couponCode) {
+      const evalResult = await evaluateCoupon({
+        code: couponCode,
+        userId: req.user._id,
+        planId: normPlanId,
+        billingPeriod: normBilling,
+        currency: "INR",
+        baseAmount,
+      });
+
+      if (!evalResult.ok) {
+        return res.status(400).json({ success: false, message: evalResult.message });
+      }
+
+      amountINR = evalResult.finalAmount;
+      couponInfo = {
+        couponId: evalResult.coupon._id,
+        couponCode: evalResult.coupon.code,
+        discountAmount: evalResult.discountAmount,
+        baseAmount: evalResult.baseAmount,
+      };
+    }
+
+    const orderId = `ORDER_PT_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "https://paperxify.com";
+    const callbackUrl = `${backendUrl.replace(/\/$/, "")}/api/payment/paytm/callback`;
+
+    const paytmParams = {
+      body: {
+        requestType: "Payment",
+        mid,
+        websiteName,
+        orderId,
+        callbackUrl,
+        txnAmount: {
+          value: Number(amountINR).toFixed(2),
+          currency: "INR",
+        },
+        userInfo: {
+          custId: req.user._id.toString(),
+          email: req.user.email,
+          mobile: req.user.mobile || "9999999999",
+        },
+      },
+    };
+
+    const checksum = await PaytmChecksum.generateSignature(
+      JSON.stringify(paytmParams.body),
+      merchantKey
+    );
+    paytmParams.head = { signature: checksum };
+
+    console.log(`🚀 Initiating Paytm transaction for user ${req.user.email}: Order ${orderId}, Amount ₹${amountINR}${couponInfo ? ` (Discounted: -₹${couponInfo.discountAmount})` : ""}, Host: ${host}, Website: ${websiteName}`);
+
+    const response = await axios.post(`${host}/theia/api/v1/initiateTransaction?mid=${mid}&orderId=${orderId}`, paytmParams, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 10000,
+    });
+
+    const resBody = response.data?.body;
+    if (!resBody || resBody.resultInfo?.resultStatus !== "S" || !resBody.txnToken) {
+      const errMsg = resBody?.resultInfo?.resultMsg || "Failed to initiate transaction with Paytm";
+      console.error("❌ Paytm initiateTransaction error response:", response.data);
+      return res.status(400).json({
+        success: false,
+        message: errMsg,
+        resultInfo: resBody?.resultInfo || null,
+      });
+    }
+
+    // Save initial PaytmOrder record
+    await PaytmOrder.create({
+      orderId,
+      userId: req.user._id,
+      planId: normPlanId,
+      billingPeriod: normBilling,
+      amountINR,
+      baseAmount: couponInfo ? couponInfo.baseAmount : amountINR,
+      couponId: couponInfo ? couponInfo.couponId : null,
+      couponCode: couponInfo ? couponInfo.couponCode : null,
+      discountAmount: couponInfo ? couponInfo.discountAmount : 0,
+      txnToken: resBody.txnToken,
+      userEmail: req.user.email,
+      userName: req.user.name,
+      status: "created",
+    });
+
+    return res.json({
+      success: true,
+      orderId,
+      txnToken: resBody.txnToken,
+      amount: amountINR,
+      discountAmount: couponInfo?.discountAmount || 0,
+      mid,
+      isStaging,
+      planName: plan.name,
+      billingPeriod: normBilling,
+    });
+  } catch (error) {
+    console.error("❌ initiatePaytmTransaction exception:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error during Paytm transaction initiation",
+    });
+  }
+};
+
+// ─── Helper: Record failed, cancelled, or pending transactions in DB ─────────
+async function recordNonSuccessTransaction({ paytmOrder, status, resultCode, resultMsg, failureReason, rawResponse }) {
+  try {
+    paytmOrder.status = status; // "failed", "cancelled", "pending"
+    paytmOrder.resultCode = resultCode || null;
+    paytmOrder.resultMsg = resultMsg || null;
+    paytmOrder.failureReason = failureReason || resultMsg || null;
+    paytmOrder.rawResponse = rawResponse || paytmOrder.rawResponse || null;
+    paytmOrder.lastCheckedAt = new Date();
+    await paytmOrder.save();
+
+    const plan = PLANS[paytmOrder.planId] || PLANS.pro;
+    const planName = plan.name || "Pro Scholar";
+
+    const txnRecord = {
+      userId: paytmOrder.userId,
+      paymentId: paytmOrder.txnId || paytmOrder.orderId,
+      orderId: paytmOrder.orderId,
+      paytmOrderId: paytmOrder.orderId,
+      packageId: paytmOrder.planId,
+      packageName: `${planName} (${paytmOrder.billingPeriod})`,
+      packageType: "subscription",
+      billingPeriod: paytmOrder.billingPeriod,
+      amount: paytmOrder.amountINR,
+      baseAmount: paytmOrder.amountINR,
+      discountAmount: 0,
+      gstAmount: 0,
+      status: status, // "failed", "pending", "cancelled"
+      failureReason: failureReason || resultMsg || null,
+      resultCode: resultCode || null,
+      paymentMethod: "paytm",
+      userEmail: paytmOrder.userEmail,
+      userName: paytmOrder.userName,
+      timestamp: new Date(),
+    };
+
+    // Upsert into standalone Transaction model
+    await Transaction.findOneAndUpdate(
+      { orderId: paytmOrder.orderId },
+      { $set: txnRecord },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).catch((e) => console.warn("Failed to upsert standalone transaction:", e.message));
+
+    // Update user.transactions array if user exists
+    if (paytmOrder.userId) {
+      const user = await User.findById(paytmOrder.userId);
+      if (user) {
+        if (!user.transactions) user.transactions = [];
+        const existingIdx = user.transactions.findIndex(
+          (t) => t.orderId === paytmOrder.orderId || t.paytmOrderId === paytmOrder.orderId
+        );
+        if (existingIdx >= 0) {
+          user.transactions[existingIdx].status = status;
+          user.transactions[existingIdx].failureReason = failureReason || resultMsg || null;
+          user.transactions[existingIdx].resultCode = resultCode || null;
+        } else {
+          user.transactions.push(txnRecord);
+        }
+        await user.save({ validateModifiedOnly: true }).catch((e) =>
+          console.warn("Failed to update user transactions:", e.message)
+        );
+      }
+    }
+  } catch (err) {
+    console.error("❌ recordNonSuccessTransaction error:", err);
+  }
+}
+
+exports.verifyPaytmTransaction = async (req, res) => {
+  try {
+    const { orderId, response: clientResponse } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "Order ID is required" });
+    }
+
+    const paytmOrder = await PaytmOrder.findOne({ orderId });
+    if (!paytmOrder) {
+      return res.status(404).json({ success: false, message: "Paytm order not found" });
+    }
+
+    // Check if already completed and activated (Idempotency)
+    if (paytmOrder.status === "success") {
+      const freshUser = await User.findById(paytmOrder.userId);
+      return res.json({
+        success: true,
+        message: "Order already verified and activated",
+        data: {
+          orderId,
+          status: "success",
+          membership: freshUser?.membership || null,
+          tokens: freshUser?.tokens || 0,
+        },
+      });
+    }
+
+    const mid = process.env.PAYTM_MID;
+    const merchantKey = process.env.PAYTM_MERCHANT_KEY;
+    const { host } = getPaytmHost();
+
+    // Query status via Paytm Order Status API
+    const statusParams = {
+      body: {
+        mid,
+        orderId,
+      },
+    };
+    const signature = await PaytmChecksum.generateSignature(
+      JSON.stringify(statusParams.body),
+      merchantKey
+    );
+    statusParams.head = { signature };
+
+    const statusUrl = `${host}/v3/order/status`;
+    const statusRes = await axios.post(statusUrl, statusParams, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 12000,
+    });
+
+    const statusBody = statusRes.data?.body || {};
+    const resultInfo = statusBody.resultInfo || {};
+    const resultCode = resultInfo.resultCode || "";
+    const resultMsg = resultInfo.resultMsg || "";
+    const resultStatus = resultInfo.resultStatus || statusBody.status || "";
+
+    const isSuccess = resultStatus === "TXN_SUCCESS";
+    const isPending = resultStatus === "PENDING" || resultCode === "400" || resultCode === "402";
+    const isCancelled = resultCode === "227" || /cancel/i.test(resultMsg);
+
+    console.log(
+      `🔍 Paytm Status Check for ${orderId}: status=${resultStatus}, code=${resultCode}, msg=${resultMsg}`
+    );
+
+    paytmOrder.rawResponse = statusBody;
+    paytmOrder.txnId = statusBody.txnId || clientResponse?.TXNID || paytmOrder.txnId || null;
+    paytmOrder.bankTxnId = statusBody.bankTxnId || clientResponse?.BANKTXNID || paytmOrder.bankTxnId || null;
+    paytmOrder.paymentMode = statusBody.paymentMode || clientResponse?.PAYMENTMODE || paytmOrder.paymentMode || "UPI";
+    paytmOrder.gatewayName = statusBody.gatewayName || null;
+    paytmOrder.bankName = statusBody.bankName || null;
+    paytmOrder.lastCheckedAt = new Date();
+
+    // Amount verification safeguard against client-side tampering
+    if (statusBody.txnAmount) {
+      const returnedAmount = parseFloat(statusBody.txnAmount);
+      if (returnedAmount && Math.abs(returnedAmount - paytmOrder.amountINR) > 0.01) {
+        console.error(`🚨 Amount mismatch for order ${orderId}: expected ₹${paytmOrder.amountINR}, got ₹${returnedAmount}`);
+        await recordNonSuccessTransaction({
+          paytmOrder,
+          status: "failed",
+          resultCode: "AMOUNT_MISMATCH",
+          resultMsg: "Amount mismatch detected",
+          failureReason: `Expected ₹${paytmOrder.amountINR}, but received ₹${returnedAmount}`,
+          rawResponse: statusBody,
+        });
+        return res.status(400).json({
+          success: false,
+          message: "Security validation error: Payment amount mismatch.",
+        });
+      }
+    }
+
+    if (isSuccess) {
+      paytmOrder.status = "success";
+      paytmOrder.resultCode = resultCode || "01";
+      paytmOrder.resultMsg = resultMsg || "Txn Successful.";
+      paytmOrder.failureReason = null;
+      await paytmOrder.save();
+
+      const transaction = await activateMembership({
+        userId: paytmOrder.userId,
+        planId: paytmOrder.planId,
+        billingPeriod: paytmOrder.billingPeriod,
+        amountINR: paytmOrder.amountINR,
+        amountUSD: paytmOrder.amountINR / 85,
+        paymentMethod: "paytm",
+        gatewayOrderId: orderId,
+        gatewayPaymentId: paytmOrder.txnId || orderId,
+        userEmail: paytmOrder.userEmail,
+        userName: paytmOrder.userName,
+      });
+
+      // Record coupon redemption if a coupon was used
+      if (paytmOrder.couponId) {
+        await recordRedemption({
+          couponId: paytmOrder.couponId,
+          userId: paytmOrder.userId,
+          orderId: paytmOrder.orderId,
+          discountAmount: paytmOrder.discountAmount,
+          currency: "INR",
+        });
+      }
+
+      const user = await User.findById(paytmOrder.userId);
+
+      return res.json({
+        success: true,
+        message: "Paytm payment verified successfully! Your subscription is now active.",
+        data: {
+          transactionId: transaction?._id || null,
+          orderId,
+          paymentId: paytmOrder.txnId,
+          tokens: user?.tokens || 0,
+          membership: user?.membership || null,
+          status: "success",
+        },
+      });
+    } else if (isPending) {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "pending",
+        resultCode,
+        resultMsg,
+        failureReason: "Payment is pending bank confirmation",
+        rawResponse: statusBody,
+      });
+
+      return res.json({
+        success: false,
+        isPending: true,
+        message: resultMsg || "Payment is pending bank confirmation. If funds were debited, your subscription will be activated automatically.",
+        status: "PENDING",
+        orderId,
+      });
+    } else if (isCancelled) {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "cancelled",
+        resultCode,
+        resultMsg,
+        failureReason: "Transaction cancelled by user",
+        rawResponse: statusBody,
+      });
+
+      return res.json({
+        success: false,
+        isCancelled: true,
+        message: resultMsg || "Payment was cancelled.",
+        status: "CANCELLED",
+        orderId,
+      });
+    } else {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "failed",
+        resultCode,
+        resultMsg,
+        failureReason: resultMsg || "Payment failed",
+        rawResponse: statusBody,
+      });
+
+      return res.status(400).json({
+        success: false,
+        isFailed: true,
+        message: resultMsg || "Payment was not successful.",
+        status: resultStatus || "FAILED",
+        orderId,
+      });
+    }
+  } catch (error) {
+    console.error("❌ verifyPaytmTransaction error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Payment verification failed",
+    });
+  }
+};
+
+// ─── Cancel Paytm Transaction (User dismissed/closed payment window) ───────────
+exports.cancelPaytmTransaction = async (req, res) => {
+  try {
+    const { orderId, reason } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "orderId is required" });
+    }
+
+    const paytmOrder = await PaytmOrder.findOne({ orderId });
+    if (!paytmOrder) {
+      return res.status(404).json({ success: false, message: "Paytm order not found" });
+    }
+
+    // Do not cancel if already marked success
+    if (paytmOrder.status === "success") {
+      return res.json({ success: true, message: "Order is already completed successfully" });
+    }
+
+    await recordNonSuccessTransaction({
+      paytmOrder,
+      status: "cancelled",
+      resultCode: "APP_CLOSED",
+      resultMsg: reason || "User closed payment window",
+      failureReason: reason || "User dismissed checkout before completion",
+      rawResponse: { event: "APP_CLOSED", dismissedAt: new Date() },
+    });
+
+    return res.json({
+      success: true,
+      message: "Order marked as cancelled",
+      status: "cancelled",
+      orderId,
+    });
+  } catch (err) {
+    console.error("❌ cancelPaytmTransaction error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ─── Sync / Recover Paytm Order (Re-query Paytm Order Status API) ─────────────
+exports.syncPaytmOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "orderId is required" });
+    }
+
+    const paytmOrder = await PaytmOrder.findOne({ orderId });
+    if (!paytmOrder) {
+      return res.status(404).json({ success: false, message: "Paytm order not found" });
+    }
+
+    if (paytmOrder.status === "success") {
+      const user = await User.findById(paytmOrder.userId);
+      return res.json({
+        success: true,
+        message: "Subscription is already active",
+        data: {
+          orderId,
+          status: "success",
+          membership: user?.membership || null,
+          tokens: user?.tokens || 0,
+        },
+      });
+    }
+
+    const mid = process.env.PAYTM_MID;
+    const merchantKey = process.env.PAYTM_MERCHANT_KEY;
+    const { host } = getPaytmHost();
+
+    const statusParams = { body: { mid, orderId } };
+    const signature = await PaytmChecksum.generateSignature(
+      JSON.stringify(statusParams.body),
+      merchantKey
+    );
+    statusParams.head = { signature };
+
+    const statusRes = await axios.post(`${host}/v3/order/status`, statusParams, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 12000,
+    });
+
+    const statusBody = statusRes.data?.body || {};
+    const resultInfo = statusBody.resultInfo || {};
+    const resultCode = resultInfo.resultCode || "";
+    const resultMsg = resultInfo.resultMsg || "";
+    const resultStatus = resultInfo.resultStatus || statusBody.status || "";
+
+    const isSuccess = resultStatus === "TXN_SUCCESS";
+    const isPending = resultStatus === "PENDING" || resultCode === "400" || resultCode === "402";
+    const isCancelled = resultCode === "227" || /cancel/i.test(resultMsg);
+
+    paytmOrder.rawResponse = statusBody;
+    paytmOrder.txnId = statusBody.txnId || paytmOrder.txnId;
+    paytmOrder.bankTxnId = statusBody.bankTxnId || paytmOrder.bankTxnId;
+    paytmOrder.paymentMode = statusBody.paymentMode || paytmOrder.paymentMode || "UPI";
+    paytmOrder.gatewayName = statusBody.gatewayName || null;
+    paytmOrder.bankName = statusBody.bankName || null;
+    paytmOrder.retryCount = (paytmOrder.retryCount || 0) + 1;
+    paytmOrder.lastCheckedAt = new Date();
+
+    if (isSuccess) {
+      paytmOrder.status = "success";
+      paytmOrder.resultCode = resultCode || "01";
+      paytmOrder.resultMsg = resultMsg || "Txn Successful.";
+      paytmOrder.failureReason = null;
+      await paytmOrder.save();
+
+      const txn = await activateMembership({
+        userId: paytmOrder.userId,
+        planId: paytmOrder.planId,
+        billingPeriod: paytmOrder.billingPeriod,
+        amountINR: paytmOrder.amountINR,
+        amountUSD: paytmOrder.amountINR / 85,
+        paymentMethod: "paytm",
+        gatewayOrderId: orderId,
+        gatewayPaymentId: paytmOrder.txnId || orderId,
+        userEmail: paytmOrder.userEmail,
+        userName: paytmOrder.userName,
+      });
+
+      // Record coupon redemption if a coupon was used
+      if (paytmOrder.couponId) {
+        await recordRedemption({
+          couponId: paytmOrder.couponId,
+          userId: paytmOrder.userId,
+          orderId: paytmOrder.orderId,
+          discountAmount: paytmOrder.discountAmount,
+          currency: "INR",
+        });
+      }
+
+      const user = await User.findById(paytmOrder.userId);
+      return res.json({
+        success: true,
+        message: "Payment verified successfully! Subscription activated.",
+        data: {
+          orderId,
+          status: "success",
+          membership: user?.membership || null,
+          tokens: user?.tokens || 0,
+          transactionId: txn?._id || null,
+        },
+      });
+    } else if (isPending) {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "pending",
+        resultCode,
+        resultMsg,
+        failureReason: "Payment is pending bank confirmation",
+        rawResponse: statusBody,
+      });
+      return res.json({
+        success: false,
+        isPending: true,
+        message: resultMsg || "Payment is pending bank confirmation.",
+        status: "pending",
+        orderId,
+      });
+    } else if (isCancelled) {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "cancelled",
+        resultCode,
+        resultMsg,
+        failureReason: "User cancelled transaction",
+        rawResponse: statusBody,
+      });
+      return res.json({
+        success: false,
+        isCancelled: true,
+        message: resultMsg || "Transaction was cancelled.",
+        status: "cancelled",
+        orderId,
+      });
+    } else {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "failed",
+        resultCode,
+        resultMsg,
+        failureReason: resultMsg || "Payment failed",
+        rawResponse: statusBody,
+      });
+      return res.status(400).json({
+        success: false,
+        isFailed: true,
+        message: resultMsg || "Payment was not successful.",
+        status: "failed",
+        orderId,
+      });
+    }
+  } catch (err) {
+    console.error("❌ syncPaytmOrder error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ─── Handle Paytm Form/Redirect Callback ──────────────────────────────────────
+exports.handlePaytmCallback = async (req, res) => {
+  try {
+    const paytmData = { ...(req.body || {}), ...(req.query || {}) };
+    const orderId = paytmData.ORDERID || paytmData.orderId || paytmData.ORDER_ID;
+    const frontendUrl = process.env.FRONTEND_URL || "https://paperxify.com";
+
+    if (!orderId) {
+      return res.redirect(`${frontendUrl}/pricing?payment=failed&reason=Missing+Order+ID`);
+    }
+
+    const paytmOrder = await PaytmOrder.findOne({ orderId });
+    if (!paytmOrder) {
+      return res.redirect(`${frontendUrl}/pricing?payment=failed&reason=Order+Not+Found`);
+    }
+
+    const mid = process.env.PAYTM_MID;
+    const merchantKey = process.env.PAYTM_MERCHANT_KEY;
+    const { host } = getPaytmHost();
+
+    // Verify Checksum if present
+    let isValidChecksum = true;
+    if (paytmData.CHECKSUMHASH) {
+      const checksum = paytmData.CHECKSUMHASH;
+      const cleanData = { ...paytmData };
+      delete cleanData.CHECKSUMHASH;
+      isValidChecksum = PaytmChecksum.verifySignature(cleanData, merchantKey, checksum);
+    }
+
+    // Call status API to be 100% authoritative
+    const statusParams = { body: { mid, orderId } };
+    const signature = await PaytmChecksum.generateSignature(
+      JSON.stringify(statusParams.body),
+      merchantKey
+    );
+    statusParams.head = { signature };
+
+    const statusRes = await axios.post(`${host}/v3/order/status`, statusParams, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 12000,
+    });
+
+    const statusBody = statusRes.data?.body || {};
+    const resultInfo = statusBody.resultInfo || {};
+    const resultCode = resultInfo.resultCode || "";
+    const resultMsg = resultInfo.resultMsg || "";
+    const resultStatus = resultInfo.resultStatus || statusBody.status || "";
+
+    const isSuccess = isValidChecksum && resultStatus === "TXN_SUCCESS";
+    const isPending = resultStatus === "PENDING" || resultCode === "400" || resultCode === "402";
+    const isCancelled = resultCode === "227" || /cancel/i.test(resultMsg);
+
+    paytmOrder.txnId = statusBody.txnId || paytmData.TXNID || paytmOrder.txnId;
+    paytmOrder.bankTxnId = statusBody.bankTxnId || paytmData.BANKTXNID || paytmOrder.bankTxnId;
+    paytmOrder.paymentMode = statusBody.paymentMode || paytmData.PAYMENTMODE || paytmOrder.paymentMode;
+    paytmOrder.rawResponse = statusBody;
+
+    if (isSuccess) {
+      paytmOrder.status = "success";
+      paytmOrder.resultCode = resultCode || "01";
+      paytmOrder.resultMsg = resultMsg || "Txn Successful.";
+      paytmOrder.failureReason = null;
+      await paytmOrder.save();
+
+      await activateMembership({
+        userId: paytmOrder.userId,
+        planId: paytmOrder.planId,
+        billingPeriod: paytmOrder.billingPeriod,
+        amountINR: paytmOrder.amountINR,
+        amountUSD: paytmOrder.amountINR / 85,
+        paymentMethod: "paytm",
+        gatewayOrderId: orderId,
+        gatewayPaymentId: paytmOrder.txnId || orderId,
+        userEmail: paytmOrder.userEmail,
+        userName: paytmOrder.userName,
+      });
+
+      // Record coupon redemption if a coupon was used
+      if (paytmOrder.couponId) {
+        await recordRedemption({
+          couponId: paytmOrder.couponId,
+          userId: paytmOrder.userId,
+          orderId: paytmOrder.orderId,
+          discountAmount: paytmOrder.discountAmount,
+          currency: "INR",
+        });
+      }
+
+      return res.redirect(
+        `${frontendUrl}/pricing?payment=success&plan=${encodeURIComponent(paytmOrder.planId)}&billing=${paytmOrder.billingPeriod}&orderId=${orderId}`
+      );
+    } else if (isPending) {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "pending",
+        resultCode,
+        resultMsg,
+        failureReason: "Payment is pending bank confirmation",
+        rawResponse: statusBody,
+      });
+      return res.redirect(`${frontendUrl}/pricing?payment=pending&orderId=${orderId}`);
+    } else if (isCancelled) {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "cancelled",
+        resultCode,
+        resultMsg,
+        failureReason: "User cancelled transaction",
+        rawResponse: statusBody,
+      });
+      return res.redirect(
+        `${frontendUrl}/pricing?payment=cancelled&orderId=${orderId}&reason=${encodeURIComponent(resultMsg || "Payment cancelled by user")}`
+      );
+    } else {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "failed",
+        resultCode,
+        resultMsg,
+        failureReason: resultMsg || "Payment failed",
+        rawResponse: statusBody,
+      });
+      const reason = encodeURIComponent(resultMsg || "Payment Failed");
+      return res.redirect(`${frontendUrl}/pricing?payment=failed&orderId=${orderId}&reason=${reason}`);
+    }
+  } catch (err) {
+    console.error("❌ handlePaytmCallback error:", err);
+    const frontendUrl = process.env.FRONTEND_URL || "https://paperxify.com";
+    return res.redirect(`${frontendUrl}/pricing?payment=failed&reason=${encodeURIComponent(err.message)}`);
+  }
+};
+
+// ─── Paytm Server-to-Server (S2S) Payment Notification Webhook ───────────────
+// Configured in Paytm Dashboard: Payment Notification URL
+// e.g. https://api.paperxify.com/api/payment/paytm/webhook
+exports.handlePaytmWebhook = async (req, res) => {
+  if (req.method === "GET" || req.method === "HEAD") {
+    return res.status(200).json({ status: "SUCCESS", message: "Paytm S2S webhook endpoint active" });
+  }
+  console.log("🔔 [Paytm S2S Webhook] Received notification:", JSON.stringify(req.body));
+  try {
+    const rawData = req.body || {};
+    const isNested = Boolean(rawData.body && (rawData.head || rawData.body.resultInfo || rawData.body.orderId));
+    const data = isNested ? rawData.body : rawData;
+
+    const orderId = data.ORDERID || data.orderId || data.ORDER_ID || rawData.orderId;
+    if (!orderId) {
+      console.warn("⚠️ [Paytm Webhook] Missing orderId in payload");
+      return res.status(200).json({ status: "SUCCESS", message: "Missing order ID, ignored" });
+    }
+
+    const paytmOrder = await PaytmOrder.findOne({ orderId });
+    if (!paytmOrder) {
+      console.warn(`⚠️ [Paytm Webhook] Order ${orderId} not found in DB`);
+      return res.status(200).json({ status: "SUCCESS", message: "Order not found, ignored" });
+    }
+
+    const mid = process.env.PAYTM_MID || "hiWKzR36853080681466";
+    const merchantKey = process.env.PAYTM_MERCHANT_KEY;
+    const { host } = getPaytmHost();
+
+    // Verify Checksum if present
+    let isValidChecksum = true;
+    if (isNested && rawData.head?.signature && merchantKey) {
+      try {
+        isValidChecksum = PaytmChecksum.verifySignature(
+          JSON.stringify(rawData.body),
+          merchantKey,
+          rawData.head.signature
+        );
+      } catch (chkErr) {
+        console.warn("⚠️ [Paytm Webhook] Nested signature verification error:", chkErr.message);
+      }
+    } else if (rawData.CHECKSUMHASH && merchantKey) {
+      try {
+        const cleanData = { ...rawData };
+        delete cleanData.CHECKSUMHASH;
+        isValidChecksum = PaytmChecksum.verifySignature(cleanData, merchantKey, rawData.CHECKSUMHASH);
+      } catch (chkErr) {
+        console.warn("⚠️ [Paytm Webhook] Flat checksum verification error:", chkErr.message);
+      }
+    }
+
+    // Call status API to be 100% authoritative directly with Paytm servers
+    let statusBody = {};
+    try {
+      const statusParams = { body: { mid, orderId } };
+      const signature = await PaytmChecksum.generateSignature(
+        JSON.stringify(statusParams.body),
+        merchantKey
+      );
+      statusParams.head = { signature };
+
+      const statusRes = await axios.post(`${host}/v3/order/status`, statusParams, {
+        headers: { "Content-Type": "application/json" },
+        timeout: 10000,
+      });
+      statusBody = statusRes.data?.body || {};
+    } catch (apiErr) {
+      console.warn(`⚠️ [Paytm Webhook] Order status query error for ${orderId}:`, apiErr.message);
+    }
+
+    const resultInfo = statusBody.resultInfo || data.resultInfo || {};
+    const resultCode = resultInfo.resultCode || data.RESPCODE || data.resultCode || "";
+    const resultMsg = resultInfo.resultMsg || data.RESPMSG || data.resultMsg || "";
+    const resultStatus = resultInfo.resultStatus || data.STATUS || statusBody.status || "";
+
+    const isSuccess = (isValidChecksum || Boolean(statusBody.resultInfo)) && resultStatus === "TXN_SUCCESS";
+    const isPending = resultStatus === "PENDING" || resultCode === "400" || resultCode === "402";
+    const isCancelled = resultCode === "227" || /cancel/i.test(resultMsg);
+
+    paytmOrder.txnId = statusBody.txnId || data.TXNID || data.txnId || paytmOrder.txnId;
+    paytmOrder.bankTxnId = statusBody.bankTxnId || data.BANKTXNID || data.bankTxnId || paytmOrder.bankTxnId;
+    paytmOrder.paymentMode = statusBody.paymentMode || data.PAYMENTMODE || data.paymentMode || paytmOrder.paymentMode;
+    paytmOrder.rawResponse = Object.keys(statusBody).length > 0 ? statusBody : rawData;
+
+    if (isSuccess) {
+      const alreadySuccess = paytmOrder.status === "success";
+
+      paytmOrder.status = "success";
+      paytmOrder.resultCode = resultCode || "01";
+      paytmOrder.resultMsg = resultMsg || "Txn Successful.";
+      paytmOrder.failureReason = null;
+      await paytmOrder.save();
+
+      if (!alreadySuccess) {
+        await activateMembership({
+          userId: paytmOrder.userId,
+          planId: paytmOrder.planId,
+          billingPeriod: paytmOrder.billingPeriod,
+          amountINR: paytmOrder.amountINR,
+          amountUSD: paytmOrder.amountINR / 85,
+          paymentMethod: "paytm",
+          gatewayOrderId: orderId,
+          gatewayPaymentId: paytmOrder.txnId || orderId,
+          userEmail: paytmOrder.userEmail,
+          userName: paytmOrder.userName,
+        });
+
+        if (paytmOrder.couponId) {
+          await recordRedemption({
+            couponId: paytmOrder.couponId,
+            userId: paytmOrder.userId,
+            orderId: paytmOrder.orderId,
+            discountAmount: paytmOrder.discountAmount,
+            currency: "INR",
+          });
+        }
+      }
+
+      console.log(`✅ [Paytm Webhook] Successfully processed payment for Order ${orderId}`);
+      return res.status(200).json({ status: "SUCCESS", message: "Paytm notification processed successfully", orderId });
+    } else if (isPending) {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "pending",
+        resultCode,
+        resultMsg,
+        failureReason: "Payment is pending bank confirmation",
+        rawResponse: paytmOrder.rawResponse,
+      });
+      return res.status(200).json({ status: "SUCCESS", message: "Order pending recorded", orderId });
+    } else if (isCancelled) {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "cancelled",
+        resultCode,
+        resultMsg,
+        failureReason: "User cancelled transaction",
+        rawResponse: paytmOrder.rawResponse,
+      });
+      return res.status(200).json({ status: "SUCCESS", message: "Order cancellation recorded", orderId });
+    } else {
+      await recordNonSuccessTransaction({
+        paytmOrder,
+        status: "failed",
+        resultCode,
+        resultMsg,
+        failureReason: resultMsg || "Payment failed",
+        rawResponse: paytmOrder.rawResponse,
+      });
+      return res.status(200).json({ status: "SUCCESS", message: "Order failure recorded", orderId });
+    }
+  } catch (err) {
+    console.error("❌ [Paytm Webhook] Processing error:", err);
+    return res.status(200).json({ status: "SUCCESS", message: "Handled with internal error", error: err.message });
+  }
+};
+
+// ─── Paytm Refund Webhook (Success & Accept Refund Notify) ───────────────────
+// Configured in Paytm Dashboard: Success Refund Notify / Accept Refund Notify
+// e.g. https://api.paperxify.com/api/payment/paytm/refund-notify
+exports.handlePaytmRefundWebhook = async (req, res) => {
+  if (req.method === "GET" || req.method === "HEAD") {
+    return res.status(200).json({ status: "SUCCESS", message: "Paytm refund webhook endpoint active" });
+  }
+  console.log("🔔 [Paytm Refund Webhook] Received notification:", JSON.stringify(req.body));
+  try {
+    const rawData = req.body || {};
+    const data = rawData.body || rawData;
+    const orderId = data.ORDERID || data.orderId || data.ORDER_ID;
+    const refundId = data.REFUNDID || data.refundId || data.refId;
+
+    if (orderId) {
+      const paytmOrder = await PaytmOrder.findOne({ orderId });
+      if (paytmOrder) {
+        paytmOrder.status = "refunded";
+        paytmOrder.rawResponse = { ...(paytmOrder.rawResponse || {}), refundData: data };
+        await paytmOrder.save();
+      }
+
+      await Transaction.findOneAndUpdate(
+        { orderId },
+        {
+          status: "refunded",
+          notes: `Paytm Refund ID: ${refundId || "N/A"}. Refund status: ${data.STATUS || "SUCCESS"}`,
+        }
+      );
+      console.log(`✅ [Paytm Refund Webhook] Recorded refund for Order ${orderId}`);
+    }
+
+    return res.status(200).json({ status: "SUCCESS", message: "Refund notification acknowledged" });
+  } catch (err) {
+    console.error("❌ [Paytm Refund Webhook] Error:", err);
+    return res.status(200).json({ status: "SUCCESS" });
+  }
+};
+
+// ─── Paytm Chargeback / Dispute Webhook ──────────────────────────────────────
+// Configured in Paytm Dashboard: Charge Back Notify
+// e.g. https://api.paperxify.com/api/payment/paytm/chargeback-notify
+exports.handlePaytmDisputeWebhook = async (req, res) => {
+  if (req.method === "GET" || req.method === "HEAD") {
+    return res.status(200).json({ status: "SUCCESS", message: "Paytm dispute webhook endpoint active" });
+  }
+  console.log("🔔 [Paytm Chargeback Webhook] Received notification:", JSON.stringify(req.body));
+  try {
+    const rawData = req.body || {};
+    const data = rawData.body || rawData;
+    const orderId = data.ORDERID || data.orderId || data.ORDER_ID;
+    const disputeReason = data.DISPUTE_REASON || data.reason || data.CHARGEBACK_REASON || "Dispute initiated";
+
+    if (orderId) {
+      await Transaction.findOneAndUpdate(
+        { orderId },
+        {
+          status: "disputed",
+          notes: `Paytm Chargeback Notification: ${disputeReason}`,
+        }
+      );
+      console.log(`⚠️ [Paytm Chargeback Webhook] Recorded dispute for Order ${orderId}`);
+    }
+
+    return res.status(200).json({ status: "SUCCESS", message: "Chargeback notification acknowledged" });
+  } catch (err) {
+    console.error("❌ [Paytm Chargeback Webhook] Error:", err);
+    return res.status(200).json({ status: "SUCCESS" });
+  }
+};
+
+// ─── Paytm Subscription Pre-notify Webhook ───────────────────────────────────
+// Configured in Paytm Dashboard: Subscription Pre notify
+// e.g. https://api.paperxify.com/api/payment/paytm/subscription-pre-notify
+exports.handlePaytmPreNotifyWebhook = async (req, res) => {
+  return res.status(200).json({ status: "SUCCESS", message: "Subscription pre-notify acknowledged" });
 };

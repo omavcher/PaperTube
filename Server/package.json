@@ -39,6 +39,7 @@
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
+    "paytmchecksum": "^1.5.1",
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.2",
     "pptxgenjs": "^4.0.1",

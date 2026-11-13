@@ -10,6 +10,7 @@ router.get('/ai-models/analytics', adminAuth, adminController.getAiModelsAnalyti
 router.get('/users', adminAuth, adminController.getAllUsers);
 router.delete('/user/:id', adminAuth, adminController.deleteUser);
 router.get('/transactions', adminAuth, adminController.getAllTransactions);
+router.post('/transactions/reach-out', adminAuth, adminController.reachOutLead);
 router.get('/bugs', adminAuth, adminController.getAllBugs);
 router.get('/creations', adminAuth, adminController.getRecentCreations);
 

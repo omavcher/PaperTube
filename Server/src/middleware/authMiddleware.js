@@ -56,6 +56,13 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
+    if (error.name === 'MongooseError' || error.message?.includes('buffering timed out')) {
+      return res.status(503).json({ 
+        success: false,
+        message: "Database is connecting, please retry in a moment." 
+      });
+    }
+
     return res.status(500).json({ 
       success: false,
       message: "Server error during authentication." 

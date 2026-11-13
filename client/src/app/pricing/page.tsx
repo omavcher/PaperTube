@@ -189,6 +189,49 @@ export default function PricingPage() {
       .catch(() => {});
   }, []);
 
+  // ── Handle Payment Gateway Redirect Callbacks (?payment=success|cancelled|pending|failed) ──
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const orderId = params.get("orderId");
+    const reason = params.get("reason");
+    const planParam = params.get("plan");
+
+    if (!payment) return;
+
+    if (payment === "success") {
+      toast.success(
+        planParam
+          ? `🎉 Welcome to ${planParam}! Your subscription is now active.`
+          : "🎉 Payment successful! Your subscription is active."
+      );
+      window.dispatchEvent(new Event("auth-change"));
+      window.dispatchEvent(new Event("capacity-updated"));
+      window.history.replaceState({}, "", window.location.pathname);
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        api.get("/auth/get-profile", { headers: { Auth: token } })
+          .then((r) => { if (r.data.success) setUser(r.data.user); })
+          .catch(() => {});
+      }
+    } else if (payment === "pending") {
+      toast.info(
+        "⏳ Payment is pending bank confirmation. If funds were debited, your plan will activate shortly.",
+        { duration: 8000 }
+      );
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (payment === "cancelled" || payment === "cancel") {
+      toast.info("Payment was cancelled. You can retry whenever you are ready.");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (payment === "failed") {
+      toast.error(
+        reason ? `Payment failed: ${decodeURIComponent(reason)}` : "Payment was not completed. Please try again."
+      );
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   // Dynamically compute the best saving % for the toggle pill badge
   const maxSaving = (() => {
     const paidPlans = PLANS.filter(p => p.id !== "free");

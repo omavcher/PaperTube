@@ -5,6 +5,10 @@ const jwt     = require("jsonwebtoken");
 const User    = require("../models/User");
 const paymentController = require("../controllers/paymentController");
 const authMiddleware    = require("../middleware/authMiddleware");
+const { couponRouter }  = require("../coupon");
+
+// ── Coupon Validation (Rate-Limited) ──────────────────────────────────────────
+router.use("/", couponRouter);
 
 // Optional auth for capture/sync so token expiry or redirection never blocks activating a paid subscription
 const optionalAuth = async (req, res, next) => {
@@ -41,6 +45,35 @@ router.post("/paypal/sync-order", optionalAuth, paymentController.syncPaypalOrde
 router.post("/lemonsqueezy/create-checkout", authMiddleware, paymentController.createLemonSqueezyCheckout);
 // LemonSqueezy webhook (no auth — verified via HMAC signature in controller)
 router.post("/lemonsqueezy/webhook", paymentController.handleLemonSqueezyWebhook);
+
+// ── Paytm (UPI / All-in-One Gateway) ──────────────────────────────────────────
+// Public config: returns Paytm MID and environment mode
+router.get("/paytm/config", paymentController.getPaytmConfig);
+// Step 1: Initiate Paytm transaction → returns txnToken + orderId (requires auth)
+router.post("/paytm/initiate", authMiddleware, paymentController.initiatePaytmTransaction);
+// Step 2: Verify Paytm transaction (frontend JS callback verify)
+router.post("/paytm/verify", authMiddleware, paymentController.verifyPaytmTransaction);
+// Step 3: Cancel Paytm transaction (user closed or dismissed modal)
+router.post("/paytm/cancel", authMiddleware, paymentController.cancelPaytmTransaction);
+// Step 4: Sync / recover Paytm order (re-query order status API)
+router.post("/paytm/sync-order", optionalAuth, paymentController.syncPaytmOrder);
+// Step 5: Paytm callback (POST and GET from Paytm server / browser redirect)
+router.post("/paytm/callback", paymentController.handlePaytmCallback);
+router.get("/paytm/callback", paymentController.handlePaytmCallback);
+
+// Step 6: Paytm Server-to-Server Webhooks (configured in Paytm Developer Dashboard)
+// Payment Notification URL (S2S completion webhook)
+router.post("/paytm/webhook", paymentController.handlePaytmWebhook);
+router.get("/paytm/webhook", paymentController.handlePaytmWebhook);
+// Success Refund Notify & Accept Refund Notify
+router.post("/paytm/refund-notify", paymentController.handlePaytmRefundWebhook);
+router.get("/paytm/refund-notify", paymentController.handlePaytmRefundWebhook);
+// Charge Back Notify
+router.post("/paytm/chargeback-notify", paymentController.handlePaytmDisputeWebhook);
+router.get("/paytm/chargeback-notify", paymentController.handlePaytmDisputeWebhook);
+// Subscription Pre notify
+router.post("/paytm/subscription-pre-notify", paymentController.handlePaytmPreNotifyWebhook);
+router.get("/paytm/subscription-pre-notify", paymentController.handlePaytmPreNotifyWebhook);
 
 // ── Transaction History ────────────────────────────────────────────────────────
 router.get("/transactions",                    authMiddleware, paymentController.getTransactions);

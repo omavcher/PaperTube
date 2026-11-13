@@ -3,6 +3,9 @@ const User = require("../models/User");
 const FlashcardSet = require("../models/FlashcardSet");
 const Quiz = require("../models/Quiz");
 const Transaction = require("../models/Transaction");
+const PaytmOrder = require("../models/PaytmOrder");
+const PaypalOrder = require("../models/PaypalOrder");
+const emailService = require("../utils/emailService");
 const Analytics = require("../models/Analytics");
 const Bug = require("../models/Bug");
 const mongoose = require("mongoose");
@@ -226,15 +229,272 @@ exports.deleteUser = async (req, res) => {
 
 exports.getAllTransactions = async (req, res) => {
   try {
-    // Fetch all transactions
-    const transactions = await Transaction.find({});
-    // Return success response
+    // 1. Fetch transactions with populated user info
+    const transactions = await Transaction.find({})
+      .sort({ timestamp: -1 })
+      .populate('userId', 'name email mobile picture country location createdAt lastLogin membership')
+      .lean();
+
+    // 2. Fetch Paytm orders (including created/cancelled/abandoned checkouts)
+    const paytmOrders = await PaytmOrder.find({})
+      .sort({ createdAt: -1 })
+      .populate('userId', 'name email mobile picture country location createdAt lastLogin membership')
+      .lean();
+
+    // 3. Fetch PayPal orders
+    const paypalOrders = await PaypalOrder.find({})
+      .sort({ createdAt: -1 })
+      .populate('userId', 'name email mobile picture country location createdAt lastLogin membership')
+      .lean();
+
+    const seenOrderIds = new Set();
+    const unifiedList = [];
+
+    // Process Standalone Transactions first
+    for (const t of transactions) {
+      const oId = t.orderId || t.paymentId;
+      if (oId) seenOrderIds.add(oId);
+      if (t.paytmOrderId) seenOrderIds.add(t.paytmOrderId);
+      if (t.paypalOrderId) seenOrderIds.add(t.paypalOrderId);
+
+      const u = t.userId || {};
+      const isINR = t.paymentMethod === "paytm" || t.paymentMethod === "upi" || t.paymentMethod === "razorpay" || (t.amount > 100);
+
+      unifiedList.push({
+        _id: t._id,
+        paymentId: t.paymentId || t.orderId || "MANUAL_OP",
+        orderId: t.orderId,
+        paytmOrderId: t.paytmOrderId || null,
+        paypalOrderId: t.paypalOrderId || null,
+        userId: u._id || t.userId,
+        packageId: t.packageId,
+        packageName: t.packageName,
+        packageType: t.packageType || "subscription",
+        billingPeriod: t.billingPeriod || "monthly",
+        amount: t.amount,
+        currency: isINR ? "INR" : "USD",
+        currencySymbol: isINR ? "₹" : "$",
+        status: t.status || "success",
+        failureReason: t.failureReason || null,
+        resultCode: t.resultCode || null,
+        paymentMethod: t.paymentMethod || (isINR ? "paytm" : "paypal"),
+        paymentMode: isINR ? "UPI" : "CARD",
+        userEmail: u.email || t.userEmail || "",
+        userName: u.name || t.userName || "Unknown Scholar",
+        userMobile: u.mobile || null,
+        userCountry: u.country || u.location?.country || "Unknown",
+        userCity: u.location?.city || "",
+        userPicture: u.picture || "",
+        hasActiveMembership: Boolean(u.membership?.isActive),
+        currentPlan: u.membership?.planId || "free",
+        lastLogin: u.lastLogin || null,
+        userJoinedAt: u.createdAt || null,
+        timestamp: t.timestamp || t.createdAt || new Date(),
+        sourceType: "transaction",
+      });
+    }
+
+    // Merge in Paytm orders that were not captured in Transaction table (e.g. abandoned / cancelled / initial created)
+    for (const po of paytmOrders) {
+      if (seenOrderIds.has(po.orderId)) {
+        const existing = unifiedList.find(x => x.orderId === po.orderId || x.paytmOrderId === po.orderId);
+        if (existing) {
+          if (!existing.failureReason && po.failureReason) existing.failureReason = po.failureReason;
+          if (!existing.resultCode && po.resultCode) existing.resultCode = po.resultCode;
+          if (!existing.userMobile && po.userId?.mobile) existing.userMobile = po.userId.mobile;
+          if (po.paymentMode) existing.paymentMode = po.paymentMode;
+        }
+        continue;
+      }
+      seenOrderIds.add(po.orderId);
+
+      const u = po.userId || {};
+      const isCreated = po.status === "created";
+      const normalizedStatus = isCreated ? "abandoned" : po.status;
+
+      unifiedList.push({
+        _id: po._id,
+        paymentId: po.txnId || po.orderId,
+        orderId: po.orderId,
+        paytmOrderId: po.orderId,
+        paypalOrderId: null,
+        userId: u._id || po.userId,
+        packageId: po.planId,
+        packageName: `${po.planId === "power" ? "Power Scholar" : "Pro Scholar"} (${po.billingPeriod})`,
+        packageType: "subscription",
+        billingPeriod: po.billingPeriod || "monthly",
+        amount: po.amountINR,
+        baseAmount: po.baseAmount || null,
+        couponCode: po.couponCode || null,
+        discountAmount: po.discountAmount || 0,
+        currency: "INR",
+        currencySymbol: "₹",
+        status: normalizedStatus,
+        failureReason: po.failureReason || po.resultMsg || (isCreated ? "Initiated Paytm UPI checkout but did not complete" : null),
+        resultCode: po.resultCode || (isCreated ? "ABANDONED_CHECKOUT" : null),
+        paymentMethod: "paytm",
+        paymentMode: po.paymentMode || "UPI",
+        userEmail: u.email || po.userEmail || "",
+        userName: u.name || po.userName || "Unknown Scholar",
+        userMobile: u.mobile || null,
+        userCountry: u.country || u.location?.country || "IN",
+        userCity: u.location?.city || "",
+        userPicture: u.picture || "",
+        hasActiveMembership: Boolean(u.membership?.isActive),
+        currentPlan: u.membership?.planId || "free",
+        lastLogin: u.lastLogin || null,
+        userJoinedAt: u.createdAt || null,
+        timestamp: po.createdAt || new Date(),
+        sourceType: "paytm_order",
+      });
+    }
+
+    // Merge in PayPal orders
+    for (const pp of paypalOrders) {
+      if (seenOrderIds.has(pp.orderId)) {
+        const existing = unifiedList.find(x => x.orderId === pp.orderId || x.paypalOrderId === pp.orderId);
+        if (existing && !existing.userMobile && pp.userId?.mobile) {
+          existing.userMobile = pp.userId.mobile;
+        }
+        continue;
+      }
+      seenOrderIds.add(pp.orderId);
+
+      const u = pp.userId || {};
+      const normalizedStatus = pp.status === "activated" ? "success" : (pp.status === "created" ? "abandoned" : pp.status);
+
+      unifiedList.push({
+        _id: pp._id,
+        paymentId: pp.captureId || pp.orderId,
+        orderId: pp.orderId,
+        paytmOrderId: null,
+        paypalOrderId: pp.orderId,
+        userId: u._id || pp.userId,
+        packageId: pp.planId,
+        packageName: `${pp.planId === "power" ? "Power Scholar" : "Pro Scholar"} (${pp.billingPeriod})`,
+        packageType: "subscription",
+        billingPeriod: pp.billingPeriod || "monthly",
+        amount: pp.amountUSD,
+        baseAmount: pp.baseAmount || null,
+        couponCode: pp.couponCode || null,
+        discountAmount: pp.discountAmount || 0,
+        currency: "USD",
+        currencySymbol: "$",
+        status: normalizedStatus,
+        failureReason: normalizedStatus === "abandoned" ? "Initiated PayPal checkout but did not complete" : null,
+        resultCode: pp.status,
+        paymentMethod: "paypal",
+        paymentMode: "PAYPAL",
+        userEmail: u.email || pp.userEmail || "",
+        userName: u.name || pp.userName || "Unknown Scholar",
+        userMobile: u.mobile || null,
+        userCountry: u.country || u.location?.country || "Unknown",
+        userCity: u.location?.city || "",
+        userPicture: u.picture || "",
+        hasActiveMembership: Boolean(u.membership?.isActive),
+        currentPlan: u.membership?.planId || "free",
+        lastLogin: u.lastLogin || null,
+        userJoinedAt: u.createdAt || null,
+        timestamp: pp.createdAt || new Date(),
+        sourceType: "paypal_order",
+      });
+    }
+
+    // Sort all records chronologically descending
+    unifiedList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    // ── Build Recoverable Leads Summary (Users who attempted but haven't paid yet) ──
+    const paidList = unifiedList.filter(t => t.status === "success");
+    const unpaidList = unifiedList.filter(t => t.status !== "success");
+
+    let paidRevenueINR = 0;
+    let paidRevenueUSD = 0;
+    let lostRevenueINR = 0;
+    let lostRevenueUSD = 0;
+
+    for (const t of unifiedList) {
+      if (t.status === "success") {
+        if (t.currency === "INR") paidRevenueINR += t.amount;
+        else paidRevenueUSD += t.amount;
+      } else {
+        if (t.currency === "INR") lostRevenueINR += t.amount;
+        else lostRevenueUSD += t.amount;
+      }
+    }
+
+    // Group unpaid users into unique recoverable leads
+    const leadsMap = new Map();
+    for (const t of unifiedList) {
+      const email = (t.userEmail || "").toLowerCase().trim();
+      if (!email || email === "unknown" || email.includes("example.com")) continue;
+
+      if (t.hasActiveMembership || t.status === "success") {
+        if (leadsMap.has(email)) {
+          leadsMap.get(email).hasEventuallyPaid = true;
+        }
+        continue;
+      }
+
+      if (!leadsMap.has(email)) {
+        leadsMap.set(email, {
+          userId: t.userId?._id || t.userId,
+          email,
+          name: t.userName || "Scholar",
+          mobile: t.userMobile || null,
+          country: t.userCountry || "Unknown",
+          city: t.userCity || "",
+          picture: t.userPicture || "",
+          lastAttemptDate: t.timestamp,
+          lastPlan: t.packageName,
+          lastAmount: t.amount,
+          currency: t.currency,
+          currencySymbol: t.currencySymbol,
+          lastPaymentMethod: t.paymentMethod,
+          lastStatus: t.status,
+          lastReason: t.failureReason || (t.status === "cancelled" ? "Cancelled by user" : "Incomplete checkout"),
+          attemptsCount: 1,
+          orderIds: [t.orderId],
+          hasEventuallyPaid: false,
+        });
+      } else {
+        const lead = leadsMap.get(email);
+        lead.attemptsCount += 1;
+        if (!lead.orderIds.includes(t.orderId)) lead.orderIds.push(t.orderId);
+        if (t.userMobile && !lead.mobile) lead.mobile = t.userMobile;
+        if (new Date(t.timestamp) > new Date(lead.lastAttemptDate)) {
+          lead.lastAttemptDate = t.timestamp;
+          lead.lastPlan = t.packageName;
+          lead.lastAmount = t.amount;
+          lead.currency = t.currency;
+          lead.currencySymbol = t.currencySymbol;
+          lead.lastPaymentMethod = t.paymentMethod;
+          lead.lastStatus = t.status;
+          lead.lastReason = t.failureReason || lead.lastReason;
+        }
+      }
+    }
+
+    const recoverableLeads = Array.from(leadsMap.values())
+      .filter(lead => !lead.hasEventuallyPaid)
+      .sort((a, b) => new Date(b.lastAttemptDate).getTime() - new Date(a.lastAttemptDate).getTime());
+
     res.status(200).json({
       success: true,
-      count: transactions.length,
-      data: transactions
+      count: unifiedList.length,
+      data: unifiedList,
+      summary: {
+        totalAttempts: unifiedList.length,
+        totalPaid: paidList.length,
+        totalUnpaid: unpaidList.length,
+        successRate: unifiedList.length > 0 ? ((paidList.length / unifiedList.length) * 100).toFixed(1) : "0.0",
+        paidRevenueINR,
+        paidRevenueUSD,
+        lostRevenueINR,
+        lostRevenueUSD,
+        recoverableLeadsCount: recoverableLeads.length,
+        recoverableLeads,
+      },
     });
-
   } catch (error) {
     console.error("❌ Error fetching transactions:", error);
     res.status(500).json({
@@ -242,6 +502,79 @@ exports.getAllTransactions = async (req, res) => {
       message: "Error fetching transactions",
       error: error.message
     });
+  }
+};
+
+// ─── Reach Out to Abandoned/Unpaid Checkout Lead ──────────────────────────────
+exports.reachOutLead = async (req, res) => {
+  try {
+    const { email, name, subject, message, discountCode, planName } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Recipient email is required" });
+    }
+
+    const leadName = name || "Scholar";
+    const sub = subject || `Special assistance with your Paperxify subscription checkout`;
+
+    const customMsgHtml = message
+      ? message.replace(/\n/g, '<br/>')
+      : `We noticed you recently tried subscribing to Paperxify${planName ? ` (${planName})` : ''}, but your payment could not be completed. We're here to help you get full access to our AI research tools and lecture notes.`;
+
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1f2937; line-height: 1.6; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;">
+        <div style="margin-bottom: 24px; text-align: center;">
+          <h1 style="color: #ef4444; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">Paperxify</h1>
+          <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">AI Study Suite & Lecture Synthesis</p>
+        </div>
+
+        <p style="font-size: 15px; margin-bottom: 16px;">Hi <strong>${leadName}</strong>,</p>
+
+        <p style="font-size: 14px; margin-bottom: 16px;">
+          ${customMsgHtml}
+        </p>
+
+        ${discountCode ? `
+        <div style="background-color: #fef2f2; border: 1px dashed #ef4444; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
+          <p style="font-size: 12px; color: #991b1b; margin: 0 0 6px 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Special Follow-up Voucher</p>
+          <p style="font-size: 22px; font-family: monospace; font-weight: 800; color: #dc2626; margin: 0; letter-spacing: 2px;">${discountCode}</p>
+          <p style="font-size: 12px; color: #6b7280; margin: 6px 0 0 0;">Enter this code on the checkout modal for an instant discount.</p>
+        </div>
+        ` : ''}
+
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="https://paperxify.com/pricing" style="background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 12px 28px; font-weight: 700; font-size: 14px; border-radius: 8px; display: inline-block;">
+            Complete Subscription Checkout &rarr;
+          </a>
+        </div>
+
+        <p style="font-size: 13px; color: #4b5563; margin-top: 24px;">
+          If you experienced any payment gateway issues (UPI, Google Pay, PhonePe, Cards, or PayPal), simply reply directly to this email and our team will assist you immediately.
+        </p>
+
+        <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 24px 0;" />
+
+        <p style="font-size: 11px; color: #9ca3af; text-align: center; margin: 0;">
+          Paperxify · Owned by Om Eknath Avchar · All rights reserved.
+        </p>
+      </div>
+    `;
+
+    const result = await emailService.sendEmail({
+      to: email,
+      toName: leadName,
+      subject: sub,
+      html,
+      templateType: "lead_reachout",
+    });
+
+    if (result?.success) {
+      return res.json({ success: true, message: `Reach-out email sent successfully to ${email}` });
+    } else {
+      return res.status(500).json({ success: false, message: result?.error || "Failed to send email" });
+    }
+  } catch (error) {
+    console.error("❌ reachOutLead error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

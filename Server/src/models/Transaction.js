@@ -7,6 +7,7 @@ const TransactionSchema = new mongoose.Schema({
   // Gateway-specific IDs (only one will be set per transaction)
   paypalOrderId:          { type: String, default: null },
   lemonSqueezyOrderId:    { type: String, default: null },
+  paytmOrderId:           { type: String, default: null },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -20,8 +21,10 @@ const TransactionSchema = new mongoose.Schema({
   baseAmount:       { type: Number, default: 0 },
   discountAmount:   { type: Number, default: 0 },
   gstAmount:        { type: Number, default: 0 },
-  status:           { type: String, enum: ["success", "failed", "pending"], required: true },
-  paymentMethod:    { type: String, enum: ["paypal", "lemonsqueezy", "razorpay"], default: "paypal" },
+  status:           { type: String, enum: ["success", "failed", "pending", "cancelled"], required: true },
+  failureReason:    { type: String, default: null },
+  resultCode:       { type: String, default: null },
+  paymentMethod:    { type: String, enum: ["paypal", "lemonsqueezy", "razorpay", "paytm", "upi"], default: "paytm" },
   couponCode:       { type: String, default: null },
   userEmail:        { type: String },
   userName:         { type: String },
